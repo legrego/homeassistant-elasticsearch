@@ -79,7 +79,7 @@ def async_setup(hass, config):
     return True
 
 
-class ElasticsearchGateway:
+class ElasticsearchGateway: # pylint: disable=unused-variable
     """Encapsulates Elasticsearch operations"""
 
     def __init__(self, hass, config):
