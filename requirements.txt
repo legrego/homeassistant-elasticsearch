@@ -1,4 +1,4 @@
 elasticsearch==6.2.0
-pylint==1.7.4
+pylint==1.8
 pytest==3.5.1
 homeassistant==0.68.1
