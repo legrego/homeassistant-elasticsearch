@@ -229,6 +229,9 @@ class ElasticsearchGateway: # pylint: disable=unused-variable
                     name="hass-index-template",
                     body={
                         "index_patterns": [self._index_format + "*"],
+                        "settings": {
+                            "number_of_shards": 1
+                        },
                         "mappings": {
                             "doc": {
                                 "dynamic": 'strict',
