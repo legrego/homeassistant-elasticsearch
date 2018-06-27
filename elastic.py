@@ -37,8 +37,8 @@ CONFIG_SCHEMA = vol.Schema({
         vol.Optional(CONF_ALIAS, default='active-hass-index'): cv.string,
         vol.Optional(CONF_PUBLISH_FREQUENCY, default=ONE_MINUTE): cv.positive_int,
         vol.Optional(CONF_REQUEST_ROLLOVER_FREQUENCY, default=ONE_HOUR): cv.positive_int,
-        vol.Optional(CONF_ROLLOVER_AGE, default='7d'): cv.string,
-        vol.Optional(CONF_ROLLOVER_DOCS, default=15000): cv.positive_int,
+        vol.Optional(CONF_ROLLOVER_AGE, default='60d'): cv.string,
+        vol.Optional(CONF_ROLLOVER_DOCS, default=1000000): cv.positive_int,
         vol.Optional(CONF_ROLLOVER_SIZE, default='5gb'): cv.string
     }),
 }, extra=vol.ALLOW_EXTRA)
