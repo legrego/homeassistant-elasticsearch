@@ -45,8 +45,8 @@ Actual names use the [Rollover API](https://www.elastic.co/guide/en/elasticsearc
 - **alias** (*default:* `"active-hass-index"`): The [index alias](https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-aliases.html) which will always reference the index being written to.
 - **publish_frequency** (*default:* `60`): Specifies how often, in seconds, this component should publish events to Elasticsearch.
 - **request_rollover_frequency** (*default:* `3600`): Specifies how often, in seconds, this component should attempt a Rollover. The Rollover will only occur if the specified criteria has been met.
-- **rollover_age** (*default:* `"7d"`): Specifies the `max_age` condition of the Rollover request
-- **rollover_docs** (*default:* `15000`): Specifies the `max_docs` condition of the Rollover request
+- **rollover_age** (*default:* `"60d"`): Specifies the `max_age` condition of the Rollover request
+- **rollover_docs** (*default:* `100000`): Specifies the `max_docs` condition of the Rollover request
 - **rollover_size** (*default:* `"5gb"`): Specifies the `max_size` condition of the Rollover request
 
 
