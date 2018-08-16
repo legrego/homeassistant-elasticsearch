@@ -242,7 +242,15 @@ class ElasticsearchGateway: # pylint: disable=unused-variable
                                         "dynamic": True
                                     },
                                     "time": {"type": 'date'},
-                                    "value": {"type": 'text'}
+                                    "value": {
+                                        "type": 'text',
+                                        "fields": {
+                                            "keyword": {
+                                                "type": "keyword",
+                                                "ignore_above": 2048
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         },
