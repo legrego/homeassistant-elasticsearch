@@ -14,7 +14,7 @@ from homeassistant.helpers import state as state_helper
 DOMAIN = 'elastic'
 DATA_ELASTICSEARCH = 'elastic'
 
-REQUIREMENTS = ['elasticsearch==6.2.0']
+REQUIREMENTS = ['elasticsearch==6.3.1']
 
 CONF_INDEX_FORMAT = 'index_format'
 CONF_PUBLISH_FREQUENCY = 'publish_frequency'
@@ -139,7 +139,8 @@ class ElasticsearchGateway: # pylint: disable=unused-variable
 
     def _do_publish(self):
         "Publishes all queued documents to the Elasticsearch cluster"
-        import elasticsearch
+        from elasticsearch import ElasticsearchException
+        from elasticsearch.helpers import bulk
 
         if self.publish_queue.empty():
             _LOGGER.debug("Skipping publish because queue is empty")
@@ -155,10 +156,10 @@ class ElasticsearchGateway: # pylint: disable=unused-variable
         _LOGGER.info("Publishing %i documents to Elasticsearch", len(actions))
 
         try:
-            bulk_response = elasticsearch.bulk(self.client, actions) #  pylint: disable=no-member
+            bulk_response = bulk(self.client, actions)
             _LOGGER.debug("Elasticsearch bulk response: %s", str(bulk_response))
             _LOGGER.info("Publish Succeeded")
-        except elasticsearch.ElasticsearchException as err:
+        except ElasticsearchException as err:
             _LOGGER.exception("Error publishing documents to Elasticsearch: %s", err)
         return
 
@@ -194,27 +195,25 @@ class ElasticsearchGateway: # pylint: disable=unused-variable
         """The publish queue timer"""
         _LOGGER.debug("Starting publish timer: executes every %i seconds.",
                       self._publish_frequency)
-        try:
-            while True:
+        while True:
+            try:
                 if self._should_publish():
                     self._do_publish()
                 else:
                     _LOGGER.debug("Nothing to publish")
+            finally:
                 yield from asyncio.sleep(self._publish_frequency)
-        finally:
-            yield True
 
     @asyncio.coroutine
     def _rollover_timer(self):
         """The rollover timer"""
         _LOGGER.debug("Starting rollover timer: executes every %i seconds.",
                       self._rollover_frequency)
-        try:
-            while True:
+        while True:
+            try:
                 self._do_rollover()
+            finally:
                 yield from asyncio.sleep(self._rollover_frequency)
-        finally:
-            yield True
 
     def _create_index_template(self):
         """
@@ -243,20 +242,12 @@ class ElasticsearchGateway: # pylint: disable=unused-variable
                                         "dynamic": True
                                     },
                                     "time": {"type": 'date'},
-                                    "value": {
-                                        "type": 'text',
-                                        "fields": {
-                                            "keyword": {
-                                                "type": "keyword",
-                                                "ignore_above": 2048
-                                            }
-                                        }
-                                    }
+                                    "value": {"type": 'text'}
                                 }
                             }
                         },
                         "aliases": {
-                            self._index_alias: {}
+                            "all-hass-events": {}
                         }
                     }
                 )
@@ -273,3 +264,4 @@ class ElasticsearchGateway: # pylint: disable=unused-variable
                 })
             except elasticsearch.ElasticsearchException as err:
                 _LOGGER.exception("Error creating initial index/alias: %s", err)
+
