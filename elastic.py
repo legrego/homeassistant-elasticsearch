@@ -272,4 +272,3 @@ class ElasticsearchGateway: # pylint: disable=unused-variable
                 })
             except elasticsearch.ElasticsearchException as err:
                 _LOGGER.exception("Error creating initial index/alias: %s", err)
-
