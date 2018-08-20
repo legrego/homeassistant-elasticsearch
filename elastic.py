@@ -58,15 +58,16 @@ def async_setup(hass, config):
 
     hass.data[DOMAIN] = {}
 
-    _LOGGER.debug("Creating ES Gateway")
+    _LOGGER.debug("Creating ES gateway")
     gateway = ElasticsearchGateway(hass, conf)
     hass.data[DOMAIN]['gateway'] = gateway
-    _LOGGER.debug("ES Gateway created")
 
-    _LOGGER.debug("Creating Document Publisher")
+    _LOGGER.debug("Creating document publisher")
     publisher = DocumentPublisher(conf, gateway)
     hass.data[DOMAIN]['publisher'] = publisher
-    _LOGGER.debug("Document Publisher created")
+
+    _LOGGER.debug("Creating service handler")
+    service_handler = ServiceHandler(publisher)
 
     def elastic_event_listener(event):
         """Listen for new messages on the bus and queue them for send."""
@@ -95,7 +96,21 @@ def async_setup(hass, config):
     for component in ELASTIC_COMPONENTS:
         discovery.load_platform(hass, component, DOMAIN, {}, config)
 
+    hass.services.async_register(DOMAIN, 'publish_events', service_handler.publish_events)
+
+    _LOGGER.debug("Elastic component fully initialized")
     return True
+
+class ServiceHandler:
+    """Handles calls to exposed services"""
+
+    def __init__(self, publisher):
+        """Initializes the service handler"""
+        self._publisher = publisher
+
+    def publish_events(self, service):
+        """Publishes all queued events to Elasticsearch"""
+        self._publisher.do_publish()
 
 class ElasticsearchGateway: # pylint: disable=unused-variable
     """Encapsulates Elasticsearch operations"""
@@ -168,15 +183,7 @@ class DocumentPublisher: # pylint: disable=unused-variable
             "_source": document
         })
 
-    def _start_publish_timer(self):
-        """Initialize the publish timer"""
-        asyncio.ensure_future(self._publish_queue_timer())
-
-    def _start_rollover_timer(self):
-        """Initialize the rollover timer"""
-        asyncio.ensure_future(self._rollover_timer())
-
-    def _do_publish(self):
+    def do_publish(self):
         "Publishes all queued documents to the Elasticsearch cluster"
         from elasticsearch import ElasticsearchException
         from elasticsearch.helpers import bulk
@@ -201,6 +208,14 @@ class DocumentPublisher: # pylint: disable=unused-variable
         except ElasticsearchException as err:
             _LOGGER.exception("Error publishing documents to Elasticsearch: %s", err)
         return
+
+    def _start_publish_timer(self):
+        """Initialize the publish timer"""
+        asyncio.ensure_future(self._publish_queue_timer())
+
+    def _start_rollover_timer(self):
+        """Initialize the rollover timer"""
+        asyncio.ensure_future(self._rollover_timer())
 
     def _do_rollover(self):
         """Initiates a Rollover request to the Elasticsearch cluster"""
@@ -236,7 +251,7 @@ class DocumentPublisher: # pylint: disable=unused-variable
         while True:
             try:
                 if self._should_publish():
-                    self._do_publish()
+                    self.do_publish()
                 else:
                     _LOGGER.debug("Nothing to publish")
             finally:
