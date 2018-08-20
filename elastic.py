@@ -101,7 +101,7 @@ def async_setup(hass, config):
     _LOGGER.debug("Elastic component fully initialized")
     return True
 
-class ServiceHandler:
+class ServiceHandler: # pylint: disable=unused-variable
     """Handles calls to exposed services"""
 
     def __init__(self, publisher):
