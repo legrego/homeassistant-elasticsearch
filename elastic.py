@@ -111,6 +111,7 @@ class ElasticsearchGateway: # pylint: disable=unused-variable
         self.client = self._create_es_client()
 
     def get_client(self):
+        """Returns the underlying ES Client"""
         return self.client
 
     def _create_es_client(self):
@@ -151,11 +152,13 @@ class DocumentPublisher: # pylint: disable=unused-variable
         self._start_rollover_timer()
 
     def queue_size(self):
+        """Returns the approximate queue size"""
         return self.publish_queue.qsize()
 
     def last_publish_time(self):
+        """Returns the last publish time"""
         return self._last_publish_time
-    
+
     def write_document(self, document):
         """Queue a document for publish to the cluster"""
         self.publish_queue.put({
@@ -216,7 +219,6 @@ class DocumentPublisher: # pylint: disable=unused-variable
             _LOGGER.info("Rollover Succeeded")
         except elasticsearch.ElasticsearchException as err:
             _LOGGER.exception("Error performing rollover: %s", err)
-        return
 
     def _should_publish(self):
         """Determines if now is a good time to publish documents"""
