@@ -8,6 +8,7 @@ Publish HASS events to your [Elasticsearch](https://elastic.co) cluster!
 * Effeciently publishes Home-Assistant events to Elasticsearch using the Bulk API
 * Automatically maintains Indexes and Index Templates using the Rollover API
 * Supports [X-Pack Security](https://www.elastic.co/products/x-pack/security) via optional username and password
+* Tracks the Elasticsearch cluster health in the `sensor.es_cluster_health` sensor
 
 ## Compatability
 * Elasticsearch 6.x (Self or [Cloud](https://www.elastic.co/cloud) hosted), with or without [X-Pack](https://www.elastic.co/products/x-pack).
@@ -23,8 +24,9 @@ If you don't want to maintain your own cluster, then give the [Elastic Cloud](ht
 ## Installation
 1. Copy `elastic.py` to your `$HASS_CONFIG/custom_components` directory, where `$HASS_CONFIG` is the location on your machine where Home-Assistant lives.
 Example: `/home/pi/.homeassistant` and `/home/pi/.homeassistant/custom_components`. You may have to create the `custom_components` directory yourself.
-2. Configure the component in `$HASS_CONFIG/configuration.yaml` (see Configuration section below)
-3. Restart Home-Assistant
+2. Copy the `sensor` folder to your `$HASS_CONFIG/custom_components` directory
+3. Configure the component in `$HASS_CONFIG/configuration.yaml` (see Configuration section below)
+4. Restart Home-Assistant
 
 ## Configuration
 This is the bare-minimum configuration you need to get up-and-running:

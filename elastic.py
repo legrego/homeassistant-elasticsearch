@@ -9,7 +9,10 @@ import voluptuous as vol
 from homeassistant.const import (
     CONF_URL, CONF_USERNAME, CONF_PASSWORD, CONF_ALIAS, EVENT_STATE_CHANGED)
 import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers import state as state_helper
+from homeassistant.helpers import (
+    state as state_helper,
+    discovery
+)
 
 DOMAIN = 'elastic'
 DATA_ELASTICSEARCH = 'elastic'
@@ -22,6 +25,10 @@ CONF_REQUEST_ROLLOVER_FREQUENCY = 'request_rollover_frequency'
 CONF_ROLLOVER_AGE = 'rollover_max_age'
 CONF_ROLLOVER_DOCS = 'rollover_max_docs'
 CONF_ROLLOVER_SIZE = 'rollover_max_size'
+
+ELASTIC_COMPONENTS = [
+    'sensor'
+]
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -49,9 +56,17 @@ def async_setup(hass, config):
     """Setup the Elasticsearch component."""
     conf = config[DATA_ELASTICSEARCH]
 
+    hass.data[DOMAIN] = {}
+
     _LOGGER.debug("Creating ES Gateway")
     gateway = ElasticsearchGateway(hass, conf)
+    hass.data[DOMAIN]['gateway'] = gateway
     _LOGGER.debug("ES Gateway created")
+
+    _LOGGER.debug("Creating Document Publisher")
+    publisher = DocumentPublisher(conf, gateway)
+    hass.data[DOMAIN]['publisher'] = publisher
+    _LOGGER.debug("Document Publisher created")
 
     def elastic_event_listener(event):
         """Listen for new messages on the bus and queue them for send."""
@@ -71,13 +86,16 @@ def async_setup(hass, config):
             'value': _state,
         }
 
-        gateway.write_document(document_body)
+        publisher.write_document(document_body)
 
         return
 
     hass.bus.async_listen(EVENT_STATE_CHANGED, elastic_event_listener)
-    return True
 
+    for component in ELASTIC_COMPONENTS:
+        discovery.load_platform(hass, component, DOMAIN, {}, config)
+
+    return True
 
 class ElasticsearchGateway: # pylint: disable=unused-variable
     """Encapsulates Elasticsearch operations"""
@@ -86,10 +104,37 @@ class ElasticsearchGateway: # pylint: disable=unused-variable
         """Initialize the gateway"""
         self._hass = hass
         self._url = config.get(CONF_URL)
-        self._index_format = config.get(CONF_INDEX_FORMAT)
-        self._index_alias = config.get(CONF_ALIAS)
         self._username = config.get(CONF_USERNAME)
         self._password = config.get(CONF_PASSWORD)
+
+        _LOGGER.debug("Creating Elasticsearch client")
+        self.client = self._create_es_client()
+
+    def get_client(self):
+        """Returns the underlying ES Client"""
+        return self.client
+
+    def _create_es_client(self):
+        """Constructs an instance of the Elasticsearch client"""
+        import elasticsearch
+
+        use_basic_auth = self._username is not None and self._password is not None
+
+        if use_basic_auth:
+            auth = (self._username, self._password)
+            return elasticsearch.Elasticsearch([self._url], http_auth=auth)
+
+        return elasticsearch.Elasticsearch([self._url])
+
+
+class DocumentPublisher: # pylint: disable=unused-variable
+    """Publishes documents to Elasticsearch"""
+
+    def __init__(self, config, gateway):
+        """Initialize the publisher"""
+        self._gateway = gateway
+        self._index_format = config.get(CONF_INDEX_FORMAT)
+        self._index_alias = config.get(CONF_ALIAS)
         self._publish_frequency = config.get(CONF_PUBLISH_FREQUENCY)
 
         self._rollover_frequency = config.get(CONF_REQUEST_ROLLOVER_FREQUENCY)
@@ -100,13 +145,19 @@ class ElasticsearchGateway: # pylint: disable=unused-variable
         }
 
         self.publish_queue = Queue()
-        self.last_publish_time = None
+        self._last_publish_time = None
 
-        _LOGGER.debug("Creating Elasticsearch client")
-        self.client = self._create_es_client()
         self._create_index_template()
         self._start_publish_timer()
         self._start_rollover_timer()
+
+    def queue_size(self):
+        """Returns the approximate queue size"""
+        return self.publish_queue.qsize()
+
+    def last_publish_time(self):
+        """Returns the last publish time"""
+        return self._last_publish_time
 
     def write_document(self, document):
         """Queue a document for publish to the cluster"""
@@ -125,18 +176,6 @@ class ElasticsearchGateway: # pylint: disable=unused-variable
         """Initialize the rollover timer"""
         asyncio.ensure_future(self._rollover_timer())
 
-    def _create_es_client(self):
-        """Constructs an instance of the Elasticsearch client"""
-        import elasticsearch
-
-        use_basic_auth = self._username is not None and self._password is not None
-
-        if use_basic_auth:
-            auth = (self._username, self._password)
-            return elasticsearch.Elasticsearch([self._url], http_auth=auth)
-
-        return elasticsearch.Elasticsearch([self._url])
-
     def _do_publish(self):
         "Publishes all queued documents to the Elasticsearch cluster"
         from elasticsearch import ElasticsearchException
@@ -152,11 +191,11 @@ class ElasticsearchGateway: # pylint: disable=unused-variable
             doc = self.publish_queue.get()
             actions.append(doc)
 
-        self.last_publish_time = datetime.now()
+        self._last_publish_time = datetime.now()
         _LOGGER.info("Publishing %i documents to Elasticsearch", len(actions))
 
         try:
-            bulk_response = bulk(self.client, actions)
+            bulk_response = bulk(self._gateway.get_client(), actions)
             _LOGGER.debug("Elasticsearch bulk response: %s", str(bulk_response))
             _LOGGER.info("Publish Succeeded")
         except ElasticsearchException as err:
@@ -169,7 +208,7 @@ class ElasticsearchGateway: # pylint: disable=unused-variable
 
         _LOGGER.debug("Performing index rollover")
         try:
-            rollover_response = self.client.indices.rollover(
+            rollover_response = self._gateway.get_client().indices.rollover(
                 alias=self._index_alias,
                 body={
                     "conditions": self._rollover_conditions
@@ -180,7 +219,6 @@ class ElasticsearchGateway: # pylint: disable=unused-variable
             _LOGGER.info("Rollover Succeeded")
         except elasticsearch.ElasticsearchException as err:
             _LOGGER.exception("Error performing rollover: %s", err)
-        return
 
     def _should_publish(self):
         """Determines if now is a good time to publish documents"""
@@ -221,10 +259,12 @@ class ElasticsearchGateway: # pylint: disable=unused-variable
         """
         import elasticsearch
 
-        if not self.client.indices.exists_template(name="hass-index-template"):
+        client = self._gateway.get_client()
+
+        if not client.indices.exists_template(name="hass-index-template"):
             _LOGGER.debug("Creating index template")
             try:
-                self.client.indices.put_template(
+                client.indices.put_template(
                     name="hass-index-template",
                     body={
                         "index_patterns": [self._index_format + "*"],
@@ -262,10 +302,10 @@ class ElasticsearchGateway: # pylint: disable=unused-variable
             except elasticsearch.ElasticsearchException as err:
                 _LOGGER.exception("Error creating index template: %s", err)
 
-        if not self.client.indices.exists_alias(name=self._index_alias):
+        if not client.indices.exists_alias(name=self._index_alias):
             _LOGGER.debug("Creating initial index and alias")
             try:
-                self.client.indices.create(index=self._index_format + "-00001", body={
+                client.indices.create(index=self._index_format + "-00001", body={
                     "aliases": {
                         self._index_alias: {}
                     }
