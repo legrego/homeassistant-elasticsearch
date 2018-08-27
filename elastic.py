@@ -306,7 +306,7 @@ class DocumentPublisher: # pylint: disable=unused-variable
                                             },
                                             "float": {
                                                 "type": "float",
-                                                "ignore_malformed": true
+                                                "ignore_malformed": True
                                             }
                                         }
                                     }
