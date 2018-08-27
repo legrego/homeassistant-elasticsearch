@@ -303,6 +303,10 @@ class DocumentPublisher: # pylint: disable=unused-variable
                                             "keyword": {
                                                 "type": "keyword",
                                                 "ignore_above": 2048
+                                            },
+                                            "float": {
+                                                "type": "float",
+                                                "ignore_malformed": true
                                             }
                                         }
                                     }
