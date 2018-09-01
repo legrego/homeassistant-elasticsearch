@@ -21,6 +21,7 @@ REQUIREMENTS = ['elasticsearch==6.3.1']
 
 CONF_INDEX_FORMAT = 'index_format'
 CONF_PUBLISH_FREQUENCY = 'publish_frequency'
+CONF_ONLY_PUBLISH_CHANGED = 'only_publish_changed'
 CONF_REQUEST_ROLLOVER_FREQUENCY = 'request_rollover_frequency'
 CONF_ROLLOVER_AGE = 'rollover_max_age'
 CONF_ROLLOVER_DOCS = 'rollover_max_docs'
@@ -43,6 +44,7 @@ CONFIG_SCHEMA = vol.Schema({
         vol.Optional(CONF_INDEX_FORMAT, default='hass-events'): cv.string,
         vol.Optional(CONF_ALIAS, default='active-hass-index'): cv.string,
         vol.Optional(CONF_PUBLISH_FREQUENCY, default=ONE_MINUTE): cv.positive_int,
+        vol.Optional(CONF_ONLY_PUBLISH_CHANGED, default=False): cv.boolean,
         vol.Optional(CONF_REQUEST_ROLLOVER_FREQUENCY, default=ONE_HOUR): cv.positive_int,
         vol.Optional(CONF_ROLLOVER_AGE, default='60d'): cv.string,
         vol.Optional(CONF_ROLLOVER_DOCS, default=1000000): cv.positive_int,
@@ -63,7 +65,7 @@ def async_setup(hass, config):
     hass.data[DOMAIN]['gateway'] = gateway
 
     _LOGGER.debug("Creating document publisher")
-    publisher = DocumentPublisher(conf, gateway)
+    publisher = DocumentPublisher(conf, gateway, hass)
     hass.data[DOMAIN]['publisher'] = publisher
 
     _LOGGER.debug("Creating service handler")
@@ -74,20 +76,8 @@ def async_setup(hass, config):
         state = event.data.get('new_state')
         if state is None:
             return
-        try:
-            _state = state_helper.state_as_number(state)
-        except ValueError:
-            _state = state.state
 
-        document_body = {
-            'domain': state.domain,
-            'entity_id': state.object_id,
-            'attributes': dict(state.attributes),
-            'time': event.time_fired,
-            'value': _state,
-        }
-
-        publisher.write_document(document_body)
+        publisher.enqueue_state({"state": state, "event": event})
 
         return
 
@@ -98,7 +88,7 @@ def async_setup(hass, config):
 
     hass.services.async_register(DOMAIN, 'publish_events', service_handler.publish_events)
 
-    _LOGGER.debug("Elastic component fully initialized")
+    _LOGGER.info("Elastic component fully initialized")
     return True
 
 class ServiceHandler: # pylint: disable=unused-variable
@@ -145,12 +135,14 @@ class ElasticsearchGateway: # pylint: disable=unused-variable
 class DocumentPublisher: # pylint: disable=unused-variable
     """Publishes documents to Elasticsearch"""
 
-    def __init__(self, config, gateway):
+    def __init__(self, config, gateway, hass):
         """Initialize the publisher"""
         self._gateway = gateway
+        self._hass = hass
         self._index_format = config.get(CONF_INDEX_FORMAT)
         self._index_alias = config.get(CONF_ALIAS)
         self._publish_frequency = config.get(CONF_PUBLISH_FREQUENCY)
+        self._only_publish_changed = config.get(CONF_ONLY_PUBLISH_CHANGED)
 
         self._rollover_frequency = config.get(CONF_REQUEST_ROLLOVER_FREQUENCY)
         self._rollover_conditions = {
@@ -174,14 +166,8 @@ class DocumentPublisher: # pylint: disable=unused-variable
         """Returns the last publish time"""
         return self._last_publish_time
 
-    def write_document(self, document):
-        """Queue a document for publish to the cluster"""
-        self.publish_queue.put({
-            "_op_type": "index",
-            "_index": self._index_alias,
-            "_type": "doc",
-            "_source": document
-        })
+    def enqueue_state(self, state):
+        self.publish_queue.put(state)
 
     def do_publish(self):
         "Publishes all queued documents to the Elasticsearch cluster"
@@ -194,11 +180,23 @@ class DocumentPublisher: # pylint: disable=unused-variable
 
         _LOGGER.debug("Collecting queued documents for publish")
         actions = []
-        while not self.publish_queue.empty():
-            doc = self.publish_queue.get()
-            actions.append(doc)
-
+        entity_counts = {}
         self._last_publish_time = datetime.now()
+
+        while not self.publish_queue.empty():
+            entry = self.publish_queue.get()
+
+            key = entry["state"].object_id
+
+            entity_counts[key] = 1 if key not in entity_counts else entity_counts[key] + 1
+            actions.append(self._state_to_bulk_action(entry["state"], entry["event"].time_fired))
+
+        if not self._only_publish_changed:
+            all_states = self._hass.states.async_all()
+            for state in all_states:
+                if state.object_id not in entity_counts:
+                    actions.append(self._state_to_bulk_action(state, self._last_publish_time))
+
         _LOGGER.info("Publishing %i documents to Elasticsearch", len(actions))
 
         try:
@@ -208,6 +206,27 @@ class DocumentPublisher: # pylint: disable=unused-variable
         except ElasticsearchException as err:
             _LOGGER.exception("Error publishing documents to Elasticsearch: %s", err)
         return
+
+    def _state_to_bulk_action(self, state, time):
+        try:
+            _state = state_helper.state_as_number(state)
+        except ValueError:
+            _state = state.state
+
+        document_body = {
+            'domain': state.domain,
+            'entity_id': state.object_id,
+            'attributes': dict(state.attributes),
+            'time': time,
+            'value': _state,
+        }
+
+        return {
+            "_op_type": "index",
+            "_index": self._index_alias,
+            "_type": "doc",
+            "_source": document_body
+        }
 
     def _start_publish_timer(self):
         """Initialize the publish timer"""
