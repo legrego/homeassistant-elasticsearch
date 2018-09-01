@@ -46,6 +46,7 @@ All variables are optional unless marked required.
 Actual names use the [Rollover API](https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-rollover-index.html) convention of appending a 5-digit number to the end. e.g.: `hass-events-00001`
 - **alias** (*default:* `"active-hass-index"`): The [index alias](https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-aliases.html) which will always reference the index being written to.
 - **publish_frequency** (*default:* `60`): Specifies how often, in seconds, this component should publish events to Elasticsearch.
+- **only_publish_changed** (*default:* `false`): Specifies that only entities that underwent a state change should be published. When `false`, all entity states are published.
 - **request_rollover_frequency** (*default:* `3600`): Specifies how often, in seconds, this component should attempt a Rollover. The Rollover will only occur if the specified criteria has been met.
 - **rollover_age** (*default:* `"60d"`): Specifies the `max_age` condition of the Rollover request
 - **rollover_docs** (*default:* `100000`): Specifies the `max_docs` condition of the Rollover request
