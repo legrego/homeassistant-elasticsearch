@@ -313,7 +313,11 @@ class DocumentPublisher: # pylint: disable=unused-variable
                                     "entity_id": {"type": 'keyword'},
                                     "attributes": {
                                         "type": 'object',
-                                        "dynamic": True
+                                        "dynamic": True,
+                                        "properties": {
+                                            "latitude": {"type": "geo_point"},
+                                            "longitude": {"type": "geo_point"}
+                                        }
                                     },
                                     "time": {"type": 'date'},
                                     "value": {
