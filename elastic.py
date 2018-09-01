@@ -221,6 +221,12 @@ class DocumentPublisher: # pylint: disable=unused-variable
             'value': _state,
         }
 
+        if 'latitude' in document_body['attributes'] and 'longitude' in document_body['attributes']:
+            document_body['attributes']['es_location'] = {
+                'lat': document_body['attributes']['latitude'],
+                'lon': document_body['attributes']['longitude']
+            }
+
         return {
             "_op_type": "index",
             "_index": self._index_alias,
@@ -313,7 +319,10 @@ class DocumentPublisher: # pylint: disable=unused-variable
                                     "entity_id": {"type": 'keyword'},
                                     "attributes": {
                                         "type": 'object',
-                                        "dynamic": True
+                                        "dynamic": True,
+                                        "properties": {
+                                            "es_location": {"type": "geo_point"}
+                                        }
                                     },
                                     "time": {"type": 'date'},
                                     "value": {
