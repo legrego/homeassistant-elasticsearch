@@ -9,6 +9,7 @@ Publish HASS events to your [Elasticsearch](https://elastic.co) cluster!
 * Automatically maintains Indexes and Index Templates using the Rollover API
 * Supports [X-Pack Security](https://www.elastic.co/products/x-pack/security) via optional username and password
 * Tracks the Elasticsearch cluster health in the `sensor.es_cluster_health` sensor
+* Exclude specific entities or groups from publishing
 
 ## Compatability
 * Elasticsearch 6.x (Self or [Cloud](https://www.elastic.co/cloud) hosted), with or without [X-Pack](https://www.elastic.co/products/x-pack).
@@ -33,7 +34,7 @@ This is the bare-minimum configuration you need to get up-and-running:
 ```yaml
 elastic:
     # URL should point to your Elasticsearch cluster
-    url: http://localost:9200
+    url: http://localhost:9200
 ```
 ### Configuration Variables
 All variables are optional unless marked required.
@@ -41,6 +42,9 @@ All variables are optional unless marked required.
 - **url** (*Required*): The URL of your Elasticsearch cluster
 - **username**: If your cluster is protected with Basic Authentication via [X-Pack Security](https://www.elastic.co/products/x-pack/security), then provide a username here
 - **password**: If your cluster is protected with Basic Authentication via [X-Pack Security](https://www.elastic.co/products/x-pack/security), then provide a password here
+- **exclude**:
+    - **domains**: Specify an optional array of domains to exclude from publishing
+    - **entities**: Specify an optional array of entity ids to exclude from publishing
 #### Advanced Configuration
 - **index_format** (*default:* `"hass-events"`): The format of all index names used by this component. The format specified will be used to derive the actual index names.
 Actual names use the [Rollover API](https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-rollover-index.html) convention of appending a 5-digit number to the end. e.g.: `hass-events-00001`
@@ -52,6 +56,35 @@ Actual names use the [Rollover API](https://www.elastic.co/guide/en/elasticsearc
 - **rollover_docs** (*default:* `100000`): Specifies the `max_docs` condition of the Rollover request
 - **rollover_size** (*default:* `"5gb"`): Specifies the `max_size` condition of the Rollover request
 
+
+### Example Configurations
+**Exclude all groups from publishing:**
+```yaml
+elastic:
+    # URL should point to your Elasticsearch cluster
+    url: http://localhost:9200
+    exclude:
+        domains: ['group']
+```
+
+**Exclude a specific switch from publishing:**
+```yaml
+elastic:
+    # URL should point to your Elasticsearch cluster
+    url: http://localhost:9200
+    exclude:
+        entities: ['switch.living_room_switch']
+```
+
+**Multiple exclusions:**
+```yaml
+elastic:
+    # URL should point to your Elasticsearch cluster
+    url: http://localhost:9200
+    exclude:
+        domains: ['group', 'automation']
+        entities: ['switch.living_room_switch', 'light.hallway_light']
+```
 
 ## Support
 This project is not endorsed or supported by either Elastic or Home-Assistant - please open a GitHub issue for any questions, bugs, or feature requests.
