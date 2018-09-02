@@ -7,7 +7,9 @@ from datetime import (datetime)
 import asyncio
 import voluptuous as vol
 from homeassistant.const import (
-    CONF_URL, CONF_USERNAME, CONF_PASSWORD, CONF_ALIAS, EVENT_STATE_CHANGED)
+    CONF_URL, CONF_USERNAME, CONF_PASSWORD, CONF_ALIAS, EVENT_STATE_CHANGED,
+    CONF_EXCLUDE, CONF_DOMAINS, CONF_ENTITIES
+)
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers import (
     state as state_helper,
@@ -48,7 +50,11 @@ CONFIG_SCHEMA = vol.Schema({
         vol.Optional(CONF_REQUEST_ROLLOVER_FREQUENCY, default=ONE_HOUR): cv.positive_int,
         vol.Optional(CONF_ROLLOVER_AGE, default='60d'): cv.string,
         vol.Optional(CONF_ROLLOVER_DOCS, default=1000000): cv.positive_int,
-        vol.Optional(CONF_ROLLOVER_SIZE, default='5gb'): cv.string
+        vol.Optional(CONF_ROLLOVER_SIZE, default='5gb'): cv.string,
+        vol.Optional(CONF_EXCLUDE, default={}): vol.Schema({
+            vol.Optional(CONF_DOMAINS, default=[]): vol.All(cv.ensure_list, [cv.string]),
+            vol.Optional(CONF_ENTITIES, default=[]): cv.entity_ids
+        })
     }),
 }, extra=vol.ALLOW_EXTRA)
 
@@ -156,8 +162,19 @@ class DocumentPublisher: # pylint: disable=unused-variable
         self._hass = hass
         self._index_format = config.get(CONF_INDEX_FORMAT)
         self._index_alias = config.get(CONF_ALIAS)
+
         self._publish_frequency = config.get(CONF_PUBLISH_FREQUENCY)
         self._only_publish_changed = config.get(CONF_ONLY_PUBLISH_CHANGED)
+
+        excluded = config.get(CONF_EXCLUDE)
+        self._excluded_domains = excluded.get(CONF_DOMAINS)
+        self._excluded_entities = excluded.get(CONF_ENTITIES)
+
+        if self._excluded_domains:
+            _LOGGER.debug("Excluding the following domains: %s", str(self._excluded_domains))
+
+        if self._excluded_entities:
+            _LOGGER.debug("Excluding the following entities: %s", str(self._excluded_entities))
 
         self._rollover_frequency = config.get(CONF_REQUEST_ROLLOVER_FREQUENCY)
         self._rollover_conditions = {
@@ -181,9 +198,21 @@ class DocumentPublisher: # pylint: disable=unused-variable
         """Returns the last publish time"""
         return self._last_publish_time
 
-    def enqueue_state(self, state):
-        """Queues the state for future publishing"""
-        self.publish_queue.put(state)
+    def enqueue_state(self, entry):
+        """queues up the provided state change"""
+        state = entry['state']
+        domain = state.domain
+        entity_id = state.entity_id
+
+        if domain in self._excluded_domains:
+            _LOGGER.debug("Skipping %s: it belongs to an excluded domain", entity_id)
+            return
+
+        if entity_id in self._excluded_entities:
+            _LOGGER.debug("Skipping %s: this entity is explicitly excluded", entity_id)
+            return
+
+        self.publish_queue.put(entry)
 
     def do_publish(self):
         "Publishes all queued documents to the Elasticsearch cluster"
@@ -210,6 +239,10 @@ class DocumentPublisher: # pylint: disable=unused-variable
         if not self._only_publish_changed:
             all_states = self._hass.states.async_all()
             for state in all_states:
+                if (state.domain in self._excluded_domains
+                        or state.entity_id in self._excluded_entities):
+                    continue
+
                 if state.object_id not in entity_counts:
                     actions.append(self._state_to_bulk_action(state, self._last_publish_time))
 
