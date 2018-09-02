@@ -131,11 +131,26 @@ class ElasticsearchGateway: # pylint: disable=unused-variable
 
         use_basic_auth = self._username is not None and self._password is not None
 
+        serializer = self._get_serializer()
+
         if use_basic_auth:
             auth = (self._username, self._password)
-            return elasticsearch.Elasticsearch([self._url], http_auth=auth)
+            return elasticsearch.Elasticsearch([self._url], http_auth=auth, serializer=serializer)
 
-        return elasticsearch.Elasticsearch([self._url])
+        return elasticsearch.Elasticsearch([self._url], serializer=serializer)
+
+    def _get_serializer(self):
+        """Gets the custom JSON serializer"""
+        from elasticsearch.serializer import JSONSerializer
+        class SetEncoder(JSONSerializer):
+            """JSONSerializer which serializes sets to lists"""
+            def default(self, obj):
+                """entry point"""
+                if isinstance(obj, set):
+                    return list(obj)
+                return JSONSerializer.default(self, obj)
+
+        return SetEncoder()
 
 
 class DocumentPublisher: # pylint: disable=unused-variable
@@ -184,6 +199,7 @@ class DocumentPublisher: # pylint: disable=unused-variable
         return self._last_publish_time
 
     def enqueue_state(self, entry):
+        """queues up the provided state change"""
         state = entry['state']
         domain = state.domain
         entity_id = state.entity_id
@@ -241,6 +257,7 @@ class DocumentPublisher: # pylint: disable=unused-variable
         return
 
     def _state_to_bulk_action(self, state, time):
+        """Creates a bulk action from the given state object"""
         try:
             _state = state_helper.state_as_number(state)
         except ValueError:
