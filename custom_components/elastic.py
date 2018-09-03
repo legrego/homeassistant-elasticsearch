@@ -144,11 +144,11 @@ class ElasticsearchGateway: # pylint: disable=unused-variable
         from elasticsearch.serializer import JSONSerializer
         class SetEncoder(JSONSerializer):
             """JSONSerializer which serializes sets to lists"""
-            def default(self, obj):
+            def default(self, data):
                 """entry point"""
-                if isinstance(obj, set):
-                    return list(obj)
-                return JSONSerializer.default(self, obj)
+                if isinstance(data, set):
+                    return list(data)
+                return JSONSerializer.default(self, data)
 
         return SetEncoder()
 
