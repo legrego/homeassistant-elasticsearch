@@ -23,11 +23,21 @@ Elastic has a [great setup guide](https://www.elastic.co/start) if you need help
 If you don't want to maintain your own cluster, then give the [Elastic Cloud](https://www.elastic.co/cloud) a try! There is a free trial available to get you started.
 
 ## Installation
-1. Copy `elastic.py` to your `$HASS_CONFIG/custom_components` directory, where `$HASS_CONFIG` is the location on your machine where Home-Assistant lives.
+1. Copy the contents of `custom_components` to your `$HASS_CONFIG/custom_components` directory, where `$HASS_CONFIG` is the location on your machine where Home-Assistant lives.
 Example: `/home/pi/.homeassistant` and `/home/pi/.homeassistant/custom_components`. You may have to create the `custom_components` directory yourself.
-2. Copy the `sensor` folder to your `$HASS_CONFIG/custom_components` directory
-3. Configure the component in `$HASS_CONFIG/configuration.yaml` (see Configuration section below)
-4. Restart Home-Assistant
+2. Configure the component in `$HASS_CONFIG/configuration.yaml` (see Configuration section below)
+3. Restart Home-Assistant
+
+### Expected file structure
+```
+.homeassistant/
+|-- custom_components/
+|   |-- elastic.py
+|   |-- sensor/
+|      |-- elastic.py
+
+```
+
 
 ## Configuration
 This is the bare-minimum configuration you need to get up-and-running:
