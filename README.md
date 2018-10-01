@@ -52,6 +52,8 @@ All variables are optional unless marked required.
 - **url** (*Required*): The URL of your Elasticsearch cluster
 - **username**: If your cluster is protected with Basic Authentication via [X-Pack Security](https://www.elastic.co/products/x-pack/security), then provide a username here
 - **password**: If your cluster is protected with Basic Authentication via [X-Pack Security](https://www.elastic.co/products/x-pack/security), then provide a password here
+- **verify_ssl** (*default:* `true`): Set to `false` to disable SSL certificate verification.
+- **ssl_ca_path** (*default:* `None`): Optional path to PEM encoded certificate authority bundle.
 - **exclude**:
     - **domains**: Specify an optional array of domains to exclude from publishing
     - **entities**: Specify an optional array of entity ids to exclude from publishing
