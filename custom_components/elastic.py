@@ -8,7 +8,7 @@ import asyncio
 import voluptuous as vol
 from homeassistant.const import (
     CONF_URL, CONF_USERNAME, CONF_PASSWORD, CONF_ALIAS, EVENT_STATE_CHANGED,
-    CONF_EXCLUDE, CONF_DOMAINS, CONF_ENTITIES
+    CONF_EXCLUDE, CONF_DOMAINS, CONF_ENTITIES, CONF_VERIFY_SSL
 )
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers import (
@@ -28,6 +28,7 @@ CONF_REQUEST_ROLLOVER_FREQUENCY = 'request_rollover_frequency'
 CONF_ROLLOVER_AGE = 'rollover_max_age'
 CONF_ROLLOVER_DOCS = 'rollover_max_docs'
 CONF_ROLLOVER_SIZE = 'rollover_max_size'
+CONF_SSL_CA_PATH = 'ssl_ca_path'
 
 ELASTIC_COMPONENTS = [
     'sensor'
@@ -51,6 +52,8 @@ CONFIG_SCHEMA = vol.Schema({
         vol.Optional(CONF_ROLLOVER_AGE, default='60d'): cv.string,
         vol.Optional(CONF_ROLLOVER_DOCS, default=1000000): cv.positive_int,
         vol.Optional(CONF_ROLLOVER_SIZE, default='5gb'): cv.string,
+        vol.Optional(CONF_VERIFY_SSL): cv.boolean,
+        vol.Optional(CONF_SSL_CA_PATH): cv.string,
         vol.Optional(CONF_EXCLUDE, default={}): vol.Schema({
             vol.Optional(CONF_DOMAINS, default=[]): vol.All(cv.ensure_list, [cv.string]),
             vol.Optional(CONF_ENTITIES, default=[]): cv.entity_ids
@@ -117,6 +120,8 @@ class ElasticsearchGateway: # pylint: disable=unused-variable
         self._url = config.get(CONF_URL)
         self._username = config.get(CONF_USERNAME)
         self._password = config.get(CONF_PASSWORD)
+        self._verify_certs = config.get(CONF_VERIFY_SSL)
+        self._ca_certs = config.get(CONF_SSL_CA_PATH)
 
         _LOGGER.debug("Creating Elasticsearch client")
         self.client = self._create_es_client()
@@ -135,9 +140,20 @@ class ElasticsearchGateway: # pylint: disable=unused-variable
 
         if use_basic_auth:
             auth = (self._username, self._password)
-            return elasticsearch.Elasticsearch([self._url], http_auth=auth, serializer=serializer)
+            return elasticsearch.Elasticsearch(
+                [self._url],
+                http_auth=auth,
+                serializer=serializer,
+                verify_certs=self._verify_certs,
+                ca_certs=self._ca_certs
+            )
 
-        return elasticsearch.Elasticsearch([self._url], serializer=serializer)
+        return elasticsearch.Elasticsearch(
+            [self._url],
+            serializer=serializer,
+            verify_certs=self._verify_certs,
+            ca_certs=self._ca_certs
+        )
 
     def _get_serializer(self):
         """Gets the custom JSON serializer"""
