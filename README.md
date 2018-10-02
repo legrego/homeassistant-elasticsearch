@@ -64,9 +64,9 @@ Actual names use the [Rollover API](https://www.elastic.co/guide/en/elasticsearc
 - **publish_frequency** (*default:* `60`): Specifies how often, in seconds, this component should publish events to Elasticsearch.
 - **only_publish_changed** (*default:* `false`): Specifies that only entities that underwent a state change should be published. When `false`, all entity states are published.
 - **request_rollover_frequency** (*default:* `3600`): Specifies how often, in seconds, this component should attempt a Rollover. The Rollover will only occur if the specified criteria has been met.
-- **rollover_age** (*default:* `"60d"`): Specifies the `max_age` condition of the Rollover request
-- **rollover_docs** (*default:* `100000`): Specifies the `max_docs` condition of the Rollover request
-- **rollover_size** (*default:* `"5gb"`): Specifies the `max_size` condition of the Rollover request
+- **rollover_max_age** (*default:* `"60d"`): Specifies the `max_age` condition of the Rollover request
+- **rollover_max_docs** (*default:* `100000`): Specifies the `max_docs` condition of the Rollover request
+- **rollover_max_size** (*default:* `"5gb"`): Specifies the `max_size` condition of the Rollover request
 
 
 ### Example Configurations
