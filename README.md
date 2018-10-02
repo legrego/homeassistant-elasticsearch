@@ -52,12 +52,12 @@ All variables are optional unless marked required.
 - **url** (*Required*): The URL of your Elasticsearch cluster
 - **username**: If your cluster is protected with Basic Authentication via [X-Pack Security](https://www.elastic.co/products/x-pack/security), then provide a username here
 - **password**: If your cluster is protected with Basic Authentication via [X-Pack Security](https://www.elastic.co/products/x-pack/security), then provide a password here
-- **verify_ssl** (*default:* `true`): Set to `false` to disable SSL certificate verification.
-- **ssl_ca_path** (*default:* `None`): Optional path to PEM encoded certificate authority bundle.
 - **exclude**:
     - **domains**: Specify an optional array of domains to exclude from publishing
     - **entities**: Specify an optional array of entity ids to exclude from publishing
 #### Advanced Configuration
+- **verify_ssl** (*default:* `true`): Set to `false` to disable SSL certificate verification.
+- **ssl_ca_path** (*default:* `None`): Optional path to PEM encoded certificate authority bundle.
 - **index_format** (*default:* `"hass-events"`): The format of all index names used by this component. The format specified will be used to derive the actual index names.
 Actual names use the [Rollover API](https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-rollover-index.html) convention of appending a 5-digit number to the end. e.g.: `hass-events-00001`
 - **alias** (*default:* `"active-hass-index"`): The [index alias](https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-aliases.html) which will always reference the index being written to.
