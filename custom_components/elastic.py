@@ -39,6 +39,9 @@ _LOGGER = logging.getLogger(__name__)
 ONE_MINUTE = 60
 ONE_HOUR = 60 * 60
 
+VERSION_SUFFIX = "-v1"
+INDEX_TEMPLATE_NAME = "hass-index-template" + VERSION_SUFFIX
+
 CONFIG_SCHEMA = vol.Schema({
     DOMAIN: vol.Schema({
         vol.Required(CONF_URL): cv.url,
@@ -176,8 +179,8 @@ class DocumentPublisher: # pylint: disable=unused-variable
         """Initialize the publisher"""
         self._gateway = gateway
         self._hass = hass
-        self._index_format = config.get(CONF_INDEX_FORMAT)
-        self._index_alias = config.get(CONF_ALIAS)
+        self._index_format = config.get(CONF_INDEX_FORMAT) + VERSION_SUFFIX
+        self._index_alias = config.get(CONF_ALIAS) + VERSION_SUFFIX
 
         self._publish_frequency = config.get(CONF_PUBLISH_FREQUENCY)
         self._only_publish_changed = config.get(CONF_ONLY_PUBLISH_CHANGED)
@@ -247,7 +250,7 @@ class DocumentPublisher: # pylint: disable=unused-variable
         while not self.publish_queue.empty():
             entry = self.publish_queue.get()
 
-            key = entry["state"].object_id
+            key = entry["state"].entity_id
 
             entity_counts[key] = 1 if key not in entity_counts else entity_counts[key] + 1
             actions.append(self._state_to_bulk_action(entry["state"], entry["event"].time_fired))
@@ -259,7 +262,7 @@ class DocumentPublisher: # pylint: disable=unused-variable
                         or state.entity_id in self._excluded_entities):
                     continue
 
-                if state.object_id not in entity_counts:
+                if state.entity_id not in entity_counts:
                     actions.append(self._state_to_bulk_action(state, self._last_publish_time))
 
         _LOGGER.info("Publishing %i documents to Elasticsearch", len(actions))
@@ -281,7 +284,8 @@ class DocumentPublisher: # pylint: disable=unused-variable
 
         document_body = {
             'domain': state.domain,
-            'entity_id': state.object_id,
+            'object_id': state.object_id,
+            'entity_id': state.entity_id,
             'attributes': dict(state.attributes),
             'time': time,
             'value': _state,
@@ -367,11 +371,11 @@ class DocumentPublisher: # pylint: disable=unused-variable
 
         client = self._gateway.get_client()
 
-        if not client.indices.exists_template(name="hass-index-template"):
+        if not client.indices.exists_template(name=INDEX_TEMPLATE_NAME):
             _LOGGER.debug("Creating index template")
             try:
                 client.indices.put_template(
-                    name="hass-index-template",
+                    name=INDEX_TEMPLATE_NAME,
                     body={
                         "index_patterns": [self._index_format + "*"],
                         "settings": {
@@ -382,6 +386,7 @@ class DocumentPublisher: # pylint: disable=unused-variable
                                 "dynamic": 'strict',
                                 "properties": {
                                     "domain": {"type": 'keyword'},
+                                    "object_id": {"type": "keyword"},
                                     "entity_id": {"type": 'keyword'},
                                     "attributes": {
                                         "type": 'object',
@@ -418,7 +423,7 @@ class DocumentPublisher: # pylint: disable=unused-variable
         if not client.indices.exists_alias(name=self._index_alias):
             _LOGGER.debug("Creating initial index and alias")
             try:
-                client.indices.create(index=self._index_format + "-00001", body={
+                client.indices.create(index=self._index_format + "-000001", body={
                     "aliases": {
                         self._index_alias: {}
                     }
