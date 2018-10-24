@@ -39,7 +39,7 @@ _LOGGER = logging.getLogger(__name__)
 ONE_MINUTE = 60
 ONE_HOUR = 60 * 60
 
-VERSION_SUFFIX = "-v1"
+VERSION_SUFFIX = "-v2"
 INDEX_TEMPLATE_NAME = "hass-index-template" + VERSION_SUFFIX
 
 CONFIG_SCHEMA = vol.Schema({
@@ -287,7 +287,7 @@ class DocumentPublisher: # pylint: disable=unused-variable
             'object_id': state.object_id,
             'entity_id': state.entity_id,
             'attributes': dict(state.attributes),
-            'time': time,
+            '@timestamp': time,
             'value': _state,
         }
 
@@ -395,7 +395,7 @@ class DocumentPublisher: # pylint: disable=unused-variable
                                             "es_location": {"type": "geo_point"}
                                         }
                                     },
-                                    "time": {"type": 'date'},
+                                    "@timestamp": {"type": 'date'},
                                     "value": {
                                         "type": 'text',
                                         "fields": {
