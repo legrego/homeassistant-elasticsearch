@@ -52,9 +52,9 @@ CONFIG_SCHEMA = vol.Schema({
         vol.Optional(CONF_PUBLISH_FREQUENCY, default=ONE_MINUTE): cv.positive_int,
         vol.Optional(CONF_ONLY_PUBLISH_CHANGED, default=False): cv.boolean,
         vol.Optional(CONF_REQUEST_ROLLOVER_FREQUENCY, default=ONE_HOUR): cv.positive_int,
-        vol.Optional(CONF_ROLLOVER_AGE, default='60d'): cv.string,
-        vol.Optional(CONF_ROLLOVER_DOCS, default=1000000): cv.positive_int,
-        vol.Optional(CONF_ROLLOVER_SIZE, default='5gb'): cv.string,
+        vol.Optional(CONF_ROLLOVER_AGE): cv.string,
+        vol.Optional(CONF_ROLLOVER_DOCS): cv.positive_int,
+        vol.Optional(CONF_ROLLOVER_SIZE, default='30gb'): cv.string,
         vol.Optional(CONF_VERIFY_SSL): cv.boolean,
         vol.Optional(CONF_SSL_CA_PATH): cv.string,
         vol.Optional(CONF_EXCLUDE, default={}): vol.Schema({
@@ -201,6 +201,10 @@ class DocumentPublisher: # pylint: disable=unused-variable
             "max_docs": config.get(CONF_ROLLOVER_DOCS),
             "max_size": config.get(CONF_ROLLOVER_SIZE)
         }
+        if self._rollover_conditions["max_age"] is None:
+            del self._rollover_conditions["max_age"]
+        if self._rollover_conditions["max_docs"] is None:
+            del self._rollover_conditions["max_docs"]
 
         self.publish_queue = Queue()
         self._last_publish_time = None
