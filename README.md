@@ -97,6 +97,44 @@ elastic:
         domains: ['group', 'automation']
         entities: ['switch.living_room_switch', 'light.hallway_light']
 ```
+## Security
+If you are connecting to a secured Elasticsearch cluster, the user you authenticate with (see `username` and `password` configuration options above) 
+should have a role assigned with the following privileges. Note that if you adjust the `index_format` or `alias` settings that the role definition must be updated accordingly:
+
+```json
+POST /_xpack/security/role/hass_writer
+{
+  "cluster": [
+    "manage_index_templates",
+    "monitor"
+  ],
+  "indices": [
+    {
+      "names": [
+        "hass-events*",
+        "active-hass-index"
+      ],
+      "privileges": [
+        "manage",
+        "index",
+        "create_index",
+        "create"
+      ],
+      "field_security": {
+        "grant": [
+          "*"
+        ]
+      }
+    }
+  ],
+  "applications": [],
+  "run_as": [],
+  "metadata": {},
+  "transient_metadata": {
+    "enabled": true
+  }
+}
+```
 
 ## Support
 This project is not endorsed or supported by either Elastic or Home-Assistant - please open a GitHub issue for any questions, bugs, or feature requests.
