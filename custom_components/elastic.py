@@ -134,12 +134,6 @@ class ElasticsearchGateway: # pylint: disable=unused-variable
         self._verify_certs = config.get(CONF_VERIFY_SSL)
         self._ca_certs = config.get(CONF_SSL_CA_PATH)
 
-        if self._url is None and self._cloud_id is None:
-            raise Exception("Invalid config: either url or cloud_id must be provided")
-
-        if self._url is not None and self._cloud_id is not None:
-            raise Exception("Invalid config: either url or cloud_id must be provided, but not both")
-
         if self._cloud_id:
             self._url = decode_cloud_id(self._cloud_id)
 
