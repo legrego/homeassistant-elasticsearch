@@ -49,7 +49,8 @@ elastic:
 ### Configuration Variables
 All variables are optional unless marked required.
 #### Basic Configuration
-- **url** (*Required*): The URL of your Elasticsearch cluster
+- **url** (*Required, unless using `cloud_id`*): The URL of your Elasticsearch cluster
+- **cloud_id**: The [Cloud ID](https://www.elastic.co/guide/en/cloud/saas-release/ec-cloud-id.html) of your Elasticsearch cluster
 - **username**: If your cluster is protected with Basic Authentication via [X-Pack Security](https://www.elastic.co/products/x-pack/security), then provide a username here
 - **password**: If your cluster is protected with Basic Authentication via [X-Pack Security](https://www.elastic.co/products/x-pack/security), then provide a password here
 - **exclude**:

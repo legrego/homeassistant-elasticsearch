@@ -2,6 +2,8 @@
 Support for sending event data to an Elasticsearch cluster
 """
 import logging
+import base64
+import binascii
 from queue import Queue
 from datetime import (datetime)
 import asyncio
@@ -29,6 +31,7 @@ CONF_ROLLOVER_AGE = 'rollover_max_age'
 CONF_ROLLOVER_DOCS = 'rollover_max_docs'
 CONF_ROLLOVER_SIZE = 'rollover_max_size'
 CONF_SSL_CA_PATH = 'ssl_ca_path'
+CONF_CLOUD_ID = 'cloud_id'
 
 ELASTIC_COMPONENTS = [
     'sensor'
@@ -42,26 +45,40 @@ ONE_HOUR = 60 * 60
 VERSION_SUFFIX = "-v2"
 INDEX_TEMPLATE_NAME = "hass-index-template" + VERSION_SUFFIX
 
-CONFIG_SCHEMA = vol.Schema({
-    DOMAIN: vol.Schema({
-        vol.Required(CONF_URL): cv.url,
-        vol.Optional(CONF_USERNAME): cv.string,
-        vol.Optional(CONF_PASSWORD): cv.string,
-        vol.Optional(CONF_INDEX_FORMAT, default='hass-events'): cv.string,
-        vol.Optional(CONF_ALIAS, default='active-hass-index'): cv.string,
-        vol.Optional(CONF_PUBLISH_FREQUENCY, default=ONE_MINUTE): cv.positive_int,
-        vol.Optional(CONF_ONLY_PUBLISH_CHANGED, default=False): cv.boolean,
-        vol.Optional(CONF_REQUEST_ROLLOVER_FREQUENCY, default=ONE_HOUR): cv.positive_int,
-        vol.Optional(CONF_ROLLOVER_AGE): cv.string,
-        vol.Optional(CONF_ROLLOVER_DOCS): cv.positive_int,
-        vol.Optional(CONF_ROLLOVER_SIZE, default='30gb'): cv.string,
-        vol.Optional(CONF_VERIFY_SSL): cv.boolean,
-        vol.Optional(CONF_SSL_CA_PATH): cv.string,
-        vol.Optional(CONF_EXCLUDE, default={}): vol.Schema({
-            vol.Optional(CONF_DOMAINS, default=[]): vol.All(cv.ensure_list, [cv.string]),
-            vol.Optional(CONF_ENTITIES, default=[]): cv.entity_ids
-        })
+# https://github.com/home-assistant/home-assistant/blob/bc8d323bdd6a66fba254d20b0339603fe6bd63ec/homeassistant/components/hangouts/const.py#L44
+
+_CONNECTION_SCHEMA = vol.All(
+    vol.Schema({
+        vol.Exclusive(CONF_URL, 'url or cloud_id'): cv.url,
+        vol.Exclusive(CONF_CLOUD_ID, 'url or cloud_id'): cv.string
     }),
+    cv.has_at_least_one_key(CONF_URL, CONF_CLOUD_ID)
+)
+
+CONFIG_SCHEMA = vol.Schema({
+    DOMAIN: vol.All(
+        vol.Schema({
+            vol.Exclusive(CONF_URL, 'url or cloud_id'): cv.url,
+            vol.Exclusive(CONF_CLOUD_ID, 'url or cloud_id'): cv.string,
+            vol.Optional(CONF_USERNAME): cv.string,
+            vol.Optional(CONF_PASSWORD): cv.string,
+            vol.Optional(CONF_INDEX_FORMAT, default='hass-events'): cv.string,
+            vol.Optional(CONF_ALIAS, default='active-hass-index'): cv.string,
+            vol.Optional(CONF_PUBLISH_FREQUENCY, default=ONE_MINUTE): cv.positive_int,
+            vol.Optional(CONF_ONLY_PUBLISH_CHANGED, default=False): cv.boolean,
+            vol.Optional(CONF_REQUEST_ROLLOVER_FREQUENCY, default=ONE_HOUR): cv.positive_int,
+            vol.Optional(CONF_ROLLOVER_AGE): cv.string,
+            vol.Optional(CONF_ROLLOVER_DOCS): cv.positive_int,
+            vol.Optional(CONF_ROLLOVER_SIZE, default='30gb'): cv.string,
+            vol.Optional(CONF_VERIFY_SSL): cv.boolean,
+            vol.Optional(CONF_SSL_CA_PATH): cv.string,
+            vol.Optional(CONF_EXCLUDE, default={}): vol.Schema({
+                vol.Optional(CONF_DOMAINS, default=[]): vol.All(cv.ensure_list, [cv.string]),
+                vol.Optional(CONF_ENTITIES, default=[]): cv.entity_ids
+            })
+        }),
+        cv.has_at_least_one_key(CONF_URL, CONF_CLOUD_ID),
+    )
 }, extra=vol.ALLOW_EXTRA)
 
 
@@ -123,10 +140,20 @@ class ElasticsearchGateway: # pylint: disable=unused-variable
         self._url = config.get(CONF_URL)
         self._username = config.get(CONF_USERNAME)
         self._password = config.get(CONF_PASSWORD)
+        self._cloud_id = config.get(CONF_CLOUD_ID)
         self._verify_certs = config.get(CONF_VERIFY_SSL)
         self._ca_certs = config.get(CONF_SSL_CA_PATH)
 
-        _LOGGER.debug("Creating Elasticsearch client")
+        if self._url is None and self._cloud_id is None:
+            raise Exception("Invalid config: either url or cloud_id must be provided")
+
+        if self._url is not None and self._cloud_id is not None:
+            raise Exception("Invalid config: either url or cloud_id must be provided, but not both")
+
+        if self._cloud_id:
+            self._url = decode_cloud_id(self._cloud_id)
+
+        _LOGGER.debug("Creating Elasticsearch client for %s", self._url)
         self.client = self._create_es_client()
 
     def get_client(self):
@@ -434,3 +461,46 @@ class DocumentPublisher: # pylint: disable=unused-variable
                 })
             except elasticsearch.ElasticsearchException as err:
                 _LOGGER.exception("Error creating initial index/alias: %s", err)
+
+def extract_port_from_name(name, default_port):
+    """
+        extractPortFromName takes a string in the form `id:port` and returns the ID and the port
+        If there's no `:`, the default port is returned
+        """
+    idx = name.rfind(":")
+    if idx >= 0:
+        return name[:idx], name[idx+1:]
+
+    return name, default_port
+
+def decode_cloud_id(cloud_id):
+    """Decodes the cloud id"""
+
+    # Logic adapted from https://github.com/elastic/beats/blob/6.5/libbeat/cloudid/cloudid.go
+
+    this_cloud_id = cloud_id
+
+    # 1. Ignore anything before `:`
+    idx = this_cloud_id.rfind(':')
+    if idx >= 0:
+        this_cloud_id = this_cloud_id[idx+1:]
+
+    # 2. base64 decode
+    try:
+        this_cloud_id = base64.b64decode(this_cloud_id).decode('utf-8')
+    except binascii.Error:
+        raise Exception("Invalid cloud_id. Error base64 decoding {}".format(cloud_id))
+
+    # 3. separate based on `$`
+    words = this_cloud_id.split("$")
+    if len(words) < 3:
+        raise Exception("Invalid cloud_id: expected at least 3 parts in {}".format(cloud_id))
+
+    # 4. extract port from the ES host, or use 443 as the default
+    host, port = extract_port_from_name(words[0], 443)
+    es_id, es_port = extract_port_from_name(words[1], port)
+
+    # 5. form the URLs
+    es_url = "https://{}.{}:{}".format(es_id, host, es_port)
+
+    return es_url
