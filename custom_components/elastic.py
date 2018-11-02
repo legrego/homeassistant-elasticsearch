@@ -45,16 +45,6 @@ ONE_HOUR = 60 * 60
 VERSION_SUFFIX = "-v2"
 INDEX_TEMPLATE_NAME = "hass-index-template" + VERSION_SUFFIX
 
-# https://github.com/home-assistant/home-assistant/blob/bc8d323bdd6a66fba254d20b0339603fe6bd63ec/homeassistant/components/hangouts/const.py#L44
-
-_CONNECTION_SCHEMA = vol.All(
-    vol.Schema({
-        vol.Exclusive(CONF_URL, 'url or cloud_id'): cv.url,
-        vol.Exclusive(CONF_CLOUD_ID, 'url or cloud_id'): cv.string
-    }),
-    cv.has_at_least_one_key(CONF_URL, CONF_CLOUD_ID)
-)
-
 CONFIG_SCHEMA = vol.Schema({
     DOMAIN: vol.All(
         vol.Schema({
