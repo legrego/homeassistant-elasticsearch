@@ -65,6 +65,10 @@ CONFIG_SCHEMA = vol.Schema({
             vol.Optional(CONF_EXCLUDE, default={}): vol.Schema({
                 vol.Optional(CONF_DOMAINS, default=[]): vol.All(cv.ensure_list, [cv.string]),
                 vol.Optional(CONF_ENTITIES, default=[]): cv.entity_ids
+            },
+            vol.Optional(CONF_INCLUDE, default={}): vol.Schema({ ##Check this
+                vol.Optional(CONF_DOMAINS, default=[]): vol.All(cv.ensure_list, [cv.string]), ##Check this
+                vol.Optional(CONF_ENTITIES, default=[]): cv.entity_ids ##Check this
             })
         }),
         cv.has_at_least_one_key(CONF_URL, CONF_CLOUD_ID),
@@ -200,10 +204,18 @@ class DocumentPublisher: # pylint: disable=unused-variable
         self._excluded_domains = excluded.get(CONF_DOMAINS)
         self._excluded_entities = excluded.get(CONF_ENTITIES)
 
-        if self._excluded_domains:
+        included = config.get(CONF_INCLUDE)
+        self._included_domains = included.get(CONF_DOMAINS)
+        self._included_entities = included.get(CONF_ENTITIES)
+
+        if self._included_domains:
+            _LOGGER.debug("Including the following domains: %s", str(self._included_domains))
+        elif self._excluded_domains:
             _LOGGER.debug("Excluding the following domains: %s", str(self._excluded_domains))
 
-        if self._excluded_entities:
+        if self._included_entities:
+            _LOGGER.debug("Including the following entities: %s", str(self._included_entities))
+        elif self._excluded_entities:
             _LOGGER.debug("Excluding the following entities: %s", str(self._excluded_entities))
 
         self._rollover_frequency = config.get(CONF_REQUEST_ROLLOVER_FREQUENCY)
@@ -232,18 +244,26 @@ class DocumentPublisher: # pylint: disable=unused-variable
         """Returns the last publish time"""
         return self._last_publish_time
 
+    def is_publishable(self, state):
+        domain = state.domain
+        entity_id = state.entity_id
+
+        return (not (not self._included_domains and domain in self._excluded_domains) 
+                or (self._included_domains and domain not in self._included_domains)
+                or (not self._included_entities and entity_id in self._excluded_entities) 
+                or (self._included_entities and entity_id not in self._included_entities))
+    
     def enqueue_state(self, entry):
         """queues up the provided state change"""
         state = entry['state']
         domain = state.domain
         entity_id = state.entity_id
 
-        if domain in self._excluded_domains:
-            _LOGGER.debug("Skipping %s: it belongs to an excluded domain", entity_id)
+        if (not self.is_publishable(state)):
+            _LOGGER.debug("Skipping %s", entity_id)
             return
-
-        if entity_id in self._excluded_entities:
-            _LOGGER.debug("Skipping %s: this entity is explicitly excluded", entity_id)
+        else:
+            _LOGGER.debug("Publishing %s", entity_id)
             return
 
         self.publish_queue.put(entry)
@@ -273,10 +293,9 @@ class DocumentPublisher: # pylint: disable=unused-variable
         if not self._only_publish_changed:
             all_states = self._hass.states.async_all()
             for state in all_states:
-                if (state.domain in self._excluded_domains
-                        or state.entity_id in self._excluded_entities):
+                if (not self.is_publishable(state)):
                     continue
-
+                
                 if state.entity_id not in entity_counts:
                     actions.append(self._state_to_bulk_action(state, self._last_publish_time))
 
