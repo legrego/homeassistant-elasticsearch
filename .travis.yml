@@ -4,4 +4,4 @@ python:
 install:
   - pip install -r requirements.travis.txt
 script:
-  - pylint custom_components/elastic.py
+  - pylint custom_components/elastic/__init__.py
