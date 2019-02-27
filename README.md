@@ -32,9 +32,9 @@ Example: `/home/pi/.homeassistant` and `/home/pi/.homeassistant/custom_component
 ```
 .homeassistant/
 |-- custom_components/
-|   |-- elastic.py
-|   |-- sensor/
-|      |-- elastic.py
+|   |-- elastic/
+|       |-- __init__.py
+|       |-- sensor.py
 
 ```
 
