@@ -452,7 +452,7 @@ class DocumentPublisher: # pylint: disable=unused-variable
 def is_valid_number(number):
     """Determines if the passed number is valid for Elasticsearch"""
     is_infinity = math.isinf(number)
-    is_nan = number != number  # pylint: disable=comparison-with-itself
+    is_nan = number != number
     return not is_infinity and not is_nan
 
 def extract_port_from_name(name, default_port):
