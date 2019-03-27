@@ -13,6 +13,7 @@ Publish HASS events to your [Elasticsearch](https://elastic.co) cluster!
 
 ## Compatability
 * Elasticsearch 6.x (Self or [Cloud](https://www.elastic.co/cloud) hosted), with or without [X-Pack](https://www.elastic.co/products/x-pack).
+* [Elastic Common Schema version 1.0.0](https://github.com/elastic/ecs/releases/tag/v1.0.0)
 
 ## Getting Started
 The Elasticsearch component requires, well, [Elasticsearch](https://www.elastic.co/products/elasticsearch)!
@@ -34,6 +35,7 @@ Example: `/home/pi/.homeassistant` and `/home/pi/.homeassistant/custom_component
 |-- custom_components/
 |   |-- elastic/
 |       |-- __init__.py
+|       |-- index_mapping.json
 |       |-- sensor.py
 
 ```
@@ -56,6 +58,7 @@ All variables are optional unless marked required.
 - **exclude**:
     - **domains**: Specify an optional array of domains to exclude from publishing
     - **entities**: Specify an optional array of entity ids to exclude from publishing
+- **tags** (*default:* [`hass`]): Specify an array of tags to include in each published document.
 #### Advanced Configuration
 - **verify_ssl** (*default:* `true`): Set to `false` to disable SSL certificate verification.
 - **ssl_ca_path** (*default:* `None`): Optional path to PEM encoded certificate authority bundle.

@@ -1,9 +1,12 @@
 """
 Support for sending event data to an Elasticsearch cluster
 """
+import os
 import logging
 import base64
 import binascii
+import json
+import socket
 from queue import Queue
 from datetime import (datetime)
 import asyncio
@@ -32,6 +35,8 @@ CONF_ROLLOVER_DOCS = 'rollover_max_docs'
 CONF_ROLLOVER_SIZE = 'rollover_max_size'
 CONF_SSL_CA_PATH = 'ssl_ca_path'
 CONF_CLOUD_ID = 'cloud_id'
+
+CONF_TAGS = 'tags'
 
 ELASTIC_COMPONENTS = [
     'sensor'
@@ -62,6 +67,7 @@ CONFIG_SCHEMA = vol.Schema({
             vol.Optional(CONF_ROLLOVER_SIZE, default='30gb'): cv.string,
             vol.Optional(CONF_VERIFY_SSL): cv.boolean,
             vol.Optional(CONF_SSL_CA_PATH): cv.string,
+            vol.Optional(CONF_TAGS, default=['hass']): vol.All(cv.ensure_list, [cv.string]),
             vol.Optional(CONF_EXCLUDE, default={}): vol.Schema({
                 vol.Optional(CONF_DOMAINS, default=[]): vol.All(cv.ensure_list, [cv.string]),
                 vol.Optional(CONF_ENTITIES, default=[]): cv.entity_ids
@@ -73,7 +79,7 @@ CONFIG_SCHEMA = vol.Schema({
 
 
 @asyncio.coroutine
-def async_setup(hass, config):
+async def async_setup(hass, config):
     """Setup the Elasticsearch component."""
     conf = config[DATA_ELASTICSEARCH]
 
@@ -84,7 +90,8 @@ def async_setup(hass, config):
     hass.data[DOMAIN]['gateway'] = gateway
 
     _LOGGER.debug("Creating document publisher")
-    publisher = DocumentPublisher(conf, gateway, hass)
+    system_info = await hass.helpers.system_info.async_get_system_info()
+    publisher = DocumentPublisher(conf, gateway, hass, system_info)
     hass.data[DOMAIN]['publisher'] = publisher
 
     _LOGGER.debug("Creating service handler")
@@ -186,12 +193,28 @@ class ElasticsearchGateway: # pylint: disable=unused-variable
 class DocumentPublisher: # pylint: disable=unused-variable
     """Publishes documents to Elasticsearch"""
 
-    def __init__(self, config, gateway, hass):
+    def __init__(self, config, gateway, hass, system_info):
         """Initialize the publisher"""
         self._gateway = gateway
         self._hass = hass
         self._index_format = config.get(CONF_INDEX_FORMAT) + VERSION_SUFFIX
         self._index_alias = config.get(CONF_ALIAS) + VERSION_SUFFIX
+
+        config_dict = hass.config.as_dict()
+        self._static_doc_properties = {
+            'agent.name': config_dict['name'] if 'name' in config_dict else 'My Home Assistant',
+            'agent.type': 'hass',
+            'agent.version': system_info['version'],
+            'ecs.version': '1.0.0',
+            'host.geo.location': {
+                'lat': config_dict['latitude'],
+                'lon': config_dict['longitude']
+            } if 'latitude' in config_dict else None,
+            'host.architecture': system_info['arch'],
+            'host.os.name': system_info['os_name'],
+            'host.hostname': socket.gethostname(),
+            'tags': config.get(CONF_TAGS)
+        }
 
         self._publish_frequency = config.get(CONF_PUBLISH_FREQUENCY)
         self._only_publish_changed = config.get(CONF_ONLY_PUBLISH_CHANGED)
@@ -298,18 +321,21 @@ class DocumentPublisher: # pylint: disable=unused-variable
             _state = state.state
 
         document_body = {
-            'domain': state.domain,
-            'object_id': state.object_id,
-            'entity_id': state.entity_id,
-            'attributes': dict(state.attributes),
-            '@timestamp': time,
-            'value': _state,
+            'hass.domain': state.domain,
+            'hass.object_id': state.object_id,
+            'hass.entity_id': state.entity_id,
+            'hass.attributes': dict(state.attributes),
+            'hass.value': _state,
+            '@timestamp': time
         }
 
-        if 'latitude' in document_body['attributes'] and 'longitude' in document_body['attributes']:
-            document_body['attributes']['es_location'] = {
-                'lat': document_body['attributes']['latitude'],
-                'lon': document_body['attributes']['longitude']
+        document_body.update(self._static_doc_properties)
+
+        if ('latitude' in document_body['hass.attributes']
+                and 'longitude' in document_body['hass.attributes']):
+            document_body['hass.geo.location'] = {
+                'lat': document_body['hass.attributes']['latitude'],
+                'lon': document_body['hass.attributes']['longitude']
             }
 
         return {
@@ -386,6 +412,9 @@ class DocumentPublisher: # pylint: disable=unused-variable
 
         client = self._gateway.get_client()
 
+        with open(os.path.join(os.path.dirname(__file__), 'index_mapping.json')) as json_file:
+            mapping = json.load(json_file)
+
         if not client.indices.exists_template(name=INDEX_TEMPLATE_NAME):
             _LOGGER.debug("Creating index template")
             try:
@@ -397,35 +426,7 @@ class DocumentPublisher: # pylint: disable=unused-variable
                             "number_of_shards": 1
                         },
                         "mappings": {
-                            "doc": {
-                                "dynamic": 'strict',
-                                "properties": {
-                                    "domain": {"type": 'keyword'},
-                                    "object_id": {"type": "keyword"},
-                                    "entity_id": {"type": 'keyword'},
-                                    "attributes": {
-                                        "type": 'object',
-                                        "dynamic": True,
-                                        "properties": {
-                                            "es_location": {"type": "geo_point"}
-                                        }
-                                    },
-                                    "@timestamp": {"type": 'date'},
-                                    "value": {
-                                        "type": 'text',
-                                        "fields": {
-                                            "keyword": {
-                                                "type": "keyword",
-                                                "ignore_above": 2048
-                                            },
-                                            "float": {
-                                                "type": "float",
-                                                "ignore_malformed": True
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                            "doc": mapping
                         },
                         "aliases": {
                             "all-hass-events": {}
