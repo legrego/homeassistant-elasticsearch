@@ -146,10 +146,25 @@ class ElasticsearchGateway: # pylint: disable=unused-variable
 
         _LOGGER.debug("Creating Elasticsearch client for %s", self._url)
         self.client = self._create_es_client()
+        self.es_major_version = None
 
     def get_client(self):
         """Returns the underlying ES Client"""
         return self.client
+
+    def get_es_version(self):
+        """Returns the ES Major version"""
+        if self.es_major_version is None:
+            version = self.client.info()["version"]
+            version_number = version["number"]
+            self.es_major_version = int(version_number.split(".")[0])
+            _LOGGER.info("Detected Elasticsearch version: %s", str(self.es_major_version))
+
+            if self.es_major_version < 6 or self.es_major_version > 7:
+                _LOGGER.warning("You are running an unsupported version of Elasticsearch \
+                                 (%s).Versions 6.0 - 7.x are supported.", version_number)
+
+        return self.es_major_version
 
     def _create_es_client(self):
         """Constructs an instance of the Elasticsearch client"""
@@ -338,10 +353,17 @@ class DocumentPublisher: # pylint: disable=unused-variable
                 'lon': document_body['hass.attributes']['longitude']
             }
 
+        es_version = self._gateway.get_es_version()
+        if es_version == 6:
+            return {
+                "_op_type": "index",
+                "_index": self._index_alias,
+                "_type": "doc",
+                "_source": document_body
+            }
         return {
             "_op_type": "index",
             "_index": self._index_alias,
-            "_type": "doc",
             "_source": document_body
         }
 
@@ -412,11 +434,20 @@ class DocumentPublisher: # pylint: disable=unused-variable
 
         client = self._gateway.get_client()
 
+        es_version = self._gateway.get_es_version()
+
         with open(os.path.join(os.path.dirname(__file__), 'index_mapping.json')) as json_file:
             mapping = json.load(json_file)
 
         if not client.indices.exists_template(name=INDEX_TEMPLATE_NAME):
             _LOGGER.debug("Creating index template")
+
+            mappings_body = mapping
+            if es_version == 6:
+                mappings_body = {
+                    "doc": mapping
+                }
+
             try:
                 client.indices.put_template(
                     name=INDEX_TEMPLATE_NAME,
@@ -425,9 +456,7 @@ class DocumentPublisher: # pylint: disable=unused-variable
                         "settings": {
                             "number_of_shards": 1
                         },
-                        "mappings": {
-                            "doc": mapping
-                        },
+                        "mappings": mappings_body,
                         "aliases": {
                             "all-hass-events": {}
                         }
