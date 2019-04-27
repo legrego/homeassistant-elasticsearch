@@ -47,7 +47,7 @@ _LOGGER = logging.getLogger(__name__)
 ONE_MINUTE = 60
 ONE_HOUR = 60 * 60
 
-VERSION_SUFFIX = "-v2"
+VERSION_SUFFIX = "-v3"
 INDEX_TEMPLATE_NAME = "hass-index-template" + VERSION_SUFFIX
 
 CONFIG_SCHEMA = vol.Schema({
@@ -112,12 +112,14 @@ async def async_setup(hass, config):
     for component in ELASTIC_COMPONENTS:
         discovery.load_platform(hass, component, DOMAIN, {}, config)
 
-    hass.services.async_register(DOMAIN, 'publish_events', service_handler.publish_events)
+    hass.services.async_register(
+        DOMAIN, 'publish_events', service_handler.publish_events)
 
     _LOGGER.info("Elastic component fully initialized")
     return True
 
-class ServiceHandler: # pylint: disable=unused-variable
+
+class ServiceHandler:  # pylint: disable=unused-variable
     """Handles calls to exposed services"""
 
     def __init__(self, publisher):
@@ -128,7 +130,8 @@ class ServiceHandler: # pylint: disable=unused-variable
         """Publishes all queued events to Elasticsearch"""
         self._publisher.do_publish()
 
-class ElasticsearchGateway: # pylint: disable=unused-variable
+
+class ElasticsearchGateway:  # pylint: disable=unused-variable
     """Encapsulates Elasticsearch operations"""
 
     def __init__(self, hass, config):
@@ -158,7 +161,8 @@ class ElasticsearchGateway: # pylint: disable=unused-variable
             version = self.client.info()["version"]
             version_number = version["number"]
             self.es_major_version = int(version_number.split(".")[0])
-            _LOGGER.info("Detected Elasticsearch version: %s", str(self.es_major_version))
+            _LOGGER.info("Detected Elasticsearch version: %s",
+                         str(self.es_major_version))
 
             if self.es_major_version < 6 or self.es_major_version > 7:
                 _LOGGER.warning("You are running an unsupported version of Elasticsearch \
@@ -194,8 +198,10 @@ class ElasticsearchGateway: # pylint: disable=unused-variable
     def _get_serializer(self):
         """Gets the custom JSON serializer"""
         from elasticsearch.serializer import JSONSerializer
+
         class SetEncoder(JSONSerializer):
             """JSONSerializer which serializes sets to lists"""
+
             def default(self, data):
                 """entry point"""
                 if isinstance(data, set):
@@ -205,7 +211,7 @@ class ElasticsearchGateway: # pylint: disable=unused-variable
         return SetEncoder()
 
 
-class DocumentPublisher: # pylint: disable=unused-variable
+class DocumentPublisher:  # pylint: disable=unused-variable
     """Publishes documents to Elasticsearch"""
 
     def __init__(self, config, gateway, hass, system_info):
@@ -239,10 +245,12 @@ class DocumentPublisher: # pylint: disable=unused-variable
         self._excluded_entities = excluded.get(CONF_ENTITIES)
 
         if self._excluded_domains:
-            _LOGGER.debug("Excluding the following domains: %s", str(self._excluded_domains))
+            _LOGGER.debug("Excluding the following domains: %s",
+                          str(self._excluded_domains))
 
         if self._excluded_entities:
-            _LOGGER.debug("Excluding the following entities: %s", str(self._excluded_entities))
+            _LOGGER.debug("Excluding the following entities: %s",
+                          str(self._excluded_entities))
 
         self._rollover_frequency = config.get(CONF_REQUEST_ROLLOVER_FREQUENCY)
         self._rollover_conditions = {
@@ -277,11 +285,13 @@ class DocumentPublisher: # pylint: disable=unused-variable
         entity_id = state.entity_id
 
         if domain in self._excluded_domains:
-            _LOGGER.debug("Skipping %s: it belongs to an excluded domain", entity_id)
+            _LOGGER.debug(
+                "Skipping %s: it belongs to an excluded domain", entity_id)
             return
 
         if entity_id in self._excluded_entities:
-            _LOGGER.debug("Skipping %s: this entity is explicitly excluded", entity_id)
+            _LOGGER.debug(
+                "Skipping %s: this entity is explicitly excluded", entity_id)
             return
 
         self.publish_queue.put(entry)
@@ -306,7 +316,8 @@ class DocumentPublisher: # pylint: disable=unused-variable
             key = entry["state"].entity_id
 
             entity_counts[key] = 1 if key not in entity_counts else entity_counts[key] + 1
-            actions.append(self._state_to_bulk_action(entry["state"], entry["event"].time_fired))
+            actions.append(self._state_to_bulk_action(
+                entry["state"], entry["event"].time_fired))
 
         if not self._only_publish_changed:
             all_states = self._hass.states.async_all()
@@ -316,16 +327,19 @@ class DocumentPublisher: # pylint: disable=unused-variable
                     continue
 
                 if state.entity_id not in entity_counts:
-                    actions.append(self._state_to_bulk_action(state, self._last_publish_time))
+                    actions.append(self._state_to_bulk_action(
+                        state, self._last_publish_time))
 
         _LOGGER.info("Publishing %i documents to Elasticsearch", len(actions))
 
         try:
             bulk_response = bulk(self._gateway.get_client(), actions)
-            _LOGGER.debug("Elasticsearch bulk response: %s", str(bulk_response))
+            _LOGGER.debug("Elasticsearch bulk response: %s",
+                          str(bulk_response))
             _LOGGER.info("Publish Succeeded")
         except ElasticsearchException as err:
-            _LOGGER.exception("Error publishing documents to Elasticsearch: %s", err)
+            _LOGGER.exception(
+                "Error publishing documents to Elasticsearch: %s", err)
         return
 
     def _state_to_bulk_action(self, state, time):
@@ -388,7 +402,8 @@ class DocumentPublisher: # pylint: disable=unused-variable
                 }
             )
 
-            _LOGGER.debug("Elasticsearch rollover response: %s", str(rollover_response))
+            _LOGGER.debug("Elasticsearch rollover response: %s",
+                          str(rollover_response))
             _LOGGER.info("Rollover Succeeded")
         except elasticsearch.ElasticsearchException as err:
             _LOGGER.exception("Error performing rollover: %s", err)
@@ -474,7 +489,9 @@ class DocumentPublisher: # pylint: disable=unused-variable
                     }
                 })
             except elasticsearch.ElasticsearchException as err:
-                _LOGGER.exception("Error creating initial index/alias: %s", err)
+                _LOGGER.exception(
+                    "Error creating initial index/alias: %s", err)
+
 
 def extract_port_from_name(name, default_port):
     """
@@ -486,6 +503,7 @@ def extract_port_from_name(name, default_port):
         return name[:idx], name[idx+1:]
 
     return name, default_port
+
 
 def decode_cloud_id(cloud_id):
     """Decodes the cloud id"""
@@ -503,12 +521,14 @@ def decode_cloud_id(cloud_id):
     try:
         this_cloud_id = base64.b64decode(this_cloud_id).decode('utf-8')
     except binascii.Error:
-        raise Exception("Invalid cloud_id. Error base64 decoding {}".format(cloud_id))
+        raise Exception(
+            "Invalid cloud_id. Error base64 decoding {}".format(cloud_id))
 
     # 3. separate based on `$`
     words = this_cloud_id.split("$")
     if len(words) < 3:
-        raise Exception("Invalid cloud_id: expected at least 3 parts in {}".format(cloud_id))
+        raise Exception(
+            "Invalid cloud_id: expected at least 3 parts in {}".format(cloud_id))
 
     # 4. extract port from the ES host, or use 443 as the default
     host, port = extract_port_from_name(words[0], 443)
