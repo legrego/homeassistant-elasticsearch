@@ -1,0 +1,12 @@
+{
+  "domain": "elastic",
+  "name": "Elasticsearch",
+  "documentation": "https://github.com/legrego/homeassistant-elasticsearch",
+  "dependencies": [],
+  "codeowners": [
+    "@legrego"
+  ],
+  "requirements": [
+    "elasticsearch==6.3.1"
+  ]
+}

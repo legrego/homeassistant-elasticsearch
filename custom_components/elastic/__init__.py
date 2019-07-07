@@ -24,8 +24,6 @@ from homeassistant.helpers import (
 DOMAIN = 'elastic'
 DATA_ELASTICSEARCH = 'elastic'
 
-REQUIREMENTS = ['elasticsearch==6.3.1']
-
 CONF_INDEX_FORMAT = 'index_format'
 CONF_PUBLISH_FREQUENCY = 'publish_frequency'
 CONF_ONLY_PUBLISH_CHANGED = 'only_publish_changed'
