@@ -1,5 +1,6 @@
 Elasticsearch Component for Home-Assistant
 [![Build Status](https://travis-ci.org/legrego/homeassistant-elasticsearch.svg?branch=master)](https://travis-ci.org/legrego/homeassistant-elasticsearch)
+[![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg)](https://github.com/custom-components/hacs)
 =====
 
 Publish HASS events to your [Elasticsearch](https://elastic.co) cluster!
@@ -14,6 +15,7 @@ Publish HASS events to your [Elasticsearch](https://elastic.co) cluster!
 ## Compatability
 * Elasticsearch 6.x & 7.x (Self or [Cloud](https://www.elastic.co/cloud) hosted), with or without [X-Pack](https://www.elastic.co/products/x-pack).
 * [Elastic Common Schema version 1.0.0](https://github.com/elastic/ecs/releases/tag/v1.0.0)
+* [Home Assistant Community Store](https://github.com/custom-components/hacs)
 
 ## Getting Started
 The Elasticsearch component requires, well, [Elasticsearch](https://www.elastic.co/products/elasticsearch)!
