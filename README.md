@@ -118,7 +118,8 @@ POST /_xpack/security/role/hass_writer
     {
       "names": [
         "hass-events*",
-        "active-hass-index"
+        "active-hass-index-*",
+        "all-hass-events"
       ],
       "privileges": [
         "manage",
