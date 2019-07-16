@@ -1,0 +1,3 @@
+publish_events:
+  # Description of the service
+  description: Publishes all queued events to Elasticsearch.
