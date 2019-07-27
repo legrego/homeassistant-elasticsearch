@@ -11,6 +11,7 @@ from queue import Queue
 from datetime import (datetime)
 import asyncio
 import voluptuous as vol
+from pytz import utc
 from homeassistant.const import (
     CONF_URL, CONF_USERNAME, CONF_PASSWORD, CONF_ALIAS, EVENT_STATE_CHANGED,
     CONF_EXCLUDE, CONF_DOMAINS, CONF_ENTITIES, CONF_VERIFY_SSL
@@ -347,13 +348,18 @@ class DocumentPublisher:  # pylint: disable=unused-variable
         except ValueError:
             _state = state.state
 
+        if time.tzinfo is None:
+            time_tz = time.astimezone(utc)
+        else:
+            time_tz = time
+
         document_body = {
             'hass.domain': state.domain,
             'hass.object_id': state.object_id,
             'hass.entity_id': state.entity_id,
             'hass.attributes': dict(state.attributes),
             'hass.value': _state,
-            '@timestamp': time
+            '@timestamp': time_tz
         }
 
         document_body.update(self._static_doc_properties)
