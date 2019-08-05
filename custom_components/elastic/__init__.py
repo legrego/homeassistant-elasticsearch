@@ -30,12 +30,8 @@ CONF_PUBLISH_FREQUENCY = 'publish_frequency'
 CONF_ONLY_PUBLISH_CHANGED = 'only_publish_changed'
 CONF_ILM_ENABLED = 'ilm_enabled'
 CONF_ILM_POLICY_NAME = 'ilm_policy_name'
-CONF_ILM_HOT_MAX_SIZE = 'ilm_hot_max_size'
-CONF_ILM_DELETE_AFTER = 'ilm_hot_delete_after'
-CONF_REQUEST_ROLLOVER_FREQUENCY = 'request_rollover_frequency'
-CONF_ROLLOVER_AGE = 'rollover_max_age'
-CONF_ROLLOVER_DOCS = 'rollover_max_docs'
-CONF_ROLLOVER_SIZE = 'rollover_max_size'
+CONF_ILM_MAX_SIZE = 'ilm_max_size'
+CONF_ILM_DELETE_AFTER = 'ilm_delete_after'
 CONF_SSL_CA_PATH = 'ssl_ca_path'
 CONF_CLOUD_ID = 'cloud_id'
 
@@ -66,12 +62,8 @@ CONFIG_SCHEMA = vol.Schema({
             vol.Optional(CONF_ONLY_PUBLISH_CHANGED, default=False): cv.boolean,
             vol.Optional(CONF_ILM_ENABLED, default=True): cv.boolean,
             vol.Optional(CONF_ILM_POLICY_NAME, default="home-assistant"): cv.string,
-            vol.Optional(CONF_ILM_HOT_MAX_SIZE, default='30gb'): cv.string,
+            vol.Optional(CONF_ILM_MAX_SIZE, default='30gb'): cv.string,
             vol.Optional(CONF_ILM_DELETE_AFTER, default='365d'): cv.string,
-            vol.Optional(CONF_REQUEST_ROLLOVER_FREQUENCY, default=ONE_HOUR): cv.positive_int,
-            vol.Optional(CONF_ROLLOVER_AGE): cv.string,
-            vol.Optional(CONF_ROLLOVER_DOCS): cv.positive_int,
-            vol.Optional(CONF_ROLLOVER_SIZE, default='30gb'): cv.string,
             vol.Optional(CONF_VERIFY_SSL): cv.boolean,
             vol.Optional(CONF_SSL_CA_PATH): cv.string,
             vol.Optional(CONF_TAGS, default=['hass']): vol.All(cv.ensure_list, [cv.string]),
@@ -251,7 +243,7 @@ class IndexManager: # pylint: disable=unused-variable
         self.index_alias = config.get(CONF_ALIAS) + VERSION_SUFFIX
 
         self._gateway = gateway
-        version = gateway.version
+        version = gateway.es_version
         self._using_ilm = (
             version.is_default_distribution()
             and version.is_supported_version()
@@ -260,40 +252,22 @@ class IndexManager: # pylint: disable=unused-variable
 
         self._ilm_policy_name = config.get(CONF_ILM_POLICY_NAME)
 
-        self._rollover_frequency = config.get(CONF_REQUEST_ROLLOVER_FREQUENCY)
-        self._rollover_conditions = {
-            "max_age": config.get(CONF_ROLLOVER_AGE),
-            "max_docs": config.get(CONF_ROLLOVER_DOCS),
-            "max_size": config.get(CONF_ROLLOVER_SIZE)
-        }
-        if self._rollover_conditions["max_age"] is None:
-            del self._rollover_conditions["max_age"]
-        if self._rollover_conditions["max_docs"] is None:
-            del self._rollover_conditions["max_docs"]
-
         self._index_format = config.get(CONF_INDEX_FORMAT) + VERSION_SUFFIX
+
+        self._config = config
 
     def setup(self):
         """ Performs setup for index management. """
         self._create_index_template()
 
-        if not self._gateway.version.is_default_distribution():
+        if not self._gateway.es_version.is_default_distribution():
             _LOGGER.info("\
                 You are not running the default distribution of Elasticsearch, \
                 so features such as Index Lifecycle Management are not available. \
                 Download the default distribution from https://elastic.co/downloads \
             ")
         if self._using_ilm:
-            _LOGGER.warning(
-                "Ignoring legacy rollover_ settings in favor of Index Lifecycle Management."
-            )
-            self._create_ilm_policy()
-        else:
-            _LOGGER.warning(
-                "Using legacy rollover_ settings. \
-                Support will be dropped in favor of ILM in a future release."
-            )
-            self._start_rollover_timer()
+            self._create_ilm_policy(self._config)
 
     def _create_index_template(self):
         """
@@ -303,7 +277,7 @@ class IndexManager: # pylint: disable=unused-variable
 
         client = self._gateway.get_client()
 
-        es_version = self._gateway.version
+        es_version = self._gateway.es_version
 
         with open(os.path.join(os.path.dirname(__file__), 'index_mapping.json')) as json_file:
             mapping = json.load(json_file)
@@ -329,7 +303,7 @@ class IndexManager: # pylint: disable=unused-variable
             }
             if self._using_ilm:
                 index_template["settings"]["index.lifecycle.name"] = self._ilm_policy_name
-                index_template["settings"]["index.lifecycle.alias"] = self.index_alias
+                index_template["settings"]["index.lifecycle.rollover_alias"] = self.index_alias
 
             try:
                 client.indices.put_template(
@@ -352,8 +326,18 @@ class IndexManager: # pylint: disable=unused-variable
             except elasticsearch.ElasticsearchException as err:
                 _LOGGER.exception(
                     "Error creating initial index/alias: %s", err)
+        elif self._using_ilm:
+            _LOGGER.debug("Ensuring ILM Policy is attached to existing index")
+            try:
+                client.indices.put_settings(index=self.index_alias, preserve_existing=True, body={
+                    "index.lifecycle.name": self._ilm_policy_name,
+                    "index.lifecycle.rollover_alias": self.index_alias
+                })
+            except elasticsearch.ElasticsearchException as err:
+                _LOGGER.exception(
+                    "Error updating index ILM settings: %s", err)
 
-    def _create_ilm_policy(self):
+    def _create_ilm_policy(self, config):
         """
         Creates the index lifecycle management policy.
         """
@@ -361,21 +345,22 @@ class IndexManager: # pylint: disable=unused-variable
 
         client = self._gateway.get_client()
 
-        es_version = self._gateway.version
-
-        if not es_version.supports_ilm():
-            _LOGGER.info(
-                "Not creating ILM policy - ES does not support this feature.")
-            return
-
+        # The ES Client does not currently support the ILM APIs,
+        # so we craft this one by hand
         url = '/_ilm/policy/{}'.format(self._ilm_policy_name)
 
         try:
             existing_policy = client.transport.perform_request('GET', url)
         except elasticsearch.TransportError as err:
-            if err.status_code != 404:
+            if err.status_code == 404:
+                existing_policy = None
+            else:
                 _LOGGER.exception("Error checking for existing ILM policy: %s", err)
                 raise err
+
+        ilm_hot_conditions = {
+            "max_size": config.get(CONF_ILM_MAX_SIZE)
+        }
 
         policy = {
             "policy": {
@@ -383,13 +368,11 @@ class IndexManager: # pylint: disable=unused-variable
                     "hot": {
                         "min_age": "0ms",
                         "actions": {
-                            "rollover": {
-                                "max_size": self._rollover_conditions["max_age"]
-                            }
+                            "rollover": ilm_hot_conditions
                         }
                     },
                     "delete": {
-                        "min_age": "365d",
+                        "min_age": config.get(CONF_ILM_DELETE_AFTER),
                         "actions": {
                             "delete": {}
                         }
@@ -399,12 +382,6 @@ class IndexManager: # pylint: disable=unused-variable
         }
 
         if existing_policy:
-            existing_phases = existing_policy[self._ilm_policy_name]["policy"]["phases"]
-            if json.dumps(existing_phases, sort_keys=True) == json.dumps(policy, sort_keys=True):
-                _LOGGER.info(
-                    "ILM Policy '%s' already exists", self._ilm_policy_name
-                )
-                return
             _LOGGER.info(
                 "Updating existing ILM Policy '%s'", self._ilm_policy_name
             )
@@ -414,40 +391,6 @@ class IndexManager: # pylint: disable=unused-variable
             )
 
         client.transport.perform_request('PUT', url, body=policy)
-
-    def _start_rollover_timer(self):
-        """Initialize the rollover timer"""
-        asyncio.ensure_future(self._rollover_timer())
-
-    @asyncio.coroutine
-    def _rollover_timer(self):
-        """The rollover timer"""
-        _LOGGER.debug("Starting rollover timer: executes every %i seconds.",
-                      self._rollover_frequency)
-        while True:
-            try:
-                self._do_rollover()
-            finally:
-                yield from asyncio.sleep(self._rollover_frequency)
-
-    def _do_rollover(self):
-        """Initiates a Rollover request to the Elasticsearch cluster"""
-        import elasticsearch
-
-        _LOGGER.debug("Performing index rollover")
-        try:
-            rollover_response = self._gateway.get_client().indices.rollover(
-                alias=self.index_alias,
-                body={
-                    "conditions": self._rollover_conditions
-                }
-            )
-
-            _LOGGER.debug("Elasticsearch rollover response: %s",
-                          str(rollover_response))
-            _LOGGER.info("Rollover Succeeded")
-        except elasticsearch.ElasticsearchException as err:
-            _LOGGER.exception("Error performing rollover: %s", err)
 
 class DocumentPublisher:  # pylint: disable=unused-variable
     """Publishes documents to Elasticsearch"""
@@ -597,7 +540,7 @@ class DocumentPublisher:  # pylint: disable=unused-variable
                 'lon': document_body['hass.attributes']['longitude']
             }
 
-        es_version = self._gateway.version
+        es_version = self._gateway.es_version
         if es_version.major == 6:
             return {
                 "_op_type": "index",
