@@ -108,7 +108,7 @@ If you are connecting to a secured Elasticsearch cluster, the user you authentic
 should have a role assigned with the following privileges. Note that if you adjust the `index_format` or `alias` settings that the role definition must be updated accordingly:
 
 ```json
-POST /_xpack/security/role/hass_writer
+POST /_security/role/hass_writer
 {
   "cluster": [
     "manage_index_templates",
