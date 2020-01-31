@@ -10,6 +10,7 @@ import socket
 from queue import Queue
 from datetime import (datetime)
 import asyncio
+import math
 import voluptuous as vol
 from pytz import utc
 from homeassistant.const import (
@@ -345,6 +346,8 @@ class DocumentPublisher:  # pylint: disable=unused-variable
         """Creates a bulk action from the given state object"""
         try:
             _state = state_helper.state_as_number(state)
+            if not is_valid_number(_state):
+                _state = state.state
         except ValueError:
             _state = state.state
 
@@ -497,11 +500,17 @@ class DocumentPublisher:  # pylint: disable=unused-variable
                     "Error creating initial index/alias: %s", err)
 
 
+def is_valid_number(number):
+    """Determines if the passed number is valid for Elasticsearch"""
+    is_infinity = math.isinf(number)
+    is_nan = number != number
+    return not is_infinity and not is_nan
+
 def extract_port_from_name(name, default_port):
     """
-        extractPortFromName takes a string in the form `id:port` and returns the ID and the port
-        If there's no `:`, the default port is returned
-        """
+    extractPortFromName takes a string in the form `id:port` and returns the ID and the port
+    If there's no `:`, the default port is returned
+    """
     idx = name.rfind(":")
     if idx >= 0:
         return name[:idx], name[idx+1:]
