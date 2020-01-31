@@ -10,6 +10,7 @@ import socket
 from queue import Queue
 from datetime import (datetime)
 import asyncio
+import math
 import voluptuous as vol
 from pytz import utc
 from homeassistant.const import (
@@ -514,6 +515,8 @@ class DocumentPublisher:  # pylint: disable=unused-variable
         """Creates a bulk action from the given state object"""
         try:
             _state = state_helper.state_as_number(state)
+            if not is_valid_number(_state):
+                _state = state.state
         except ValueError:
             _state = state.state
 
@@ -579,6 +582,14 @@ class DocumentPublisher:  # pylint: disable=unused-variable
                     _LOGGER.debug("Nothing to publish")
             finally:
                 yield from asyncio.sleep(self._publish_frequency)
+
+
+def is_valid_number(number):
+    """Determines if the passed number is valid for Elasticsearch"""
+    is_infinity = math.isinf(number)
+    is_nan = number != number  # pylint: disable=comparison-with-itself
+    return not is_infinity and not is_nan
+
 
 def extract_port_from_name(name, default_port):
     """
