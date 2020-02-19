@@ -7,6 +7,7 @@ import logging
 
 from homeassistant.components.sensor import ENTITY_ID_FORMAT
 from homeassistant.helpers.entity import Entity
+from . import CONF_HEALTH_SENSOR_ENABLED, CONF_PUBLISH_ENABLED
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -19,14 +20,19 @@ ELASTIC_DOMAIN = 'elastic'
 
 def setup_platform(hass, config, add_devices, discovery_info=None):
     """Set up the Elastic sensor platform."""
-    publisher = hass.data[ELASTIC_DOMAIN]['publisher']
-    gateway = hass.data[ELASTIC_DOMAIN]['gateway']
 
-    devices = [
-        EsPublishQueueSensor(publisher),
-        EsClusterHealthSensor(gateway)
-    ]
-    add_devices(devices, True)
+    devices = []
+
+    if config.get(CONF_HEALTH_SENSOR_ENABLED):
+        gateway = hass.data[ELASTIC_DOMAIN]['gateway']
+        devices.append(EsClusterHealthSensor(gateway))
+
+    if config.get(CONF_PUBLISH_ENABLED):
+        publisher = hass.data[ELASTIC_DOMAIN]['publisher']
+        devices.append(EsPublishQueueSensor(publisher))
+
+    if devices:
+        add_devices(devices, True)
 
 class EsPublishQueueSensor(Entity):
     """Representation of the publish queue sensor"""
