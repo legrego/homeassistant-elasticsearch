@@ -11,7 +11,7 @@ from queue import Queue
 from datetime import (datetime)
 import asyncio
 import math
-import urllib
+from urllib.parse import quote
 import voluptuous as vol
 from pytz import utc
 from homeassistant.const import (
@@ -349,8 +349,8 @@ class IndexManager: # pylint: disable=unused-variable
 
         # The ES Client does not currently support the ILM APIs,
         # so we craft this one by hand
-        encoded_policy_name = urllib.quote(
-            self._ilm_policy_name.encode("utf-8"))
+        encoded_policy_name = quote(
+            self._ilm_policy_name.encode("utf-8"), safe='')
 
         url = '/_ilm/policy/{}'.format(encoded_policy_name)
 
