@@ -532,7 +532,9 @@ class DocumentPublisher:  # pylint: disable=unused-variable
         document_body = {
             'hass.domain': state.domain,
             'hass.object_id': state.object_id,
+            'hass.object_id.lower': state.object_id.lower(),
             'hass.entity_id': state.entity_id,
+            'hass.entity_id.lower': state.entity_id.lower(),
             'hass.attributes': dict(state.attributes),
             'hass.value': _state,
             '@timestamp': time_tz
