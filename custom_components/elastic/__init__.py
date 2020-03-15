@@ -27,6 +27,8 @@ from homeassistant.helpers import (
 DOMAIN = 'elastic'
 DATA_ELASTICSEARCH = 'elastic'
 
+CONF_PUBLISH_ENABLED = 'publish_enabled'
+CONF_HEALTH_SENSOR_ENABLED = 'health_sensor_enabled'
 CONF_INDEX_FORMAT = 'index_format'
 CONF_PUBLISH_FREQUENCY = 'publish_frequency'
 CONF_ONLY_PUBLISH_CHANGED = 'only_publish_changed'
@@ -57,6 +59,9 @@ CONFIG_SCHEMA = vol.Schema({
             vol.Exclusive(CONF_URL, 'url or cloud_id'): cv.url,
             vol.Exclusive(CONF_CLOUD_ID, 'url or cloud_id'): cv.string,
             vol.Optional(CONF_USERNAME): cv.string,
+            vol.Optional(CONF_PASSWORD): cv.string,
+            vol.Optional(CONF_PUBLISH_ENABLED, default=True): cv.boolean,
+            vol.Optional(CONF_HEALTH_SENSOR_ENABLED, default=True): cv.boolean,
             vol.Optional(CONF_PASSWORD): cv.string,
             vol.Optional(CONF_INDEX_FORMAT, default='hass-events'): cv.string,
             vol.Optional(CONF_ALIAS, default='active-hass-index'): cv.string,
@@ -90,36 +95,41 @@ async def async_setup(hass, config):
     gateway = ElasticsearchGateway(hass, conf)
     hass.data[DOMAIN]['gateway'] = gateway
 
-    _LOGGER.debug("Creating ES index manager")
-    index_manager = IndexManager(conf, gateway)
-    index_manager.setup()
-    hass.data[DOMAIN]['index_manager'] = index_manager
+    hass.data[DOMAIN][CONF_PUBLISH_ENABLED] = conf.get(CONF_PUBLISH_ENABLED)
+    hass.data[DOMAIN][CONF_HEALTH_SENSOR_ENABLED] = conf.get(
+        CONF_HEALTH_SENSOR_ENABLED)
 
-    _LOGGER.debug("Creating document publisher")
-    system_info = await hass.helpers.system_info.async_get_system_info()
-    publisher = DocumentPublisher(conf, gateway, index_manager, hass, system_info)
-    hass.data[DOMAIN]['publisher'] = publisher
+    if conf.get(CONF_PUBLISH_ENABLED):
+        _LOGGER.debug("Creating ES index manager")
+        index_manager = IndexManager(conf, gateway)
+        index_manager.setup()
+        hass.data[DOMAIN]['index_manager'] = index_manager
 
-    _LOGGER.debug("Creating service handler")
-    service_handler = ServiceHandler(publisher)
+        _LOGGER.debug("Creating document publisher")
+        system_info = await hass.helpers.system_info.async_get_system_info()
+        publisher = DocumentPublisher(conf, gateway, index_manager, hass, system_info)
+        hass.data[DOMAIN]['publisher'] = publisher
 
-    def elastic_event_listener(event):
-        """Listen for new messages on the bus and queue them for send."""
-        state = event.data.get('new_state')
-        if state is None:
+        _LOGGER.debug("Creating service handler")
+        service_handler = ServiceHandler(publisher)
+
+        def elastic_event_listener(event):
+            """Listen for new messages on the bus and queue them for send."""
+            state = event.data.get('new_state')
+            if state is None:
+                return
+
+            publisher.enqueue_state({"state": state, "event": event})
+
             return
 
-        publisher.enqueue_state({"state": state, "event": event})
+        hass.bus.async_listen(EVENT_STATE_CHANGED, elastic_event_listener)
 
-        return
-
-    hass.bus.async_listen(EVENT_STATE_CHANGED, elastic_event_listener)
+        hass.services.async_register(
+            DOMAIN, 'publish_events', service_handler.publish_events)
 
     for component in ELASTIC_COMPONENTS:
         discovery.load_platform(hass, component, DOMAIN, {}, config)
-
-    hass.services.async_register(
-        DOMAIN, 'publish_events', service_handler.publish_events)
 
     _LOGGER.info("Elastic component fully initialized")
     return True
