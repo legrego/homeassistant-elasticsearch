@@ -11,6 +11,7 @@ from queue import Queue
 from datetime import (datetime)
 import asyncio
 import math
+from urllib.parse import quote
 import voluptuous as vol
 from pytz import utc
 from homeassistant.const import (
@@ -29,10 +30,10 @@ DATA_ELASTICSEARCH = 'elastic'
 CONF_INDEX_FORMAT = 'index_format'
 CONF_PUBLISH_FREQUENCY = 'publish_frequency'
 CONF_ONLY_PUBLISH_CHANGED = 'only_publish_changed'
-CONF_REQUEST_ROLLOVER_FREQUENCY = 'request_rollover_frequency'
-CONF_ROLLOVER_AGE = 'rollover_max_age'
-CONF_ROLLOVER_DOCS = 'rollover_max_docs'
-CONF_ROLLOVER_SIZE = 'rollover_max_size'
+CONF_ILM_ENABLED = 'ilm_enabled'
+CONF_ILM_POLICY_NAME = 'ilm_policy_name'
+CONF_ILM_MAX_SIZE = 'ilm_max_size'
+CONF_ILM_DELETE_AFTER = 'ilm_delete_after'
 CONF_SSL_CA_PATH = 'ssl_ca_path'
 CONF_CLOUD_ID = 'cloud_id'
 
@@ -47,7 +48,7 @@ _LOGGER = logging.getLogger(__name__)
 ONE_MINUTE = 60
 ONE_HOUR = 60 * 60
 
-VERSION_SUFFIX = "-v3"
+VERSION_SUFFIX = "-v4"
 INDEX_TEMPLATE_NAME = "hass-index-template" + VERSION_SUFFIX
 
 CONFIG_SCHEMA = vol.Schema({
@@ -61,10 +62,10 @@ CONFIG_SCHEMA = vol.Schema({
             vol.Optional(CONF_ALIAS, default='active-hass-index'): cv.string,
             vol.Optional(CONF_PUBLISH_FREQUENCY, default=ONE_MINUTE): cv.positive_int,
             vol.Optional(CONF_ONLY_PUBLISH_CHANGED, default=False): cv.boolean,
-            vol.Optional(CONF_REQUEST_ROLLOVER_FREQUENCY, default=ONE_HOUR): cv.positive_int,
-            vol.Optional(CONF_ROLLOVER_AGE): cv.string,
-            vol.Optional(CONF_ROLLOVER_DOCS): cv.positive_int,
-            vol.Optional(CONF_ROLLOVER_SIZE, default='30gb'): cv.string,
+            vol.Optional(CONF_ILM_ENABLED, default=True): cv.boolean,
+            vol.Optional(CONF_ILM_POLICY_NAME, default="home-assistant"): cv.string,
+            vol.Optional(CONF_ILM_MAX_SIZE, default='30gb'): cv.string,
+            vol.Optional(CONF_ILM_DELETE_AFTER, default='365d'): cv.string,
             vol.Optional(CONF_VERIFY_SSL): cv.boolean,
             vol.Optional(CONF_SSL_CA_PATH): cv.string,
             vol.Optional(CONF_TAGS, default=['hass']): vol.All(cv.ensure_list, [cv.string]),
@@ -89,9 +90,14 @@ async def async_setup(hass, config):
     gateway = ElasticsearchGateway(hass, conf)
     hass.data[DOMAIN]['gateway'] = gateway
 
+    _LOGGER.debug("Creating ES index manager")
+    index_manager = IndexManager(conf, gateway)
+    index_manager.setup()
+    hass.data[DOMAIN]['index_manager'] = index_manager
+
     _LOGGER.debug("Creating document publisher")
     system_info = await hass.helpers.system_info.async_get_system_info()
-    publisher = DocumentPublisher(conf, gateway, hass, system_info)
+    publisher = DocumentPublisher(conf, gateway, index_manager, hass, system_info)
     hass.data[DOMAIN]['publisher'] = publisher
 
     _LOGGER.debug("Creating service handler")
@@ -131,6 +137,34 @@ class ServiceHandler:  # pylint: disable=unused-variable
         self._publisher.do_publish()
 
 
+class ElasticsearchVersion:  # pylint: disable=unused-variable
+    """Maintains information about the verion of Elasticsearch"""
+    def __init__(self, client):
+        version = client.info()["version"]
+        version_number_parts = version["number"].split(".")
+        self.version_number_str = version["number"]
+        self.major = int(version_number_parts[0])
+        self.minor = int(version_number_parts[1])
+        self.build_flavor = version["build_flavor"]
+
+    def is_supported_version(self):
+        """Determines if this version of ES is supported by this component"""
+        return self.major == 7 or (
+            self.major == 6 and self.minor >= 7
+        )
+
+    def is_oss_distribution(self):
+        """Determines if this is the OSS distribution"""
+        return self.build_flavor == 'oss'
+
+    def is_default_distribution(self):
+        """Determines if this is the default distribution"""
+        return self.build_flavor == 'default'
+
+    def to_string(self):
+        """Returns a string representation of the current ES version"""
+        return self.version_number_str
+
 class ElasticsearchGateway:  # pylint: disable=unused-variable
     """Encapsulates Elasticsearch operations"""
 
@@ -149,26 +183,18 @@ class ElasticsearchGateway:  # pylint: disable=unused-variable
 
         _LOGGER.debug("Creating Elasticsearch client for %s", self._url)
         self.client = self._create_es_client()
-        self.es_major_version = None
+        self.es_version = ElasticsearchVersion(self.client)
+
+        if not self.es_version.is_supported_version():
+            _LOGGER.warning(
+                "UNSUPPORTED VERSION OF ELASTICSEARCH DETECTED: %s. \
+                This may function in unexpected ways, or fail entirely!",
+                self.es_version.to_string()
+            )
 
     def get_client(self):
         """Returns the underlying ES Client"""
         return self.client
-
-    def get_es_version(self):
-        """Returns the ES Major version"""
-        if self.es_major_version is None:
-            version = self.client.info()["version"]
-            version_number = version["number"]
-            self.es_major_version = int(version_number.split(".")[0])
-            _LOGGER.info("Detected Elasticsearch version: %s",
-                         str(self.es_major_version))
-
-            if self.es_major_version < 6 or self.es_major_version > 7:
-                _LOGGER.warning("You are running an unsupported version of Elasticsearch \
-                                 (%s).Versions 6.0 - 7.x are supported.", version_number)
-
-        return self.es_major_version
 
     def _create_es_client(self):
         """Constructs an instance of the Elasticsearch client"""
@@ -210,16 +236,176 @@ class ElasticsearchGateway:  # pylint: disable=unused-variable
 
         return SetEncoder()
 
+class IndexManager: # pylint: disable=unused-variable
+    """ Index management facilities """
+
+    def __init__(self, config, gateway):
+        """ Initializes index management """
+
+        self.index_alias = config.get(CONF_ALIAS) + VERSION_SUFFIX
+
+        self._gateway = gateway
+        version = gateway.es_version
+        self._using_ilm = (
+            version.is_default_distribution()
+            and version.is_supported_version()
+            and config.get(CONF_ILM_ENABLED)
+        )
+
+        self._ilm_policy_name = config.get(CONF_ILM_POLICY_NAME)
+
+        self._index_format = config.get(CONF_INDEX_FORMAT) + VERSION_SUFFIX
+
+        self._config = config
+
+    def setup(self):
+        """ Performs setup for index management. """
+        self._create_index_template()
+
+        if not self._gateway.es_version.is_default_distribution():
+            _LOGGER.info("\
+                You are not running the default distribution of Elasticsearch, \
+                so features such as Index Lifecycle Management are not available. \
+                Download the default distribution from https://elastic.co/downloads \
+            ")
+        if self._using_ilm:
+            self._create_ilm_policy(self._config)
+
+    def _create_index_template(self):
+        """
+        Initializes the Elasticsearch cluster with an index template, initial index, and alias.
+        """
+        import elasticsearch
+
+        client = self._gateway.get_client()
+
+        es_version = self._gateway.es_version
+
+        with open(os.path.join(os.path.dirname(__file__), 'index_mapping.json')) as json_file:
+            mapping = json.load(json_file)
+
+        if not client.indices.exists_template(name=INDEX_TEMPLATE_NAME):
+            _LOGGER.debug("Creating index template")
+
+            mappings_body = mapping
+            if es_version.major == 6:
+                mappings_body = {
+                    "doc": mapping
+                }
+
+            index_template = {
+                "index_patterns": [self._index_format + "*"],
+                "settings": {
+                    "number_of_shards": 1
+                },
+                "mappings": mappings_body,
+                "aliases": {
+                    "all-hass-events": {}
+                }
+            }
+            if self._using_ilm:
+                index_template["settings"]["index.lifecycle.name"] = self._ilm_policy_name
+                index_template["settings"]["index.lifecycle.rollover_alias"] = self.index_alias
+
+            try:
+                client.indices.put_template(
+                    name=INDEX_TEMPLATE_NAME,
+                    body=index_template
+                )
+            except elasticsearch.ElasticsearchException as err:
+                _LOGGER.exception("Error creating index template: %s", err)
+
+        if not client.indices.exists_alias(name=self.index_alias):
+            _LOGGER.debug("Creating initial index and alias")
+            try:
+                client.indices.create(index=self._index_format + "-000001", body={
+                    "aliases": {
+                        self.index_alias: {
+                            "is_write_index": True
+                        }
+                    }
+                })
+            except elasticsearch.ElasticsearchException as err:
+                _LOGGER.exception(
+                    "Error creating initial index/alias: %s", err)
+        elif self._using_ilm:
+            _LOGGER.debug("Ensuring ILM Policy is attached to existing index")
+            try:
+                client.indices.put_settings(index=self.index_alias, preserve_existing=True, body={
+                    "index.lifecycle.name": self._ilm_policy_name,
+                    "index.lifecycle.rollover_alias": self.index_alias
+                })
+            except elasticsearch.ElasticsearchException as err:
+                _LOGGER.exception(
+                    "Error updating index ILM settings: %s", err)
+
+    def _create_ilm_policy(self, config):
+        """
+        Creates the index lifecycle management policy.
+        """
+        import elasticsearch
+
+        client = self._gateway.get_client()
+
+        # The ES Client does not currently support the ILM APIs,
+        # so we craft this one by hand
+        encoded_policy_name = quote(
+            self._ilm_policy_name.encode("utf-8"), safe='')
+
+        url = '/_ilm/policy/{}'.format(encoded_policy_name)
+
+        try:
+            existing_policy = client.transport.perform_request('GET', url)
+        except elasticsearch.TransportError as err:
+            if err.status_code == 404:
+                existing_policy = None
+            else:
+                _LOGGER.exception("Error checking for existing ILM policy: %s", err)
+                raise err
+
+        ilm_hot_conditions = {
+            "max_size": config.get(CONF_ILM_MAX_SIZE)
+        }
+
+        policy = {
+            "policy": {
+                "phases": {
+                    "hot": {
+                        "min_age": "0ms",
+                        "actions": {
+                            "rollover": ilm_hot_conditions
+                        }
+                    },
+                    "delete": {
+                        "min_age": config.get(CONF_ILM_DELETE_AFTER),
+                        "actions": {
+                            "delete": {}
+                        }
+                    }
+                }
+            }
+        }
+
+        if existing_policy:
+            _LOGGER.info(
+                "Updating existing ILM Policy '%s'", self._ilm_policy_name
+            )
+        else:
+            _LOGGER.info(
+                "Creating ILM Policy '%s'", self._ilm_policy_name
+            )
+
+        client.transport.perform_request('PUT', url, body=policy)
 
 class DocumentPublisher:  # pylint: disable=unused-variable
     """Publishes documents to Elasticsearch"""
 
-    def __init__(self, config, gateway, hass, system_info):
+    def __init__(self, config, gateway, index_manager, hass, system_info):
         """Initialize the publisher"""
         self._gateway = gateway
         self._hass = hass
-        self._index_format = config.get(CONF_INDEX_FORMAT) + VERSION_SUFFIX
-        self._index_alias = config.get(CONF_ALIAS) + VERSION_SUFFIX
+
+        self._index_alias = index_manager.index_alias
 
         config_dict = hass.config.as_dict()
         self._static_doc_properties = {
@@ -252,23 +438,10 @@ class DocumentPublisher:  # pylint: disable=unused-variable
             _LOGGER.debug("Excluding the following entities: %s",
                           str(self._excluded_entities))
 
-        self._rollover_frequency = config.get(CONF_REQUEST_ROLLOVER_FREQUENCY)
-        self._rollover_conditions = {
-            "max_age": config.get(CONF_ROLLOVER_AGE),
-            "max_docs": config.get(CONF_ROLLOVER_DOCS),
-            "max_size": config.get(CONF_ROLLOVER_SIZE)
-        }
-        if self._rollover_conditions["max_age"] is None:
-            del self._rollover_conditions["max_age"]
-        if self._rollover_conditions["max_docs"] is None:
-            del self._rollover_conditions["max_docs"]
-
         self.publish_queue = Queue()
         self._last_publish_time = None
 
-        self._create_index_template()
         self._start_publish_timer()
-        self._start_rollover_timer()
 
     def queue_size(self):
         """Returns the approximate queue size"""
@@ -374,8 +547,8 @@ class DocumentPublisher:  # pylint: disable=unused-variable
                 'lon': document_body['hass.attributes']['longitude']
             }
 
-        es_version = self._gateway.get_es_version()
-        if es_version == 6:
+        es_version = self._gateway.es_version
+        if es_version.major == 6:
             return {
                 "_op_type": "index",
                 "_index": self._index_alias,
@@ -391,29 +564,6 @@ class DocumentPublisher:  # pylint: disable=unused-variable
     def _start_publish_timer(self):
         """Initialize the publish timer"""
         asyncio.ensure_future(self._publish_queue_timer())
-
-    def _start_rollover_timer(self):
-        """Initialize the rollover timer"""
-        asyncio.ensure_future(self._rollover_timer())
-
-    def _do_rollover(self):
-        """Initiates a Rollover request to the Elasticsearch cluster"""
-        import elasticsearch
-
-        _LOGGER.debug("Performing index rollover")
-        try:
-            rollover_response = self._gateway.get_client().indices.rollover(
-                alias=self._index_alias,
-                body={
-                    "conditions": self._rollover_conditions
-                }
-            )
-
-            _LOGGER.debug("Elasticsearch rollover response: %s",
-                          str(rollover_response))
-            _LOGGER.info("Rollover Succeeded")
-        except elasticsearch.ElasticsearchException as err:
-            _LOGGER.exception("Error performing rollover: %s", err)
 
     def _should_publish(self):
         """Determines if now is a good time to publish documents"""
@@ -437,74 +587,13 @@ class DocumentPublisher:  # pylint: disable=unused-variable
             finally:
                 yield from asyncio.sleep(self._publish_frequency)
 
-    @asyncio.coroutine
-    def _rollover_timer(self):
-        """The rollover timer"""
-        _LOGGER.debug("Starting rollover timer: executes every %i seconds.",
-                      self._rollover_frequency)
-        while True:
-            try:
-                self._do_rollover()
-            finally:
-                yield from asyncio.sleep(self._rollover_frequency)
-
-    def _create_index_template(self):
-        """
-        Initializes the Elasticsearch cluster with an index template, initial index, and alias.
-        """
-        import elasticsearch
-
-        client = self._gateway.get_client()
-
-        es_version = self._gateway.get_es_version()
-
-        with open(os.path.join(os.path.dirname(__file__), 'index_mapping.json')) as json_file:
-            mapping = json.load(json_file)
-
-        if not client.indices.exists_template(name=INDEX_TEMPLATE_NAME):
-            _LOGGER.debug("Creating index template")
-
-            mappings_body = mapping
-            if es_version == 6:
-                mappings_body = {
-                    "doc": mapping
-                }
-
-            try:
-                client.indices.put_template(
-                    name=INDEX_TEMPLATE_NAME,
-                    body={
-                        "index_patterns": [self._index_format + "*"],
-                        "settings": {
-                            "number_of_shards": 1
-                        },
-                        "mappings": mappings_body,
-                        "aliases": {
-                            "all-hass-events": {}
-                        }
-                    }
-                )
-            except elasticsearch.ElasticsearchException as err:
-                _LOGGER.exception("Error creating index template: %s", err)
-
-        if not client.indices.exists_alias(name=self._index_alias):
-            _LOGGER.debug("Creating initial index and alias")
-            try:
-                client.indices.create(index=self._index_format + "-000001", body={
-                    "aliases": {
-                        self._index_alias: {}
-                    }
-                })
-            except elasticsearch.ElasticsearchException as err:
-                _LOGGER.exception(
-                    "Error creating initial index/alias: %s", err)
-
 
 def is_valid_number(number):
     """Determines if the passed number is valid for Elasticsearch"""
     is_infinity = math.isinf(number)
-    is_nan = number != number
+    is_nan = number != number  # pylint: disable=comparison-with-itself
     return not is_infinity and not is_nan
+
 
 def extract_port_from_name(name, default_port):
     """

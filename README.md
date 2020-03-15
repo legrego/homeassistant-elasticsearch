@@ -69,10 +69,10 @@ Actual names use the [Rollover API](https://www.elastic.co/guide/en/elasticsearc
 - **alias** (*default:* `"active-hass-index"`): The [index alias](https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-aliases.html) which will always reference the index being written to.
 - **publish_frequency** (*default:* `60`): Specifies how often, in seconds, this component should publish events to Elasticsearch.
 - **only_publish_changed** (*default:* `false`): Specifies that only entities that underwent a state change should be published. When `false`, all entity states are published.
-- **request_rollover_frequency** (*default:* `3600`): Specifies how often, in seconds, this component should attempt a Rollover. The Rollover will only occur if the specified criteria has been met.
-- **rollover_max_age** (*default:* `None`): Specifies the `max_age` condition of the Rollover request
-- **rollover_max_docs** (*default:* `None`): Specifies the `max_docs` condition of the Rollover request
-- **rollover_max_size** (*default:* `"30gb"`): Specifies the `max_size` condition of the Rollover request
+- **ilm_enabled** (*default:* `true`): Enables [Index Lifecycle Management](https://www.elastic.co/guide/en/elasticsearch/reference/current/index-lifecycle-management.html)
+- **ilm_policy_name** (*default:* `home-assistant`): The ILM policy name.
+- **ilm_hot_max_size** (*default:* `30gb`): Specifies the `max_size` condition of the ILM rollover action.
+- **ilm_delete_after** (*default:* `365d`): Specifies how long to retain documents after rolling over.
 
 
 ### Example Configurations
