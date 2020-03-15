@@ -95,6 +95,10 @@ async def async_setup(hass, config):
     gateway = ElasticsearchGateway(hass, conf)
     hass.data[DOMAIN]['gateway'] = gateway
 
+    hass.data[DOMAIN][CONF_PUBLISH_ENABLED] = conf.get(CONF_PUBLISH_ENABLED)
+    hass.data[DOMAIN][CONF_HEALTH_SENSOR_ENABLED] = conf.get(
+        CONF_HEALTH_SENSOR_ENABLED)
+
     if conf.get(CONF_PUBLISH_ENABLED):
         _LOGGER.debug("Creating ES index manager")
         index_manager = IndexManager(conf, gateway)

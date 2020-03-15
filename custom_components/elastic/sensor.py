@@ -23,16 +23,25 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
 
     devices = []
 
-    if config.get(CONF_HEALTH_SENSOR_ENABLED):
+    if hass.data[ELASTIC_DOMAIN][CONF_PUBLISH_ENABLED]:
+        _LOGGER.info("Initializing cluster health sensor")
         gateway = hass.data[ELASTIC_DOMAIN]['gateway']
         devices.append(EsClusterHealthSensor(gateway))
+    else:
+        _LOGGER.info("Cluster health sensor not enabled")
 
-    if config.get(CONF_PUBLISH_ENABLED):
+    if hass.data[ELASTIC_DOMAIN][CONF_HEALTH_SENSOR_ENABLED]:
+        _LOGGER.info("Initializing publish queue sensor")
         publisher = hass.data[ELASTIC_DOMAIN]['publisher']
         devices.append(EsPublishQueueSensor(publisher))
+    else:
+        _LOGGER.info("Publish queue sensor not enabled")
 
     if devices:
+        _LOGGER.debug(str.format("Adding {} devices", len(devices)))
         add_devices(devices, True)
+    else:
+        _LOGGER.debug("Not registering any devices")
 
 class EsPublishQueueSensor(Entity):
     """Representation of the publish queue sensor"""
