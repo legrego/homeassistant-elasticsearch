@@ -71,7 +71,7 @@ Actual names use the [Rollover API](https://www.elastic.co/guide/en/elasticsearc
 - **only_publish_changed** (*default:* `false`): Specifies that only entities that underwent a state change should be published. When `false`, all entity states are published.
 - **ilm_enabled** (*default:* `true`): Enables [Index Lifecycle Management](https://www.elastic.co/guide/en/elasticsearch/reference/current/index-lifecycle-management.html)
 - **ilm_policy_name** (*default:* `home-assistant`): The ILM policy name.
-- **ilm_hot_max_size** (*default:* `30gb`): Specifies the `max_size` condition of the ILM rollover action.
+- **ilm_max_size** (*default:* `30gb`): Specifies the `max_size` condition of the ILM rollover action.
 - **ilm_delete_after** (*default:* `365d`): Specifies how long to retain documents after rolling over.
 
 
