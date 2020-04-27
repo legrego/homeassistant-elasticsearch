@@ -291,7 +291,13 @@ class IndexManager: # pylint: disable=unused-variable
             index_template = {
                 "index_patterns": [self._index_format + "*"],
                 "settings": {
-                    "number_of_shards": 1
+                    "number_of_shards": 1,
+                    "codec": "best_compression",
+                    "mapping": {
+                        "total_fields": {
+                            "limit": "10000"
+                        }
+                    }
                 },
                 "mappings": mappings_body,
                 "aliases": {
