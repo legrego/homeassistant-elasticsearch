@@ -7,7 +7,7 @@ Publish HASS events to your [Elasticsearch](https://elastic.co) cluster!
 
 ## Features
 * Effeciently publishes Home-Assistant events to Elasticsearch using the Bulk API
-* Automatically maintains Indexes and Index Templates using the Rollover API
+* Automatically maintains Indexes and Index Templates using Index Lifecycle Management ("ILM")
 * Supports [X-Pack Security](https://www.elastic.co/products/x-pack/security) via optional username and password
 * Tracks the Elasticsearch cluster health in the `sensor.es_cluster_health` sensor
 * Exclude specific entities or groups from publishing
