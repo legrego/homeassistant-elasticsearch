@@ -50,7 +50,7 @@ _LOGGER = logging.getLogger(__name__)
 ONE_MINUTE = 60
 ONE_HOUR = 60 * 60
 
-VERSION_SUFFIX = "-v4"
+VERSION_SUFFIX = "-v4_1"
 INDEX_TEMPLATE_NAME = "hass-index-template" + VERSION_SUFFIX
 
 CONFIG_SCHEMA = vol.Schema({
@@ -212,7 +212,7 @@ class ElasticsearchGateway:  # pylint: disable=unused-variable
 
         use_basic_auth = self._username is not None and self._password is not None
 
-        serializer = self._get_serializer()
+        serializer = get_serializer()
 
         if use_basic_auth:
             auth = (self._username, self._password)
@@ -230,21 +230,6 @@ class ElasticsearchGateway:  # pylint: disable=unused-variable
             verify_certs=self._verify_certs,
             ca_certs=self._ca_certs
         )
-
-    def _get_serializer(self):
-        """Gets the custom JSON serializer"""
-        from elasticsearch.serializer import JSONSerializer
-
-        class SetEncoder(JSONSerializer):
-            """JSONSerializer which serializes sets to lists"""
-
-            def default(self, data):
-                """entry point"""
-                if isinstance(data, set):
-                    return list(data)
-                return JSONSerializer.default(self, data)
-
-        return SetEncoder()
 
 class IndexManager: # pylint: disable=unused-variable
     """ Index management facilities """
@@ -306,7 +291,13 @@ class IndexManager: # pylint: disable=unused-variable
             index_template = {
                 "index_patterns": [self._index_format + "*"],
                 "settings": {
-                    "number_of_shards": 1
+                    "number_of_shards": 1,
+                    "codec": "best_compression",
+                    "mapping": {
+                        "total_fields": {
+                            "limit": "10000"
+                        }
+                    }
                 },
                 "mappings": mappings_body,
                 "aliases": {
@@ -416,6 +407,8 @@ class DocumentPublisher:  # pylint: disable=unused-variable
         self._hass = hass
 
         self._index_alias = index_manager.index_alias
+
+        self._serializer = get_serializer()
 
         config_dict = hass.config.as_dict()
         self._static_doc_properties = {
@@ -539,13 +532,39 @@ class DocumentPublisher:  # pylint: disable=unused-variable
         else:
             time_tz = time
 
+        orig_attributes = dict(state.attributes)
+        attributes = dict()
+        for orig_key, orig_value in orig_attributes.items():
+            # ES will attempt to expand any attribute keys which contain a ".",
+            # so we replace them with an "_" instead.
+            # https://github.com/legrego/homeassistant-elasticsearch/issues/92
+            key = str.replace(orig_key, ".", "_")
+            value = orig_value
+
+            # coerce set to list. ES does not handle sets natively
+            if isinstance(orig_value, set):
+                value = list(orig_value)
+
+            # if the list/tuple contains simple strings, numbers, or booleans, then we should
+            # index the contents as an actual list. Otherwise, we need to serialize
+            # the contents so that we can respect the index mapping
+            # (Arrays of objects cannot be indexed as-is)
+            if value and isinstance(value, (list, tuple)):
+                should_serialize = isinstance(
+                    value[0], (tuple, dict, set, list))
+            else:
+                should_serialize = isinstance(value, dict)
+
+            attributes[key] = self._serializer.dumps(
+                value) if should_serialize else value
+
         document_body = {
             'hass.domain': state.domain,
             'hass.object_id': state.object_id,
             'hass.object_id_lower': state.object_id.lower(),
             'hass.entity_id': state.entity_id,
             'hass.entity_id_lower': state.entity_id.lower(),
-            'hass.attributes': dict(state.attributes),
+            'hass.attributes': attributes,
             'hass.value': _state,
             '@timestamp': time_tz
         }
@@ -599,6 +618,21 @@ class DocumentPublisher:  # pylint: disable=unused-variable
             finally:
                 yield from asyncio.sleep(self._publish_frequency)
 
+
+def get_serializer():
+    """Gets the custom JSON serializer"""
+    from elasticsearch.serializer import JSONSerializer
+
+    class SetEncoder(JSONSerializer):
+        """JSONSerializer which serializes sets to lists"""
+
+        def default(self, data):
+            """entry point"""
+            if isinstance(data, set):
+                return list(data)
+            return JSONSerializer.default(self, data)
+
+    return SetEncoder()
 
 def is_valid_number(number):
     """Determines if the passed number is valid for Elasticsearch"""

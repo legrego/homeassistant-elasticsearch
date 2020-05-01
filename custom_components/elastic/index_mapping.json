@@ -1,5 +1,25 @@
 {
   "dynamic": "strict",
+  "dynamic_templates": [
+    {
+      "hass_attributes": {
+        "path_match": "hass.attributes.*",
+        "mapping": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "ignore_above": 128,
+              "type": "keyword"
+            },
+            "float": {
+              "ignore_malformed": true,
+              "type": "float"
+            }
+          }
+        }
+      }
+    }
+  ],
   "properties": {
     "hass": {
       "type": "object",
