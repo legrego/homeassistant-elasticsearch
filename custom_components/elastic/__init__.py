@@ -541,6 +541,11 @@ class DocumentPublisher:  # pylint: disable=unused-variable
             key = str.replace(orig_key, ".", "_")
             value = orig_value
 
+            # Skip any attributes with empty keys. Elasticsearch cannot index these.
+            # https://github.com/legrego/homeassistant-elasticsearch/issues/96
+            if not key:
+                continue
+
             # coerce set to list. ES does not handle sets natively
             if isinstance(orig_value, set):
                 value = list(orig_value)
