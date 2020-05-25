@@ -14,7 +14,6 @@ import math
 from urllib.parse import quote
 import voluptuous as vol
 from pytz import utc
-from homeassistant.core import callback
 from homeassistant.const import (
     CONF_URL, CONF_USERNAME, CONF_PASSWORD, CONF_ALIAS, EVENT_STATE_CHANGED,
     CONF_EXCLUDE, CONF_DOMAINS, CONF_ENTITIES, CONF_VERIFY_SSL
@@ -371,10 +370,11 @@ class IndexManager: # pylint: disable=unused-variable
         elif self._using_ilm:
             _LOGGER.debug("Ensuring ILM Policy is attached to existing index")
             try:
-                await client.indices.put_settings(index=self.index_alias, preserve_existing=True, body={
-                    "index.lifecycle.name": self._ilm_policy_name,
-                    "index.lifecycle.rollover_alias": self.index_alias
-                })
+                await client.indices.put_settings(
+                    index=self.index_alias, preserve_existing=True, body={
+                        "index.lifecycle.name": self._ilm_policy_name,
+                        "index.lifecycle.rollover_alias": self.index_alias
+                    })
             except elasticsearch.ElasticsearchException as err:
                 _LOGGER.exception(
                     "Error updating index ILM settings: %s", err)
@@ -514,7 +514,6 @@ class DocumentPublisher:  # pylint: disable=unused-variable
     async def async_do_publish(self):
         "Publishes all queued documents to the Elasticsearch cluster"
         from elasticsearch import ElasticsearchException
-        from elasticsearch.helpers import bulk
 
         if self.publish_queue.empty():
             _LOGGER.debug("Skipping publish because queue is empty")
@@ -555,6 +554,10 @@ class DocumentPublisher:  # pylint: disable=unused-variable
         return
 
     def bulk_sync_wrapper(self, actions):
+        """
+        Wrapper to publish events.
+        Workaround for elasticsearch_async not supporting bulk operations
+        """
         from elasticsearch import ElasticsearchException
         from elasticsearch.helpers import bulk
 
