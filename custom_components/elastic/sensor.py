@@ -90,8 +90,8 @@ class EsClusterHealthSensor(Entity):
         """Return the state attributes"""
         return self._latest_cluster_health
 
-    def update(self):
+    async def async_update(self):
         """Update the state from the sensor."""
         _LOGGER.debug("Updating Elasticsearch cluster health")
-        self._latest_cluster_health = self._gateway.get_client().cluster.health()
+        self._latest_cluster_health = await self._gateway.get_client().cluster.health()
         self.current_value = self._latest_cluster_health["status"]

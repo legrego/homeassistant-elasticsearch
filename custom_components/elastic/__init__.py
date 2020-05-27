@@ -84,7 +84,6 @@ CONFIG_SCHEMA = vol.Schema({
 }, extra=vol.ALLOW_EXTRA)
 
 
-@asyncio.coroutine
 async def async_setup(hass, config):
     """Setup the Elasticsearch component."""
     conf = config[DATA_ELASTICSEARCH]
@@ -93,6 +92,7 @@ async def async_setup(hass, config):
 
     _LOGGER.debug("Creating ES gateway")
     gateway = ElasticsearchGateway(hass, conf)
+    await gateway.async_init()
     hass.data[DOMAIN]['gateway'] = gateway
 
     hass.data[DOMAIN][CONF_PUBLISH_ENABLED] = conf.get(CONF_PUBLISH_ENABLED)
@@ -101,8 +101,8 @@ async def async_setup(hass, config):
 
     if conf.get(CONF_PUBLISH_ENABLED):
         _LOGGER.debug("Creating ES index manager")
-        index_manager = IndexManager(conf, gateway)
-        index_manager.setup()
+        index_manager = IndexManager(hass, conf, gateway)
+        await index_manager.async_setup()
         hass.data[DOMAIN]['index_manager'] = index_manager
 
         _LOGGER.debug("Creating document publisher")
@@ -144,13 +144,23 @@ class ServiceHandler:  # pylint: disable=unused-variable
 
     def publish_events(self, service):
         """Publishes all queued events to Elasticsearch"""
-        self._publisher.do_publish()
+        self._publisher.async_do_publish()
 
 
 class ElasticsearchVersion:  # pylint: disable=unused-variable
     """Maintains information about the verion of Elasticsearch"""
-    def __init__(self, client):
-        version = client.info()["version"]
+    def __init__(self, hass, client):
+        self._client = client
+        self._hass = hass
+        self.version_number_str = None
+        self.major = None
+        self.minor = None
+        self.build_flavor = None
+
+
+    async def async_init(self):
+        """I/O bound init"""
+        version = (await self._client.info())["version"]
         version_number_parts = version["number"].split(".")
         self.version_number_str = version["number"]
         self.major = int(version_number_parts[0])
@@ -193,7 +203,14 @@ class ElasticsearchGateway:  # pylint: disable=unused-variable
 
         _LOGGER.debug("Creating Elasticsearch client for %s", self._url)
         self.client = self._create_es_client()
-        self.es_version = ElasticsearchVersion(self.client)
+        self.sync_client = self._create_es_client(sync=True)
+        self.es_version = ElasticsearchVersion(self._hass, self.client)
+
+
+    async def async_init(self):
+        """I/O bound init"""
+
+        await self.es_version.async_init()
 
         if not self.es_version.is_supported_version():
             _LOGGER.warning(
@@ -206,9 +223,14 @@ class ElasticsearchGateway:  # pylint: disable=unused-variable
         """Returns the underlying ES Client"""
         return self.client
 
-    def _create_es_client(self):
+    def get_sync_client(self):
+        """Returns the underlying ES Client"""
+        return self.sync_client
+
+    def _create_es_client(self, sync=False):
         """Constructs an instance of the Elasticsearch client"""
-        import elasticsearch
+        from elasticsearch_async import AsyncElasticsearch
+        from elasticsearch import Elasticsearch
 
         use_basic_auth = self._username is not None and self._password is not None
 
@@ -216,7 +238,13 @@ class ElasticsearchGateway:  # pylint: disable=unused-variable
 
         if use_basic_auth:
             auth = (self._username, self._password)
-            return elasticsearch.Elasticsearch(
+            return Elasticsearch(
+                [self._url],
+                http_auth=auth,
+                serializer=serializer,
+                verify_certs=self._verify_certs,
+                ca_certs=self._ca_certs
+            ) if sync else AsyncElasticsearch(
                 [self._url],
                 http_auth=auth,
                 serializer=serializer,
@@ -224,7 +252,12 @@ class ElasticsearchGateway:  # pylint: disable=unused-variable
                 ca_certs=self._ca_certs
             )
 
-        return elasticsearch.Elasticsearch(
+        return Elasticsearch(
+            [self._url],
+            serializer=serializer,
+            verify_certs=self._verify_certs,
+            ca_certs=self._ca_certs
+        ) if sync else AsyncElasticsearch(
             [self._url],
             serializer=serializer,
             verify_certs=self._verify_certs,
@@ -234,18 +267,14 @@ class ElasticsearchGateway:  # pylint: disable=unused-variable
 class IndexManager: # pylint: disable=unused-variable
     """ Index management facilities """
 
-    def __init__(self, config, gateway):
+    def __init__(self, hass, config, gateway):
         """ Initializes index management """
 
         self.index_alias = config.get(CONF_ALIAS) + VERSION_SUFFIX
 
+        self._hass = hass
+
         self._gateway = gateway
-        version = gateway.es_version
-        self._using_ilm = (
-            version.is_default_distribution()
-            and version.is_supported_version()
-            and config.get(CONF_ILM_ENABLED)
-        )
 
         self._ilm_policy_name = config.get(CONF_ILM_POLICY_NAME)
 
@@ -253,9 +282,18 @@ class IndexManager: # pylint: disable=unused-variable
 
         self._config = config
 
-    def setup(self):
+        self._using_ilm = True
+
+    async def async_setup(self):
         """ Performs setup for index management. """
-        self._create_index_template()
+        version = self._gateway.es_version
+        self._using_ilm = (
+            version.is_default_distribution()
+            and version.is_supported_version()
+            and self._config.get(CONF_ILM_ENABLED)
+        )
+
+        await self._create_index_template()
 
         if not self._gateway.es_version.is_default_distribution():
             _LOGGER.info("\
@@ -264,9 +302,9 @@ class IndexManager: # pylint: disable=unused-variable
                 Download the default distribution from https://elastic.co/downloads \
             ")
         if self._using_ilm:
-            self._create_ilm_policy(self._config)
+            await self._create_ilm_policy(self._config)
 
-    def _create_index_template(self):
+    async def _create_index_template(self):
         """
         Initializes the Elasticsearch cluster with an index template, initial index, and alias.
         """
@@ -279,7 +317,7 @@ class IndexManager: # pylint: disable=unused-variable
         with open(os.path.join(os.path.dirname(__file__), 'index_mapping.json')) as json_file:
             mapping = json.load(json_file)
 
-        if not client.indices.exists_template(name=INDEX_TEMPLATE_NAME):
+        if not await client.indices.exists_template(name=INDEX_TEMPLATE_NAME):
             _LOGGER.debug("Creating index template")
 
             mappings_body = mapping
@@ -309,17 +347,17 @@ class IndexManager: # pylint: disable=unused-variable
                 index_template["settings"]["index.lifecycle.rollover_alias"] = self.index_alias
 
             try:
-                client.indices.put_template(
+                await client.indices.put_template(
                     name=INDEX_TEMPLATE_NAME,
                     body=index_template
                 )
             except elasticsearch.ElasticsearchException as err:
                 _LOGGER.exception("Error creating index template: %s", err)
 
-        if not client.indices.exists_alias(name=self.index_alias):
+        if not await client.indices.exists_alias(name=self.index_alias):
             _LOGGER.debug("Creating initial index and alias")
             try:
-                client.indices.create(index=self._index_format + "-000001", body={
+                await client.indices.create(index=self._index_format + "-000001", body={
                     "aliases": {
                         self.index_alias: {
                             "is_write_index": True
@@ -332,15 +370,16 @@ class IndexManager: # pylint: disable=unused-variable
         elif self._using_ilm:
             _LOGGER.debug("Ensuring ILM Policy is attached to existing index")
             try:
-                client.indices.put_settings(index=self.index_alias, preserve_existing=True, body={
-                    "index.lifecycle.name": self._ilm_policy_name,
-                    "index.lifecycle.rollover_alias": self.index_alias
-                })
+                await client.indices.put_settings(
+                    index=self.index_alias, preserve_existing=True, body={
+                        "index.lifecycle.name": self._ilm_policy_name,
+                        "index.lifecycle.rollover_alias": self.index_alias
+                    })
             except elasticsearch.ElasticsearchException as err:
                 _LOGGER.exception(
                     "Error updating index ILM settings: %s", err)
 
-    def _create_ilm_policy(self, config):
+    async def _create_ilm_policy(self, config):
         """
         Creates the index lifecycle management policy.
         """
@@ -356,7 +395,7 @@ class IndexManager: # pylint: disable=unused-variable
         url = '/_ilm/policy/{}'.format(encoded_policy_name)
 
         try:
-            existing_policy = client.transport.perform_request('GET', url)
+            existing_policy = await client.transport.perform_request('GET', url)
         except elasticsearch.TransportError as err:
             if err.status_code == 404:
                 existing_policy = None
@@ -396,7 +435,7 @@ class IndexManager: # pylint: disable=unused-variable
                 "Creating ILM Policy '%s'", self._ilm_policy_name
             )
 
-        client.transport.perform_request('PUT', url, body=policy)
+        await client.transport.perform_request('PUT', url, body=policy)
 
 class DocumentPublisher:  # pylint: disable=unused-variable
     """Publishes documents to Elasticsearch"""
@@ -472,10 +511,9 @@ class DocumentPublisher:  # pylint: disable=unused-variable
 
         self.publish_queue.put(entry)
 
-    def do_publish(self):
+    async def async_do_publish(self):
         "Publishes all queued documents to the Elasticsearch cluster"
         from elasticsearch import ElasticsearchException
-        from elasticsearch.helpers import bulk
 
         if self.publish_queue.empty():
             _LOGGER.debug("Skipping publish because queue is empty")
@@ -509,14 +547,28 @@ class DocumentPublisher:  # pylint: disable=unused-variable
         _LOGGER.info("Publishing %i documents to Elasticsearch", len(actions))
 
         try:
-            bulk_response = bulk(self._gateway.get_client(), actions)
+            await self._hass.async_add_executor_job(self.bulk_sync_wrapper, actions)
+        except ElasticsearchException as err:
+            _LOGGER.exception(
+                "Error publishing documents to Elasticsearch: %s", err)
+        return
+
+    def bulk_sync_wrapper(self, actions):
+        """
+        Wrapper to publish events.
+        Workaround for elasticsearch_async not supporting bulk operations
+        """
+        from elasticsearch import ElasticsearchException
+        from elasticsearch.helpers import bulk
+
+        try:
+            bulk_response = bulk(self._gateway.get_sync_client(), actions)
             _LOGGER.debug("Elasticsearch bulk response: %s",
                           str(bulk_response))
             _LOGGER.info("Publish Succeeded")
         except ElasticsearchException as err:
             _LOGGER.exception(
                 "Error publishing documents to Elasticsearch: %s", err)
-        return
 
     def _state_to_bulk_action(self, state, time):
         """Creates a bulk action from the given state object"""
@@ -604,19 +656,18 @@ class DocumentPublisher:  # pylint: disable=unused-variable
 
         return True
 
-    @asyncio.coroutine
-    def _publish_queue_timer(self):
+    async def _publish_queue_timer(self):
         """The publish queue timer"""
         _LOGGER.debug("Starting publish timer: executes every %i seconds.",
                       self._publish_frequency)
         while True:
             try:
                 if self._should_publish():
-                    self.do_publish()
+                    await self.async_do_publish()
                 else:
                     _LOGGER.debug("Nothing to publish")
             finally:
-                yield from asyncio.sleep(self._publish_frequency)
+                await asyncio.sleep(self._publish_frequency)
 
 
 def get_serializer():
