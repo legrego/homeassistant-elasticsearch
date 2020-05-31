@@ -110,9 +110,6 @@ async def async_setup(hass, config):
         publisher = DocumentPublisher(conf, gateway, index_manager, hass, system_info)
         hass.data[DOMAIN]['publisher'] = publisher
 
-        _LOGGER.debug("Creating service handler")
-        service_handler = ServiceHandler(publisher)
-
         def elastic_event_listener(event):
             """Listen for new messages on the bus and queue them for send."""
             state = event.data.get('new_state')
@@ -125,26 +122,11 @@ async def async_setup(hass, config):
 
         hass.bus.async_listen(EVENT_STATE_CHANGED, elastic_event_listener)
 
-        hass.services.async_register(
-            DOMAIN, 'publish_events', service_handler.publish_events)
-
     for component in ELASTIC_COMPONENTS:
         discovery.load_platform(hass, component, DOMAIN, {}, config)
 
     _LOGGER.info("Elastic component fully initialized")
     return True
-
-
-class ServiceHandler:  # pylint: disable=unused-variable
-    """Handles calls to exposed services"""
-
-    def __init__(self, publisher):
-        """Initializes the service handler"""
-        self._publisher = publisher
-
-    def publish_events(self, service):
-        """Publishes all queued events to Elasticsearch"""
-        self._publisher.async_do_publish()
 
 
 class ElasticsearchVersion:  # pylint: disable=unused-variable
