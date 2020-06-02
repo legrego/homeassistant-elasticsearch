@@ -7,7 +7,7 @@ Publish HASS events to your [Elasticsearch](https://elastic.co) cluster!
 
 ## Features
 * Effeciently publishes Home-Assistant events to Elasticsearch using the Bulk API
-* Automatically maintains Indexes and Index Templates using the Rollover API
+* Automatically maintains Indexes and Index Templates using Index Lifecycle Management ("ILM")
 * Supports [X-Pack Security](https://www.elastic.co/products/x-pack/security) via optional username and password
 * Tracks the Elasticsearch cluster health in the `sensor.es_cluster_health` sensor
 * Exclude specific entities or groups from publishing
@@ -37,6 +37,9 @@ Example: `/home/pi/.homeassistant` and `/home/pi/.homeassistant/custom_component
 |-- custom_components/
 |   |-- elastic/
 |       |-- __init__.py
+|       |-- const.py
+|       |-- es_doc_publisher.py
+|       |-- ...etc...
 |       |-- index_mapping.json
 |       |-- sensor.py
 
@@ -71,7 +74,7 @@ Actual names use the [Rollover API](https://www.elastic.co/guide/en/elasticsearc
 - **only_publish_changed** (*default:* `false`): Specifies that only entities that underwent a state change should be published. When `false`, all entity states are published.
 - **ilm_enabled** (*default:* `true`): Enables [Index Lifecycle Management](https://www.elastic.co/guide/en/elasticsearch/reference/current/index-lifecycle-management.html)
 - **ilm_policy_name** (*default:* `home-assistant`): The ILM policy name.
-- **ilm_hot_max_size** (*default:* `30gb`): Specifies the `max_size` condition of the ILM rollover action.
+- **ilm_max_size** (*default:* `30gb`): Specifies the `max_size` condition of the ILM rollover action.
 - **ilm_delete_after** (*default:* `365d`): Specifies how long to retain documents after rolling over.
 
 

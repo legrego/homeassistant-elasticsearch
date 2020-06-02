@@ -7,9 +7,9 @@ import logging
 
 from homeassistant.components.sensor import ENTITY_ID_FORMAT
 from homeassistant.helpers.entity import Entity
-from . import CONF_HEALTH_SENSOR_ENABLED, CONF_PUBLISH_ENABLED
+from .const import CONF_HEALTH_SENSOR_ENABLED, CONF_PUBLISH_ENABLED
 
-_LOGGER = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 DEPENDENCIES = ['elastic']
 
@@ -24,24 +24,24 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
     devices = []
 
     if hass.data[ELASTIC_DOMAIN][CONF_PUBLISH_ENABLED]:
-        _LOGGER.info("Initializing cluster health sensor")
+        LOGGER.info("Initializing cluster health sensor")
         gateway = hass.data[ELASTIC_DOMAIN]['gateway']
         devices.append(EsClusterHealthSensor(gateway))
     else:
-        _LOGGER.info("Cluster health sensor not enabled")
+        LOGGER.info("Cluster health sensor not enabled")
 
     if hass.data[ELASTIC_DOMAIN][CONF_HEALTH_SENSOR_ENABLED]:
-        _LOGGER.info("Initializing publish queue sensor")
+        LOGGER.info("Initializing publish queue sensor")
         publisher = hass.data[ELASTIC_DOMAIN]['publisher']
         devices.append(EsPublishQueueSensor(publisher))
     else:
-        _LOGGER.info("Publish queue sensor not enabled")
+        LOGGER.info("Publish queue sensor not enabled")
 
     if devices:
-        _LOGGER.debug(str.format("Adding {} devices", len(devices)))
+        LOGGER.debug(str.format("Adding {} devices", len(devices)))
         add_devices(devices, True)
     else:
-        _LOGGER.debug("Not registering any devices")
+        LOGGER.debug("Not registering any devices")
 
 class EsPublishQueueSensor(Entity):
     """Representation of the publish queue sensor"""
@@ -63,7 +63,7 @@ class EsPublishQueueSensor(Entity):
 
     def update(self):
         """Update the state from the sensor."""
-        _LOGGER.debug("Updating Elasticsearch queue stats")
+        LOGGER.debug("Updating Elasticsearch queue stats")
         self.current_value = self._publisher.queue_size()
         self.attr = {
             "last_publish_time": self._publisher.last_publish_time()
@@ -90,8 +90,8 @@ class EsClusterHealthSensor(Entity):
         """Return the state attributes"""
         return self._latest_cluster_health
 
-    def update(self):
+    async def async_update(self):
         """Update the state from the sensor."""
-        _LOGGER.debug("Updating Elasticsearch cluster health")
-        self._latest_cluster_health = self._gateway.get_client().cluster.health()
+        LOGGER.debug("Updating Elasticsearch cluster health")
+        self._latest_cluster_health = await self._gateway.get_client().cluster.health()
         self.current_value = self._latest_cluster_health["status"]

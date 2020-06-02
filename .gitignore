@@ -101,4 +101,5 @@ ENV/
 .mypy_cache/
 
 .idea/workspace.xml
+.vscode/
 .pytest_cache

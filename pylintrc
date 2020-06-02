@@ -1,5 +1,6 @@
 [MASTER]
 reports=no
+init-hook='import sys; sys.path.append("/custom_components/elastic")'
 
 # Reasons disabled:
 # locally-disabled - it spams too much
@@ -24,6 +25,7 @@ disable=
   cyclic-import,
   duplicate-code,
   global-statement,
+  import-outside-toplevel,
   inconsistent-return-statements,
   locally-disabled,
   not-context-manager,
