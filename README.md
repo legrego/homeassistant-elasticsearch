@@ -1,5 +1,5 @@
 Elasticsearch Component for Home-Assistant
-[![Build Status](https://travis-ci.org/legrego/homeassistant-elasticsearch.svg?branch=master)](https://travis-ci.org/legrego/homeassistant-elasticsearch)
+![homeassistant-elasticsearch component](https://github.com/legrego/homeassistant-elasticsearch/workflows/homeassistant-elasticsearch%20component/badge.svg)
 [![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg)](https://github.com/custom-components/hacs)
 =====
 
