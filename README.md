@@ -37,6 +37,9 @@ Example: `/home/pi/.homeassistant` and `/home/pi/.homeassistant/custom_component
 |-- custom_components/
 |   |-- elastic/
 |       |-- __init__.py
+|       |-- const.py
+|       |-- es_doc_publisher.py
+|       |-- ...etc...
 |       |-- index_mapping.json
 |       |-- sensor.py
 
