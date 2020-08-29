@@ -1,5 +1,6 @@
 """Gets the custom JSON serializer"""
 
+
 def get_serializer():
     """Gets the custom JSON serializer"""
     from elasticsearch.serializer import JSONSerializer

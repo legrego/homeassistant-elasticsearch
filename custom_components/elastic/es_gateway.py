@@ -9,6 +9,7 @@ from .es_version import ElasticsearchVersion
 from .es_serializer import get_serializer
 from .logger import LOGGER
 
+
 class ElasticsearchGateway:
     """Encapsulates Elasticsearch operations"""
 

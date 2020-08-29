@@ -1,5 +1,6 @@
 """Maintains information about the verion of Elasticsearch"""
 
+
 class ElasticsearchVersion:
     """Maintains information about the verion of Elasticsearch"""
 

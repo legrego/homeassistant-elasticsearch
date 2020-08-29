@@ -1,7 +1,6 @@
 """
 Support for sending event data to an Elasticsearch cluster
 """
-import logging
 import voluptuous as vol
 
 from homeassistant.const import (
@@ -15,9 +14,7 @@ from homeassistant.helpers import (
 
 from .es_doc_publisher import DocumentPublisher
 from .es_index_manager import IndexManager
-from .es_version import ElasticsearchVersion
 from .es_gateway import ElasticsearchGateway
-from .es_serializer import get_serializer
 
 from .const import (
     DOMAIN, CONF_CLOUD_ID, CONF_PUBLISH_ENABLED, CONF_HEALTH_SENSOR_ENABLED,

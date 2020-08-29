@@ -43,6 +43,7 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
     else:
         LOGGER.debug("Not registering any devices")
 
+
 class EsPublishQueueSensor(Entity):
     """Representation of the publish queue sensor"""
     def __init__(self, publisher):
@@ -68,6 +69,7 @@ class EsPublishQueueSensor(Entity):
         self.attr = {
             "last_publish_time": self._publisher.last_publish_time()
         }
+
 
 class EsClusterHealthSensor(Entity):
     """Representation of the Cluster Health sensor."""
