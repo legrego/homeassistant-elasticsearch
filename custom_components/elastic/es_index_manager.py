@@ -12,6 +12,7 @@ from .const import (
 
 from .logger import LOGGER
 
+
 class IndexManager:
     """ Index management facilities """
 

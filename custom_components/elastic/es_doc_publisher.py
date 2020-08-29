@@ -17,6 +17,7 @@ from .logger import LOGGER
 
 from .es_serializer import get_serializer
 
+
 class DocumentPublisher:
     """Publishes documents to Elasticsearch"""
 
