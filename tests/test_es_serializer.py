@@ -4,6 +4,7 @@ import json
 from custom_components.elastic.es_serializer import get_serializer
 from .sample_data import create_sample_state
 
+
 def test_simple_entry():
     """ Ensure that the serialier can handle a basic state change event. """
 
@@ -16,6 +17,7 @@ def test_simple_entry():
     rehydrated_state = json.loads(serialized_state)
 
     assert state == rehydrated_state
+
 
 def test_entry_with_set():
     """ Ensure that the serializer can handle a state change event which includes a set. """
@@ -31,7 +33,6 @@ def test_entry_with_set():
     serialized_state = serializer.dumps(state)
 
     rehydrated_state = json.loads(serialized_state)
-
 
     assert isinstance(rehydrated_state['attributes']['set_key'], list)
     rehydrated_state['attributes']['set_key'].sort()
