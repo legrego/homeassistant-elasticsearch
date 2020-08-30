@@ -7,7 +7,6 @@
     "@legrego"
   ],
   "requirements": [
-    "elasticsearch==6.3.1",
-    "elasticsearch_async==6.2.0"
+    "elasticsearch==7.9.1"
   ]
 }
