@@ -17,7 +17,7 @@ from .es_index_manager import IndexManager
 from .es_gateway import ElasticsearchGateway
 
 from .const import (
-    DOMAIN, CONF_CLOUD_ID, CONF_PUBLISH_ENABLED, CONF_HEALTH_SENSOR_ENABLED,
+    DOMAIN, CONF_PUBLISH_ENABLED, CONF_HEALTH_SENSOR_ENABLED,
     CONF_INDEX_FORMAT, CONF_PUBLISH_FREQUENCY, ONE_MINUTE, CONF_ONLY_PUBLISH_CHANGED,
     CONF_ILM_ENABLED, CONF_ILM_POLICY_NAME, CONF_ILM_MAX_SIZE, CONF_ILM_DELETE_AFTER,
     CONF_SSL_CA_PATH, CONF_TAGS
@@ -30,33 +30,29 @@ ELASTIC_COMPONENTS = [
 ]
 
 CONFIG_SCHEMA = vol.Schema({
-    DOMAIN: vol.All(
-        vol.Schema({
-            vol.Exclusive(CONF_URL, 'url or cloud_id'): cv.url,
-            vol.Exclusive(CONF_CLOUD_ID, 'url or cloud_id'): cv.string,
-            vol.Optional(CONF_USERNAME): cv.string,
-            vol.Optional(CONF_PASSWORD): cv.string,
-            vol.Optional(CONF_PUBLISH_ENABLED, default=True): cv.boolean,
-            vol.Optional(CONF_HEALTH_SENSOR_ENABLED, default=True): cv.boolean,
-            vol.Optional(CONF_PASSWORD): cv.string,
-            vol.Optional(CONF_INDEX_FORMAT, default='hass-events'): cv.string,
-            vol.Optional(CONF_ALIAS, default='active-hass-index'): cv.string,
-            vol.Optional(CONF_PUBLISH_FREQUENCY, default=ONE_MINUTE): cv.positive_int,
-            vol.Optional(CONF_ONLY_PUBLISH_CHANGED, default=False): cv.boolean,
-            vol.Optional(CONF_ILM_ENABLED, default=True): cv.boolean,
-            vol.Optional(CONF_ILM_POLICY_NAME, default="home-assistant"): cv.string,
-            vol.Optional(CONF_ILM_MAX_SIZE, default='30gb'): cv.string,
-            vol.Optional(CONF_ILM_DELETE_AFTER, default='365d'): cv.string,
-            vol.Optional(CONF_VERIFY_SSL, default=True): cv.boolean,
-            vol.Optional(CONF_SSL_CA_PATH): cv.string,
-            vol.Optional(CONF_TAGS, default=['hass']): vol.All(cv.ensure_list, [cv.string]),
-            vol.Optional(CONF_EXCLUDE, default={}): vol.Schema({
-                vol.Optional(CONF_DOMAINS, default=[]): vol.All(cv.ensure_list, [cv.string]),
-                vol.Optional(CONF_ENTITIES, default=[]): cv.entity_ids
-            })
-        }),
-        cv.has_at_least_one_key(CONF_URL, CONF_CLOUD_ID),
-    )
+    DOMAIN: vol.Schema({
+        vol.Required(CONF_URL): cv.url,
+        vol.Optional(CONF_USERNAME): cv.string,
+        vol.Optional(CONF_PASSWORD): cv.string,
+        vol.Optional(CONF_PUBLISH_ENABLED, default=True): cv.boolean,
+        vol.Optional(CONF_HEALTH_SENSOR_ENABLED, default=True): cv.boolean,
+        vol.Optional(CONF_PASSWORD): cv.string,
+        vol.Optional(CONF_INDEX_FORMAT, default='hass-events'): cv.string,
+        vol.Optional(CONF_ALIAS, default='active-hass-index'): cv.string,
+        vol.Optional(CONF_PUBLISH_FREQUENCY, default=ONE_MINUTE): cv.positive_int,
+        vol.Optional(CONF_ONLY_PUBLISH_CHANGED, default=False): cv.boolean,
+        vol.Optional(CONF_ILM_ENABLED, default=True): cv.boolean,
+        vol.Optional(CONF_ILM_POLICY_NAME, default="home-assistant"): cv.string,
+        vol.Optional(CONF_ILM_MAX_SIZE, default='30gb'): cv.string,
+        vol.Optional(CONF_ILM_DELETE_AFTER, default='365d'): cv.string,
+        vol.Optional(CONF_VERIFY_SSL, default=True): cv.boolean,
+        vol.Optional(CONF_SSL_CA_PATH): cv.string,
+        vol.Optional(CONF_TAGS, default=['hass']): vol.All(cv.ensure_list, [cv.string]),
+        vol.Optional(CONF_EXCLUDE, default={}): vol.Schema({
+            vol.Optional(CONF_DOMAINS, default=[]): vol.All(cv.ensure_list, [cv.string]),
+            vol.Optional(CONF_ENTITIES, default=[]): cv.entity_ids
+        })
+    }),
 }, extra=vol.ALLOW_EXTRA)
 
 
