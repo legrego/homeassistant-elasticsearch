@@ -5,7 +5,7 @@ import voluptuous as vol
 
 from homeassistant.const import (
     CONF_URL, CONF_USERNAME, CONF_PASSWORD, CONF_ALIAS, EVENT_STATE_CHANGED,
-    CONF_EXCLUDE, CONF_DOMAINS, CONF_ENTITIES, CONF_VERIFY_SSL
+    CONF_EXCLUDE, CONF_DOMAINS, CONF_ENTITIES, CONF_VERIFY_SSL, CONF_TIMEOUT
 )
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers import (
@@ -34,6 +34,7 @@ CONFIG_SCHEMA = vol.Schema({
         vol.Required(CONF_URL): cv.url,
         vol.Optional(CONF_USERNAME): cv.string,
         vol.Optional(CONF_PASSWORD): cv.string,
+        vol.Optional(CONF_TIMEOUT, default=30): cv.positive_int,
         vol.Optional(CONF_PUBLISH_ENABLED, default=True): cv.boolean,
         vol.Optional(CONF_HEALTH_SENSOR_ENABLED, default=True): cv.boolean,
         vol.Optional(CONF_PASSWORD): cv.string,

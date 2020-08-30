@@ -1,6 +1,6 @@
 """Encapsulates Elasticsearch operations"""
 from homeassistant.const import (
-    CONF_URL, CONF_USERNAME, CONF_PASSWORD, CONF_VERIFY_SSL
+    CONF_URL, CONF_USERNAME, CONF_PASSWORD, CONF_VERIFY_SSL, CONF_TIMEOUT
 )
 from .const import (CONF_SSL_CA_PATH)
 from .es_version import ElasticsearchVersion
@@ -15,6 +15,7 @@ class ElasticsearchGateway:
         """Initialize the gateway"""
         self._hass = hass
         self._url = config.get(CONF_URL)
+        self._timeout = config.get(CONF_TIMEOUT)
         self._username = config.get(CONF_USERNAME)
         self._password = config.get(CONF_PASSWORD)
         self._verify_certs = config.get(CONF_VERIFY_SSL)
@@ -60,23 +61,27 @@ class ElasticsearchGateway:
                 http_auth=auth,
                 serializer=serializer,
                 verify_certs=self._verify_certs,
-                ca_certs=self._ca_certs
+                ca_certs=self._ca_certs,
+                timeout=self._timeout
             ) if sync else AsyncElasticsearch(
                 [self._url],
                 http_auth=auth,
                 serializer=serializer,
                 verify_certs=self._verify_certs,
-                ca_certs=self._ca_certs
+                ca_certs=self._ca_certs,
+                timeout=self._timeout
             )
 
         return Elasticsearch(
             [self._url],
             serializer=serializer,
             verify_certs=self._verify_certs,
-            ca_certs=self._ca_certs
+            ca_certs=self._ca_certs,
+            timeout=self._timeout
         ) if sync else AsyncElasticsearch(
             [self._url],
             serializer=serializer,
             verify_certs=self._verify_certs,
-            ca_certs=self._ca_certs
+            ca_certs=self._ca_certs,
+            timeout=self._timeout
         )

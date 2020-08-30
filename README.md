@@ -59,6 +59,7 @@ All variables are optional unless marked required.
 - **url** (*Required*): The URL of your Elasticsearch cluster
 - **username**: If your cluster is protected with Basic Authentication via [X-Pack Security](https://www.elastic.co/products/x-pack/security), then provide a username here
 - **password**: If your cluster is protected with Basic Authentication via [X-Pack Security](https://www.elastic.co/products/x-pack/security), then provide a password here
+- **timeout** (*default:* `30`): Elasticsearch connection timeout (in seconds) for all outbound requests.
 - **exclude**:
     - **domains**: Specify an optional array of domains to exclude from publishing
     - **entities**: Specify an optional array of entity ids to exclude from publishing
