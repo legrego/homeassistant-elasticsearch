@@ -1,5 +1,4 @@
-elasticsearch>=6.2.0
-elasticsearch_async>=6.2.0
+elasticsearch>=7.9.1
 flake8>=3.8.3
 pytest==3.5.1
 homeassistant>=0.69.1
