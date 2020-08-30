@@ -12,7 +12,6 @@ CONF_ILM_POLICY_NAME = 'ilm_policy_name'
 CONF_ILM_MAX_SIZE = 'ilm_max_size'
 CONF_ILM_DELETE_AFTER = 'ilm_delete_after'
 CONF_SSL_CA_PATH = 'ssl_ca_path'
-CONF_CLOUD_ID = 'cloud_id'
 
 CONF_TAGS = 'tags'
 
