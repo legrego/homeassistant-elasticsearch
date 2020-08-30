@@ -47,7 +47,7 @@ CONFIG_SCHEMA = vol.Schema({
             vol.Optional(CONF_ILM_POLICY_NAME, default="home-assistant"): cv.string,
             vol.Optional(CONF_ILM_MAX_SIZE, default='30gb'): cv.string,
             vol.Optional(CONF_ILM_DELETE_AFTER, default='365d'): cv.string,
-            vol.Optional(CONF_VERIFY_SSL): cv.boolean,
+            vol.Optional(CONF_VERIFY_SSL, default=True): cv.boolean,
             vol.Optional(CONF_SSL_CA_PATH): cv.string,
             vol.Optional(CONF_TAGS, default=['hass']): vol.All(cv.ensure_list, [cv.string]),
             vol.Optional(CONF_EXCLUDE, default={}): vol.Schema({
