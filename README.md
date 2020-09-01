@@ -12,7 +12,7 @@ Publish HASS events to your [Elasticsearch](https://elastic.co) cluster!
 * Tracks the Elasticsearch cluster health in the `sensor.es_cluster_health` sensor
 * Exclude specific entities or groups from publishing
 
-## Compatability
+## Compatibility
 * Elasticsearch 7.x (Self or [Cloud](https://www.elastic.co/cloud) hosted), with or without [X-Pack](https://www.elastic.co/products/x-pack).
 * [Elastic Common Schema version 1.0.0](https://github.com/elastic/ecs/releases/tag/v1.0.0)
 * [Home Assistant Community Store](https://github.com/custom-components/hacs)
