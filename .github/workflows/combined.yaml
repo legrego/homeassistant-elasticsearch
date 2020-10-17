@@ -23,17 +23,19 @@ jobs:
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements.txt flake8 pytest
       - uses: hacs/integration/action@main
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CATEGORY: integration
+      - name: Test with pytest
+        run: |
+          pytest
+      - name: Test with flake8
+        run: |
+          flake8 .
       - uses: KTibow/ha-blueprint@stable
         name: CI
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FORMAT_CODE: DISABLED
-      - name: Test with pytest
-        run: |
-          pip install pytest
-          pytest
