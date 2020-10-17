@@ -23,7 +23,7 @@ jobs:
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip
-          pip install -r requirements.txt flake8 pytest
+          pip install -U -r requirements.txt pytest
       - uses: hacs/integration/action@main
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
