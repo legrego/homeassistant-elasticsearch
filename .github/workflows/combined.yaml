@@ -1,4 +1,4 @@
-name: "Validation And Formatting"
+name: "Validation And Testing"
 on:
   push:
   pull_request:
@@ -32,6 +32,7 @@ jobs:
         name: CI
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FORMAT_CODE: DISABLED
       - name: Test with pytest
         run: |
           pip install pytest
