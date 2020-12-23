@@ -1,0 +1,58 @@
+{
+    "config": {
+        "abort": {
+            "reauth_successful": "Re-authentication was successful",
+            "single_instance_allowed": "Already configured. Only a single configuration possible."
+        },
+        "error": {
+            "cannot_connect": "Failed to connect",
+            "invalid_auth": "Invalid username or password.",
+            "insufficient_privileges": "Insufficient privileges for specified user.",
+            "missing_credentials": "This cluster requires authentication. Please provide a username and password.",
+            "untrusted_connection": "Elasticsearch's server certificate could not be verified. Either disable TLS verification, or specify a custom CA path below."
+        },
+        "step": {
+            "user": {
+                "data": {
+                    "url": "URL",
+                    "password": "Password",
+                    "username": "Username"
+                },
+                "title": "Fill in your Elasticsearch login information"
+            },
+            "tls": {
+                "data": {
+                    "verify_ssl": "Verify TLS certificate (recommended)",
+                    "ssl_ca_path": "Fully qualified path to custom certificate authority"
+                }
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "publish_options": {
+                "title": "Elastic",
+                "description": "Configure publish options",
+                "data": {
+                    "publish_enabled": "Publish events to Elasticsearch",
+                    "publish_frequency": "How frequently events are published, in seconds",
+                    "only_publish_changed": "Only publish changed entity states. When unchecked, all entity states will be published.",
+                    "excluded_domains": "Domains to exclude from publishing",
+                    "excluded_entities": "Entities to exclude from publishing",
+                    "index_format": "The index name prefix to publish events to",
+                    "alias": "The index alias that Elasticsearch should write events to"
+                }
+            },
+            "ilm_options": {
+                "title": "Elastic",
+                "description": "Configure ILM options",
+                "data": {
+                    "ilm_enabled": "Enable ILM",
+                    "ilm_policy_name": "ILM policy name",
+                    "ilm_max_size": "Max index size",
+                    "ilm_delete_after": "Delete indices after"
+                }
+            }
+        }
+    }
+}

@@ -5,7 +5,7 @@ logger:
   logs:
     custom_components.elastic: debug
 
-elastic:
-  url: http://localhost:9200
+# elastic:
+#   url: http://localhost:9200
 
 mailbox:

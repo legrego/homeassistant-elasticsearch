@@ -7,25 +7,36 @@
 		"9123:8123",
 		"9201:9200"
 	],
-	"postCreateCommand": "container install",
+	"postCreateCommand": "container install && pip3 install -r requirements.txt",
 	"extensions": [
 		"ms-python.python",
 		"github.vscode-pull-request-github",
-		"ryanluker.vscode-coverage-gutters",
-		"ms-python.vscode-pylance"
+		"ms-python.vscode-pylance",
+		"visualstudioexptteam.vscodeintellicode",
+		"redhat.vscode-yaml",
+		"esbenp.prettier-vscode"
 	],
 	"settings": {
-		"files.eol": "\n",
-		"editor.tabSize": 4,
-		"terminal.integrated.shell.linux": "/bin/bash",
 		"python.pythonPath": "/usr/bin/python3",
-		"python.analysis.autoSearchPaths": false,
 		"python.linting.pylintEnabled": true,
 		"python.linting.enabled": true,
 		"python.formatting.provider": "black",
+		"python.testing.pytestArgs": [
+			"--no-cov"
+		],
+		"python.testing.pytestEnabled": true,
 		"editor.formatOnPaste": false,
 		"editor.formatOnSave": true,
 		"editor.formatOnType": true,
-		"files.trimTrailingWhitespace": true
+		"files.trimTrailingWhitespace": true,
+		"terminal.integrated.shell.linux": "/bin/bash",
+		"yaml.customTags": [
+			"!placeholder scalar",
+			"!secret scalar",
+			"!include_dir_named scalar",
+			"!include_dir_list scalar",
+			"!include_dir_merge_list scalar",
+			"!include_dir_merge_named scalar"
+		]
 	}
 }

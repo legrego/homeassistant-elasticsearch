@@ -1,0 +1,15 @@
+#
+# Path to directory where to store the data (separate multiple locations by comma):
+#
+path.data: /var/lib/elasticsearch
+#
+# Path to log files:
+#
+path.logs: /var/log/elasticsearch
+
+
+cluster.name: home-assistant-cluster
+
+xpack.security.http.ssl.enabled: true
+xpack.security.http.ssl.keystore.path: certs/elasticsearch/http.p12
+xpack.security.enabled: true
