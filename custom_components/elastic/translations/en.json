@@ -16,7 +16,8 @@
                 "data": {
                     "url": "URL",
                     "password": "Password",
-                    "username": "Username"
+                    "username": "Username",
+                    "timeout": "Connection timeout in seconds"
                 },
                 "title": "Fill in your Elasticsearch login information"
             },

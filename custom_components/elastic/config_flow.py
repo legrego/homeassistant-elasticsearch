@@ -12,6 +12,7 @@ from homeassistant.const import (
     CONF_URL,
     CONF_USERNAME,
     CONF_VERIFY_SSL,
+    CONF_TIMEOUT,
 )
 from homeassistant.core import callback
 
@@ -41,15 +42,7 @@ from .logger import LOGGER
 
 DEFAULT_URL = "http://localhost:9200"
 DEFAULT_VERIFY_SSL = True
-
-# TODO: where is this called from? Do I need an equivilent?
-# @callback
-# def get_controller_id_from_config_entry(config_entry):
-#     """Return controller with a matching bridge id."""
-#     return CONTROLLER_ID.format(
-#         host=config_entry.data[CONF_CONTROLLER][CONF_HOST],
-#         site=config_entry.data[CONF_CONTROLLER][CONF_SITE_ID],
-#     )
+DEFAULT_TIMEOUT_SECONDS = 30
 
 
 class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
@@ -66,16 +59,31 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
     def __init__(self):
         """Initialize the Elastic flow."""
-        self.config = None
-        self.setup_schema = {
-            vol.Required(CONF_URL, default="http://localhost:9200"): str,
+        self.config = {}
+
+        self.tls_schema = {
+            vol.Optional(CONF_VERIFY_SSL, default=DEFAULT_VERIFY_SSL): bool,
+            vol.Optional(CONF_SSL_CA_PATH, default=""): str,
+        }
+
+    def build_setup_schema(self):
+        schema = {
+            vol.Required(
+                CONF_URL, default=self.config.get(CONF_URL, "http://localhost:9200")
+            ): str,
             vol.Optional(CONF_USERNAME): str,
             vol.Optional(CONF_PASSWORD): str,
         }
-        self.tls_schema = {
-            vol.Optional(CONF_VERIFY_SSL, default=True): bool,
-            vol.Optional(CONF_SSL_CA_PATH, default=""): str,
-        }
+
+        if self.show_advanced_options:
+            schema[
+                vol.Required(
+                    CONF_TIMEOUT,
+                    default=self.config.get(CONF_TIMEOUT, DEFAULT_TIMEOUT_SECONDS),
+                )
+            ] = int
+
+        return schema
 
     async def async_step_user(self, user_input=None):
         """Handle a flow initialized by the user."""
@@ -85,14 +93,15 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         if user_input is None:
             return self.async_show_form(
                 step_id="user",
-                data_schema=vol.Schema(self.setup_schema),
+                data_schema=vol.Schema(self.build_setup_schema()),
             )
 
         self.config = {
             CONF_URL: user_input[CONF_URL],
             CONF_USERNAME: user_input.get(CONF_USERNAME),
             CONF_PASSWORD: user_input.get(CONF_PASSWORD),
-            CONF_VERIFY_SSL: True,
+            CONF_TIMEOUT: user_input.get(CONF_TIMEOUT, DEFAULT_TIMEOUT_SECONDS),
+            CONF_VERIFY_SSL: DEFAULT_VERIFY_SSL,
             CONF_SSL_CA_PATH: None,
         }
 
@@ -151,7 +160,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         if errors:
             return self.async_show_form(
                 step_id="user",
-                data_schema=vol.Schema(self.setup_schema),
+                data_schema=vol.Schema(self.build_setup_schema()),
                 errors=errors,
             )
 
