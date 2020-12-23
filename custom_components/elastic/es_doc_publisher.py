@@ -6,8 +6,6 @@ from datetime import datetime
 import math
 from pytz import utc
 from homeassistant.const import (
-    CONF_DOMAINS,
-    CONF_ENTITIES,
     EVENT_STATE_CHANGED,
 )
 from homeassistant.helpers import state as state_helper

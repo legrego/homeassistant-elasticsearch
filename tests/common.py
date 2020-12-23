@@ -1,7 +1,6 @@
 import asyncio
 import functools as ft
 import json
-import os
 import uuid
 from contextlib import contextmanager
 

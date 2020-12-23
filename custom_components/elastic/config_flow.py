@@ -2,7 +2,6 @@
 
 import os
 import voluptuous as vol
-import warnings
 
 from homeassistant import config_entries
 from homeassistant.const import (
@@ -14,14 +13,13 @@ from homeassistant.const import (
 )
 
 from homeassistant.core import callback
-from typing import Set, List
+from typing import List
 
 import homeassistant.helpers.config_validation as cv
 
 from .const import (
     DOMAIN as ELASTIC_DOMAIN,
     CONF_PUBLISH_ENABLED,
-    CONF_HEALTH_SENSOR_ENABLED,
     CONF_INDEX_FORMAT,
     CONF_PUBLISH_FREQUENCY,
     CONF_EXCLUDED_DOMAINS,
@@ -33,7 +31,6 @@ from .const import (
     CONF_ILM_MAX_SIZE,
     CONF_ILM_DELETE_AFTER,
     CONF_SSL_CA_PATH,
-    CONF_TAGS,
 )
 from .es_gateway import ElasticsearchGateway
 from .errors import (

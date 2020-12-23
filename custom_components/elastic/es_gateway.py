@@ -17,9 +17,6 @@ from .errors import (
     ElasticException,
     UntrustedCertificate,
 )
-from http.client import RemoteDisconnected
-import ssl
-import urllib3
 
 
 class ElasticsearchGateway:

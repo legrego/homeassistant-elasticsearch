@@ -10,7 +10,6 @@ from homeassistant.const import (
     CONF_USERNAME,
     CONF_PASSWORD,
     CONF_ALIAS,
-    EVENT_STATE_CHANGED,
     CONF_EXCLUDE,
     CONF_DOMAINS,
     CONF_ENTITIES,
@@ -18,7 +17,6 @@ from homeassistant.const import (
     CONF_TIMEOUT,
 )
 import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers import discovery
 
 from .es_doc_publisher import DocumentPublisher
 from .es_index_manager import IndexManager
