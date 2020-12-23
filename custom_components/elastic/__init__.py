@@ -1,47 +1,43 @@
 """
 Support for sending event data to an Elasticsearch cluster
 """
-import voluptuous as vol
 from copy import deepcopy
 
+import homeassistant.helpers.config_validation as cv
+import voluptuous as vol
 from homeassistant.config_entries import SOURCE_IMPORT
 from homeassistant.const import (
-    CONF_URL,
-    CONF_USERNAME,
-    CONF_PASSWORD,
     CONF_ALIAS,
-    EVENT_STATE_CHANGED,
-    CONF_EXCLUDE,
     CONF_DOMAINS,
     CONF_ENTITIES,
-    CONF_VERIFY_SSL,
+    CONF_EXCLUDE,
+    CONF_PASSWORD,
     CONF_TIMEOUT,
+    CONF_URL,
+    CONF_USERNAME,
+    CONF_VERIFY_SSL,
 )
-import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers import discovery
-
-from .es_doc_publisher import DocumentPublisher
-from .es_index_manager import IndexManager
-from .es_gateway import ElasticsearchGateway
 
 from .const import (
-    DOMAIN,
-    CONF_PUBLISH_ENABLED,
-    CONF_HEALTH_SENSOR_ENABLED,
-    CONF_INDEX_FORMAT,
-    CONF_PUBLISH_FREQUENCY,
     CONF_EXCLUDED_DOMAINS,
     CONF_EXCLUDED_ENTITIES,
-    ONE_MINUTE,
-    CONF_ONLY_PUBLISH_CHANGED,
-    CONF_ILM_ENABLED,
-    CONF_ILM_POLICY_NAME,
-    CONF_ILM_MAX_SIZE,
+    CONF_HEALTH_SENSOR_ENABLED,
     CONF_ILM_DELETE_AFTER,
+    CONF_ILM_ENABLED,
+    CONF_ILM_MAX_SIZE,
+    CONF_ILM_POLICY_NAME,
+    CONF_INDEX_FORMAT,
+    CONF_ONLY_PUBLISH_CHANGED,
+    CONF_PUBLISH_ENABLED,
+    CONF_PUBLISH_FREQUENCY,
     CONF_SSL_CA_PATH,
     CONF_TAGS,
+    DOMAIN,
+    ONE_MINUTE,
 )
-
+from .es_doc_publisher import DocumentPublisher
+from .es_gateway import ElasticsearchGateway
+from .es_index_manager import IndexManager
 from .logger import LOGGER
 
 ELASTIC_COMPONENTS = ["sensor"]

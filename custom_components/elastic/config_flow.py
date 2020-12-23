@@ -1,47 +1,42 @@
 """Config flow for Elastic."""
 
 import os
-import voluptuous as vol
-import warnings
+from typing import List
 
+import homeassistant.helpers.config_validation as cv
+import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import (
     CONF_ALIAS,
-    CONF_URL,
     CONF_PASSWORD,
+    CONF_URL,
     CONF_USERNAME,
     CONF_VERIFY_SSL,
 )
-
 from homeassistant.core import callback
-from typing import Set, List
-
-import homeassistant.helpers.config_validation as cv
 
 from .const import (
-    DOMAIN as ELASTIC_DOMAIN,
-    CONF_PUBLISH_ENABLED,
-    CONF_HEALTH_SENSOR_ENABLED,
-    CONF_INDEX_FORMAT,
-    CONF_PUBLISH_FREQUENCY,
     CONF_EXCLUDED_DOMAINS,
     CONF_EXCLUDED_ENTITIES,
-    ONE_MINUTE,
-    CONF_ONLY_PUBLISH_CHANGED,
-    CONF_ILM_ENABLED,
-    CONF_ILM_POLICY_NAME,
-    CONF_ILM_MAX_SIZE,
     CONF_ILM_DELETE_AFTER,
+    CONF_ILM_ENABLED,
+    CONF_ILM_MAX_SIZE,
+    CONF_ILM_POLICY_NAME,
+    CONF_INDEX_FORMAT,
+    CONF_ONLY_PUBLISH_CHANGED,
+    CONF_PUBLISH_ENABLED,
+    CONF_PUBLISH_FREQUENCY,
     CONF_SSL_CA_PATH,
-    CONF_TAGS,
 )
-from .es_gateway import ElasticsearchGateway
+from .const import DOMAIN as ELASTIC_DOMAIN
+from .const import ONE_MINUTE
 from .errors import (
     AuthenticationRequired,
     CannotConnect,
     InsufficientPrivileges,
     UntrustedCertificate,
 )
+from .es_gateway import ElasticsearchGateway
 from .logger import LOGGER
 
 DEFAULT_URL = "http://localhost:9200"

@@ -1,28 +1,24 @@
 """Publishes documents to Elasticsearch"""
-import socket
 import asyncio
-from queue import Queue
-from datetime import datetime
 import math
-from pytz import utc
-from homeassistant.const import (
-    CONF_DOMAINS,
-    CONF_ENTITIES,
-    EVENT_STATE_CHANGED,
-)
+import socket
+from datetime import datetime
+from queue import Queue
+
+from homeassistant.const import EVENT_STATE_CHANGED
 from homeassistant.helpers import state as state_helper
+from pytz import utc
+
 from .const import (
     CONF_EXCLUDED_DOMAINS,
     CONF_EXCLUDED_ENTITIES,
-    CONF_TAGS,
-    CONF_PUBLISH_FREQUENCY,
     CONF_ONLY_PUBLISH_CHANGED,
     CONF_PUBLISH_ENABLED,
+    CONF_PUBLISH_FREQUENCY,
+    CONF_TAGS,
 )
-
-from .logger import LOGGER
-
 from .es_serializer import get_serializer
+from .logger import LOGGER
 
 
 class DocumentPublisher:

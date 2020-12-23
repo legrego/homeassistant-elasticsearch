@@ -1,14 +1,12 @@
 """Configure py.test."""
 import asyncio
+from unittest.mock import MagicMock
+
 import pytest
 from homeassistant.exceptions import ServiceNotFound
-from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from homeassistant.runner import HassEventLoopPolicy
-from elasticsearch import Elasticsearch, AsyncElasticsearch
 
-from unittest.mock import MagicMock, AsyncMock, patch
-from tests.common import MockESConnection, async_test_home_assistant
-from custom_components.elastic.es_gateway import ElasticsearchGateway
+from tests.common import async_test_home_assistant
 
 UNIQUE_ID = "ABC123"
 

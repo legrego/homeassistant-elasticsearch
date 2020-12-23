@@ -1,15 +1,11 @@
+from unittest.mock import patch
+
 import pytest
 from homeassistant import data_entry_flow
+from homeassistant.config_entries import SOURCE_USER
 from homeassistant.helpers.typing import HomeAssistantType
-from homeassistant.config_entries import (
-    SOURCE_IGNORE,
-    SOURCE_IMPORT,
-    SOURCE_USER,
-    SOURCE_ZEROCONF,
-)
 
 from custom_components.elastic.const import DOMAIN
-from unittest.mock import patch
 from tests.common import MockESGateway
 
 
@@ -31,10 +27,10 @@ async def test_user_flow_minimum_fields(hass: HomeAssistantType, event_loop):
     assert result["type"] == data_entry_flow.RESULT_TYPE_CREATE_ENTRY
     assert result["title"] == "http://localhost:9200"
     assert result["data"]["url"] == "http://localhost:9200"
-    assert result["data"]["username"] == None
-    assert result["data"]["password"] == None
-    assert result["data"]["ssl_ca_path"] == None
-    assert result["data"]["verify_ssl"] == True
+    assert result["data"]["username"] is None
+    assert result["data"]["password"] is None
+    assert result["data"]["ssl_ca_path"] is None
+    assert result["data"]["verify_ssl"] is True
 
 
 @pytest.mark.asyncio

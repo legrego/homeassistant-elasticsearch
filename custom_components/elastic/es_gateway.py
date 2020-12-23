@@ -1,25 +1,23 @@
 """Encapsulates Elasticsearch operations"""
 from homeassistant.const import (
+    CONF_PASSWORD,
+    CONF_TIMEOUT,
     CONF_URL,
     CONF_USERNAME,
-    CONF_PASSWORD,
     CONF_VERIFY_SSL,
-    CONF_TIMEOUT,
 )
+
 from .const import CONF_SSL_CA_PATH
-from .es_version import ElasticsearchVersion
-from .es_serializer import get_serializer
-from .logger import LOGGER
 from .errors import (
-    CannotConnect,
     AuthenticationRequired,
-    InsufficientPrivileges,
+    CannotConnect,
     ElasticException,
+    InsufficientPrivileges,
     UntrustedCertificate,
 )
-from http.client import RemoteDisconnected
-import ssl
-import urllib3
+from .es_serializer import get_serializer
+from .es_version import ElasticsearchVersion
+from .logger import LOGGER
 
 
 class ElasticsearchGateway:
@@ -42,11 +40,11 @@ class ElasticsearchGateway:
     def check_connection(self):
         """Performs connection checks for setup"""
         from elasticsearch import (
-            ConnectionError,
-            SSLError,
             AuthenticationException,
             AuthorizationException,
+            ConnectionError,
             ElasticsearchException,
+            SSLError,
         )
 
         try:
