@@ -3,11 +3,11 @@ import functools as ft
 import json
 import uuid
 from contextlib import contextmanager
-
-from elasticsearch.exceptions import SSLError
-from elasticsearch.connection import Connection
+from unittest.mock import AsyncMock, Mock, patch
 
 import homeassistant.util.dt as date_util
+from elasticsearch.connection import Connection
+from elasticsearch.exceptions import SSLError
 from homeassistant import auth, config_entries
 from homeassistant import core as ha
 from homeassistant.auth import auth_store
@@ -16,9 +16,6 @@ from homeassistant.helpers import storage
 from homeassistant.util.unit_system import METRIC_SYSTEM
 
 from custom_components.elastic.es_gateway import ElasticsearchGateway
-
-from unittest.mock import AsyncMock, Mock, patch
-
 
 """ Functions here have been cobbled together from various sources, including: hacs, home-assistant """
 

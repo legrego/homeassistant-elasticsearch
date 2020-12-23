@@ -1,10 +1,11 @@
 """Configure py.test."""
 import asyncio
+from unittest.mock import MagicMock
+
 import pytest
 from homeassistant.exceptions import ServiceNotFound
 from homeassistant.runner import HassEventLoopPolicy
 
-from unittest.mock import MagicMock
 from tests.common import async_test_home_assistant
 
 UNIQUE_ID = "ABC123"

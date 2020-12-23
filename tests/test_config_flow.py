@@ -1,12 +1,11 @@
+from unittest.mock import patch
+
 import pytest
 from homeassistant import data_entry_flow
+from homeassistant.config_entries import SOURCE_USER
 from homeassistant.helpers.typing import HomeAssistantType
-from homeassistant.config_entries import (
-    SOURCE_USER,
-)
 
 from custom_components.elastic.const import DOMAIN
-from unittest.mock import patch
 from tests.common import MockESGateway
 
 
