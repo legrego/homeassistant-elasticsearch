@@ -6,6 +6,7 @@ from contextlib import contextmanager
 from unittest.mock import AsyncMock, Mock, patch
 
 import homeassistant.util.dt as date_util
+from custom_components.elastic.es_gateway import ElasticsearchGateway
 from elasticsearch.connection import Connection
 from elasticsearch.exceptions import SSLError
 from homeassistant import auth, config_entries
@@ -14,8 +15,6 @@ from homeassistant.auth import auth_store
 from homeassistant.const import EVENT_HOMEASSISTANT_CLOSE
 from homeassistant.helpers import storage
 from homeassistant.util.unit_system import METRIC_SYSTEM
-
-from custom_components.elastic.es_gateway import ElasticsearchGateway
 
 """ Functions here have been cobbled together from various sources, including: hacs, home-assistant """
 

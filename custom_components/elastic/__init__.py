@@ -1,8 +1,9 @@
 """
 Support for sending event data to an Elasticsearch cluster
 """
+
 from copy import deepcopy
-import asyncio
+
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
@@ -16,10 +17,8 @@ from homeassistant.const import (
     CONF_URL,
     CONF_USERNAME,
     CONF_VERIFY_SSL,
-    EVENT_HOMEASSISTANT_CLOSE,
 )
 from homeassistant.helpers.typing import HomeAssistantType
-from homeassistant.core import callback
 
 from .const import (
     CONF_EXCLUDED_DOMAINS,
@@ -38,13 +37,10 @@ from .const import (
     DOMAIN,
     ONE_MINUTE,
 )
-from .es_doc_publisher import DocumentPublisher
-from .es_gateway import ElasticsearchGateway
-from .es_index_manager import IndexManager
 from .es_integration import ElasticIntegration
 from .logger import LOGGER
-from .utils import get_merged_config
 
+# Legacy (yml-based) configuration schema
 CONFIG_SCHEMA = vol.Schema(
     {
         DOMAIN: vol.Schema(
@@ -87,7 +83,7 @@ CONFIG_SCHEMA = vol.Schema(
 
 
 async def async_setup(hass: HomeAssistantType, config):
-    """Set up Elasticsearch integration."""
+    """Set up Elasticsearch integration via legacy yml-based setup."""
     if DOMAIN not in config:
         return True
 
@@ -109,13 +105,16 @@ async def async_setup(hass: HomeAssistantType, config):
 
 
 async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry):
+    """ Setup integration via config flow. """
+
     LOGGER.debug("Setting up integtation")
-    init = await async_init_integration(hass, config_entry)
+    init = await _async_init_integration(hass, config_entry)
     config_entry.add_update_listener(async_config_entry_updated)
     return init
 
 
 async def async_unload_entry(hass: HomeAssistantType, config_entry: ConfigEntry):
+    """ Teardown integration. """
     existing_instance = hass.data.get(DOMAIN)
     if isinstance(existing_instance, ElasticIntegration):
         LOGGER.debug("Shutting down previous integration")
@@ -127,11 +126,13 @@ async def async_unload_entry(hass: HomeAssistantType, config_entry: ConfigEntry)
 async def async_config_entry_updated(
     hass: HomeAssistantType, config_entry: ConfigEntry
 ):
+    """ Respond to config changes. """
     LOGGER.debug("Configuration change detected")
-    return await async_init_integration(hass, config_entry)
+    return await _async_init_integration(hass, config_entry)
 
 
-async def async_init_integration(hass: HomeAssistantType, config_entry: ConfigEntry):
+async def _async_init_integration(hass: HomeAssistantType, config_entry: ConfigEntry):
+    """ Initialize integration. """
     await async_unload_entry(hass, config_entry)
 
     integration = ElasticIntegration(hass, config_entry)

@@ -3,13 +3,13 @@ Support for sending event data to an Elasticsearch cluster
 """
 
 import asyncio
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.typing import HomeAssistantType
 
 from .es_doc_publisher import DocumentPublisher
 from .es_gateway import ElasticsearchGateway
 from .es_index_manager import IndexManager
-from .logger import LOGGER
 from .utils import get_merged_config
 
 ELASTIC_COMPONENTS = ["sensor"]

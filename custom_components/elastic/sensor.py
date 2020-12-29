@@ -4,19 +4,15 @@ Sensors for the Elastic component.
 """
 import logging
 from datetime import timedelta
-from typing import Any, Callable, Dict, List, Optional, Union
-from homeassistant.const import DEVICE_CLASS_BATTERY
+from typing import Callable, List
+
 from homeassistant.components.sensor import ENTITY_ID_FORMAT
-from homeassistant.helpers.dispatcher import (
-    async_dispatcher_connect,
-    async_dispatcher_send,
-)
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.typing import HomeAssistantType
-from homeassistant.config_entries import ConfigEntry
 
+from .const import CONF_HEALTH_SENSOR_ENABLED, CONF_PUBLISH_ENABLED, DOMAIN
 from .es_doc_publisher import DocumentPublisher
-from .const import DOMAIN, CONF_HEALTH_SENSOR_ENABLED, CONF_PUBLISH_ENABLED
 from .utils import get_merged_config
 
 LOGGER = logging.getLogger(__name__)

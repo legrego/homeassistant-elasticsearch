@@ -9,10 +9,10 @@ from homeassistant import config_entries
 from homeassistant.const import (
     CONF_ALIAS,
     CONF_PASSWORD,
+    CONF_TIMEOUT,
     CONF_URL,
     CONF_USERNAME,
     CONF_VERIFY_SSL,
-    CONF_TIMEOUT,
 )
 from homeassistant.core import callback
 
