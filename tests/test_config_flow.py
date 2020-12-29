@@ -38,7 +38,6 @@ async def test_user_flow_minimum_fields(hass: HomeAssistantType, event_loop):
 @patch("custom_components.elastic.es_gateway.ElasticsearchGateway", MockESGateway)
 async def test_user_flow_to_tls_flow(hass: HomeAssistantType, event_loop):
     """ Test user config flow with config that forces TLS configuration. """
-    patch("custom_components.elastic.es_gateway.ElasticsearchGateway", MockESGateway)
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
     )
@@ -52,4 +51,44 @@ async def test_user_flow_to_tls_flow(hass: HomeAssistantType, event_loop):
     assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
     assert result["errors"]["base"] == "untrusted_connection"
     assert result["step_id"] == "tls"
+    assert "data" not in result
+
+
+@pytest.mark.asyncio
+@patch("custom_components.elastic.es_gateway.ElasticsearchGateway", MockESGateway)
+async def test_flow_fails_es_unavailable(hass: HomeAssistantType):
+    """ Test user config flow fails if connection cannot be established. """
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["step_id"] == "user"
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], user_input={"url": "http://unavailable-host:9200"}
+    )
+
+    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["errors"]["base"] == "cannot_connect"
+    assert result["step_id"] == "user"
+    assert "data" not in result
+
+
+@pytest.mark.asyncio
+@patch("custom_components.elastic.es_gateway.ElasticsearchGateway", MockESGateway)
+async def test_flow_fails_unauthorized(hass: HomeAssistantType):
+    """ Test user config flow fails if connection cannot be established. """
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["step_id"] == "user"
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], user_input={"url": "http://needs-auth:9200"}
+    )
+
+    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["errors"]["base"] == "invalid_auth"
+    assert result["step_id"] == "user"
     assert "data" not in result
