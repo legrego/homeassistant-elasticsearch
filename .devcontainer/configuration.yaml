@@ -1,0 +1,11 @@
+default_config:
+
+logger:
+  default: info
+  logs:
+    custom_components.elastic: debug
+
+# elastic:
+#   url: http://localhost:9200
+
+mailbox:

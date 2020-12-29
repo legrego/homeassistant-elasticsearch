@@ -1,0 +1,42 @@
+// See https://aka.ms/vscode-remote/devcontainer.json for format details.
+{
+	"dockerFile": "Dockerfile",
+	"name": "Elasticsearch integration development",
+	"context": "..",
+	"appPort": [
+		"9123:8123",
+		"9201:9200"
+	],
+	"postCreateCommand": "container install && pip3 install -r requirements.txt",
+	"extensions": [
+		"ms-python.python",
+		"github.vscode-pull-request-github",
+		"ms-python.vscode-pylance",
+		"visualstudioexptteam.vscodeintellicode",
+		"redhat.vscode-yaml",
+		"esbenp.prettier-vscode"
+	],
+	"settings": {
+		"python.pythonPath": "/usr/bin/python3",
+		"python.linting.pylintEnabled": true,
+		"python.linting.enabled": true,
+		"python.formatting.provider": "black",
+		"python.testing.pytestArgs": [
+			"--no-cov"
+		],
+		"python.testing.pytestEnabled": true,
+		"editor.formatOnPaste": false,
+		"editor.formatOnSave": true,
+		"editor.formatOnType": true,
+		"files.trimTrailingWhitespace": true,
+		"terminal.integrated.shell.linux": "/bin/bash",
+		"yaml.customTags": [
+			"!placeholder scalar",
+			"!secret scalar",
+			"!include_dir_named scalar",
+			"!include_dir_list scalar",
+			"!include_dir_merge_list scalar",
+			"!include_dir_merge_named scalar"
+		]
+	}
+}

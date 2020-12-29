@@ -22,17 +22,15 @@ class ElasticsearchVersion:
 
     def is_supported_version(self):
         """Determines if this version of ES is supported by this component"""
-        return self.major == 7 or (
-            self.major == 6 and self.minor >= 7
-        )
+        return self.major == 7 or (self.major == 6 and self.minor >= 7)
 
     def is_oss_distribution(self):
         """Determines if this is the OSS distribution"""
-        return self.build_flavor == 'oss'
+        return self.build_flavor == "oss"
 
     def is_default_distribution(self):
         """Determines if this is the default distribution"""
-        return self.build_flavor == 'default'
+        return self.build_flavor == "default"
 
     def to_string(self):
         """Returns a string representation of the current ES version"""
