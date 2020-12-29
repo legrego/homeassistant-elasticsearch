@@ -2,10 +2,10 @@
 Support for sending event data to an Elasticsearch cluster
 """
 from copy import deepcopy
-
+import asyncio
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
-from homeassistant.config_entries import SOURCE_IMPORT
+from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.const import (
     CONF_ALIAS,
     CONF_DOMAINS,
@@ -16,7 +16,10 @@ from homeassistant.const import (
     CONF_URL,
     CONF_USERNAME,
     CONF_VERIFY_SSL,
+    EVENT_HOMEASSISTANT_CLOSE,
 )
+from homeassistant.helpers.typing import HomeAssistantType
+from homeassistant.core import callback
 
 from .const import (
     CONF_EXCLUDED_DOMAINS,
@@ -38,9 +41,9 @@ from .const import (
 from .es_doc_publisher import DocumentPublisher
 from .es_gateway import ElasticsearchGateway
 from .es_index_manager import IndexManager
+from .es_integration import ElasticIntegration
 from .logger import LOGGER
-
-ELASTIC_COMPONENTS = ["sensor"]
+from .utils import get_merged_config
 
 CONFIG_SCHEMA = vol.Schema(
     {
@@ -83,7 +86,7 @@ CONFIG_SCHEMA = vol.Schema(
 )
 
 
-async def async_setup(hass, config):
+async def async_setup(hass: HomeAssistantType, config):
     """Set up Elasticsearch integration."""
     if DOMAIN not in config:
         return True
@@ -105,28 +108,30 @@ async def async_setup(hass, config):
     return True
 
 
-async def async_setup_entry(hass, config_entry):
+async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry):
     LOGGER.debug("Setting up integtation")
     init = await async_init_integration(hass, config_entry)
     config_entry.add_update_listener(async_config_entry_updated)
     return init
 
 
-async def async_unload_entry(hass, config_entry):
+async def async_unload_entry(hass: HomeAssistantType, config_entry: ConfigEntry):
     existing_instance = hass.data.get(DOMAIN)
     if isinstance(existing_instance, ElasticIntegration):
         LOGGER.debug("Shutting down previous integration")
-        await existing_instance.async_shutdown()
+        await existing_instance.async_shutdown(config_entry)
         hass.data[DOMAIN] = None
     return True
 
 
-async def async_config_entry_updated(hass, config_entry):
+async def async_config_entry_updated(
+    hass: HomeAssistantType, config_entry: ConfigEntry
+):
     LOGGER.debug("Configuration change detected")
     return await async_init_integration(hass, config_entry)
 
 
-async def async_init_integration(hass, config_entry):
+async def async_init_integration(hass: HomeAssistantType, config_entry: ConfigEntry):
     await async_unload_entry(hass, config_entry)
 
     integration = ElasticIntegration(hass, config_entry)
@@ -135,22 +140,3 @@ async def async_init_integration(hass, config_entry):
     hass.data[DOMAIN] = integration
 
     return True
-
-
-class ElasticIntegration:
-    def __init__(self, hass, config_entry):
-        conf = {**config_entry.data, **config_entry.options}
-        self.hass = hass
-        self.gateway = ElasticsearchGateway(conf)
-        self.index_manager = IndexManager(hass, conf, self.gateway)
-        self.publisher = DocumentPublisher(conf, self.gateway, self.index_manager, hass)
-
-    async def async_init(self):
-        system_info = await self.hass.helpers.system_info.async_get_system_info()
-        await self.gateway.async_init()
-        await self.index_manager.async_setup()
-        await self.publisher.async_init(system_info)
-
-    async def async_shutdown(self):
-        await self.publisher.async_stop_publisher()
-        await self.gateway.async_stop_gateway()

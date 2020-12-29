@@ -1,0 +1,35 @@
+{
+    "version": 1,
+    "key": "core.config_entries",
+    "data": {
+        "entries": [
+            {
+                "entry_id": "44976c8089ec86f66110231a1ceac711",
+                "version": 1,
+                "domain": "elastic",
+                "title": "http://localhost:9200",
+                "data": {
+                    "url": "http://localhost:9200",
+                    "username": null,
+                    "password": null,
+                    "timeout": 30,
+                    "verify_ssl": true,
+                    "ssl_ca_path": null,
+                    "publish_enabled": true,
+                    "publish_frequency": 60,
+                    "only_publish_changed": false,
+                    "alias": "active-hass-index",
+                    "index_format": "hass-events",
+                    "health_sensor_enabled": true
+                },
+                "options": {},
+                "system_options": {
+                    "disable_new_entities": false
+                },
+                "source": "user",
+                "connection_class": "local_push",
+                "unique_id": "http://localhost:9200"
+            }
+        ]
+    }
+}

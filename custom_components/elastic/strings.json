@@ -54,6 +54,13 @@
                     "ilm_max_size": "Max index size",
                     "ilm_delete_after": "Delete indices after"
                 }
+            },
+            "health_options": {
+                "title": "Cluster health monitoring",
+                "description": "Configure health monitoring",
+                "data": {
+                    "health_sensor_enabled": "Enable health sensor"
+                }
             }
         }
     }

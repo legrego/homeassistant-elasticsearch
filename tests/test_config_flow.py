@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from .async_mock import AsyncMock, Mock, patch
 
 import pytest
 from homeassistant import data_entry_flow
@@ -6,11 +6,12 @@ from homeassistant.config_entries import SOURCE_USER
 from homeassistant.helpers.typing import HomeAssistantType
 
 from custom_components.elastic.const import DOMAIN
-from tests.common import MockESGateway
+from tests.common import MockESGateway, MockESIntegration
 
 
 @pytest.mark.asyncio
 @patch("custom_components.elastic.es_gateway.ElasticsearchGateway", MockESGateway)
+@patch("custom_components.elastic.ElasticIntegration", MockESIntegration)
 async def test_user_flow_minimum_fields(hass: HomeAssistantType, event_loop):
     """ Test user config flow with minimum fields. """
 
@@ -19,7 +20,6 @@ async def test_user_flow_minimum_fields(hass: HomeAssistantType, event_loop):
     )
     assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
     assert result["step_id"] == "user"
-
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], user_input={"url": "http://localhost:9200"}
     )
@@ -31,6 +31,8 @@ async def test_user_flow_minimum_fields(hass: HomeAssistantType, event_loop):
     assert result["data"]["password"] is None
     assert result["data"]["ssl_ca_path"] is None
     assert result["data"]["verify_ssl"] is True
+    assert result["data"]["publish_enabled"] is True
+    assert result["data"]["health_sensor_enabled"] is True
 
 
 @pytest.mark.asyncio

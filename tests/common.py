@@ -74,6 +74,17 @@ class MockESGateway(ElasticsearchGateway):
         super().__init__(config, connection_class=MockESConnection)
 
 
+class MockESIntegration:
+    def __init__(self):
+        return
+
+    async def async_setup(self):
+        return
+
+    async def async_shutdown(self):
+        return
+
+
 class MockConfigEntry(config_entries.ConfigEntry):
     """Helper for creating config entries that adds some defaults."""
 

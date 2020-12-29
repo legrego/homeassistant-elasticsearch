@@ -19,6 +19,7 @@ from homeassistant.core import callback
 from .const import (
     CONF_EXCLUDED_DOMAINS,
     CONF_EXCLUDED_ENTITIES,
+    CONF_HEALTH_SENSOR_ENABLED,
     CONF_ILM_DELETE_AFTER,
     CONF_ILM_ENABLED,
     CONF_ILM_MAX_SIZE,
@@ -41,6 +42,11 @@ from .es_gateway import ElasticsearchGateway
 from .logger import LOGGER
 
 DEFAULT_URL = "http://localhost:9200"
+DEFAULT_ALIAS = "active-hass-index"
+DEFAULT_INDEX_FORMAT = "hass-events"
+DEFAULT_PUBLISH_ENABLED = True
+DEFAULT_PUBLISH_FREQUENCY = ONE_MINUTE
+DEFAULT_ONLY_PUBLISH_CHAGED = False
 DEFAULT_VERIFY_SSL = True
 DEFAULT_TIMEOUT_SECONDS = 30
 
@@ -103,6 +109,12 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             CONF_TIMEOUT: user_input.get(CONF_TIMEOUT, DEFAULT_TIMEOUT_SECONDS),
             CONF_VERIFY_SSL: DEFAULT_VERIFY_SSL,
             CONF_SSL_CA_PATH: None,
+            CONF_PUBLISH_ENABLED: DEFAULT_PUBLISH_ENABLED,
+            CONF_PUBLISH_FREQUENCY: DEFAULT_PUBLISH_FREQUENCY,
+            CONF_ONLY_PUBLISH_CHANGED: DEFAULT_ONLY_PUBLISH_CHAGED,
+            CONF_ALIAS: DEFAULT_ALIAS,
+            CONF_INDEX_FORMAT: DEFAULT_INDEX_FORMAT,
+            CONF_HEALTH_SENSOR_ENABLED: True,
         }
 
         return await self._async_elasticsearch_login()
@@ -214,12 +226,23 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
 
         if user_input is not None:
             self.options.update(user_input)
-            return await self._update_options()
+            return await self.async_step_health_options()
 
         return self.async_show_form(
             step_id="ilm_options",
             data_schema=vol.Schema(self._build_ilm_options_schema()),
             errors=errors,
+        )
+
+    async def async_step_health_options(self, user_input=None):
+        """ Health Sensor Options"""
+        if user_input is not None:
+            self.options.update(user_input)
+            return await self._update_options()
+
+        return self.async_show_form(
+            step_id="health_options",
+            data_schema=vol.Schema(self._build_health_options_schema()),
         )
 
     async def _update_options(self):
@@ -240,15 +263,21 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
         schema = {
             vol.Required(
                 CONF_PUBLISH_ENABLED,
-                default=self._get_config_value(CONF_PUBLISH_ENABLED, True),
+                default=self._get_config_value(
+                    CONF_PUBLISH_ENABLED, DEFAULT_PUBLISH_ENABLED
+                ),
             ): bool,
             vol.Required(
                 CONF_PUBLISH_FREQUENCY,
-                default=self._get_config_value(CONF_PUBLISH_FREQUENCY, ONE_MINUTE),
+                default=self._get_config_value(
+                    CONF_PUBLISH_FREQUENCY, DEFAULT_PUBLISH_FREQUENCY
+                ),
             ): int,
             vol.Required(
                 CONF_ONLY_PUBLISH_CHANGED,
-                default=self._get_config_value(CONF_ONLY_PUBLISH_CHANGED, False),
+                default=self._get_config_value(
+                    CONF_ONLY_PUBLISH_CHANGED, DEFAULT_ONLY_PUBLISH_CHAGED
+                ),
             ): bool,
             vol.Required(CONF_EXCLUDED_DOMAINS, default=[]): cv.multi_select(domains),
             vol.Required(CONF_EXCLUDED_ENTITIES, default=[]): cv.multi_select(entities),
@@ -258,14 +287,16 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
             schema[
                 vol.Required(
                     CONF_INDEX_FORMAT,
-                    default=self._get_config_value(CONF_INDEX_FORMAT, "hass-events"),
+                    default=self._get_config_value(
+                        CONF_INDEX_FORMAT, DEFAULT_INDEX_FORMAT
+                    ),
                 )
             ] = str
 
             schema[
                 vol.Required(
                     CONF_ALIAS,
-                    default=self._get_config_value(CONF_ALIAS, "active-hass-index"),
+                    default=self._get_config_value(CONF_ALIAS, DEFAULT_ALIAS),
                 )
             ] = str
 
@@ -288,6 +319,16 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
                 CONF_ILM_DELETE_AFTER,
                 default=self._get_config_value(CONF_ILM_DELETE_AFTER, "365d"),
             ): str,
+        }
+
+        return schema
+
+    def _build_health_options_schema(self):
+        schema = {
+            vol.Required(
+                CONF_HEALTH_SENSOR_ENABLED,
+                default=self._get_config_value(CONF_HEALTH_SENSOR_ENABLED, True),
+            ): bool,
         }
 
         return schema
