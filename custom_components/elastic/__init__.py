@@ -67,6 +67,10 @@ CONFIG_SCHEMA = vol.Schema(
                 vol.Optional(CONF_TAGS, default=["hass"]): vol.All(
                     cv.ensure_list, [cv.string]
                 ),
+                vol.Optional(CONF_EXCLUDED_DOMAINS, default=[]): vol.All(
+                    cv.ensure_list, [cv.string]
+                ),
+                vol.Optional(CONF_EXCLUDED_ENTITIES, default=[]): cv.entity_ids,
                 vol.Optional(CONF_EXCLUDE, default={}): vol.Schema(
                     {
                         vol.Optional(CONF_DOMAINS, default=[]): vol.All(

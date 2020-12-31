@@ -5,6 +5,7 @@ import pytest
 from homeassistant.exceptions import ServiceNotFound
 from homeassistant.runner import HassEventLoopPolicy
 from tests.common import async_test_home_assistant
+from tests.test_util.aiohttp import mock_aiohttp_client
 
 UNIQUE_ID = "ABC123"
 
@@ -14,6 +15,13 @@ pytestmark = pytest.mark.asyncio
 asyncio.set_event_loop_policy(HassEventLoopPolicy(False))
 # Disable fixtures overriding our beautiful policy
 asyncio.set_event_loop_policy = lambda policy: None
+
+
+@pytest.fixture
+def aioclient_mock(hass):
+    """Fixture to mock aioclient calls."""
+    with mock_aiohttp_client(hass) as mock_session:
+        yield mock_session
 
 
 @pytest.fixture

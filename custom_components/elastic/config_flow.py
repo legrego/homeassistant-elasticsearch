@@ -15,6 +15,7 @@ from homeassistant.const import (
     CONF_VERIFY_SSL,
 )
 from homeassistant.core import callback
+from homeassistant.config_entries import SOURCE_IGNORE, SOURCE_IMPORT
 
 from .const import (
     CONF_EXCLUDED_DOMAINS,
@@ -49,6 +50,14 @@ DEFAULT_PUBLISH_FREQUENCY = ONE_MINUTE
 DEFAULT_ONLY_PUBLISH_CHAGED = False
 DEFAULT_VERIFY_SSL = True
 DEFAULT_TIMEOUT_SECONDS = 30
+DEFAULT_ILM_ENABLED = True
+DEFAULT_ILM_POLICY_NAME = "home-assistant"
+DEFAULT_ILM_MAX_SIZE = "30gb"
+DEFAULT_ILM_DELETE_AFTER = "365d"
+
+
+def _host_is_same(host1: str, host2: str) -> bool:
+    return host1 == host2
 
 
 class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
@@ -91,6 +100,32 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
         return schema
 
+    def build_full_config(self, user_input={}):
+        return {
+            CONF_URL: user_input.get(CONF_URL, DEFAULT_URL),
+            CONF_USERNAME: user_input.get(CONF_USERNAME),
+            CONF_PASSWORD: user_input.get(CONF_PASSWORD),
+            CONF_TIMEOUT: user_input.get(CONF_TIMEOUT, DEFAULT_TIMEOUT_SECONDS),
+            CONF_VERIFY_SSL: user_input.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL),
+            CONF_SSL_CA_PATH: user_input.get(CONF_SSL_CA_PATH, None),
+            CONF_PUBLISH_ENABLED: user_input.get(
+                CONF_PUBLISH_ENABLED, DEFAULT_PUBLISH_ENABLED
+            ),
+            CONF_PUBLISH_FREQUENCY: user_input.get(
+                CONF_PUBLISH_FREQUENCY, DEFAULT_PUBLISH_FREQUENCY
+            ),
+            CONF_ONLY_PUBLISH_CHANGED: user_input.get(
+                CONF_ONLY_PUBLISH_CHANGED, DEFAULT_ONLY_PUBLISH_CHAGED
+            ),
+            CONF_ALIAS: user_input.get(CONF_ALIAS, DEFAULT_ALIAS),
+            CONF_INDEX_FORMAT: user_input.get(CONF_INDEX_FORMAT, DEFAULT_INDEX_FORMAT),
+            CONF_EXCLUDED_DOMAINS: user_input.get(CONF_EXCLUDED_DOMAINS, []),
+            CONF_EXCLUDED_ENTITIES: user_input.get(CONF_EXCLUDED_ENTITIES, []),
+            CONF_HEALTH_SENSOR_ENABLED: user_input.get(
+                CONF_HEALTH_SENSOR_ENABLED, True
+            ),
+        }
+
     async def async_step_user(self, user_input=None):
         """Handle a flow initialized by the user."""
         if self._async_current_entries():
@@ -102,20 +137,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                 data_schema=vol.Schema(self.build_setup_schema()),
             )
 
-        self.config = {
-            CONF_URL: user_input[CONF_URL],
-            CONF_USERNAME: user_input.get(CONF_USERNAME),
-            CONF_PASSWORD: user_input.get(CONF_PASSWORD),
-            CONF_TIMEOUT: user_input.get(CONF_TIMEOUT, DEFAULT_TIMEOUT_SECONDS),
-            CONF_VERIFY_SSL: DEFAULT_VERIFY_SSL,
-            CONF_SSL_CA_PATH: None,
-            CONF_PUBLISH_ENABLED: DEFAULT_PUBLISH_ENABLED,
-            CONF_PUBLISH_FREQUENCY: DEFAULT_PUBLISH_FREQUENCY,
-            CONF_ONLY_PUBLISH_CHANGED: DEFAULT_ONLY_PUBLISH_CHAGED,
-            CONF_ALIAS: DEFAULT_ALIAS,
-            CONF_INDEX_FORMAT: DEFAULT_INDEX_FORMAT,
-            CONF_HEALTH_SENSOR_ENABLED: True,
-        }
+        self.config = self.build_full_config(user_input)
 
         return await self._async_elasticsearch_login()
 
@@ -135,7 +157,22 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
     async def async_step_import(self, import_config):
         """Import a config entry from configuration.yaml."""
-        if self._async_current_entries():
+        # Check if new config entry matches any existing config entries
+        entries = self.hass.config_entries.async_entries(ELASTIC_DOMAIN)
+        for entry in entries:
+            # If source is ignore bypass host check and continue through loop
+            if entry.source == SOURCE_IGNORE:
+                continue
+
+            if entry.data[CONF_URL] == import_config[CONF_URL]:
+                self.hass.config_entries.async_update_entry(
+                    entry=entry,
+                    data=self.build_full_config(import_config),
+                    options=import_config,
+                )
+                return self.async_abort(reason="updated_entry")
+
+        if entries:
             LOGGER.warning("Already configured. Only a single configuration possible.")
             return self.async_abort(reason="single_instance_allowed")
 
@@ -207,7 +244,14 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_init(self, user_input=None):
         """Manage the Elastic options."""
 
+        if self.config_entry.source == SOURCE_IMPORT:
+            return await self.async_step_yaml(user_input)
+
         return await self.async_step_publish_options()
+
+    async def async_step_yaml(self, user_input=None):
+        """No options for yaml managed entries."""
+        return self.async_abort(reason="configured_via_yaml")
 
     async def async_step_publish_options(self, user_input=None):
         """Publish Options"""
@@ -309,15 +353,19 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
             ): bool,
             vol.Required(
                 CONF_ILM_POLICY_NAME,
-                default=self._get_config_value(CONF_ILM_POLICY_NAME, "home-assistant"),
+                default=self._get_config_value(
+                    CONF_ILM_POLICY_NAME, DEFAULT_ILM_POLICY_NAME
+                ),
             ): str,
             vol.Required(
                 CONF_ILM_MAX_SIZE,
-                default=self._get_config_value(CONF_ILM_MAX_SIZE, "30gb"),
+                default=self._get_config_value(CONF_ILM_MAX_SIZE, DEFAULT_ILM_MAX_SIZE),
             ): str,
             vol.Required(
                 CONF_ILM_DELETE_AFTER,
-                default=self._get_config_value(CONF_ILM_DELETE_AFTER, "365d"),
+                default=self._get_config_value(
+                    CONF_ILM_DELETE_AFTER, DEFAULT_ILM_DELETE_AFTER
+                ),
             ): str,
         }
 

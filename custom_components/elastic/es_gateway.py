@@ -122,7 +122,6 @@ class ElasticsearchGateway:
                     verify_certs=self._verify_certs,
                     ca_certs=self._ca_certs,
                     timeout=self._timeout,
-                    connection_class=self._connection_class,
                 )
             )
 
@@ -142,6 +141,5 @@ class ElasticsearchGateway:
                 verify_certs=self._verify_certs,
                 ca_certs=self._ca_certs,
                 timeout=self._timeout,
-                connection_class=self._connection_class,
             )
         )

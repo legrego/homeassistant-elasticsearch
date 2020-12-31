@@ -5,7 +5,10 @@ logger:
   logs:
     custom_components.elastic: debug
 
-# elastic:
-#   url: http://localhost:9200
+elastic:
+  url: https://localhost:9200
+  verify_ssl: false
+  username: hass
+  password: changeme
 
 mailbox:

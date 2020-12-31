@@ -2,7 +2,8 @@
     "config": {
         "abort": {
             "reauth_successful": "Re-authentication was successful",
-            "single_instance_allowed": "Already configured. Only a single configuration possible."
+            "single_instance_allowed": "Already configured. Only a single configuration possible.",
+            "configured_via_yaml": "Configuration is handled via yaml, and cannot be controlled via UI."
         },
         "error": {
             "cannot_connect": "Failed to connect",
@@ -30,6 +31,9 @@
         }
     },
     "options": {
+        "abort": {
+            "configured_via_yaml": "Configuration is handled via yaml, and cannot be controlled via UI."
+        },
         "step": {
             "publish_options": {
                 "title": "Elastic",

@@ -27,10 +27,14 @@
         },
         "abort": {
             "single_instance_allowed": "[%key:common::config_flow::abort::single_instance_allowed%]",
-            "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]"
+            "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
+            "configured_via_yaml": "Configuration is handled via yaml, and cannot be controlled via UI."
         }
     },
     "options": {
+        "abort": {
+            "configured_via_yaml": "Configuration is handled via yaml, and cannot be controlled via UI."
+        },
         "step": {
             "publish_options": {
                 "title": "Elastic",
