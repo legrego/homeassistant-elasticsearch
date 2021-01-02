@@ -1,9 +1,9 @@
 from homeassistant.const import CONF_URL, CONTENT_TYPE_JSON
 
 from tests.const import (
-    MOCK_LEGACY_CONFIG,
-    CLUSTER_INFO_RESPONSE_BODY,
     CLUSTER_HEALTH_RESPONSE_BODY,
+    CLUSTER_INFO_RESPONSE_BODY,
+    MOCK_LEGACY_CONFIG,
 )
 
 

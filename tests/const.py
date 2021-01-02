@@ -1,15 +1,16 @@
 from homeassistant.const import (
+    CONF_ALIAS,
+    CONF_DOMAINS,
+    CONF_ENTITIES,
+    CONF_EXCLUDE,
     CONF_URL,
     CONF_VERIFY_SSL,
-    CONF_ALIAS,
-    CONF_EXCLUDE,
-    CONF_ENTITIES,
-    CONF_DOMAINS,
 )
+
 from custom_components.elastic.const import (
-    CONF_PUBLISH_ENABLED,
     CONF_HEALTH_SENSOR_ENABLED,
     CONF_ILM_ENABLED,
+    CONF_PUBLISH_ENABLED,
 )
 
 MOCK_LEGACY_CONFIG = {

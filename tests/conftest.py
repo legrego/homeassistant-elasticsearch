@@ -4,6 +4,7 @@ import asyncio
 import pytest
 from homeassistant.exceptions import ServiceNotFound
 from homeassistant.runner import HassEventLoopPolicy
+
 from tests.common import async_test_home_assistant
 from tests.test_util.aiohttp import mock_aiohttp_client
 

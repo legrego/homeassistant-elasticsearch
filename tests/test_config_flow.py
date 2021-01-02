@@ -1,8 +1,9 @@
 import pytest
-from custom_components.elastic.const import DOMAIN
 from homeassistant import data_entry_flow
 from homeassistant.config_entries import SOURCE_USER
 from homeassistant.helpers.typing import HomeAssistantType
+
+from custom_components.elastic.const import DOMAIN
 from tests.common import MockESGateway, MockESIntegration
 
 from .async_mock import patch

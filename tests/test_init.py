@@ -1,17 +1,15 @@
 """Tests for Elastic init."""
 import pytest
-
-from homeassistant.const import CONF_URL
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
-from custom_components.elastic.const import DOMAIN as ELASTIC_DOMAIN
+from homeassistant.const import CONF_URL
 from homeassistant.helpers.typing import HomeAssistantType
 from homeassistant.setup import async_setup_component
 
-from tests.test_util.es_startup_mocks import mock_es_initialization
-from tests.const import (
-    MOCK_LEGACY_CONFIG,
-)
+from custom_components.elastic.const import DOMAIN as ELASTIC_DOMAIN
 from tests.common import MockESGateway
+from tests.const import MOCK_LEGACY_CONFIG
+from tests.test_util.es_startup_mocks import mock_es_initialization
+
 from .async_mock import patch
 
 

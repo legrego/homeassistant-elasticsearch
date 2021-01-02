@@ -1,19 +1,18 @@
 """Aiohttp test utils."""
 import asyncio
-from contextlib import contextmanager
 import json as _json
 import re
+from contextlib import contextmanager
 from unittest import mock
 from urllib.parse import parse_qs
-from multidict import CIMultiDict
 
 from aiohttp import ClientSession
 from aiohttp.client_exceptions import ClientError, ClientResponseError
 from aiohttp.streams import StreamReader
-from yarl import URL
-
-from homeassistant.const import EVENT_HOMEASSISTANT_CLOSE
 from elasticsearch._async.http_aiohttp import AIOHttpConnection
+from homeassistant.const import EVENT_HOMEASSISTANT_CLOSE
+from multidict import CIMultiDict
+from yarl import URL
 
 RETYPE = type(re.compile(""))
 
