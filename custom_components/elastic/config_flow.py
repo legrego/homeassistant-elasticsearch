@@ -190,12 +190,9 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         """Handle connection & authentication to Elasticsearch"""
         errors = {}
 
-        def connect_job(config):
-            gateway = ElasticsearchGateway(config)
-            gateway.check_connection()
-
         try:
-            await self.hass.async_add_executor_job(connect_job, self.config)
+            gateway = ElasticsearchGateway(self.config)
+            await gateway.check_connection(self.hass)
         except UntrustedCertificate:
             errors["base"] = "untrusted_connection"
             return self.async_show_form(

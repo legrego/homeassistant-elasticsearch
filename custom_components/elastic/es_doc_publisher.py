@@ -178,21 +178,21 @@ class DocumentPublisher:
         LOGGER.info("Publishing %i documents to Elasticsearch", len(actions))
 
         try:
-            await self._hass.async_add_executor_job(self.bulk_sync_wrapper, actions)
+            await self.async_bulk_sync_wrapper(actions)
         except ElasticsearchException as err:
             LOGGER.exception("Error publishing documents to Elasticsearch: %s", err)
         return
 
-    def bulk_sync_wrapper(self, actions):
+    async def async_bulk_sync_wrapper(self, actions):
         """
         Wrapper to publish events.
         Workaround for elasticsearch_async not supporting bulk operations
         """
         from elasticsearch import ElasticsearchException
-        from elasticsearch.helpers import bulk
+        from elasticsearch.helpers import async_bulk
 
         try:
-            bulk_response = bulk(self._gateway.get_sync_client(), actions)
+            bulk_response = await async_bulk(self._gateway.get_client(), actions)
             LOGGER.debug("Elasticsearch bulk response: %s", str(bulk_response))
             LOGGER.info("Publish Succeeded")
         except ElasticsearchException as err:

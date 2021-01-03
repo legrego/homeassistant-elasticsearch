@@ -7,16 +7,11 @@ from homeassistant.setup import async_setup_component
 
 from custom_components.elastic.const import DOMAIN as ELASTIC_DOMAIN
 from custom_components.elastic.utils import get_merged_config
-from tests.common import MockESGateway
 from tests.const import MOCK_LEGACY_CONFIG
 from tests.test_util.es_startup_mocks import mock_es_initialization
 
-from .async_mock import patch
-
 
 @pytest.mark.asyncio
-@patch("custom_components.elastic.es_gateway.ElasticsearchGateway", MockESGateway)
-@patch("custom_components.elastic.es_integration.ElasticsearchGateway", MockESGateway)
 async def test_setup_component(hass: HomeAssistantType, aioclient_mock) -> None:
     """Test component setup."""
     mock_es_initialization(aioclient_mock, url=MOCK_LEGACY_CONFIG.get(CONF_URL))
