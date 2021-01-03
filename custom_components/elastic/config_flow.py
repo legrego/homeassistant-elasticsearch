@@ -124,6 +124,14 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             CONF_HEALTH_SENSOR_ENABLED: user_input.get(
                 CONF_HEALTH_SENSOR_ENABLED, True
             ),
+            CONF_ILM_ENABLED: user_input.get(CONF_ILM_ENABLED, DEFAULT_ILM_ENABLED),
+            CONF_ILM_POLICY_NAME: user_input.get(
+                CONF_ILM_POLICY_NAME, DEFAULT_ILM_POLICY_NAME
+            ),
+            CONF_ILM_MAX_SIZE: user_input.get(CONF_ILM_MAX_SIZE, DEFAULT_ILM_MAX_SIZE),
+            CONF_ILM_DELETE_AFTER: user_input.get(
+                CONF_ILM_DELETE_AFTER, DEFAULT_ILM_DELETE_AFTER
+            ),
         }
 
     async def async_step_user(self, user_input=None):
