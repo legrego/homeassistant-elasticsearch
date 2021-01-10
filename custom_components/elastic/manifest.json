@@ -2,6 +2,7 @@
   "domain": "elastic",
   "name": "Elasticsearch",
   "documentation": "https://github.com/legrego/homeassistant-elasticsearch",
+  "issue_tracker": "https://github.com/legrego/homeassistant-elasticsearch/issues",
   "dependencies": [],
   "codeowners": [
     "@legrego"
