@@ -35,7 +35,7 @@ Example: `/home/pi/.homeassistant` and `/home/pi/.homeassistant/custom_component
 ```
 .homeassistant/
 |-- custom_components/
-|   |-- elastic/
+|   |-- elasticsearch/
 |       |-- __init__.py
 |       |-- const.py
 |       |-- es_doc_publisher.py
@@ -49,7 +49,7 @@ Example: `/home/pi/.homeassistant` and `/home/pi/.homeassistant/custom_component
 ## Configuration
 This is the bare-minimum configuration you need to get up-and-running:
 ```yaml
-elastic:
+elasticsearch:
     # URL should point to your Elasticsearch cluster
     url: http://localhost:9200
 ```
@@ -81,7 +81,7 @@ Actual names use the [Rollover API](https://www.elastic.co/guide/en/elasticsearc
 ### Example Configurations
 **Exclude all groups from publishing:**
 ```yaml
-elastic:
+elasticsearch:
     # URL should point to your Elasticsearch cluster
     url: http://localhost:9200
     exclude:
@@ -90,7 +90,7 @@ elastic:
 
 **Exclude a specific switch from publishing:**
 ```yaml
-elastic:
+elasticsearch:
     # URL should point to your Elasticsearch cluster
     url: http://localhost:9200
     exclude:
@@ -99,7 +99,7 @@ elastic:
 
 **Multiple exclusions:**
 ```yaml
-elastic:
+elasticsearch:
     # URL should point to your Elasticsearch cluster
     url: http://localhost:9200
     exclude:

@@ -20,7 +20,7 @@ If you don't want to maintain your own cluster, then give the [Elastic Cloud](ht
 ## Configuration
 This is the bare-minimum configuration you need to get up-and-running:
 ```yaml
-elastic:
+elasticsearch:
     # URL should point to your Elasticsearch cluster
     url: http://localhost:9200
 ```
