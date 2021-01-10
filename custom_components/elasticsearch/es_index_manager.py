@@ -63,7 +63,7 @@ class IndexManager:
         """
         Initializes the Elasticsearch cluster with an index template, initial index, and alias.
         """
-        import elasticsearch
+        from elasticsearch.exceptions import ElasticsearchException
 
         client = self._gateway.get_client()
 
@@ -103,7 +103,7 @@ class IndexManager:
                 await client.indices.put_template(
                     name=INDEX_TEMPLATE_NAME, body=index_template
                 )
-            except elasticsearch.ElasticsearchException as err:
+            except ElasticsearchException as err:
                 LOGGER.exception("Error creating index template: %s", err)
 
         if not await client.indices.exists_alias(name=self.index_alias):
@@ -113,7 +113,7 @@ class IndexManager:
                     index=self._index_format + "-000001",
                     body={"aliases": {self.index_alias: {"is_write_index": True}}},
                 )
-            except elasticsearch.ElasticsearchException as err:
+            except ElasticsearchException as err:
                 LOGGER.exception("Error creating initial index/alias: %s", err)
         elif self._using_ilm:
             LOGGER.debug("Ensuring ILM Policy is attached to existing index")
@@ -126,14 +126,14 @@ class IndexManager:
                         "index.lifecycle.rollover_alias": self.index_alias,
                     },
                 )
-            except elasticsearch.ElasticsearchException as err:
+            except ElasticsearchException as err:
                 LOGGER.exception("Error updating index ILM settings: %s", err)
 
     async def _create_ilm_policy(self, config):
         """
         Creates the index lifecycle management policy.
         """
-        import elasticsearch
+        from elasticsearch.exceptions import TransportError
 
         client = self._gateway.get_client()
 
@@ -145,7 +145,7 @@ class IndexManager:
 
         try:
             existing_policy = await client.transport.perform_request("GET", url)
-        except elasticsearch.TransportError as err:
+        except TransportError as err:
             if err.status_code == 404:
                 existing_policy = None
             else:

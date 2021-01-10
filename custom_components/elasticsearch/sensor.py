@@ -12,11 +12,11 @@ from .const import CONF_HEALTH_SENSOR_ENABLED, CONF_PUBLISH_ENABLED
 
 LOGGER = logging.getLogger(__name__)
 
-DEPENDENCIES = ["elastic"]
+DEPENDENCIES = ["elasticsearch"]
 
 SCAN_INTERVAL = timedelta(seconds=30)
 
-ELASTIC_DOMAIN = "elastic"
+ELASTIC_DOMAIN = "elasticsearch"
 
 
 def setup_platform(hass, config, add_devices, discovery_info=None):
