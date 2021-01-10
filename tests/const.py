@@ -10,7 +10,7 @@ from homeassistant.const import (
     CONF_VERIFY_SSL,
 )
 
-from custom_components.elastic.const import (
+from custom_components.elasticsearch.const import (
     CONF_HEALTH_SENSOR_ENABLED,
     CONF_ILM_DELETE_AFTER,
     CONF_ILM_ENABLED,

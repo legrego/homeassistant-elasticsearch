@@ -17,10 +17,14 @@ from .utils import get_merged_config
 
 LOGGER = logging.getLogger(__name__)
 
-DEPENDENCIES = ["elastic"]
+DEPENDENCIES = ["elasticsearch"]
 
 SCAN_INTERVAL = timedelta(seconds=30)
 
+<<<<<<< HEAD:custom_components/elastic/sensor.py
+=======
+ELASTIC_DOMAIN = "elasticsearch"
+>>>>>>> 32921a4577a5292f9a855c8a538313e94ada95fc:custom_components/elasticsearch/sensor.py
 
 async def async_setup_entry(
     hass: HomeAssistantType,

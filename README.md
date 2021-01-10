@@ -54,7 +54,7 @@ This component supports yaml-based configuration, but this is deprecated, and wi
 ```
 .homeassistant/
 |-- custom_components/
-|   |-- elastic/
+|   |-- elasticsearch/
 |       |-- __init__.py
 |       |-- const.py
 |       |-- es_doc_publisher.py
@@ -69,9 +69,9 @@ This component supports yaml-based configuration, but this is deprecated, and wi
 This is the bare-minimum configuration you need to get up-and-running:
 
 ```yaml
-elastic:
-  # URL should point to your Elasticsearch cluster
-  url: http://localhost:9200
+elasticsearch:
+    # URL should point to your Elasticsearch cluster
+    url: http://localhost:9200
 ```
 
 ### Configuration Variables
@@ -108,32 +108,32 @@ All variables are optional unless marked required.
 **Exclude all groups from publishing:**
 
 ```yaml
-elastic:
-  # URL should point to your Elasticsearch cluster
-  url: http://localhost:9200
-  exclude:
-    domains: ["group"]
+elasticsearch:
+    # URL should point to your Elasticsearch cluster
+    url: http://localhost:9200
+    exclude:
+        domains: ['group']
 ```
 
 **Exclude a specific switch from publishing:**
 
 ```yaml
-elastic:
-  # URL should point to your Elasticsearch cluster
-  url: http://localhost:9200
-  exclude:
-    entities: ["switch.living_room_switch"]
+elasticsearch:
+    # URL should point to your Elasticsearch cluster
+    url: http://localhost:9200
+    exclude:
+        entities: ['switch.living_room_switch']
 ```
 
 **Multiple exclusions:**
 
 ```yaml
-elastic:
-  # URL should point to your Elasticsearch cluster
-  url: http://localhost:9200
-  exclude:
-    domains: ["group", "automation"]
-    entities: ["switch.living_room_switch", "light.hallway_light"]
+elasticsearch:
+    # URL should point to your Elasticsearch cluster
+    url: http://localhost:9200
+    exclude:
+        domains: ['group', 'automation']
+        entities: ['switch.living_room_switch', 'light.hallway_light']
 ```
 
 ## Security

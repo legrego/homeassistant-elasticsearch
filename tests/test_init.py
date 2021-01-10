@@ -5,8 +5,8 @@ from homeassistant.const import CONF_URL
 from homeassistant.helpers.typing import HomeAssistantType
 from homeassistant.setup import async_setup_component
 
-from custom_components.elastic.const import DOMAIN as ELASTIC_DOMAIN
-from custom_components.elastic.utils import get_merged_config
+from custom_components.elasticsearch.const import DOMAIN as ELASTIC_DOMAIN
+from custom_components.elasticsearch.utils import get_merged_config
 from tests.const import MOCK_COMPLEX_LEGACY_CONFIG, MOCK_MINIMAL_LEGACY_CONFIG
 from tests.test_util.es_startup_mocks import mock_es_initialization
 
