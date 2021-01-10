@@ -28,7 +28,21 @@ Elastic has a [great setup guide](https://www.elastic.co/start) if you need help
 
 If you don't want to maintain your own cluster, then give the [Elastic Cloud](https://www.elastic.co/cloud) a try! There is a free trial available to get you started.
 
-## Installation
+## Installation (preferred method)
+
+This component supports interactive configuration via Home Assistant's integration configuration page.
+This will be the only supported configuration method in the future.
+
+1. Copy the contents of `custom_components` to your `$HASS_CONFIG/custom_components` directory, where `$HASS_CONFIG` is the location on your machine where Home-Assistant lives.
+   Example: `/home/pi/.homeassistant` and `/home/pi/.homeassistant/custom_components`. You may have to create the `custom_components` directory yourself.
+2. Restart Home-Assistant.
+3. From the `Integrations` configuration menu, add a new `Elasticsearch` integration.
+4. Provide connection information and optionally credentials to begin setup.
+5. Once the integration is setup, you may tweak all settings via the "Options" button on the integrations page.
+
+## Installation (deprecated method)
+
+This component supports yaml-based configuration, but this is deprecated, and will be removed in a future release. Please migrate to the UI-based approach outlined above. Please file an issue if you have any trouble migrating to the new setup process.
 
 1. Copy the contents of `custom_components` to your `$HASS_CONFIG/custom_components` directory, where `$HASS_CONFIG` is the location on your machine where Home-Assistant lives.
    Example: `/home/pi/.homeassistant` and `/home/pi/.homeassistant/custom_components`. You may have to create the `custom_components` directory yourself.
