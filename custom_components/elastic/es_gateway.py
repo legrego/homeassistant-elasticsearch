@@ -1,4 +1,5 @@
 """Encapsulates Elasticsearch operations"""
+import aiohttp
 from homeassistant.const import (
     CONF_PASSWORD,
     CONF_TIMEOUT,
@@ -19,7 +20,6 @@ from .errors import (
 from .es_serializer import get_serializer
 from .es_version import ElasticsearchVersion
 from .logger import LOGGER
-import aiohttp
 
 
 class ElasticsearchGateway:

@@ -1,3 +1,6 @@
+from unittest.mock import MagicMock
+
+import aiohttp
 import pytest
 from homeassistant import data_entry_flow
 from homeassistant.config_entries import SOURCE_USER
@@ -5,8 +8,6 @@ from homeassistant.helpers.typing import HomeAssistantType
 
 from custom_components.elastic.const import DOMAIN
 from tests.test_util.es_startup_mocks import mock_es_initialization
-import aiohttp
-from unittest.mock import MagicMock
 
 
 @pytest.mark.asyncio
