@@ -94,7 +94,7 @@ class DocumentPublisher:
 
     async def async_do_publish(self):
         "Publishes all queued documents to the Elasticsearch cluster"
-        from elasticsearch import ElasticsearchException
+        from elasticsearch.exceptions import ElasticsearchException
 
         if self.publish_queue.empty():
             LOGGER.debug("Skipping publish because queue is empty")
@@ -144,7 +144,7 @@ class DocumentPublisher:
         Wrapper to publish events.
         Workaround for elasticsearch_async not supporting bulk operations
         """
-        from elasticsearch import ElasticsearchException
+        from elasticsearch.exceptions import ElasticsearchException
         from elasticsearch.helpers import bulk
 
         try:

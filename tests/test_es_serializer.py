@@ -2,7 +2,7 @@
 
 import json
 
-from custom_components.elastic.es_serializer import get_serializer
+from custom_components.elasticsearch.es_serializer import get_serializer
 
 from .sample_data import create_sample_state
 
