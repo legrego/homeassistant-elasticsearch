@@ -4,15 +4,13 @@ from homeassistant.config_entries import SOURCE_USER
 from homeassistant.helpers.typing import HomeAssistantType
 
 from custom_components.elastic.const import DOMAIN
-from tests.common import MockESGateway, MockESIntegration
-
-from .async_mock import patch
+from tests.test_util.es_startup_mocks import mock_es_initialization
+import aiohttp
+from unittest.mock import MagicMock
 
 
 @pytest.mark.asyncio
-@patch("custom_components.elastic.es_gateway.ElasticsearchGateway", MockESGateway)
-@patch("custom_components.elastic.ElasticIntegration", MockESIntegration)
-async def test_user_flow_minimum_fields(hass: HomeAssistantType, event_loop):
+async def test_user_flow_minimum_fields(hass: HomeAssistantType, aioclient_mock):
     """ Test user config flow with minimum fields. """
 
     result = await hass.config_entries.flow.async_init(
@@ -20,13 +18,24 @@ async def test_user_flow_minimum_fields(hass: HomeAssistantType, event_loop):
     )
     assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
     assert result["step_id"] == "user"
+
+    es_url = "http://minimum-fields:9200"
+
+    mock_es_initialization(
+        aioclient_mock,
+        url=es_url,
+        mock_health_check=True,
+        mock_index_creation=True,
+        mock_template_setup=True,
+    )
+
     result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], user_input={"url": "http://localhost:9200"}
+        result["flow_id"], user_input={"url": es_url}
     )
 
     assert result["type"] == data_entry_flow.RESULT_TYPE_CREATE_ENTRY
-    assert result["title"] == "http://localhost:9200"
-    assert result["data"]["url"] == "http://localhost:9200"
+    assert result["title"] == es_url
+    assert result["data"]["url"] == es_url
     assert result["data"]["username"] is None
     assert result["data"]["password"] is None
     assert result["data"]["ssl_ca_path"] is None
@@ -36,8 +45,7 @@ async def test_user_flow_minimum_fields(hass: HomeAssistantType, event_loop):
 
 
 @pytest.mark.asyncio
-@patch("custom_components.elastic.es_gateway.ElasticsearchGateway", MockESGateway)
-async def test_user_flow_to_tls_flow(hass: HomeAssistantType, event_loop):
+async def test_user_flow_to_tls_flow(hass: HomeAssistantType, aioclient_mock):
     """ Test user config flow with config that forces TLS configuration. """
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
@@ -45,8 +53,23 @@ async def test_user_flow_to_tls_flow(hass: HomeAssistantType, event_loop):
     assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
     assert result["step_id"] == "user"
 
+    es_url = "https://untrusted-connection:9200"
+
+    class MockSSLError(aiohttp.client_exceptions.ClientConnectorCertificateError):
+        """
+        Mocks an SSL error caused by an untrusted certificate.
+        This is imperfect, but gets the job done for now.
+        """
+
+        def __init__(self):
+            self._conn_key = MagicMock()
+            self._certificate_error = Exception("AHHHH")
+            return
+
+    aioclient_mock.get(es_url, exc=MockSSLError)
+
     result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], user_input={"url": "https://localhost:9200"}
+        result["flow_id"], user_input={"url": es_url}
     )
 
     assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
@@ -56,8 +79,7 @@ async def test_user_flow_to_tls_flow(hass: HomeAssistantType, event_loop):
 
 
 @pytest.mark.asyncio
-@patch("custom_components.elastic.es_gateway.ElasticsearchGateway", MockESGateway)
-async def test_flow_fails_es_unavailable(hass: HomeAssistantType):
+async def test_flow_fails_es_unavailable(hass: HomeAssistantType, aioclient_mock):
     """ Test user config flow fails if connection cannot be established. """
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
@@ -65,8 +87,12 @@ async def test_flow_fails_es_unavailable(hass: HomeAssistantType):
     assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
     assert result["step_id"] == "user"
 
+    es_url = "http://unavailable-host:9200"
+
+    aioclient_mock.get(es_url, exc=aiohttp.ClientError)
+
     result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], user_input={"url": "http://unavailable-host:9200"}
+        result["flow_id"], user_input={"url": es_url}
     )
 
     assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
@@ -76,8 +102,7 @@ async def test_flow_fails_es_unavailable(hass: HomeAssistantType):
 
 
 @pytest.mark.asyncio
-@patch("custom_components.elastic.es_gateway.ElasticsearchGateway", MockESGateway)
-async def test_flow_fails_unauthorized(hass: HomeAssistantType):
+async def test_flow_fails_unauthorized(hass: HomeAssistantType, aioclient_mock):
     """ Test user config flow fails if connection cannot be established. """
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
@@ -85,11 +110,68 @@ async def test_flow_fails_unauthorized(hass: HomeAssistantType):
     assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
     assert result["step_id"] == "user"
 
+    es_url = "http://needs-auth:9200"
+
+    aioclient_mock.get(es_url, status=401)
+
     result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], user_input={"url": "http://needs-auth:9200"}
+        result["flow_id"], user_input={"url": es_url}
     )
 
     assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
     assert result["errors"]["base"] == "invalid_auth"
     assert result["step_id"] == "user"
     assert "data" not in result
+
+
+@pytest.mark.asyncio
+@pytest.mark.skip(
+    reason="Struggling to prevent real network requests. Something is not honoring our aioclient mock."
+)
+async def test_options_flow(
+    hass: HomeAssistantType, aioclient_mock, event_loop
+) -> None:
+    """Test options config flow."""
+
+    es_url = "http://localhost:9200"
+
+    mock_es_initialization(
+        aioclient_mock,
+        url=es_url,
+        mock_health_check=True,
+        mock_index_creation=True,
+        mock_template_setup=True,
+        mock_ilm_setup=True,
+    )
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}, data={"url": es_url}
+    )
+    await hass.async_block_till_done()
+    assert result["type"] == data_entry_flow.RESULT_TYPE_CREATE_ENTRY
+    entry = result["result"]
+
+    result = await hass.config_entries.options.async_init(entry.entry_id, data=None)
+
+    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["step_id"] == "publish_options"
+
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], user_input={}
+    )
+
+    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["step_id"] == "ilm_options"
+
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], user_input={}
+    )
+
+    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["step_id"] == "health_options"
+
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], user_input={}
+    )
+
+    assert result["type"] == data_entry_flow.RESULT_TYPE_CREATE_ENTRY

@@ -6,8 +6,6 @@ from contextlib import contextmanager
 from unittest.mock import AsyncMock, Mock, patch
 
 import homeassistant.util.dt as date_util
-from elasticsearch.connection import Connection
-from elasticsearch.exceptions import AuthenticationException, ConnectionError, SSLError
 from homeassistant import auth, config_entries
 from homeassistant import core as ha
 from homeassistant.auth import auth_store
@@ -15,81 +13,10 @@ from homeassistant.const import EVENT_HOMEASSISTANT_CLOSE
 from homeassistant.helpers import storage
 from homeassistant.util.unit_system import METRIC_SYSTEM
 
-from custom_components.elastic.es_gateway import ElasticsearchGateway
-
 """ Functions here have been cobbled together from various sources, including: hacs, home-assistant """
 
 TOKEN = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 INSTANCES = []
-
-
-class MockESConnection(Connection):
-    def __init__(
-        self,
-        host="localhost",
-        port=None,
-        http_auth=None,
-        use_ssl=False,
-        verify_certs=True,
-        ca_certs=None,
-        **kwargs,
-    ):
-        # super().__init__(
-        #     host=host,
-        #     port=port,
-        #     http_auth=http_auth,
-        #     use_ssl=use_ssl,
-        #     verify_certs=verify_certs,
-        #     ca_certs=ca_certs,
-        #     **kwargs,
-        # )
-        self.host = host
-        self.use_ssl = use_ssl
-        self.verify_certs = verify_certs
-
-    def close(self):
-        return
-
-    def perform_request(
-        self,
-        method,
-        url,
-        use_ssl,
-        params=None,
-        body=None,
-        timeout=None,
-        ignore=(),
-        headers=None,
-    ):
-        if self.use_ssl and self.verify_certs:
-            raise SSLError("Untrusted certificate!")
-
-        if self.host.find("unavailable-host") >= 0:
-            raise ConnectionError("Unable to connect")
-
-        if self.host.find("needs-auth") >= 0:
-            raise AuthenticationException("Unable to connect")
-
-        response_status = 200
-        response_headers = {}
-        raw_data = {}
-        return response_status, response_headers, raw_data
-
-
-class MockESGateway(ElasticsearchGateway):
-    def __init__(self, config):
-        super().__init__(config, connection_class=MockESConnection)
-
-
-class MockESIntegration:
-    def __init__(self, hass, config_entry):
-        return
-
-    async def async_init(self):
-        return
-
-    async def async_shutdown(self):
-        return
 
 
 class MockConfigEntry(config_entries.ConfigEntry):

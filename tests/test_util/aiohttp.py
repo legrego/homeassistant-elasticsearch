@@ -281,19 +281,25 @@ def mock_aiohttp_client(hass):
     """Context manager to mock aiohttp client."""
     mocker = AiohttpClientMocker()
 
+    SESSIONS = []
+
     def create_session(hass, *args):
         session = mocker.create_session(hass.loop)
 
         async def close_session(event):
             """Close session."""
             await session.close()
+            for sess in SESSIONS:
+                await sess.close()
 
         hass.bus.async_listen_once(EVENT_HOMEASSISTANT_CLOSE, close_session)
 
         return session
 
-    async def create_es_session(self):
+    async def create_es_session(self, *args):
+        print("CREATING MOCK SESSION: " + str(type(self)) + " : " + str(self.host))
         self.session = mocker.create_session(hass.loop)
+        SESSIONS.append(self.session)
 
     with mock.patch(
         "homeassistant.helpers.aiohttp_client.async_create_clientsession",

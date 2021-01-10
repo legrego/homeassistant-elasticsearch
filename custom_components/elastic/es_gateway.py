@@ -19,12 +19,13 @@ from .errors import (
 from .es_serializer import get_serializer
 from .es_version import ElasticsearchVersion
 from .logger import LOGGER
+import aiohttp
 
 
 class ElasticsearchGateway:
     """Encapsulates Elasticsearch operations"""
 
-    def __init__(self, config, connection_class=None):
+    def __init__(self, config):
         """Initialize the gateway"""
         self._url = config.get(CONF_URL)
         self._timeout = config.get(CONF_TIMEOUT)
@@ -32,7 +33,6 @@ class ElasticsearchGateway:
         self._password = config.get(CONF_PASSWORD)
         self._verify_certs = config.get(CONF_VERIFY_SSL, True)
         self._ca_certs = config.get(CONF_SSL_CA_PATH)
-        self._connection_class = connection_class
 
         self.client = None
         self.es_version = None
@@ -47,8 +47,6 @@ class ElasticsearchGateway:
             SSLError,
         )
 
-        # TODO use async client via hass.add_executor_job
-
         client = None
         try:
             client = self._create_es_client()
@@ -56,6 +54,10 @@ class ElasticsearchGateway:
         except SSLError as err:
             raise UntrustedCertificate(err)
         except ConnectionError as err:
+            if isinstance(
+                err.info, aiohttp.client_exceptions.ClientConnectorCertificateError
+            ):
+                raise UntrustedCertificate(err)
             raise CannotConnect(err)
         except AuthenticationException as err:
             raise AuthenticationRequired(err)
@@ -63,9 +65,11 @@ class ElasticsearchGateway:
             raise InsufficientPrivileges(err)
         except ElasticsearchException as err:
             raise ElasticException(err)
+        except Exception as err:
+            raise ElasticException(err)
         finally:
             if client:
-                client.close()
+                await client.close()
                 client = None
 
     async def async_init(self):
@@ -107,6 +111,7 @@ class ElasticsearchGateway:
                 http_auth=auth,
                 serializer=serializer,
                 verify_certs=self._verify_certs,
+                ssl_show_warn=self._verify_certs,
                 ca_certs=self._ca_certs,
                 timeout=self._timeout,
             )
@@ -115,6 +120,7 @@ class ElasticsearchGateway:
             [self._url],
             serializer=serializer,
             verify_certs=self._verify_certs,
+            ssl_show_warn=self._verify_certs,
             ca_certs=self._ca_certs,
             timeout=self._timeout,
         )

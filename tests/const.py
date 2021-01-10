@@ -5,25 +5,75 @@ from homeassistant.const import (
     CONF_EXCLUDE,
     CONF_URL,
     CONF_VERIFY_SSL,
+    CONF_USERNAME,
+    CONF_PASSWORD,
+    CONF_TIMEOUT,
 )
 
 from custom_components.elastic.const import (
     CONF_HEALTH_SENSOR_ENABLED,
     CONF_ILM_ENABLED,
+    CONF_ILM_DELETE_AFTER,
+    CONF_ILM_MAX_SIZE,
+    CONF_ILM_POLICY_NAME,
+    CONF_INDEX_FORMAT,
     CONF_PUBLISH_ENABLED,
+    CONF_PUBLISH_FREQUENCY,
+    CONF_ONLY_PUBLISH_CHANGED,
 )
 
-MOCK_LEGACY_CONFIG = {
+MOCK_MINIMAL_LEGACY_CONFIG = {
     CONF_URL: "http://my-es:9200",
-    CONF_PUBLISH_ENABLED: False,
-    CONF_ILM_ENABLED: False,
-    CONF_HEALTH_SENSOR_ENABLED: False,
+}
+
+MOCK_COMPLEX_LEGACY_CONFIG = {
+    CONF_URL: "https://my-complex-es:9200",
+    CONF_USERNAME: "username",
+    CONF_PASSWORD: "changeme",
+    CONF_TIMEOUT: 60,
+    CONF_PUBLISH_ENABLED: True,
+    CONF_PUBLISH_FREQUENCY: 1,
+    CONF_ILM_ENABLED: True,
+    CONF_ILM_DELETE_AFTER: "1d",
+    CONF_ILM_MAX_SIZE: "1b",
+    CONF_ILM_POLICY_NAME: "custom-policy-name",
+    CONF_INDEX_FORMAT: "custom-index-format",
+    CONF_HEALTH_SENSOR_ENABLED: True,
     CONF_VERIFY_SSL: False,
+    CONF_ONLY_PUBLISH_CHANGED: True,
     CONF_ALIAS: "my-alias",
     CONF_EXCLUDE: {
         CONF_ENTITIES: ["switch.my_switch"],
         CONF_DOMAINS: ["sensor", "weather"],
     },
+}
+
+CLUSTER_INFO_MISSING_CREDENTIALS_RESPONSE_BODY = {
+    "error": {
+        "root_cause": [
+            {
+                "type": "security_exception",
+                "reason": "missing authentication credentials for REST request [/?pretty]",
+                "header": {
+                    "WWW-Authenticate": [
+                        'Basic realm="security" charset="UTF-8"',
+                        'Bearer realm="security"',
+                        "ApiKey",
+                    ]
+                },
+            }
+        ],
+        "type": "security_exception",
+        "reason": "missing authentication credentials for REST request [/?pretty]",
+        "header": {
+            "WWW-Authenticate": [
+                'Basic realm="security" charset="UTF-8"',
+                'Bearer realm="security"',
+                "ApiKey",
+            ]
+        },
+    },
+    "status": 401,
 }
 
 CLUSTER_INFO_RESPONSE_BODY = {

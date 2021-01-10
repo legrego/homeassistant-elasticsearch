@@ -8,8 +8,6 @@ from homeassistant.runner import HassEventLoopPolicy
 from tests.common import async_test_home_assistant
 from tests.test_util.aiohttp import mock_aiohttp_client
 
-UNIQUE_ID = "ABC123"
-
 # All test coroutines will be treated as marked.
 pytestmark = pytest.mark.asyncio
 
@@ -57,27 +55,3 @@ def hass(event_loop, tmpdir):
         if isinstance(ex, (ServiceNotFound, FileExistsError)):
             continue
         raise ex
-
-    # """Fixture to provide a test instance of Home Assistant."""
-
-    # def exc_handle(loop, context):
-    #     """Handle exceptions by rethrowing them, which will fail the test."""
-    #     exceptions.append(context["exception"])
-    #     orig_exception_handler(loop, context)
-
-    # exceptions = []
-    # hass_obj = event_loop.run_until_complete(
-    #     async_test_home_assistant(event_loop, tmpdir)
-    # )
-    # orig_exception_handler = event_loop.get_exception_handler()
-    # event_loop.set_exception_handler(exc_handle)
-
-    # hass_obj.http = MagicMock()
-
-    # yield hass_obj
-
-    # event_loop.run_until_complete(hass_obj.async_stop(force=True))
-    # for ex in exceptions:
-    #     if isinstance(ex, (ServiceNotFound, FileExistsError)):
-    #         continue
-    #     raise ex
