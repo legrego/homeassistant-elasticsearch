@@ -2,4 +2,4 @@
 
 import logging
 
-LOGGER = logging.getLogger("custom_components.elastic")
+LOGGER = logging.getLogger("custom_components.elasticsearch")
