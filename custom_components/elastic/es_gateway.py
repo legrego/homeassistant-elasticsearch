@@ -1,10 +1,15 @@
 """Encapsulates Elasticsearch operations"""
 from homeassistant.const import (
-    CONF_URL, CONF_USERNAME, CONF_PASSWORD, CONF_VERIFY_SSL, CONF_TIMEOUT
+    CONF_PASSWORD,
+    CONF_TIMEOUT,
+    CONF_URL,
+    CONF_USERNAME,
+    CONF_VERIFY_SSL,
 )
-from .const import (CONF_SSL_CA_PATH)
-from .es_version import ElasticsearchVersion
+
+from .const import CONF_SSL_CA_PATH
 from .es_serializer import get_serializer
+from .es_version import ElasticsearchVersion
 from .logger import LOGGER
 
 
@@ -35,7 +40,7 @@ class ElasticsearchGateway:
             LOGGER.warning(
                 "UNSUPPORTED VERSION OF ELASTICSEARCH DETECTED: %s. \
                 This may function in unexpected ways, or fail entirely!",
-                self.es_version.to_string()
+                self.es_version.to_string(),
             )
 
     def get_client(self):
@@ -56,32 +61,40 @@ class ElasticsearchGateway:
 
         if use_basic_auth:
             auth = (self._username, self._password)
-            return Elasticsearch(
-                [self._url],
-                http_auth=auth,
-                serializer=serializer,
-                verify_certs=self._verify_certs,
-                ca_certs=self._ca_certs,
-                timeout=self._timeout
-            ) if sync else AsyncElasticsearch(
-                [self._url],
-                http_auth=auth,
-                serializer=serializer,
-                verify_certs=self._verify_certs,
-                ca_certs=self._ca_certs,
-                timeout=self._timeout
+            return (
+                Elasticsearch(
+                    [self._url],
+                    http_auth=auth,
+                    serializer=serializer,
+                    verify_certs=self._verify_certs,
+                    ca_certs=self._ca_certs,
+                    timeout=self._timeout,
+                )
+                if sync
+                else AsyncElasticsearch(
+                    [self._url],
+                    http_auth=auth,
+                    serializer=serializer,
+                    verify_certs=self._verify_certs,
+                    ca_certs=self._ca_certs,
+                    timeout=self._timeout,
+                )
             )
 
-        return Elasticsearch(
-            [self._url],
-            serializer=serializer,
-            verify_certs=self._verify_certs,
-            ca_certs=self._ca_certs,
-            timeout=self._timeout
-        ) if sync else AsyncElasticsearch(
-            [self._url],
-            serializer=serializer,
-            verify_certs=self._verify_certs,
-            ca_certs=self._ca_certs,
-            timeout=self._timeout
+        return (
+            Elasticsearch(
+                [self._url],
+                serializer=serializer,
+                verify_certs=self._verify_certs,
+                ca_certs=self._ca_certs,
+                timeout=self._timeout,
+            )
+            if sync
+            else AsyncElasticsearch(
+                [self._url],
+                serializer=serializer,
+                verify_certs=self._verify_certs,
+                ca_certs=self._ca_certs,
+                timeout=self._timeout,
+            )
         )
