@@ -98,12 +98,7 @@ class ElasticsearchGateway:
 
     def _create_es_client(self):
         """Constructs an instance of the Elasticsearch client"""
-<<<<<<< HEAD:custom_components/elastic/es_gateway.py
-        from elasticsearch import AsyncElasticsearch
-=======
         from elasticsearch._async.client import AsyncElasticsearch
-        from elasticsearch.client import Elasticsearch
->>>>>>> 32921a4577a5292f9a855c8a538313e94ada95fc:custom_components/elasticsearch/es_gateway.py
 
         use_basic_auth = self._username is not None and self._password is not None
 

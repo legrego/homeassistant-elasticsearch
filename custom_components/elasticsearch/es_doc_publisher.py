@@ -188,13 +188,8 @@ class DocumentPublisher:
         Wrapper to publish events.
         Workaround for elasticsearch_async not supporting bulk operations
         """
-<<<<<<< HEAD:custom_components/elastic/es_doc_publisher.py
-        from elasticsearch import ElasticsearchException
-        from elasticsearch.helpers import async_bulk
-=======
         from elasticsearch.exceptions import ElasticsearchException
-        from elasticsearch.helpers import bulk
->>>>>>> 32921a4577a5292f9a855c8a538313e94ada95fc:custom_components/elasticsearch/es_doc_publisher.py
+        from elasticsearch.helpers import async_bulk
 
         try:
             bulk_response = await async_bulk(self._gateway.get_client(), actions)
