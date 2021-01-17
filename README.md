@@ -28,19 +28,25 @@ Elastic has a [great setup guide](https://www.elastic.co/start) if you need help
 
 If you don't want to maintain your own cluster, then give the [Elastic Cloud](https://www.elastic.co/cloud) a try! There is a free trial available to get you started.
 
-## Installation (preferred method)
+## Installation
+
+This component is available via the Home Assistant Community Store (HACS) in their default repository. Visit https://hacs.xyz/ for more information on HACS.
+
+Alternatively, you can manually install this component by copying the contents of `custom_components` to your `$HASS_CONFIG/custom_components` directory, where `$HASS_CONFIG` is the location on your machine where Home-Assistant lives.
+Example: `/home/pi/.homeassistant` and `/home/pi/.homeassistant/custom_components`. You may have to create the `custom_components` directory yourself.
+
+## Setup (preferred method)
 
 This component supports interactive configuration via Home Assistant's integration configuration page.
 This will be the only supported configuration method in the future.
 
-1. Copy the contents of `custom_components` to your `$HASS_CONFIG/custom_components` directory, where `$HASS_CONFIG` is the location on your machine where Home-Assistant lives.
-   Example: `/home/pi/.homeassistant` and `/home/pi/.homeassistant/custom_components`. You may have to create the `custom_components` directory yourself.
-2. Restart Home-Assistant.
-3. From the `Integrations` configuration menu, add a new `Elasticsearch` integration.
-4. Provide connection information and optionally credentials to begin setup.
-5. Once the integration is setup, you may tweak all settings via the "Options" button on the integrations page.
+1. Restart Home-assistant once you've completed the installation instrictions above.
+2. From the `Integrations` configuration menu, add a new `Elasticsearch` integration. ![img](assets/add-integration.png)
+3. Provide connection information and optionally credentials to begin setup. ![img](assets/configure-integration.png)
+4. Once the integration is setup, you may tweak all settings via the "Options" button on the integrations page.
+   ![img](assets/publish-options.png)
 
-## Installation (deprecated method)
+## Setup (deprecated method)
 
 This component supports yaml-based configuration, but this is deprecated, and will be removed in a future release. Please migrate to the UI-based approach outlined above. Please file an issue if you have any trouble migrating to the new setup process.
 
@@ -64,14 +70,14 @@ This component supports yaml-based configuration, but this is deprecated, and wi
 
 ```
 
-## Configuration
+## Configuration (deprecated)
 
 This is the bare-minimum configuration you need to get up-and-running:
 
 ```yaml
 elasticsearch:
-    # URL should point to your Elasticsearch cluster
-    url: http://localhost:9200
+  # URL should point to your Elasticsearch cluster
+  url: http://localhost:9200
 ```
 
 ### Configuration Variables
@@ -109,31 +115,31 @@ All variables are optional unless marked required.
 
 ```yaml
 elasticsearch:
-    # URL should point to your Elasticsearch cluster
-    url: http://localhost:9200
-    exclude:
-        domains: ['group']
+  # URL should point to your Elasticsearch cluster
+  url: http://localhost:9200
+  exclude:
+    domains: ["group"]
 ```
 
 **Exclude a specific switch from publishing:**
 
 ```yaml
 elasticsearch:
-    # URL should point to your Elasticsearch cluster
-    url: http://localhost:9200
-    exclude:
-        entities: ['switch.living_room_switch']
+  # URL should point to your Elasticsearch cluster
+  url: http://localhost:9200
+  exclude:
+    entities: ["switch.living_room_switch"]
 ```
 
 **Multiple exclusions:**
 
 ```yaml
 elasticsearch:
-    # URL should point to your Elasticsearch cluster
-    url: http://localhost:9200
-    exclude:
-        domains: ['group', 'automation']
-        entities: ['switch.living_room_switch', 'light.hallway_light']
+  # URL should point to your Elasticsearch cluster
+  url: http://localhost:9200
+  exclude:
+    domains: ["group", "automation"]
+    entities: ["switch.living_room_switch", "light.hallway_light"]
 ```
 
 ## Security
