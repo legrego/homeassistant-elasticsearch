@@ -1,7 +1,5 @@
 """Config flow for Elastic."""
 
-import os
-from typing import List
 
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
@@ -306,8 +304,7 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
 
     async def async_build_publish_options_schema(self):
         """Builds the schema for publish options."""
-        domains = self._get_domains()
-        entities = await self._async_get_entities()
+        domains, entities = await self._async_get_domains_and_entities()
 
         schema = {
             vol.Required(
@@ -387,25 +384,13 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
         return schema
 
     @callback
-    def _get_domains(self) -> List[str]:
-        """Get available domains."""
-        """Adapted from homeassistant/bootstrap.py#_get_domains"""
+    async def _async_get_domains_and_entities(self):
+        states = self.hass.states.async_all()
+        domains = set()
+        entity_ids = []
 
-        # Filter out the repeating and common config section [homeassistant]
-        domains = {key.split(" ")[0] for key in self.hass.config.as_dict()}
+        for state in states:
+            entity_ids.append(state.entity_id)
+            domains.add(state.domain)
 
-        # Add config entry domains
-        if not self.hass.config.safe_mode:
-            domains.update(self.hass.config_entries.async_domains())
-
-        # Make sure the Hass.io component is loaded
-        if "HASSIO" in os.environ:
-            domains.add("hassio")
-
-        return sorted(list(domains))
-
-    @callback
-    async def _async_get_entities(self) -> List[str]:
-        """Get available entities"""
-
-        return sorted(self.hass.states.async_entity_ids())
+        return sorted(list(domains)), sorted(entity_ids)
