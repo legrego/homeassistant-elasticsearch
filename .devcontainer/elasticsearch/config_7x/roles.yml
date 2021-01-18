@@ -6,5 +6,6 @@ hass_writer:
         "manage",
         "index",
         "create_index",
-        "create"
+        "create",
+        "read"
       ]

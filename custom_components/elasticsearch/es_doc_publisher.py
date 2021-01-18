@@ -1,7 +1,6 @@
 """Publishes documents to Elasticsearch"""
 import asyncio
 import math
-import socket
 from datetime import datetime
 from queue import Queue
 
@@ -19,6 +18,7 @@ from .const import (
 )
 from .es_serializer import get_serializer
 from .logger import LOGGER
+from .system_info import async_get_system_info
 
 
 class DocumentPublisher:
@@ -78,10 +78,11 @@ class DocumentPublisher:
 
         self._start_publish_timer()
 
-    async def async_init(self, system_info):
+    async def async_init(self):
         if not self.publish_enabled:
             return
         config_dict = self._hass.config.as_dict()
+        system_info = await async_get_system_info(self._hass)
         self._static_doc_properties = {
             "agent.name": config_dict["name"]
             if "name" in config_dict
@@ -97,7 +98,7 @@ class DocumentPublisher:
             else None,
             "host.architecture": system_info["arch"],
             "host.os.name": system_info["os_name"],
-            "host.hostname": socket.gethostname(),
+            "host.hostname": system_info["hostname"],
             "tags": self._tags,
         }
 
