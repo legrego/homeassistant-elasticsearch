@@ -325,8 +325,14 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
                     CONF_ONLY_PUBLISH_CHANGED, DEFAULT_ONLY_PUBLISH_CHAGED
                 ),
             ): bool,
-            vol.Required(CONF_EXCLUDED_DOMAINS, default=[]): cv.multi_select(domains),
-            vol.Required(CONF_EXCLUDED_ENTITIES, default=[]): cv.multi_select(entities),
+            vol.Required(
+                CONF_EXCLUDED_DOMAINS,
+                default=self._get_config_value(CONF_EXCLUDED_DOMAINS, []),
+            ): cv.multi_select(domains),
+            vol.Required(
+                CONF_EXCLUDED_ENTITIES,
+                default=self._get_config_value(CONF_EXCLUDED_ENTITIES, []),
+            ): cv.multi_select(entities),
         }
 
         if self.show_advanced_options:
