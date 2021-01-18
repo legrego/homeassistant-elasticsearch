@@ -1,9 +1,7 @@
-name: "Validation And Testing"
+name: "Validate and Test"
 on:
   push:
-  pull_request:
-  schedule:
-    - cron: '0 0 * * *'
+  workflow_dispatch:
 jobs:
   ci:
     runs-on: ubuntu-latest
@@ -20,22 +18,30 @@ jobs:
           path: |
             ~/.cache/pip
           key: custom-component-ci
+  
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip
           pip install -r requirements.txt
-      - uses: hacs/integration/action@main
+      - uses: "actions/checkout@v2"
+
+      - name: HACS validation
+        uses: "hacs/action@main"
         with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CATEGORY: integration
+          category: "integration"
+
+      - name: Hassfest validation
+        uses: "home-assistant/actions/hassfest@master"
+  
       - name: Test with pytest
         run: |
           pytest
       - name: Test with flake8
         run: |
           flake8 .
-      - uses: KTibow/ha-blueprint@stable
-        name: CI
-        with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          FORMAT_CODE: DISABLED
+      - name: Test with isort
+        run: |
+          isort .
+      - name: Test with black
+        run: |
+          black .
