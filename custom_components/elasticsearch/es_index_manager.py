@@ -11,6 +11,7 @@ from .const import (
     CONF_ILM_MAX_SIZE,
     CONF_ILM_POLICY_NAME,
     CONF_INDEX_FORMAT,
+    CONF_PUBLISH_ENABLED,
     INDEX_TEMPLATE_NAME,
     VERSION_SUFFIX,
 )
@@ -23,6 +24,11 @@ class IndexManager:
     def __init__(self, hass, config, gateway):
         """ Initializes index management """
 
+        self._config = config
+
+        if not config.get(CONF_PUBLISH_ENABLED):
+            return
+
         self.index_alias = config.get(CONF_ALIAS) + VERSION_SUFFIX
 
         self._hass = hass
@@ -33,12 +39,12 @@ class IndexManager:
 
         self._index_format = config.get(CONF_INDEX_FORMAT) + VERSION_SUFFIX
 
-        self._config = config
-
         self._using_ilm = True
 
     async def async_setup(self):
         """ Performs setup for index management. """
+        if not self._config.get(CONF_PUBLISH_ENABLED):
+            return
         version = self._gateway.es_version
         self._using_ilm = (
             version.is_default_distribution()
@@ -58,6 +64,8 @@ class IndexManager:
             )
         if self._using_ilm:
             await self._create_ilm_policy(self._config)
+
+        LOGGER.debug("Index Manager initialized")
 
     async def _create_index_template(self):
         """

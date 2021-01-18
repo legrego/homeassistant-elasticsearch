@@ -1,0 +1,10 @@
+hass_writer:
+  cluster: ["manage_index_templates", "monitor", "manage_ilm" ]
+  indices:
+    - names: ["hass-events*", "active-hass-index-*", "all-hass-events" ]
+      privileges: [
+        "manage",
+        "index",
+        "create_index",
+        "create"
+      ]

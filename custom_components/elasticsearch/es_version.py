@@ -22,7 +22,7 @@ class ElasticsearchVersion:
 
     def is_supported_version(self):
         """Determines if this version of ES is supported by this component"""
-        return self.major == 7 or (self.major == 6 and self.minor >= 7)
+        return self.major == 7
 
     def is_oss_distribution(self):
         """Determines if this is the OSS distribution"""

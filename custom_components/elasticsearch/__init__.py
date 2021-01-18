@@ -1,8 +1,12 @@
 """
 Support for sending event data to an Elasticsearch cluster
 """
+
+from copy import deepcopy
+
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
+from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.const import (
     CONF_ALIAS,
     CONF_DOMAINS,
@@ -13,11 +17,12 @@ from homeassistant.const import (
     CONF_URL,
     CONF_USERNAME,
     CONF_VERIFY_SSL,
-    EVENT_STATE_CHANGED,
 )
-from homeassistant.helpers import discovery
+from homeassistant.helpers.typing import HomeAssistantType
 
 from .const import (
+    CONF_EXCLUDED_DOMAINS,
+    CONF_EXCLUDED_ENTITIES,
     CONF_HEALTH_SENSOR_ENABLED,
     CONF_ILM_DELETE_AFTER,
     CONF_ILM_ENABLED,
@@ -32,18 +37,15 @@ from .const import (
     DOMAIN,
     ONE_MINUTE,
 )
-from .es_doc_publisher import DocumentPublisher
-from .es_gateway import ElasticsearchGateway
-from .es_index_manager import IndexManager
+from .es_integration import ElasticIntegration
 from .logger import LOGGER
 
-ELASTIC_COMPONENTS = ["sensor"]
-
+# Legacy (yml-based) configuration schema
 CONFIG_SCHEMA = vol.Schema(
     {
         DOMAIN: vol.Schema(
             {
-                vol.Required(CONF_URL): cv.url,
+                vol.Optional(CONF_URL): cv.url,
                 vol.Optional(CONF_USERNAME): cv.string,
                 vol.Optional(CONF_PASSWORD): cv.string,
                 vol.Optional(CONF_TIMEOUT, default=30): cv.positive_int,
@@ -65,6 +67,10 @@ CONFIG_SCHEMA = vol.Schema(
                 vol.Optional(CONF_TAGS, default=["hass"]): vol.All(
                     cv.ensure_list, [cv.string]
                 ),
+                vol.Optional(CONF_EXCLUDED_DOMAINS, default=[]): vol.All(
+                    cv.ensure_list, [cv.string]
+                ),
+                vol.Optional(CONF_EXCLUDED_ENTITIES, default=[]): cv.entity_ids,
                 vol.Optional(CONF_EXCLUDE, default={}): vol.Schema(
                     {
                         vol.Optional(CONF_DOMAINS, default=[]): vol.All(
@@ -80,45 +86,62 @@ CONFIG_SCHEMA = vol.Schema(
 )
 
 
-async def async_setup(hass, config):
-    """Setup the Elasticsearch component."""
+async def async_setup(hass: HomeAssistantType, config):
+    """Set up Elasticsearch integration via legacy yml-based setup."""
+    if DOMAIN not in config:
+        return True
+
     conf = config[DOMAIN]
 
-    hass.data[DOMAIN] = {}
+    # Migrate legacy yml-based config to a flattened structure.
+    excluded = conf.get(CONF_EXCLUDE, {})
+    conf[CONF_EXCLUDED_DOMAINS] = excluded.get(CONF_DOMAINS, [])
+    conf[CONF_EXCLUDED_ENTITIES] = excluded.get(CONF_ENTITIES, [])
 
-    LOGGER.debug("Creating ES gateway")
-    gateway = ElasticsearchGateway(hass, conf)
-    await gateway.async_init()
-    hass.data[DOMAIN]["gateway"] = gateway
+    # Run legacy yml-based config through the config flow.
+    hass.async_create_task(
+        hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": SOURCE_IMPORT}, data=deepcopy(conf)
+        )
+    )
 
-    hass.data[DOMAIN][CONF_PUBLISH_ENABLED] = conf.get(CONF_PUBLISH_ENABLED)
-    hass.data[DOMAIN][CONF_HEALTH_SENSOR_ENABLED] = conf.get(CONF_HEALTH_SENSOR_ENABLED)
+    return True
 
-    if conf.get(CONF_PUBLISH_ENABLED):
-        LOGGER.debug("Creating ES index manager")
-        index_manager = IndexManager(hass, conf, gateway)
-        await index_manager.async_setup()
-        hass.data[DOMAIN]["index_manager"] = index_manager
 
-        LOGGER.debug("Creating document publisher")
-        system_info = await hass.helpers.system_info.async_get_system_info()
-        publisher = DocumentPublisher(conf, gateway, index_manager, hass, system_info)
-        hass.data[DOMAIN]["publisher"] = publisher
+async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry):
+    """ Setup integration via config flow. """
 
-        def elastic_event_listener(event):
-            """Listen for new messages on the bus and queue them for send."""
-            state = event.data.get("new_state")
-            if state is None:
-                return
+    LOGGER.debug("Setting up integtation")
+    init = await _async_init_integration(hass, config_entry)
+    config_entry.add_update_listener(async_config_entry_updated)
+    return init
 
-            publisher.enqueue_state({"state": state, "event": event})
 
-            return
+async def async_unload_entry(hass: HomeAssistantType, config_entry: ConfigEntry):
+    """ Teardown integration. """
+    existing_instance = hass.data.get(DOMAIN)
+    if isinstance(existing_instance, ElasticIntegration):
+        LOGGER.debug("Shutting down previous integration")
+        await existing_instance.async_shutdown(config_entry)
+        hass.data[DOMAIN] = None
+    return True
 
-        hass.bus.async_listen(EVENT_STATE_CHANGED, elastic_event_listener)
 
-    for component in ELASTIC_COMPONENTS:
-        discovery.load_platform(hass, component, DOMAIN, {}, config)
+async def async_config_entry_updated(
+    hass: HomeAssistantType, config_entry: ConfigEntry
+):
+    """ Respond to config changes. """
+    LOGGER.debug("Configuration change detected")
+    return await _async_init_integration(hass, config_entry)
 
-    LOGGER.info("Elastic component fully initialized")
+
+async def _async_init_integration(hass: HomeAssistantType, config_entry: ConfigEntry):
+    """ Initialize integration. """
+    await async_unload_entry(hass, config_entry)
+
+    integration = ElasticIntegration(hass, config_entry)
+    await integration.async_init()
+
+    hass.data[DOMAIN] = integration
+
     return True

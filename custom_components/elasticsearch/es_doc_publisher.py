@@ -5,11 +5,18 @@ import socket
 from datetime import datetime
 from queue import Queue
 
-from homeassistant.const import CONF_DOMAINS, CONF_ENTITIES, CONF_EXCLUDE
+from homeassistant.const import EVENT_STATE_CHANGED
 from homeassistant.helpers import state as state_helper
 from pytz import utc
 
-from .const import CONF_ONLY_PUBLISH_CHANGED, CONF_PUBLISH_FREQUENCY, CONF_TAGS
+from .const import (
+    CONF_EXCLUDED_DOMAINS,
+    CONF_EXCLUDED_ENTITIES,
+    CONF_ONLY_PUBLISH_CHANGED,
+    CONF_PUBLISH_ENABLED,
+    CONF_PUBLISH_FREQUENCY,
+    CONF_TAGS,
+)
 from .es_serializer import get_serializer
 from .logger import LOGGER
 
@@ -17,8 +24,17 @@ from .logger import LOGGER
 class DocumentPublisher:
     """Publishes documents to Elasticsearch"""
 
-    def __init__(self, config, gateway, index_manager, hass, system_info):
+    def __init__(self, config, gateway, index_manager, hass):
         """Initialize the publisher"""
+
+        self.publish_enabled = config.get(CONF_PUBLISH_ENABLED)
+        self.publish_active = False
+        self.remove_state_change_listener = None
+
+        if not self.publish_enabled:
+            LOGGER.debug("Not initializing document publisher")
+            return
+
         self._gateway = gateway
         self._hass = hass
 
@@ -26,7 +42,46 @@ class DocumentPublisher:
 
         self._serializer = get_serializer()
 
-        config_dict = hass.config.as_dict()
+        self._static_doc_properties = None
+
+        self._publish_frequency = config.get(CONF_PUBLISH_FREQUENCY)
+        self._only_publish_changed = config.get(CONF_ONLY_PUBLISH_CHANGED)
+        self._tags = config.get(CONF_TAGS)
+
+        self._excluded_domains = config.get(CONF_EXCLUDED_DOMAINS)
+        self._excluded_entities = config.get(CONF_EXCLUDED_ENTITIES)
+
+        if self._excluded_domains:
+            LOGGER.debug(
+                "Excluding the following domains: %s", str(self._excluded_domains)
+            )
+
+        if self._excluded_entities:
+            LOGGER.debug(
+                "Excluding the following entities: %s", str(self._excluded_entities)
+            )
+
+        def elastic_event_listener(event):
+            """Listen for new messages on the bus and queue them for send."""
+            state = event.data.get("new_state")
+            if state is None:
+                return
+
+            self.enqueue_state({"state": state, "event": event})
+
+        self.remove_state_change_listener = hass.bus.async_listen(
+            EVENT_STATE_CHANGED, elastic_event_listener
+        )
+
+        self.publish_queue = Queue()
+        self._last_publish_time = None
+
+        self._start_publish_timer()
+
+    async def async_init(self, system_info):
+        if not self.publish_enabled:
+            return
+        config_dict = self._hass.config.as_dict()
         self._static_doc_properties = {
             "agent.name": config_dict["name"]
             if "name" in config_dict
@@ -43,30 +98,19 @@ class DocumentPublisher:
             "host.architecture": system_info["arch"],
             "host.os.name": system_info["os_name"],
             "host.hostname": socket.gethostname(),
-            "tags": config.get(CONF_TAGS),
+            "tags": self._tags,
         }
 
-        self._publish_frequency = config.get(CONF_PUBLISH_FREQUENCY)
-        self._only_publish_changed = config.get(CONF_ONLY_PUBLISH_CHANGED)
+    async def async_stop_publisher(self):
+        LOGGER.debug("Stopping document publisher")
+        attempt_flush = self.publish_active
 
-        excluded = config.get(CONF_EXCLUDE)
-        self._excluded_domains = excluded.get(CONF_DOMAINS)
-        self._excluded_entities = excluded.get(CONF_ENTITIES)
-
-        if self._excluded_domains:
-            LOGGER.debug(
-                "Excluding the following domains: %s", str(self._excluded_domains)
-            )
-
-        if self._excluded_entities:
-            LOGGER.debug(
-                "Excluding the following entities: %s", str(self._excluded_entities)
-            )
-
-        self.publish_queue = Queue()
-        self._last_publish_time = None
-
-        self._start_publish_timer()
+        self.publish_active = False
+        if self.remove_state_change_listener:
+            self.remove_state_change_listener()
+        if attempt_flush:
+            LOGGER.debug("Flushing event cache to ES")
+            await self.async_do_publish()
 
     def queue_size(self):
         """Returns the approximate queue size"""
@@ -134,21 +178,21 @@ class DocumentPublisher:
         LOGGER.info("Publishing %i documents to Elasticsearch", len(actions))
 
         try:
-            await self._hass.async_add_executor_job(self.bulk_sync_wrapper, actions)
+            await self.async_bulk_sync_wrapper(actions)
         except ElasticsearchException as err:
             LOGGER.exception("Error publishing documents to Elasticsearch: %s", err)
         return
 
-    def bulk_sync_wrapper(self, actions):
+    async def async_bulk_sync_wrapper(self, actions):
         """
         Wrapper to publish events.
         Workaround for elasticsearch_async not supporting bulk operations
         """
         from elasticsearch.exceptions import ElasticsearchException
-        from elasticsearch.helpers import bulk
+        from elasticsearch.helpers import async_bulk
 
         try:
-            bulk_response = bulk(self._gateway.get_sync_client(), actions)
+            bulk_response = await async_bulk(self._gateway.get_client(), actions)
             LOGGER.debug("Elasticsearch bulk response: %s", str(bulk_response))
             LOGGER.info("Publish Succeeded")
         except ElasticsearchException as err:
@@ -242,6 +286,7 @@ class DocumentPublisher:
     def _start_publish_timer(self):
         """Initialize the publish timer"""
         asyncio.ensure_future(self._publish_queue_timer())
+        self.publish_active = True
 
     def _should_publish(self):
         """Determines if now is a good time to publish documents"""
@@ -257,14 +302,15 @@ class DocumentPublisher:
             "Starting publish timer: executes every %i seconds.",
             self._publish_frequency,
         )
-        while True:
+        while self.publish_active:
             try:
                 if self._should_publish():
                     await self.async_do_publish()
                 else:
                     LOGGER.debug("Nothing to publish")
             finally:
-                await asyncio.sleep(self._publish_frequency)
+                if self.publish_active:
+                    await asyncio.sleep(self._publish_frequency)
 
 
 def is_valid_number(number):

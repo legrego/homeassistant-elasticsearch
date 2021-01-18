@@ -1,0 +1,71 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "title": "Connect to Elasticsearch",
+                "data": {
+                    "url": "[%key:common::config_flow::data::url%]",
+                    "username": "[%key:common::config_flow::data::username%]",
+                    "password": "[%key:common::config_flow::data::password%]",
+                    "timeout": "[%key:common::config_flow::data::timeout%]"
+                }
+            },
+            "tls": {
+                "title": "TLS Configuration",
+                "data": {
+                    "verify_ssl": "[%key:common::config_flow::data::verify_ssl%]",
+                    "ssl_ca_path": "[%key:common::config_flow::data::ssl_ca_path%]"
+                }
+            }
+        },
+        "error": {
+            "invalid_auth": "[%key:common::config_flow::error::invalid_auth%]",
+            "insufficient_privileges": "[%key:common::config_flow::error::insufficient_privileges%]",
+            "missing_credentials": "[%key:common::config_flow::error::missing_credentials%]",
+            "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
+            "untrusted_connection": "[%key:common::config_flow::error::untrusted_connection%]"
+        },
+        "abort": {
+            "single_instance_allowed": "[%key:common::config_flow::abort::single_instance_allowed%]",
+            "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
+            "configured_via_yaml": "Configuration is handled via yaml, and cannot be controlled via UI."
+        }
+    },
+    "options": {
+        "abort": {
+            "configured_via_yaml": "Configuration is handled via yaml, and cannot be controlled via UI."
+        },
+        "step": {
+            "publish_options": {
+                "title": "Elastic",
+                "description": "Configure publish options",
+                "data": {
+                    "publish_enabled": "Publish events to Elasticsearch",
+                    "publish_frequency": "How frequently events are published, in seconds",
+                    "only_publish_changed": "Only publish changed entity states. When unchecked, all entity states will be published.",
+                    "excluded_domains": "Domains to exclude from publishing",
+                    "excluded_entities": "Entities to exclude from publishing",
+                    "index_format": "The index name prefix to publish events to",
+                    "alias": "The index alias that Elasticsearch should write events to"
+                }
+            },
+            "ilm_options": {
+                "title": "Index Lifecycle Management",
+                "description": "Configure ILM options",
+                "data": {
+                    "ilm_enabled": "Enable ILM",
+                    "ilm_policy_name": "ILM policy name",
+                    "ilm_max_size": "Max index size",
+                    "ilm_delete_after": "Delete indices after"
+                }
+            },
+            "health_options": {
+                "title": "Cluster health monitoring",
+                "description": "Configure health monitoring",
+                "data": {
+                    "health_sensor_enabled": "Enable health sensor"
+                }
+            }
+        }
+    }
+}
