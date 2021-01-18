@@ -25,10 +25,9 @@ class ElasticIntegration:
         self.config_entry = config_entry
 
     async def async_init(self):
-        system_info = await self.hass.helpers.system_info.async_get_system_info()
         await self.gateway.async_init()
         await self.index_manager.async_setup()
-        await self.publisher.async_init(system_info)
+        await self.publisher.async_init()
 
         for component in ELASTIC_COMPONENTS:
             self.hass.async_create_task(
