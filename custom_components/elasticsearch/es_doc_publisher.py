@@ -6,6 +6,7 @@ from queue import Queue
 
 from homeassistant.const import EVENT_STATE_CHANGED
 from homeassistant.helpers import state as state_helper
+from homeassistant.helpers.typing import HomeAssistantType, StateType
 from pytz import utc
 
 from .const import (
@@ -24,7 +25,7 @@ from .system_info import async_get_system_info
 class DocumentPublisher:
     """Publishes documents to Elasticsearch"""
 
-    def __init__(self, config, gateway, index_manager, hass):
+    def __init__(self, config, gateway, index_manager, hass: HomeAssistantType):
         """Initialize the publisher"""
 
         self.publish_enabled = config.get(CONF_PUBLISH_ENABLED)
@@ -127,8 +128,18 @@ class DocumentPublisher:
         domain = state.domain
         entity_id = state.entity_id
 
+        if not self.publish_enabled:
+            LOGGER.warning(
+                "Attempted to queue a state change for %s.%s, but publish is not enabled. This is a no-op (and a bug).",
+                domain,
+                entity_id,
+            )
+            return
+
         if domain in self._excluded_domains:
-            LOGGER.debug("Skipping %s: it belongs to an excluded domain", entity_id)
+            LOGGER.debug(
+                "Skipping %s: it belongs to an excluded domain (%s)", entity_id, domain
+            )
             return
 
         if entity_id in self._excluded_entities:
@@ -199,7 +210,7 @@ class DocumentPublisher:
         except ElasticsearchException as err:
             LOGGER.exception("Error publishing documents to Elasticsearch: %s", err)
 
-    def _state_to_bulk_action(self, state, time):
+    def _state_to_bulk_action(self, state: StateType, time):
         """Creates a bulk action from the given state object"""
         try:
             _state = state_helper.state_as_number(state)
@@ -259,7 +270,13 @@ class DocumentPublisher:
             "@timestamp": time_tz,
         }
 
-        document_body.update(self._static_doc_properties)
+        if self._static_doc_properties is None:
+            LOGGER.warning(
+                "Event for entity [%s] is missing static doc properties. This is a bug.",
+                state.entity_id,
+            )
+        else:
+            document_body.update(self._static_doc_properties)
 
         if (
             "latitude" in document_body["hass.attributes"]
