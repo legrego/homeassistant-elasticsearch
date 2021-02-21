@@ -28,12 +28,12 @@
         "abort": {
             "single_instance_allowed": "[%key:common::config_flow::abort::single_instance_allowed%]",
             "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
-            "configured_via_yaml": "Configuration is handled via yaml, and cannot be controlled via UI."
+            "configured_via_yaml": "Configuration impored from configuration.yaml. Remove entry from configuration.yaml, restart, and re-add this integration to proceed."
         }
     },
     "options": {
         "abort": {
-            "configured_via_yaml": "Configuration is handled via yaml, and cannot be controlled via UI."
+            "configured_via_yaml": "Configuration impored from configuration.yaml. Remove entry from configuration.yaml, restart, and re-add this integration to proceed."
         },
         "step": {
             "publish_options": {
@@ -46,7 +46,7 @@
                     "excluded_domains": "Domains to exclude from publishing",
                     "excluded_entities": "Entities to exclude from publishing",
                     "index_format": "The index name prefix to publish events to",
-                    "alias": "The index alias that Elasticsearch should write events to"
+                    "alias": "The index alias used for writing events to Elasticsearch"
                 }
             },
             "ilm_options": {
