@@ -1,5 +1,7 @@
 """Maintains information about the verion of Elasticsearch"""
 
+from .logger import LOGGER
+
 
 class ElasticsearchVersion:
     """Maintains information about the verion of Elasticsearch"""
@@ -19,6 +21,15 @@ class ElasticsearchVersion:
         self.major = int(version_number_parts[0])
         self.minor = int(version_number_parts[1])
         self.build_flavor = version["build_flavor"]
+
+        if self.is_oss_distribution():
+            LOGGER.warning(
+                "\
+                Support for the Elasticseach's OSS distribution is deprecated, \
+                and will not work in a future release. \
+                Download the default distribution from https://elastic.co/downloads \
+            "
+            )
 
     def is_supported_version(self):
         """Determines if this version of ES is supported by this component"""
