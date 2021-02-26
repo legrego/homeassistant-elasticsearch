@@ -24,9 +24,9 @@ from .const import (
     CONF_ILM_MAX_SIZE,
     CONF_ILM_POLICY_NAME,
     CONF_INDEX_FORMAT,
-    CONF_ONLY_PUBLISH_CHANGED,
     CONF_PUBLISH_ENABLED,
     CONF_PUBLISH_FREQUENCY,
+    CONF_PUBLISH_MODE,
     CONF_SSL_CA_PATH,
 )
 from .const import DOMAIN as ELASTIC_DOMAIN
@@ -45,7 +45,7 @@ DEFAULT_ALIAS = "active-hass-index"
 DEFAULT_INDEX_FORMAT = "hass-events"
 DEFAULT_PUBLISH_ENABLED = True
 DEFAULT_PUBLISH_FREQUENCY = ONE_MINUTE
-DEFAULT_ONLY_PUBLISH_CHAGED = False
+DEFAULT_PUBLISH_MODE = "all"
 DEFAULT_VERIFY_SSL = True
 DEFAULT_TIMEOUT_SECONDS = 30
 DEFAULT_ILM_ENABLED = True
@@ -61,7 +61,7 @@ def _host_is_same(host1: str, host2: str) -> bool:
 class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
     """Handle an Elastic config flow."""
 
-    VERSION = 1
+    VERSION = 2
     CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_PUSH
 
     @staticmethod
@@ -112,9 +112,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             CONF_PUBLISH_FREQUENCY: user_input.get(
                 CONF_PUBLISH_FREQUENCY, DEFAULT_PUBLISH_FREQUENCY
             ),
-            CONF_ONLY_PUBLISH_CHANGED: user_input.get(
-                CONF_ONLY_PUBLISH_CHANGED, DEFAULT_ONLY_PUBLISH_CHAGED
-            ),
+            CONF_PUBLISH_MODE: user_input.get(CONF_PUBLISH_MODE, DEFAULT_PUBLISH_MODE),
             CONF_ALIAS: user_input.get(CONF_ALIAS, DEFAULT_ALIAS),
             CONF_INDEX_FORMAT: user_input.get(CONF_INDEX_FORMAT, DEFAULT_INDEX_FORMAT),
             CONF_EXCLUDED_DOMAINS: user_input.get(CONF_EXCLUDED_DOMAINS, []),
@@ -320,11 +318,9 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
                 ),
             ): int,
             vol.Required(
-                CONF_ONLY_PUBLISH_CHANGED,
-                default=self._get_config_value(
-                    CONF_ONLY_PUBLISH_CHANGED, DEFAULT_ONLY_PUBLISH_CHAGED
-                ),
-            ): bool,
+                CONF_PUBLISH_MODE,
+                default=self._get_config_value(CONF_PUBLISH_MODE, DEFAULT_PUBLISH_MODE),
+            ): vol.In(["all", "value_changed", "any_changed"]),
             vol.Required(
                 CONF_EXCLUDED_DOMAINS,
                 default=self._get_config_value(CONF_EXCLUDED_DOMAINS, []),

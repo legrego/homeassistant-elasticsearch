@@ -41,7 +41,7 @@
                 "data": {
                     "publish_enabled": "Publish events to Elasticsearch",
                     "publish_frequency": "How frequently events are published, in seconds",
-                    "only_publish_changed": "Only publish changed entity states. When unchecked, all entity states will be published.",
+                    "publish_mode": "Choose which entity states to publish",
                     "excluded_domains": "Domains to exclude from publishing",
                     "excluded_entities": "Entities to exclude from publishing",
                     "index_format": "The index name prefix to publish events to",

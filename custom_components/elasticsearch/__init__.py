@@ -20,6 +20,8 @@ from homeassistant.const import (
 )
 from homeassistant.helpers.typing import HomeAssistantType
 
+from custom_components.elasticsearch.utils import get_merged_config
+
 from .const import (
     CONF_EXCLUDED_DOMAINS,
     CONF_EXCLUDED_ENTITIES,
@@ -32,6 +34,7 @@ from .const import (
     CONF_ONLY_PUBLISH_CHANGED,
     CONF_PUBLISH_ENABLED,
     CONF_PUBLISH_FREQUENCY,
+    CONF_PUBLISH_MODE,
     CONF_SSL_CA_PATH,
     CONF_TAGS,
     DOMAIN,
@@ -106,6 +109,28 @@ async def async_setup(hass: HomeAssistantType, config):
     )
 
     return True
+
+    async def async_migrate_entry(hass, config_entry: ConfigEntry):
+        """Migrate old entry."""
+        LOGGER.debug("Migrating config entry from version %s", config_entry.version)
+
+        if config_entry.version == 1:
+
+            new = get_merged_config(config_entry)
+
+            only_publish_changed = new.get(CONF_ONLY_PUBLISH_CHANGED, False)
+            new[CONF_PUBLISH_MODE] = "any_change" if only_publish_changed else "all"
+
+            if CONF_ONLY_PUBLISH_CHANGED in new:
+                del new[CONF_ONLY_PUBLISH_CHANGED]
+
+            config_entry.data = {**new}
+
+            config_entry.version = 2
+
+        LOGGER.info("Migration to version %s successful", config_entry.version)
+
+        return True
 
 
 async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry):

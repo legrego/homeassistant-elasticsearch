@@ -1,4 +1,5 @@
 """ constants """
+from typing import Literal, Union
 
 DOMAIN = "elasticsearch"
 
@@ -8,6 +9,7 @@ CONF_INDEX_FORMAT = "index_format"
 CONF_PUBLISH_FREQUENCY = "publish_frequency"
 CONF_EXCLUDED_DOMAINS = "excluded_domains"
 CONF_EXCLUDED_ENTITIES = "excluded_entities"
+CONF_PUBLISH_MODE = "publish_mode"
 CONF_ONLY_PUBLISH_CHANGED = "only_publish_changed"
 CONF_ILM_ENABLED = "ilm_enabled"
 CONF_ILM_POLICY_NAME = "ilm_policy_name"
@@ -23,3 +25,12 @@ ONE_HOUR = 60 * 60
 VERSION_SUFFIX = "-v4_1"
 
 INDEX_TEMPLATE_NAME = "hass-index-template" + VERSION_SUFFIX
+
+
+PUBLISH_MODE_ALL = Literal["all"]
+PUBLISH_MODE_ANY_CHANGED = Literal["any_changed"]
+PUBLISH_MODE_VALUE_CHANGED = Literal["value_changed"]
+
+PUBLISH_MODE = Union[
+    PUBLISH_MODE_ALL, PUBLISH_MODE_ANY_CHANGED, PUBLISH_MODE_VALUE_CHANGED
+]
