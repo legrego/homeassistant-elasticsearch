@@ -298,18 +298,13 @@ class DocumentPublisher:
                 "lon": document_body["hass.attributes"]["longitude"],
             }
 
-        es_version = self._gateway.es_version
-        if es_version.major == 6:
-            return {
-                "_op_type": "index",
-                "_index": self._index_alias,
-                "_type": "doc",
-                "_source": document_body,
-            }
         return {
             "_op_type": "index",
             "_index": self._index_alias,
             "_source": document_body,
+            # If we aren't writing to an alias, that means the
+            # Index Template likely wasn't created properly, and we should bail.
+            "require_alias": True,
         }
 
     def _start_publish_timer(self):
