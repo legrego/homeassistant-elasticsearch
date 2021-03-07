@@ -24,6 +24,7 @@ class ElasticIntegration:
         self.publisher = DocumentPublisher(conf, self.gateway, self.index_manager, hass)
         self.config_entry = config_entry
 
+    # TODO investivage hepers.event.async_call_later()
     async def async_init(self):
         await self.gateway.async_init()
         await self.index_manager.async_setup()
