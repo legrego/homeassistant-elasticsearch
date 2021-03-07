@@ -39,6 +39,8 @@ from .const import (
     CONF_TAGS,
     DOMAIN,
     ONE_MINUTE,
+    PUBLISH_MODE_ALL,
+    PUBLISH_MODE_ANY_CHANGES,
 )
 from .es_integration import ElasticIntegration
 from .logger import LOGGER
@@ -119,7 +121,9 @@ async def async_setup(hass: HomeAssistantType, config):
             new = get_merged_config(config_entry)
 
             only_publish_changed = new.get(CONF_ONLY_PUBLISH_CHANGED, False)
-            new[CONF_PUBLISH_MODE] = "any_change" if only_publish_changed else "all"
+            new[CONF_PUBLISH_MODE] = (
+                PUBLISH_MODE_ANY_CHANGES if only_publish_changed else PUBLISH_MODE_ALL
+            )
 
             if CONF_ONLY_PUBLISH_CHANGED in new:
                 del new[CONF_ONLY_PUBLISH_CHANGED]

@@ -30,7 +30,12 @@ from .const import (
     CONF_SSL_CA_PATH,
 )
 from .const import DOMAIN as ELASTIC_DOMAIN
-from .const import ONE_MINUTE
+from .const import (
+    ONE_MINUTE,
+    PUBLISH_MODE_ALL,
+    PUBLISH_MODE_ANY_CHANGES,
+    PUBLISH_MODE_STATE_CHANGES,
+)
 from .errors import (
     AuthenticationRequired,
     CannotConnect,
@@ -45,7 +50,7 @@ DEFAULT_ALIAS = "active-hass-index"
 DEFAULT_INDEX_FORMAT = "hass-events"
 DEFAULT_PUBLISH_ENABLED = True
 DEFAULT_PUBLISH_FREQUENCY = ONE_MINUTE
-DEFAULT_PUBLISH_MODE = "all"
+DEFAULT_PUBLISH_MODE = PUBLISH_MODE_ALL
 DEFAULT_VERIFY_SSL = True
 DEFAULT_TIMEOUT_SECONDS = 30
 DEFAULT_ILM_ENABLED = True
@@ -320,7 +325,9 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
             vol.Required(
                 CONF_PUBLISH_MODE,
                 default=self._get_config_value(CONF_PUBLISH_MODE, DEFAULT_PUBLISH_MODE),
-            ): vol.In(["all", "value_changed", "any_changed"]),
+            ): vol.In(
+                [PUBLISH_MODE_ALL, PUBLISH_MODE_STATE_CHANGES, PUBLISH_MODE_ANY_CHANGES]
+            ),
             vol.Required(
                 CONF_EXCLUDED_DOMAINS,
                 default=self._get_config_value(CONF_EXCLUDED_DOMAINS, []),

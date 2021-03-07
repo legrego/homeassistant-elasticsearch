@@ -1,5 +1,4 @@
 """ constants """
-from typing import Literal, Union
 
 DOMAIN = "elasticsearch"
 
@@ -26,11 +25,6 @@ VERSION_SUFFIX = "-v4_1"
 
 INDEX_TEMPLATE_NAME = "hass-index-template" + VERSION_SUFFIX
 
-
-PUBLISH_MODE_ALL = Literal["all"]
-PUBLISH_MODE_ANY_CHANGED = Literal["any_changed"]
-PUBLISH_MODE_VALUE_CHANGED = Literal["value_changed"]
-
-PUBLISH_MODE = Union[
-    PUBLISH_MODE_ALL, PUBLISH_MODE_ANY_CHANGED, PUBLISH_MODE_VALUE_CHANGED
-]
+PUBLISH_MODE_ALL = "All"
+PUBLISH_MODE_STATE_CHANGES = "State changes"
+PUBLISH_MODE_ANY_CHANGES = "Any changes"

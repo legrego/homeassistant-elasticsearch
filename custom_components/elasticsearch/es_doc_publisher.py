@@ -16,7 +16,8 @@ from .const import (
     CONF_PUBLISH_FREQUENCY,
     CONF_PUBLISH_MODE,
     CONF_TAGS,
-    PUBLISH_MODE,
+    PUBLISH_MODE_ALL,
+    PUBLISH_MODE_STATE_CHANGES,
 )
 from .es_serializer import get_serializer
 from .logger import LOGGER
@@ -47,7 +48,7 @@ class DocumentPublisher:
         self._static_doc_properties = None
 
         self._publish_frequency = config.get(CONF_PUBLISH_FREQUENCY)
-        self._publish_mode: PUBLISH_MODE = config.get(CONF_PUBLISH_MODE)
+        self._publish_mode = config.get(CONF_PUBLISH_MODE)
         self._tags = config.get(CONF_TAGS)
 
         self._excluded_domains = config.get(CONF_EXCLUDED_DOMAINS)
@@ -70,7 +71,10 @@ class DocumentPublisher:
             if state is None:
                 return
 
-            if old_state is not None and self._publish_mode == "value_changed":
+            if (
+                old_state is not None
+                and self._publish_mode == PUBLISH_MODE_STATE_CHANGES
+            ):
                 state_value_changed = old_state.state != state.state
                 if not state_value_changed:
                     LOGGER.debug(
@@ -163,7 +167,7 @@ class DocumentPublisher:
         "Publishes all queued documents to the Elasticsearch cluster"
         from elasticsearch.exceptions import ElasticsearchException
 
-        publish_all_states = self._publish_mode == "all"
+        publish_all_states = self._publish_mode == PUBLISH_MODE_ALL
 
         if self.publish_queue.empty() and not publish_all_states:
             LOGGER.debug("Skipping publish because queue is empty")
