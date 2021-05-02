@@ -11,5 +11,6 @@
   "config_flow": true,
   "requirements": [
     "elasticsearch==7.9.1"
-  ]
+  ],
+  "iot_class": "cloud_polling"
 }
