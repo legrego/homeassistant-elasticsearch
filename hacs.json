@@ -1,3 +1,4 @@
 {
-  "name": "Elasticsearch component"
+  "name": "Elasticsearch integration",
+  "iot_class": "Cloud Polling"
 }
