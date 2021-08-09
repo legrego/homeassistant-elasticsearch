@@ -3,6 +3,7 @@ from homeassistant.const import CONF_URL, CONTENT_TYPE_JSON
 from tests.const import (
     CLUSTER_HEALTH_RESPONSE_BODY,
     CLUSTER_INFO_RESPONSE_BODY,
+    CLUSTER_INFO_UNSUPPORTED_RESPONSE_BODY,
     MOCK_COMPLEX_LEGACY_CONFIG,
 )
 
@@ -14,9 +15,14 @@ def mock_es_initialization(
     mock_index_creation=False,
     mock_health_check=False,
     mock_ilm_setup=False,
+    mock_unsupported_version=False,
 ):
 
-    aioclient_mock.get(url, status=200, json=CLUSTER_INFO_RESPONSE_BODY)
+    if mock_unsupported_version:
+        aioclient_mock.get(url, status=200, json=CLUSTER_INFO_UNSUPPORTED_RESPONSE_BODY)
+    else:
+        aioclient_mock.get(url, status=200, json=CLUSTER_INFO_RESPONSE_BODY)
+
     aioclient_mock.post(url + "/_bulk", status=200, json={"items": []})
 
     if mock_template_setup:

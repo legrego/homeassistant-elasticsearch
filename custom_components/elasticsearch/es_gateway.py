@@ -15,6 +15,7 @@ from .errors import (
     CannotConnect,
     ElasticException,
     InsufficientPrivileges,
+    UnsupportedVersion,
     UntrustedCertificate,
 )
 from .es_serializer import get_serializer
@@ -48,9 +49,14 @@ class ElasticsearchGateway:
         )
 
         client = None
+        is_supported_version = True
         try:
             client = self._create_es_client()
-            await client.info()
+
+            es_version = ElasticsearchVersion(client)
+            await es_version.async_init()
+
+            is_supported_version = es_version.is_supported_version()
         except SSLError as err:
             raise UntrustedCertificate(err)
         except ConnectionError as err:
@@ -72,6 +78,9 @@ class ElasticsearchGateway:
                 await client.close()
                 client = None
 
+        if not is_supported_version:
+            raise UnsupportedVersion()
+
     async def async_init(self):
         """I/O bound init"""
 
@@ -82,11 +91,11 @@ class ElasticsearchGateway:
         await self.es_version.async_init()
 
         if not self.es_version.is_supported_version():
-            LOGGER.warning(
-                "UNSUPPORTED VERSION OF ELASTICSEARCH DETECTED: %s. \
-                This may function in unexpected ways, or fail entirely!",
+            LOGGER.fatal(
+                "UNSUPPORTED VERSION OF ELASTICSEARCH DETECTED: %s.",
                 self.es_version.to_string(),
             )
+            raise UnsupportedVersion()
         LOGGER.debug("Gateway initialized")
 
     async def async_stop_gateway(self):

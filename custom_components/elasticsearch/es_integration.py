@@ -5,6 +5,7 @@ Support for sending event data to an Elasticsearch cluster
 import asyncio
 
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.typing import HomeAssistantType
 
 from .es_doc_publisher import DocumentPublisher

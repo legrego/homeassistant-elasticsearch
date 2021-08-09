@@ -287,14 +287,6 @@ class DocumentPublisher:
                 "lon": document_body["hass.attributes"]["longitude"],
             }
 
-        es_version = self._gateway.es_version
-        if es_version.major == 6:
-            return {
-                "_op_type": "index",
-                "_index": self._index_alias,
-                "_type": "doc",
-                "_source": document_body,
-            }
         return {
             "_op_type": "index",
             "_index": self._index_alias,
