@@ -1,8 +1,8 @@
-"""Maintains information about the verion of Elasticsearch"""
+"""Maintains information about the version of Elasticsearch"""
 
 
 class ElasticsearchVersion:
-    """Maintains information about the verion of Elasticsearch"""
+    """Maintains information about the version of Elasticsearch"""
 
     def __init__(self, client):
         self._client = client
