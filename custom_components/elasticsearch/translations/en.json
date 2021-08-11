@@ -10,7 +10,8 @@
             "invalid_auth": "Invalid username or password.",
             "insufficient_privileges": "Insufficient privileges for specified user.",
             "missing_credentials": "This cluster requires authentication. Please provide a username and password.",
-            "untrusted_connection": "Elasticsearch's server certificate could not be verified. Either disable TLS verification, or specify a custom CA path below."
+            "untrusted_connection": "Elasticsearch's server certificate could not be verified. Either disable TLS verification, or specify a custom CA path below.",
+            "unsupported_version": "Unsupported version of Elastcsearch detected. The minimum supported version is 7.11.0."
         },
         "step": {
             "user": {

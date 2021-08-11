@@ -35,6 +35,7 @@ from .errors import (
     AuthenticationRequired,
     CannotConnect,
     InsufficientPrivileges,
+    UnsupportedVersion,
     UntrustedCertificate,
 )
 from .es_gateway import ElasticsearchGateway
@@ -202,6 +203,8 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             errors["base"] = "insufficient_privileges"
         except CannotConnect:
             errors["base"] = "cannot_connect"
+        except UnsupportedVersion:
+            errors["base"] = "unsupported_version"
         except Exception as ex:  # pylint: disable=broad-except
             LOGGER.error(
                 "Unknown error connecting with Elasticsearch cluster. %s",

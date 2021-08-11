@@ -24,3 +24,7 @@ class CannotConnect(ElasticException):
 
 class UntrustedCertificate(ElasticException):
     """Connected with untrusted certificate."""
+
+
+class UnsupportedVersion(ElasticException):
+    """Connected to an unsupported version of Elasticsearch."""
