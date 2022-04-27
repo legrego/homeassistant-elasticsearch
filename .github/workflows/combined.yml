@@ -1,6 +1,5 @@
 name: "Validate and Test"
 on:
-  push:
   workflow_dispatch:
 jobs:
   ci:
