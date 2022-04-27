@@ -32,6 +32,8 @@ async def test_minimal_setup_component(hass: HomeAssistantType, aioclient_mock) 
         "publish_enabled": True,
         "excluded_domains": [],
         "excluded_entities": [],
+        "included_domains": [],
+        "included_entities": [],
         "index_format": "hass-events",
         "only_publish_changed": False,
         "publish_frequency": 60,
@@ -67,6 +69,8 @@ async def test_complex_setup_component(hass: HomeAssistantType, aioclient_mock) 
     expected_config = {
         "excluded_domains": ["sensor", "weather"],
         "excluded_entities": ["switch.my_switch"],
+        "included_domains": [],
+        "included_entities": [],
         "ssl_ca_path": None,
         **MOCK_COMPLEX_LEGACY_CONFIG,
     }
