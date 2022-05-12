@@ -2,7 +2,6 @@
 
 
 import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.selector import selector
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.config_entries import SOURCE_IGNORE, SOURCE_IMPORT
@@ -15,6 +14,7 @@ from homeassistant.const import (
     CONF_VERIFY_SSL,
 )
 from homeassistant.core import callback
+from homeassistant.helpers.selector import selector
 
 from .const import (
     CONF_EXCLUDED_DOMAINS,

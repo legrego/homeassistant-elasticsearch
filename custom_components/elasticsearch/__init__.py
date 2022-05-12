@@ -114,6 +114,7 @@ async def async_setup(hass: HomeAssistantType, config):
 
     return True
 
+
 async def async_migrate_entry(hass, config_entry: ConfigEntry):
     """Migrate old entry."""
     LOGGER.debug("Migrating config entry from version %s", config_entry.version)
