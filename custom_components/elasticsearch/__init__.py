@@ -114,29 +114,29 @@ async def async_setup(hass: HomeAssistantType, config):
 
     return True
 
-    async def async_migrate_entry(hass, config_entry: ConfigEntry):
-        """Migrate old entry."""
-        LOGGER.debug("Migrating config entry from version %s", config_entry.version)
+async def async_migrate_entry(hass, config_entry: ConfigEntry):
+    """Migrate old entry."""
+    LOGGER.debug("Migrating config entry from version %s", config_entry.version)
 
-        if config_entry.version == 1:
+    if config_entry.version == 1:
 
-            new = get_merged_config(config_entry)
+        new = get_merged_config(config_entry)
 
-            only_publish_changed = new.get(CONF_ONLY_PUBLISH_CHANGED, False)
-            new[CONF_PUBLISH_MODE] = (
-                PUBLISH_MODE_ANY_CHANGES if only_publish_changed else PUBLISH_MODE_ALL
-            )
+        only_publish_changed = new.get(CONF_ONLY_PUBLISH_CHANGED, False)
+        new[CONF_PUBLISH_MODE] = (
+            PUBLISH_MODE_ANY_CHANGES if only_publish_changed else PUBLISH_MODE_ALL
+        )
 
-            if CONF_ONLY_PUBLISH_CHANGED in new:
-                del new[CONF_ONLY_PUBLISH_CHANGED]
+        if CONF_ONLY_PUBLISH_CHANGED in new:
+            del new[CONF_ONLY_PUBLISH_CHANGED]
 
-            config_entry.data = {**new}
+        config_entry.data = {**new}
 
-            config_entry.version = 2
+        config_entry.version = 2
 
-        LOGGER.info("Migration to version %s successful", config_entry.version)
+    LOGGER.info("Migration to version %s successful", config_entry.version)
 
-        return True
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry):

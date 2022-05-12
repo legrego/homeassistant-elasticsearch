@@ -2,6 +2,7 @@
 
 
 import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.selector import selector
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.config_entries import SOURCE_IGNORE, SOURCE_IMPORT
@@ -60,10 +61,6 @@ DEFAULT_ILM_ENABLED = True
 DEFAULT_ILM_POLICY_NAME = "home-assistant"
 DEFAULT_ILM_MAX_SIZE = "30gb"
 DEFAULT_ILM_DELETE_AFTER = "365d"
-
-
-def _host_is_same(host1: str, host2: str) -> bool:
-    return host1 == host2
 
 
 class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
@@ -332,8 +329,22 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
             vol.Required(
                 CONF_PUBLISH_MODE,
                 default=self._get_config_value(CONF_PUBLISH_MODE, DEFAULT_PUBLISH_MODE),
-            ): vol.In(
-                [PUBLISH_MODE_ALL, PUBLISH_MODE_STATE_CHANGES, PUBLISH_MODE_ANY_CHANGES]
+            ): selector(
+                {
+                    "select": {
+                        "options": [
+                            {"label": "All entities", "value": PUBLISH_MODE_ALL},
+                            {
+                                "label": "Entities with state changes",
+                                "value": PUBLISH_MODE_STATE_CHANGES,
+                            },
+                            {
+                                "label": "Entities with state or attribute changes",
+                                "value": PUBLISH_MODE_ANY_CHANGES,
+                            },
+                        ]
+                    }
+                }
             ),
             vol.Required(
                 CONF_EXCLUDED_DOMAINS,
