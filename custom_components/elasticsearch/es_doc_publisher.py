@@ -6,7 +6,7 @@ from queue import Queue
 
 from homeassistant.const import EVENT_STATE_CHANGED
 from homeassistant.helpers import state as state_helper
-from homeassistant.helpers.typing import HomeAssistantType, StateType
+from homeassistant.helpers.typing import EventType, HomeAssistantType, StateType
 from pytz import utc
 
 from .const import (
@@ -14,10 +14,12 @@ from .const import (
     CONF_EXCLUDED_ENTITIES,
     CONF_INCLUDED_DOMAINS,
     CONF_INCLUDED_ENTITIES,
-    CONF_ONLY_PUBLISH_CHANGED,
     CONF_PUBLISH_ENABLED,
     CONF_PUBLISH_FREQUENCY,
+    CONF_PUBLISH_MODE,
     CONF_TAGS,
+    PUBLISH_MODE_ALL,
+    PUBLISH_MODE_STATE_CHANGES,
 )
 from .es_serializer import get_serializer
 from .logger import LOGGER
@@ -48,7 +50,7 @@ class DocumentPublisher:
         self._static_doc_properties = None
 
         self._publish_frequency = config.get(CONF_PUBLISH_FREQUENCY)
-        self._only_publish_changed = config.get(CONF_ONLY_PUBLISH_CHANGED)
+        self._publish_mode = config.get(CONF_PUBLISH_MODE)
         self._tags = config.get(CONF_TAGS)
 
         self._excluded_domains = config.get(CONF_EXCLUDED_DOMAINS)
@@ -66,13 +68,26 @@ class DocumentPublisher:
                 "Excluding the following entities: %s", str(self._excluded_entities)
             )
 
-        def elastic_event_listener(event):
+        def elastic_event_listener(event: EventType):
             """Listen for new messages on the bus and queue them for send."""
-            state = event.data.get("new_state")
+            state: StateType = event.data.get("new_state")
+            old_state: StateType = event.data.get("old_state")
             if state is None:
                 return
 
-            self.enqueue_state({"state": state, "event": event})
+            if (
+                old_state is not None
+                and self._publish_mode == PUBLISH_MODE_STATE_CHANGES
+            ):
+                state_value_changed = old_state.state != state.state
+                if not state_value_changed:
+                    LOGGER.debug(
+                        "Excluding event state change for %s because the value did not change",
+                        state.entity_id,
+                    )
+                    return
+
+            self.enqueue_state(state, event)
 
         self.remove_state_change_listener = hass.bus.async_listen(
             EVENT_STATE_CHANGED, elastic_event_listener
@@ -126,20 +141,22 @@ class DocumentPublisher:
         """Returns the last publish time"""
         return self._last_publish_time
 
-    def enqueue_state(self, entry):
+    def enqueue_state(self, state: StateType, event: EventType):
         """queues up the provided state change"""
-        state = entry["state"]
+
         domain = state.domain
         entity_id = state.entity_id
 
         if self._should_publish_state_change(domain, entity_id):
-            self.publish_queue.put(entry)
+            self.publish_queue.put([state, event])
 
     async def async_do_publish(self):
         "Publishes all queued documents to the Elasticsearch cluster"
         from elasticsearch.exceptions import ElasticsearchException
 
-        if self.publish_queue.empty():
+        publish_all_states = self._publish_mode == PUBLISH_MODE_ALL
+
+        if self.publish_queue.empty() and not publish_all_states:
             LOGGER.debug("Skipping publish because queue is empty")
             return
 
@@ -149,18 +166,16 @@ class DocumentPublisher:
         self._last_publish_time = datetime.now()
 
         while not self.publish_queue.empty():
-            entry = self.publish_queue.get()
+            [state, event] = self.publish_queue.get()
 
-            key = entry["state"].entity_id
+            key = state.entity_id
 
             entity_counts[key] = (
                 1 if key not in entity_counts else entity_counts[key] + 1
             )
-            actions.append(
-                self._state_to_bulk_action(entry["state"], entry["event"].time_fired)
-            )
+            actions.append(self._state_to_bulk_action(state, event.time_fired))
 
-        if not self._only_publish_changed:
+        if publish_all_states:
             all_states = self._hass.states.async_all()
             for state in all_states:
                 if (
@@ -324,6 +339,9 @@ class DocumentPublisher:
             "_op_type": "index",
             "_index": self._index_alias,
             "_source": document_body,
+            # If we aren't writing to an alias, that means the
+            # Index Template likely wasn't created properly, and we should bail.
+            "require_alias": True,
         }
 
     def _start_publish_timer(self):
@@ -334,7 +352,6 @@ class DocumentPublisher:
     def _should_publish(self):
         """Determines if now is a good time to publish documents"""
         if self.publish_queue.empty():
-            LOGGER.debug("should_publish: queue is empty")
             return False
 
         return True

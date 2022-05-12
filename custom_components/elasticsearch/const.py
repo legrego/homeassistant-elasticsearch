@@ -8,6 +8,7 @@ CONF_INDEX_FORMAT = "index_format"
 CONF_PUBLISH_FREQUENCY = "publish_frequency"
 CONF_EXCLUDED_DOMAINS = "excluded_domains"
 CONF_EXCLUDED_ENTITIES = "excluded_entities"
+CONF_PUBLISH_MODE = "publish_mode"
 CONF_INCLUDED_DOMAINS = "included_domains"
 CONF_INCLUDED_ENTITIES = "included_entities"
 CONF_ONLY_PUBLISH_CHANGED = "only_publish_changed"
@@ -25,3 +26,7 @@ ONE_HOUR = 60 * 60
 VERSION_SUFFIX = "-v4_1"
 
 INDEX_TEMPLATE_NAME = "hass-index-template" + VERSION_SUFFIX
+
+PUBLISH_MODE_ALL = "All"
+PUBLISH_MODE_STATE_CHANGES = "State changes"
+PUBLISH_MODE_ANY_CHANGES = "Any changes"

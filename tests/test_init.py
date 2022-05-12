@@ -35,7 +35,7 @@ async def test_minimal_setup_component(hass: HomeAssistantType, aioclient_mock) 
         "included_domains": [],
         "included_entities": [],
         "index_format": "hass-events",
-        "only_publish_changed": False,
+        "publish_mode": "All",
         "publish_frequency": 60,
         "timeout": 30,
         "username": None,
@@ -72,9 +72,11 @@ async def test_complex_setup_component(hass: HomeAssistantType, aioclient_mock) 
         "included_domains": [],
         "included_entities": [],
         "ssl_ca_path": None,
+        "publish_mode": "All",
         **MOCK_COMPLEX_LEGACY_CONFIG,
     }
 
     del expected_config["exclude"]
+    del expected_config["only_publish_changed"]
 
     assert merged_config == expected_config
