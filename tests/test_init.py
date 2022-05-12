@@ -1,5 +1,4 @@
 """Tests for Elastic init."""
-import pytest
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 from homeassistant.const import CONF_URL
 from homeassistant.helpers.typing import HomeAssistantType
@@ -11,7 +10,6 @@ from tests.const import MOCK_COMPLEX_LEGACY_CONFIG, MOCK_MINIMAL_LEGACY_CONFIG
 from tests.test_util.es_startup_mocks import mock_es_initialization
 
 
-@pytest.mark.asyncio
 async def test_minimal_setup_component(hass: HomeAssistantType, aioclient_mock) -> None:
     """Test component setup via legacy yml-based configuration."""
     mock_es_initialization(aioclient_mock, url=MOCK_MINIMAL_LEGACY_CONFIG.get(CONF_URL))
@@ -34,6 +32,8 @@ async def test_minimal_setup_component(hass: HomeAssistantType, aioclient_mock) 
         "publish_enabled": True,
         "excluded_domains": [],
         "excluded_entities": [],
+        "included_domains": [],
+        "included_entities": [],
         "index_format": "hass-events",
         "publish_mode": "All",
         "publish_frequency": 60,
@@ -51,7 +51,6 @@ async def test_minimal_setup_component(hass: HomeAssistantType, aioclient_mock) 
     assert merged_config == expected_config
 
 
-@pytest.mark.asyncio
 async def test_complex_setup_component(hass: HomeAssistantType, aioclient_mock) -> None:
     """Test component setup via legacy yml-based configuration."""
     mock_es_initialization(aioclient_mock, url=MOCK_COMPLEX_LEGACY_CONFIG.get(CONF_URL))
@@ -70,6 +69,8 @@ async def test_complex_setup_component(hass: HomeAssistantType, aioclient_mock) 
     expected_config = {
         "excluded_domains": ["sensor", "weather"],
         "excluded_entities": ["switch.my_switch"],
+        "included_domains": [],
+        "included_entities": [],
         "ssl_ca_path": None,
         "publish_mode": "All",
         **MOCK_COMPLEX_LEGACY_CONFIG,

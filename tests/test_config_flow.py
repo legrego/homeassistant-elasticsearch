@@ -10,7 +10,6 @@ from custom_components.elasticsearch.const import DOMAIN
 from tests.test_util.es_startup_mocks import mock_es_initialization
 
 
-@pytest.mark.asyncio
 async def test_user_flow_minimum_fields(hass: HomeAssistantType, aioclient_mock):
     """ Test user config flow with minimum fields. """
 
@@ -45,7 +44,28 @@ async def test_user_flow_minimum_fields(hass: HomeAssistantType, aioclient_mock)
     assert result["data"]["health_sensor_enabled"] is True
 
 
-@pytest.mark.asyncio
+async def test_user_flow_unsupported_version(hass: HomeAssistantType, aioclient_mock):
+    """ Test user config flow with minimum fields. """
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["step_id"] == "user"
+
+    es_url = "http://minimum-fields:9200"
+
+    mock_es_initialization(aioclient_mock, url=es_url, mock_unsupported_version=True)
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], user_input={"url": es_url}
+    )
+
+    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["step_id"] == "user"
+    assert result["errors"]["base"] == "unsupported_version"
+
+
 async def test_user_flow_to_tls_flow(hass: HomeAssistantType, aioclient_mock):
     """ Test user config flow with config that forces TLS configuration. """
     result = await hass.config_entries.flow.async_init(
@@ -79,7 +99,6 @@ async def test_user_flow_to_tls_flow(hass: HomeAssistantType, aioclient_mock):
     assert "data" not in result
 
 
-@pytest.mark.asyncio
 async def test_flow_fails_es_unavailable(hass: HomeAssistantType, aioclient_mock):
     """ Test user config flow fails if connection cannot be established. """
     result = await hass.config_entries.flow.async_init(
@@ -102,7 +121,6 @@ async def test_flow_fails_es_unavailable(hass: HomeAssistantType, aioclient_mock
     assert "data" not in result
 
 
-@pytest.mark.asyncio
 async def test_flow_fails_unauthorized(hass: HomeAssistantType, aioclient_mock):
     """ Test user config flow fails if connection cannot be established. """
     result = await hass.config_entries.flow.async_init(
@@ -125,7 +143,6 @@ async def test_flow_fails_unauthorized(hass: HomeAssistantType, aioclient_mock):
     assert "data" not in result
 
 
-@pytest.mark.asyncio
 @pytest.mark.skip(
     reason="Struggling to prevent real network requests. Something is not honoring our aioclient mock."
 )

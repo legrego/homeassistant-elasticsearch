@@ -18,6 +18,7 @@ from homeassistant.const import (
     CONF_USERNAME,
     CONF_VERIFY_SSL,
 )
+from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers.typing import HomeAssistantType
 
 from custom_components.elasticsearch.utils import get_merged_config
@@ -42,6 +43,7 @@ from .const import (
     PUBLISH_MODE_ALL,
     PUBLISH_MODE_ANY_CHANGES,
 )
+from .errors import AuthenticationRequired, InsufficientPrivileges, UnsupportedVersion
 from .es_integration import ElasticIntegration
 from .logger import LOGGER
 
@@ -168,8 +170,19 @@ async def _async_init_integration(hass: HomeAssistantType, config_entry: ConfigE
     """ Initialize integration. """
     await async_unload_entry(hass, config_entry)
 
-    integration = ElasticIntegration(hass, config_entry)
-    await integration.async_init()
+    integration = None
+    try:
+        integration = ElasticIntegration(hass, config_entry)
+        await integration.async_init()
+    except UnsupportedVersion as err:
+        LOGGER.error("Unsupported Elasticsearch version detected")
+        raise ConfigEntryNotReady from err
+    except AuthenticationRequired as err:
+        LOGGER.error("Missing or invalid credentials")
+        raise ConfigEntryAuthFailed from err
+    except InsufficientPrivileges as err:
+        LOGGER.error("Account does not have sufficient privileges")
+        raise ConfigEntryAuthFailed from err
 
     hass.data[DOMAIN] = integration
 

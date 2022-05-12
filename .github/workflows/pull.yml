@@ -1,0 +1,49 @@
+name: Pull actions
+
+on:
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: "ubuntu-latest"
+    name: Validate
+    steps:
+        - uses: "actions/checkout@v2"
+
+        - name: HACS validation
+          uses: "hacs/action@main"
+          with:
+            category: "integration"
+            ignore: brands
+
+        - name: Hassfest validation
+          uses: "home-assistant/actions/hassfest@master"
+
+  style:
+    runs-on: "ubuntu-latest"
+    name: Check style formatting
+    steps:
+        - uses: "actions/checkout@v2"
+        - uses: "actions/setup-python@v1"
+          with:
+            python-version: "3.x"
+        - run: python3 -m pip install black flake8 isort
+        - run: flake8 .
+        - run: isort .
+        - run: black .
+
+  tests:
+    runs-on: "ubuntu-latest"
+    name: Run tests
+    steps:
+      - name: Check out code from GitHub
+        uses: "actions/checkout@v2"
+      - name: Setup Python
+        uses: "actions/setup-python@v1"
+        with:
+          python-version: "3.8"
+      - name: Install requirements
+        run: python3 -m pip install -r requirements.txt
+      - name: Run tests
+        run: |
+          pytest

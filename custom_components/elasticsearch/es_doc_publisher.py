@@ -12,6 +12,9 @@ from pytz import utc
 from .const import (
     CONF_EXCLUDED_DOMAINS,
     CONF_EXCLUDED_ENTITIES,
+    CONF_INCLUDED_DOMAINS,
+    CONF_INCLUDED_ENTITIES,
+    CONF_ONLY_PUBLISH_CHANGED,
     CONF_PUBLISH_ENABLED,
     CONF_PUBLISH_FREQUENCY,
     CONF_PUBLISH_MODE,
@@ -53,6 +56,8 @@ class DocumentPublisher:
 
         self._excluded_domains = config.get(CONF_EXCLUDED_DOMAINS)
         self._excluded_entities = config.get(CONF_EXCLUDED_ENTITIES)
+        self._included_domains = config.get(CONF_INCLUDED_DOMAINS)
+        self._included_entities = config.get(CONF_INCLUDED_ENTITIES)
 
         if self._excluded_domains:
             LOGGER.debug(
@@ -143,25 +148,8 @@ class DocumentPublisher:
         domain = state.domain
         entity_id = state.entity_id
 
-        if not self.publish_enabled:
-            LOGGER.warning(
-                "Attempted to queue a state change for %s.%s, but publish is not enabled. This is a no-op (and a bug).",
-                domain,
-                entity_id,
-            )
-            return
-
-        if domain in self._excluded_domains:
-            LOGGER.debug(
-                "Skipping %s: it belongs to an excluded domain (%s)", entity_id, domain
-            )
-            return
-
-        if entity_id in self._excluded_entities:
-            LOGGER.debug("Skipping %s: this entity is explicitly excluded", entity_id)
-            return
-
-        self.publish_queue.put([state, event])
+        if self._should_publish_state_change(domain, entity_id):
+            self.publish_queue.put([state, event])
 
     async def async_do_publish(self):
         "Publishes all queued documents to the Elasticsearch cluster"
@@ -224,6 +212,52 @@ class DocumentPublisher:
             LOGGER.info("Publish Succeeded")
         except ElasticsearchException as err:
             LOGGER.exception("Error publishing documents to Elasticsearch: %s", err)
+
+    def _should_publish_state_change(self, domain: str, entity_id: str):
+        """Determines if a state change should be published."""
+        if not self.publish_enabled:
+            LOGGER.warning(
+                "Attempted to queue a state change for %s.%s, but publish is not enabled. This is a no-op (and a bug).",
+                domain,
+                entity_id,
+            )
+            return False
+
+        # Publish entities if they are explicitly included
+        if self._included_entities and entity_id in self._included_entities:
+            return True
+
+        # Skip entities if they are explicitly excluded
+        if entity_id in self._excluded_entities:
+            LOGGER.debug("Skipping %s: this entity is explicitly excluded", entity_id)
+            return False
+
+        # Skip entities belonging to an excluded domain
+        if domain in self._excluded_domains:
+            LOGGER.debug(
+                "Skipping %s: it belongs to an excluded domain (%s)", entity_id, domain
+            )
+            return False
+
+        # Skip entities if they do not belong to an explicitly included domain.
+        # Having 0 explicitly included domains indicates that all domains are allowed.
+        if self._included_domains and domain not in self._included_domains:
+            LOGGER.debug(
+                "Skipping %s: it does not belong to an included domain (%s)",
+                entity_id,
+                domain,
+            )
+            return False
+
+        # Skip entities if they are not explicitly included.
+        # Having 0 explicitly included entities indicates that all entities are allowed.
+        if self._included_entities and entity_id not in self._included_entities:
+            LOGGER.debug(
+                "Skipping %s: this entity is not specifically included", entity_id
+            )
+            return False
+
+        return True
 
     def _state_to_bulk_action(self, state: StateType, time):
         """Creates a bulk action from the given state object"""

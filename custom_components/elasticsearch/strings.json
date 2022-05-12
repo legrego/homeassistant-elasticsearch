@@ -23,7 +23,8 @@
             "insufficient_privileges": "[%key:common::config_flow::error::insufficient_privileges%]",
             "missing_credentials": "[%key:common::config_flow::error::missing_credentials%]",
             "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
-            "untrusted_connection": "[%key:common::config_flow::error::untrusted_connection%]"
+            "untrusted_connection": "[%key:common::config_flow::error::untrusted_connection%]",
+            "unsupported_version": "[%key:common::config_flow::error::unsupported_version%]"
         },
         "abort": {
             "single_instance_allowed": "[%key:common::config_flow::abort::single_instance_allowed%]",
@@ -43,8 +44,10 @@
                     "publish_enabled": "Publish events to Elasticsearch",
                     "publish_frequency": "How frequently events are published, in seconds",
                     "publish_mode": "Choose which entity states to publish",
-                    "excluded_domains": "Domains to exclude from publishing",
-                    "excluded_entities": "Entities to exclude from publishing",
+                    "excluded_domains": "Domains to exclude from publishing. Defaults to none.",
+                    "excluded_entities": "Entities to exclude from publishing. Defaults to none.",
+                    "included_domains": "Domains to publish. Defaults to all domains.",
+                    "included_entities": "Entities to publish. Defaults to all entities.",
                     "index_format": "The index name prefix to publish events to",
                     "alias": "The index alias used for writing events to Elasticsearch"
                 }

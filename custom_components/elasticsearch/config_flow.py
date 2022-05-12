@@ -23,6 +23,8 @@ from .const import (
     CONF_ILM_ENABLED,
     CONF_ILM_MAX_SIZE,
     CONF_ILM_POLICY_NAME,
+    CONF_INCLUDED_DOMAINS,
+    CONF_INCLUDED_ENTITIES,
     CONF_INDEX_FORMAT,
     CONF_PUBLISH_ENABLED,
     CONF_PUBLISH_FREQUENCY,
@@ -40,6 +42,7 @@ from .errors import (
     AuthenticationRequired,
     CannotConnect,
     InsufficientPrivileges,
+    UnsupportedVersion,
     UntrustedCertificate,
 )
 from .es_gateway import ElasticsearchGateway
@@ -122,6 +125,8 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             CONF_INDEX_FORMAT: user_input.get(CONF_INDEX_FORMAT, DEFAULT_INDEX_FORMAT),
             CONF_EXCLUDED_DOMAINS: user_input.get(CONF_EXCLUDED_DOMAINS, []),
             CONF_EXCLUDED_ENTITIES: user_input.get(CONF_EXCLUDED_ENTITIES, []),
+            CONF_INCLUDED_DOMAINS: user_input.get(CONF_INCLUDED_DOMAINS, []),
+            CONF_INCLUDED_ENTITIES: user_input.get(CONF_INCLUDED_ENTITIES, []),
             CONF_HEALTH_SENSOR_ENABLED: user_input.get(
                 CONF_HEALTH_SENSOR_ENABLED, True
             ),
@@ -205,6 +210,8 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             errors["base"] = "insufficient_privileges"
         except CannotConnect:
             errors["base"] = "cannot_connect"
+        except UnsupportedVersion:
+            errors["base"] = "unsupported_version"
         except Exception as ex:  # pylint: disable=broad-except
             LOGGER.error(
                 "Unknown error connecting with Elasticsearch cluster. %s",
@@ -335,6 +342,14 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
             vol.Required(
                 CONF_EXCLUDED_ENTITIES,
                 default=self._get_config_value(CONF_EXCLUDED_ENTITIES, []),
+            ): cv.multi_select(entities),
+            vol.Required(
+                CONF_INCLUDED_DOMAINS,
+                default=self._get_config_value(CONF_INCLUDED_DOMAINS, []),
+            ): cv.multi_select(domains),
+            vol.Required(
+                CONF_INCLUDED_ENTITIES,
+                default=self._get_config_value(CONF_INCLUDED_ENTITIES, []),
             ): cv.multi_select(entities),
         }
 

@@ -1,7 +1,6 @@
 """ Index management facilities """
 import json
 import os
-from urllib.parse import quote
 
 from homeassistant.const import CONF_ALIAS
 
@@ -45,23 +44,10 @@ class IndexManager:
         """ Performs setup for index management. """
         if not self._config.get(CONF_PUBLISH_ENABLED):
             return
-        version = self._gateway.es_version
-        self._using_ilm = (
-            version.is_default_distribution()
-            and version.is_supported_version()
-            and self._config.get(CONF_ILM_ENABLED)
-        )
+        self._using_ilm = self._config.get(CONF_ILM_ENABLED)
 
         await self._create_index_template()
 
-        if not self._gateway.es_version.is_default_distribution():
-            LOGGER.info(
-                "\
-                You are not running the default distribution of Elasticsearch, \
-                so features such as Index Lifecycle Management are not available. \
-                Download the default distribution from https://elastic.co/downloads \
-            "
-            )
         if self._using_ilm:
             await self._create_ilm_policy(self._config)
 
@@ -75,8 +61,6 @@ class IndexManager:
 
         client = self._gateway.get_client()
 
-        es_version = self._gateway.es_version
-
         with open(
             os.path.join(os.path.dirname(__file__), "index_mapping.json")
         ) as json_file:
@@ -85,10 +69,6 @@ class IndexManager:
         if not await client.indices.exists_template(name=INDEX_TEMPLATE_NAME):
             LOGGER.debug("Creating index template")
 
-            mappings_body = mapping
-            if es_version.major == 6:
-                mappings_body = {"doc": mapping}
-
             index_template = {
                 "index_patterns": [self._index_format + "*"],
                 "settings": {
@@ -96,7 +76,7 @@ class IndexManager:
                     "codec": "best_compression",
                     "mapping": {"total_fields": {"limit": "10000"}},
                 },
-                "mappings": mappings_body,
+                "mappings": mapping,
                 "aliases": {"all-hass-events": {}},
             }
             if self._using_ilm:
@@ -145,14 +125,8 @@ class IndexManager:
 
         client = self._gateway.get_client()
 
-        # The ES Client does not currently support the ILM APIs,
-        # so we craft this one by hand
-        encoded_policy_name = quote(self._ilm_policy_name.encode("utf-8"), safe="")
-
-        url = "/_ilm/policy/{}".format(encoded_policy_name)
-
         try:
-            existing_policy = await client.transport.perform_request("GET", url)
+            existing_policy = await client.ilm.get_lifecycle(self._ilm_policy_name)
         except TransportError as err:
             if err.status_code == 404:
                 existing_policy = None
@@ -182,4 +156,4 @@ class IndexManager:
         else:
             LOGGER.info("Creating ILM Policy '%s'", self._ilm_policy_name)
 
-        await client.transport.perform_request("PUT", url, body=policy)
+        await client.ilm.put_lifecycle(self._ilm_policy_name, policy)
