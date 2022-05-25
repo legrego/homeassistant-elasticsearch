@@ -1,6 +1,5 @@
 {
   "name": "Elasticsearch integration",
-  "iot_class": "Cloud Polling",
   "render_readme": true,
   "homeassistant": "2022.4"
 }
