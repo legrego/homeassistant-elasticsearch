@@ -1,6 +1,6 @@
 Elasticsearch Component for Home-Assistant
 ![build](https://github.com/legrego/homeassistant-elasticsearch/workflows/build/badge.svg)
-[![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg)](https://github.com/custom-components/hacs)
+[![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg)](https://github.com/hacs/integration)
 =====
 
 Publish HASS events to your [Elasticsearch](https://elastic.co) cluster!
