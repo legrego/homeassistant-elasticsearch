@@ -179,8 +179,10 @@ class DocumentPublisher:
             all_states = self._hass.states.async_all()
             for state in all_states:
                 if (
-                    state.domain in self._excluded_domains
-                    or state.entity_id in self._excluded_entities
+                    state.domain in self._excluded_domains # Explicitly excluded domains
+                    or state.entity_id in self._excluded_entities # Explicitly excluded entities
+                    or (self._included_domains and state.domain not in self._included_domains) # If set, only included domains
+                    or (self._included_entities and state.entity_id not in self._included_entities) # If set, only included entities
                 ):
                     continue
 
@@ -224,6 +226,7 @@ class DocumentPublisher:
 
         # Publish entities if they are explicitly included
         if self._included_entities and entity_id in self._included_entities:
+            LOGGER.debug("Including %s: this entity is explicitly included", entity_id)
             return True
 
         # Skip entities if they are explicitly excluded
