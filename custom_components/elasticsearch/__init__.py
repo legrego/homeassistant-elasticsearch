@@ -125,7 +125,7 @@ async def async_migrate_entry(hass, config_entry: ConfigEntry):
 
         only_publish_changed = new.get(CONF_ONLY_PUBLISH_CHANGED, False)
         new[CONF_PUBLISH_MODE] = (
-            PUBLISH_MODE_ANY_CHANGES if only_publish_changed else PUBLISH_MODE_ALL
+            PUBLISH_MODE_ALL if not only_publish_changed else PUBLISH_MODE_ANY_CHANGES
         )
 
         if CONF_ONLY_PUBLISH_CHANGED in new:

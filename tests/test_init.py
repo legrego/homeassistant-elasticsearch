@@ -35,7 +35,7 @@ async def test_minimal_setup_component(hass: HomeAssistantType, aioclient_mock) 
         "included_domains": [],
         "included_entities": [],
         "index_format": "hass-events",
-        "publish_mode": "All",
+        "publish_mode": "Any changes",
         "publish_frequency": 60,
         "timeout": 30,
         "username": None,
@@ -72,7 +72,7 @@ async def test_complex_setup_component(hass: HomeAssistantType, aioclient_mock) 
         "included_domains": [],
         "included_entities": [],
         "ssl_ca_path": None,
-        "publish_mode": "All",
+        "publish_mode": "Any changes",
         **MOCK_COMPLEX_LEGACY_CONFIG,
     }
 

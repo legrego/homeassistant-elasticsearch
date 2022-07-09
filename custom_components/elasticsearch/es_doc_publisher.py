@@ -184,9 +184,15 @@ class DocumentPublisher:
                     # Explicitly excluded entities
                     or state.entity_id in self._excluded_entities
                     # If set, only included domains
-                    or (self._included_domains and state.domain not in self._included_domains)
+                    or (
+                        self._included_domains
+                        and state.domain not in self._included_domains
+                    )
                     # If set, only included entities
-                    or (self._included_entities and state.entity_id not in self._included_entities)
+                    or (
+                        self._included_entities
+                        and state.entity_id not in self._included_entities
+                    )
                 ):
                     continue
 
