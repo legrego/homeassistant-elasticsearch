@@ -68,6 +68,16 @@ class DocumentPublisher:
                 "Excluding the following entities: %s", str(self._excluded_entities)
             )
 
+        if self._included_domains:
+            LOGGER.debug(
+                "Including the following domains: %s", str(self._included_domains)
+            )
+
+        if self._included_entities:
+            LOGGER.debug(
+                "Including the following entities: %s", str(self._included_entities)
+            )
+
         def elastic_event_listener(event: EventType):
             """Listen for new messages on the bus and queue them for send."""
             state: StateType = event.data.get("new_state")
@@ -96,19 +106,22 @@ class DocumentPublisher:
         self.publish_queue = Queue()
         self._last_publish_time = None
 
-        self._start_publish_timer()
-
     async def async_init(self):
         if not self.publish_enabled:
+            LOGGER.debug("Aborting async_init: publish is not enabled")
             return
         config_dict = self._hass.config.as_dict()
+        LOGGER.debug("async_init: getting system info")
         system_info = await async_get_system_info(self._hass)
+        LOGGER.debug("async_init: initializing static doc properties")
         self._static_doc_properties = {
             "agent.name": config_dict["name"]
             if "name" in config_dict
             else "My Home Assistant",
             "agent.type": "hass",
-            "agent.version": system_info["version"],
+            "agent.version": system_info["version"]
+            if "version" in system_info
+            else "UNKNOWN",
             "ecs.version": "1.0.0",
             "host.geo.location": {
                 "lat": config_dict["latitude"],
@@ -116,11 +129,23 @@ class DocumentPublisher:
             }
             if "latitude" in config_dict
             else None,
-            "host.architecture": system_info["arch"],
-            "host.os.name": system_info["os_name"],
-            "host.hostname": system_info["hostname"],
+            "host.architecture": system_info["arch"]
+            if "arch" in system_info
+            else "UNKNOWN",
+            "host.os.name": system_info["os_name"]
+            if "os_name" in system_info
+            else "UNKNOWN",
+            "host.hostname": system_info["hostname"]
+            if "hostname" in system_info
+            else "UNKNOWN",
             "tags": self._tags,
         }
+        LOGGER.debug(
+            "async_init: static doc properties: %s", str(self._static_doc_properties)
+        )
+        LOGGER.debug("async_init: starting publish timer")
+        self._start_publish_timer()
+        LOGGER.debug("async_init: done")
 
     async def async_stop_publisher(self):
         LOGGER.debug("Stopping document publisher")
