@@ -82,7 +82,6 @@ CLUSTER_INFO_UNSUPPORTED_RESPONSE_BODY = {
     "cluster_uuid": "hz1_5bImTh-45ERkrHS7vg",
     "version": {
         "number": "7.10.0",
-        "build_flavor": "default",
         "build_type": "deb",
         "build_hash": "1c34507e66d7db1211f66f3513706fdf548736aa",
         "build_date": "2020-12-05T01:00:33.671820Z",
@@ -100,7 +99,6 @@ CLUSTER_INFO_RESPONSE_BODY = {
     "cluster_uuid": "hz1_5bImTh-45ERkrHS7vg",
     "version": {
         "number": "7.11.0",
-        "build_flavor": "default",
         "build_type": "deb",
         "build_hash": "1c34507e66d7db1211f66f3513706fdf548736aa",
         "build_date": "2020-12-05T01:00:33.671820Z",
