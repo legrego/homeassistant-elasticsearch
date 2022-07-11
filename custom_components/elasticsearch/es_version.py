@@ -9,7 +9,6 @@ class ElasticsearchVersion:
         self._version_number_str = None
         self.major = None
         self.minor = None
-        self.build_flavor = None
 
     async def async_init(self):
         """I/O bound init"""
@@ -18,7 +17,6 @@ class ElasticsearchVersion:
         self._version_number_str = version["number"]
         self.major = int(version_number_parts[0])
         self.minor = int(version_number_parts[1])
-        self.build_flavor = version["build_flavor"]
 
     def is_supported_version(self):
         """Determines if this version of ES is supported by this component"""
