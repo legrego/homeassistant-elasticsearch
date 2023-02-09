@@ -7,7 +7,7 @@ Publish HASS events to your [Elasticsearch](https://elastic.co) cluster!
 
 ## Features
 
-- Effeciently publishes Home-Assistant events to Elasticsearch using the Bulk API
+- Efficiently publishes Home-Assistant events to Elasticsearch using the Bulk API
 - Automatically maintains Indexes and Index Templates using Index Lifecycle Management ("ILM")
 - Supports [X-Pack Security](https://www.elastic.co/products/x-pack/security) via optional username and password
 - Tracks the Elasticsearch cluster health in the `sensor.es_cluster_health` sensor
@@ -41,7 +41,7 @@ Example: `/home/pi/.homeassistant` and `/home/pi/.homeassistant/custom_component
 This component supports interactive configuration via Home Assistant's integration configuration page.
 This will be the only supported configuration method in the future.
 
-1. Restart Home-assistant once you've completed the installation instrictions above.
+1. Restart Home-assistant once you've completed the installation instructions above.
 2. From the `Integrations` configuration menu, add a new `Elasticsearch` integration. ![img](assets/add-integration.png)
 3. Provide connection information and optionally credentials to begin setup. ![img](assets/configure-integration.png)
 4. Once the integration is setup, you may tweak all settings via the "Options" button on the integrations page.
@@ -188,7 +188,7 @@ After installing this component, you may see an error similar to this on startup
 ERROR (MainThread) [homeassistant.setup] Error during setup of component elastic Traceback (most recent call last): File "/usr/src/app/homeassistant/setup.py", line 145, in _async_setup_component hass, processed_config) File "/usr/local/lib/python3.6/asyncio/coroutines.py", line 212, in coro res = func(*args, **kw) File "/config/custom_components/elastic/__init__.py", line 62, in async_setup gateway = ElasticsearchGateway(hass, conf) File "/config/custom_components/elastic/__init__.py", line 126, in __init__ self.client = self._create_es_client() File "/config/custom_components/elastic.py", line 134, in _create_es_client import elasticsearch ModuleNotFoundError: No module named 'elasticsearch'
 ```
 
-This means that home-assistant was not able to download the required `elasticsearch` module for this comonent to function.
+This means that home-assistant was not able to download the required `elasticsearch` module for this component to function.
 
 **Solution**: Restart home assistant
 
