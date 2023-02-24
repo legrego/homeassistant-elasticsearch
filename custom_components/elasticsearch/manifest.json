@@ -1,16 +1,16 @@
 {
   "domain": "elasticsearch",
   "name": "Elasticsearch",
-  "version": "0.4.0",
-  "documentation": "https://github.com/legrego/homeassistant-elasticsearch",
-  "issue_tracker": "https://github.com/legrego/homeassistant-elasticsearch/issues",
-  "dependencies": [],
   "codeowners": [
     "@legrego"
   ],
   "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/legrego/homeassistant-elasticsearch",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/legrego/homeassistant-elasticsearch/issues",
   "requirements": [
     "elasticsearch==7.11.0"
   ],
-  "iot_class": "cloud_polling"
+  "version": "0.4.0"
 }
