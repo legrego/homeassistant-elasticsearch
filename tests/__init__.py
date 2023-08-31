@@ -1,1 +1,1 @@
-""" Tests for the Elasticsearch integration. """
+"""Tests for the Elasticsearch integration."""

@@ -9,7 +9,7 @@ from urllib.parse import parse_qs
 from aiohttp import ClientSession
 from aiohttp.client_exceptions import ClientError, ClientResponseError
 from aiohttp.streams import StreamReader
-from elasticsearch._async.http_aiohttp import AIOHttpConnection
+from elasticsearch7._async.http_aiohttp import AIOHttpConnection
 from homeassistant.const import EVENT_HOMEASSISTANT_CLOSE
 from multidict import CIMultiDict
 from yarl import URL
@@ -20,7 +20,7 @@ RETYPE = type(re.compile(""))
 def mock_stream(data):
     """Mock a stream with data."""
     protocol = mock.Mock(_reading_paused=False)
-    stream = StreamReader(protocol, limit=2 ** 16)
+    stream = StreamReader(protocol, limit=2**16)
     stream.feed_data(data)
     stream.feed_eof()
     return stream

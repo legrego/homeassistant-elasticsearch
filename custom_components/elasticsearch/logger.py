@@ -1,4 +1,4 @@
-""" Component Logger """
+"""Component Logger."""
 
 import logging
 

@@ -1,10 +1,8 @@
-"""
-Sensors for the Elastic component.
-
-"""
+"""Sensors for the Elastic component."""
 import logging
 from datetime import timedelta
-from typing import Callable, List
+from typing import List
+from collections.abc import Callable
 
 from homeassistant.components.sensor import ENTITY_ID_FORMAT
 from homeassistant.config_entries import ConfigEntry
@@ -27,7 +25,7 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entries: Callable[[List[Entity], bool], None],
 ):
-    """ Setup Elastic sensors"""
+    """Setup Elastic sensors."""
 
     devices = []
 
@@ -55,14 +53,14 @@ async def async_setup_entry(
 
 
 class EsBaseSensor(Entity):
-    """ Base Sensor """
+    """Base Sensor."""
 
     def __init__(self, config_entry: ConfigEntry):
         self.config_entry = config_entry
 
 
 class EsPublishQueueSensor(EsBaseSensor):
-    """Representation of the publish queue sensor"""
+    """Representation of the publish queue sensor."""
 
     def __init__(self, config_entry: ConfigEntry, publisher: DocumentPublisher):
         super().__init__(config_entry)
@@ -89,7 +87,7 @@ class EsPublishQueueSensor(EsBaseSensor):
 
     @property
     def state_attributes(self):
-        """Return the state attributes"""
+        """Return the state attributes."""
         return self.attr
 
     def update(self):
@@ -133,7 +131,7 @@ class EsClusterHealthSensor(EsBaseSensor):
 
     @property
     def state_attributes(self):
-        """Return the state attributes"""
+        """Return the state attributes."""
         return self._latest_cluster_health
 
     @property

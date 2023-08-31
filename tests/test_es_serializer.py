@@ -1,4 +1,4 @@
-""" Tests against the Elasticsearch Serializer """
+"""Tests against the Elasticsearch Serializer."""
 
 import json
 
@@ -8,7 +8,7 @@ from .sample_data import create_sample_state
 
 
 def test_simple_entry():
-    """ Ensure that the serialier can handle a basic state change event. """
+    """Ensure that the serialier can handle a basic state change event."""
 
     state = create_sample_state(last_updated="", last_changed="")
 
@@ -22,12 +22,12 @@ def test_simple_entry():
 
 
 def test_entry_with_set():
-    """ Ensure that the serializer can handle a state change event which includes a set. """
+    """Ensure that the serializer can handle a state change event which includes a set."""
 
     state = create_sample_state(
         last_updated="",
         last_changed="",
-        attributes=dict({"set_key": set(["a", "b", "c"])}),
+        attributes={"set_key": {"a", "b", "c"}},
     )
 
     serializer = get_serializer()

@@ -1,6 +1,4 @@
-"""
-Support for sending event data to an Elasticsearch cluster
-"""
+"""Support for sending event data to an Elasticsearch cluster."""
 
 import asyncio
 

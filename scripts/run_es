@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+set -e
+
+cd "/usr/share/elasticsearch"
+
+./bin/elasticsearch

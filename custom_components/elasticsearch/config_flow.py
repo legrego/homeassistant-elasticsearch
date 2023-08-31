@@ -190,7 +190,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         return await self.async_step_user(user_input=import_config)
 
     async def _async_elasticsearch_login(self):
-        """Handle connection & authentication to Elasticsearch"""
+        """Handle connection & authentication to Elasticsearch."""
         errors = {}
 
         try:
@@ -264,7 +264,7 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
         return self.async_abort(reason="configured_via_yaml")
 
     async def async_step_publish_options(self, user_input=None):
-        """Publish Options"""
+        """Publish Options."""
         if user_input is not None:
             self.options.update(user_input)
             return await self.async_step_ilm_options()
@@ -275,7 +275,7 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
         )
 
     async def async_step_ilm_options(self, user_input=None):
-        """ILM Options"""
+        """ILM Options."""
         errors = {}
 
         if user_input is not None:
@@ -289,7 +289,7 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
         )
 
     async def async_step_health_options(self, user_input=None):
-        """ Health Sensor Options"""
+        """Health Sensor Options."""
         if user_input is not None:
             self.options.update(user_input)
             return await self._update_options()
@@ -428,4 +428,4 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
             entity_ids.append(state.entity_id)
             domains.add(state.domain)
 
-        return sorted(list(domains)), sorted(entity_ids)
+        return sorted(domains), sorted(entity_ids)
