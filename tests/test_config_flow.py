@@ -10,6 +10,7 @@ from custom_components.elasticsearch.const import DOMAIN
 from tests.test_util.es_startup_mocks import mock_es_initialization
 
 
+@pytest.mark.asyncio
 async def test_user_flow_minimum_fields(hass: HomeAssistantType, aioclient_mock):
     """Test user config flow with minimum fields."""
 
@@ -44,6 +45,7 @@ async def test_user_flow_minimum_fields(hass: HomeAssistantType, aioclient_mock)
     assert result["data"]["health_sensor_enabled"] is True
 
 
+@pytest.mark.asyncio
 async def test_user_flow_unsupported_version(hass: HomeAssistantType, aioclient_mock):
     """Test user config flow with minimum fields."""
 
@@ -66,6 +68,7 @@ async def test_user_flow_unsupported_version(hass: HomeAssistantType, aioclient_
     assert result["errors"]["base"] == "unsupported_version"
 
 
+@pytest.mark.asyncio
 async def test_user_flow_to_tls_flow(hass: HomeAssistantType, aioclient_mock):
     """Test user config flow with config that forces TLS configuration."""
     result = await hass.config_entries.flow.async_init(
@@ -98,6 +101,7 @@ async def test_user_flow_to_tls_flow(hass: HomeAssistantType, aioclient_mock):
     assert "data" not in result
 
 
+@pytest.mark.asyncio
 async def test_flow_fails_es_unavailable(hass: HomeAssistantType, aioclient_mock):
     """Test user config flow fails if connection cannot be established."""
     result = await hass.config_entries.flow.async_init(
@@ -120,6 +124,7 @@ async def test_flow_fails_es_unavailable(hass: HomeAssistantType, aioclient_mock
     assert "data" not in result
 
 
+@pytest.mark.asyncio
 async def test_flow_fails_unauthorized(hass: HomeAssistantType, aioclient_mock):
     """Test user config flow fails if connection cannot be established."""
     result = await hass.config_entries.flow.async_init(
