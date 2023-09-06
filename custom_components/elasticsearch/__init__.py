@@ -1,6 +1,4 @@
-"""
-Support for sending event data to an Elasticsearch cluster
-"""
+"""Support for sending event data to an Elasticsearch cluster."""
 
 from copy import deepcopy
 
@@ -21,7 +19,7 @@ from homeassistant.const import (
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers.typing import HomeAssistantType
 
-from custom_components.elasticsearch.utils import get_merged_config
+from .utils import get_merged_config
 
 from .const import (
     CONF_EXCLUDED_DOMAINS,
@@ -115,12 +113,13 @@ async def async_setup(hass: HomeAssistantType, config):
     return True
 
 
-async def async_migrate_entry(hass, config_entry: ConfigEntry):
+async def async_migrate_entry(
+    hass, config_entry: ConfigEntry
+):  # pylint: disable=unused-argument
     """Migrate old entry."""
     LOGGER.debug("Migrating config entry from version %s", config_entry.version)
 
     if config_entry.version == 1:
-
         new = get_merged_config(config_entry)
 
         only_publish_changed = new.get(CONF_ONLY_PUBLISH_CHANGED, False)
@@ -141,7 +140,7 @@ async def async_migrate_entry(hass, config_entry: ConfigEntry):
 
 
 async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry):
-    """ Setup integration via config flow. """
+    """Set up integration via config flow."""
 
     LOGGER.debug("Setting up integtation")
     init = await _async_init_integration(hass, config_entry)
@@ -150,7 +149,7 @@ async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry):
 
 
 async def async_unload_entry(hass: HomeAssistantType, config_entry: ConfigEntry):
-    """ Teardown integration. """
+    """Teardown integration."""
     existing_instance = hass.data.get(DOMAIN)
     if isinstance(existing_instance, ElasticIntegration):
         LOGGER.debug("Shutting down previous integration")
@@ -162,13 +161,13 @@ async def async_unload_entry(hass: HomeAssistantType, config_entry: ConfigEntry)
 async def async_config_entry_updated(
     hass: HomeAssistantType, config_entry: ConfigEntry
 ):
-    """ Respond to config changes. """
+    """Respond to config changes."""
     LOGGER.debug("Configuration change detected")
     return await _async_init_integration(hass, config_entry)
 
 
 async def _async_init_integration(hass: HomeAssistantType, config_entry: ConfigEntry):
-    """ Initialize integration. """
+    """Initialize integration."""
     await async_unload_entry(hass, config_entry)
 
     integration = None

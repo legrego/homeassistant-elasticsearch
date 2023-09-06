@@ -1,10 +1,7 @@
-"""
-Sensors for the Elastic component.
-
-"""
+"""Sensors for the Elastic component."""
 import logging
 from datetime import timedelta
-from typing import Callable, List
+from collections.abc import Callable
 
 from homeassistant.components.sensor import ENTITY_ID_FORMAT
 from homeassistant.config_entries import ConfigEntry
@@ -25,9 +22,9 @@ SCAN_INTERVAL = timedelta(seconds=30)
 async def async_setup_entry(
     hass: HomeAssistantType,
     config_entry: ConfigEntry,
-    async_add_entries: Callable[[List[Entity], bool], None],
+    async_add_entries: Callable[[list[Entity], bool], None],
 ):
-    """ Setup Elastic sensors"""
+    """Configure Elastic sensors."""
 
     devices = []
 
@@ -55,16 +52,18 @@ async def async_setup_entry(
 
 
 class EsBaseSensor(Entity):
-    """ Base Sensor """
+    """Base Sensor."""
 
     def __init__(self, config_entry: ConfigEntry):
+        """Initialize base sensor."""
         self.config_entry = config_entry
 
 
 class EsPublishQueueSensor(EsBaseSensor):
-    """Representation of the publish queue sensor"""
+    """Representation of the publish queue sensor."""
 
     def __init__(self, config_entry: ConfigEntry, publisher: DocumentPublisher):
+        """Initialize publish queue sensor."""
         super().__init__(config_entry)
         self._publisher = publisher
         self.current_value = None
@@ -89,7 +88,7 @@ class EsPublishQueueSensor(EsBaseSensor):
 
     @property
     def state_attributes(self):
-        """Return the state attributes"""
+        """Return the state attributes."""
         return self.attr
 
     def update(self):
@@ -133,7 +132,7 @@ class EsClusterHealthSensor(EsBaseSensor):
 
     @property
     def state_attributes(self):
-        """Return the state attributes"""
+        """Return the state attributes."""
         return self._latest_cluster_health
 
     @property
@@ -152,7 +151,7 @@ class EsClusterHealthSensor(EsBaseSensor):
                 "status", DEFAULT_CLUSTER_HEALTH
             )
             self._available = True
-        except Exception:
+        except Exception:  # pylint disable=broad-exception-caught
             LOGGER.debug(
                 "An error occurred while updating the Elasticsearch health sensor",
                 exc_info=True,

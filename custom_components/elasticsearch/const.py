@@ -1,4 +1,4 @@
-""" constants """
+"""constants."""
 
 DOMAIN = "elasticsearch"
 

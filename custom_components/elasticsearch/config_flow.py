@@ -85,6 +85,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         }
 
     def build_setup_schema(self):
+        """Build validation schema for integration setup flow."""
         schema = {
             vol.Required(
                 CONF_URL, default=self.config.get(CONF_URL, "http://localhost:9200")
@@ -103,7 +104,10 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
         return schema
 
-    def build_full_config(self, user_input={}):
+    def build_full_config(self, user_input=None):
+        """Build the entire config validation schema."""
+        if user_input is None:
+            user_input = {}
         return {
             CONF_URL: user_input.get(CONF_URL, DEFAULT_URL),
             CONF_USERNAME: user_input.get(CONF_USERNAME),
@@ -190,12 +194,12 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         return await self.async_step_user(user_input=import_config)
 
     async def _async_elasticsearch_login(self):
-        """Handle connection & authentication to Elasticsearch"""
+        """Handle connection & authentication to Elasticsearch."""
         errors = {}
 
         try:
             gateway = ElasticsearchGateway(self.config)
-            await gateway.check_connection(self.hass)
+            await gateway.check_connection()
         except UntrustedCertificate:
             errors["base"] = "untrusted_connection"
             return self.async_show_form(
@@ -251,20 +255,20 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
         self.config_entry = config_entry
         self.options = dict(config_entry.options)
 
-    async def async_step_init(self, user_input=None):
+    async def async_step_init(self, hass):  # pylint disable=unused-argument
         """Manage the Elastic options."""
 
         if self.config_entry.source == SOURCE_IMPORT:
-            return await self.async_step_yaml(user_input)
+            return await self.async_step_yaml()
 
         return await self.async_step_publish_options()
 
-    async def async_step_yaml(self, user_input=None):
+    async def async_step_yaml(self, user_input=None):  # pylint disable=unused-argument
         """No options for yaml managed entries."""
         return self.async_abort(reason="configured_via_yaml")
 
     async def async_step_publish_options(self, user_input=None):
-        """Publish Options"""
+        """Publish Options."""
         if user_input is not None:
             self.options.update(user_input)
             return await self.async_step_ilm_options()
@@ -275,7 +279,7 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
         )
 
     async def async_step_ilm_options(self, user_input=None):
-        """ILM Options"""
+        """ILM Options."""
         errors = {}
 
         if user_input is not None:
@@ -289,7 +293,7 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
         )
 
     async def async_step_health_options(self, user_input=None):
-        """ Health Sensor Options"""
+        """Health Sensor Options."""
         if user_input is not None:
             self.options.update(user_input)
             return await self._update_options()
@@ -310,7 +314,7 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
         return current
 
     async def async_build_publish_options_schema(self):
-        """Builds the schema for publish options."""
+        """Build the schema for publish options."""
         domains, entities = await self._async_get_domains_and_entities()
 
         schema = {
@@ -428,4 +432,4 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
             entity_ids.append(state.entity_id)
             domains.add(state.domain)
 
-        return sorted(list(domains)), sorted(entity_ids)
+        return sorted(domains), sorted(entity_ids)

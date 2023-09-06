@@ -1,4 +1,4 @@
-"""Encapsulates Elasticsearch operations"""
+"""Encapsulates Elasticsearch operations."""
 import aiohttp
 from homeassistant.const import (
     CONF_PASSWORD,
@@ -7,7 +7,6 @@ from homeassistant.const import (
     CONF_USERNAME,
     CONF_VERIFY_SSL,
 )
-from homeassistant.helpers.typing import HomeAssistantType
 
 from .const import CONF_SSL_CA_PATH
 from .errors import (
@@ -24,10 +23,10 @@ from .logger import LOGGER
 
 
 class ElasticsearchGateway:
-    """Encapsulates Elasticsearch operations"""
+    """Encapsulates Elasticsearch operations."""
 
     def __init__(self, config):
-        """Initialize the gateway"""
+        """Initialize the gateway."""
         self._url = config.get(CONF_URL)
         self._timeout = config.get(CONF_TIMEOUT)
         self._username = config.get(CONF_USERNAME)
@@ -38,12 +37,12 @@ class ElasticsearchGateway:
         self.client = None
         self.es_version = None
 
-    async def check_connection(self, hass: HomeAssistantType):
-        """Performs connection checks for setup"""
-        from elasticsearch import (
+    async def check_connection(self):
+        """Perform connection checks for setup."""
+        from elasticsearch7 import (
             AuthenticationException,
             AuthorizationException,
-            ConnectionError,
+            ConnectionError as ESConnectionError,
             ElasticsearchException,
             SSLError,
         )
@@ -58,21 +57,21 @@ class ElasticsearchGateway:
 
             is_supported_version = es_version.is_supported_version()
         except SSLError as err:
-            raise UntrustedCertificate(err)
-        except ConnectionError as err:
+            raise UntrustedCertificate(err) from err
+        except ESConnectionError as err:
             if isinstance(
                 err.info, aiohttp.client_exceptions.ClientConnectorCertificateError
             ):
-                raise UntrustedCertificate(err)
-            raise CannotConnect(err)
+                raise UntrustedCertificate(err) from err
+            raise CannotConnect(err) from err
         except AuthenticationException as err:
-            raise AuthenticationRequired(err)
+            raise AuthenticationRequired(err) from err
         except AuthorizationException as err:
-            raise InsufficientPrivileges(err)
+            raise InsufficientPrivileges(err) from err
         except ElasticsearchException as err:
-            raise ElasticException(err)
+            raise ElasticException(err) from err
         except Exception as err:
-            raise ElasticException(err)
+            raise ElasticException(err) from err
         finally:
             if client:
                 await client.close()
@@ -82,7 +81,7 @@ class ElasticsearchGateway:
             raise UnsupportedVersion()
 
     async def async_init(self):
-        """I/O bound init"""
+        """I/O bound init."""
 
         LOGGER.debug("Creating Elasticsearch client for %s", self._url)
         self.client = self._create_es_client()
@@ -99,15 +98,16 @@ class ElasticsearchGateway:
         LOGGER.debug("Gateway initialized")
 
     async def async_stop_gateway(self):
+        """Stop the ES Gateway."""
         await self.client.close()
 
     def get_client(self):
-        """Returns the underlying ES Client"""
+        """Return the underlying ES Client."""
         return self.client
 
     def _create_es_client(self):
-        """Constructs an instance of the Elasticsearch client"""
-        from elasticsearch._async.client import AsyncElasticsearch
+        """Construct an instance of the Elasticsearch client."""
+        from elasticsearch7._async.client import AsyncElasticsearch
 
         use_basic_auth = self._username is not None and self._password is not None
 
