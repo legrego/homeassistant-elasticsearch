@@ -1,5 +1,5 @@
 Elasticsearch Component for Home-Assistant
-![build](https://github.com/legrego/homeassistant-elasticsearch/workflows/build/badge.svg)
+![build](https://github.com/legrego/homeassistant-elasticsearch/actions/workflows/cron.yml/badge.svg)
 [![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg)](https://github.com/hacs/integration)
 =====
 
