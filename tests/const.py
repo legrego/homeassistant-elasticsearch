@@ -1,3 +1,4 @@
+"""Test Constants."""
 from homeassistant.const import (
     CONF_ALIAS,
     CONF_DOMAINS,

@@ -1,3 +1,5 @@
+"""Functions here have been cobbled together from various sources, including: hacs, home-assistant."""
+
 import asyncio
 import functools as ft
 import json
@@ -12,8 +14,6 @@ from homeassistant.auth import auth_store
 from homeassistant.const import EVENT_HOMEASSISTANT_CLOSE
 from homeassistant.helpers import storage
 from homeassistant.util.unit_system import METRIC_SYSTEM
-
-""" Functions here have been cobbled together from various sources, including: hacs, home-assistant """
 
 TOKEN = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 INSTANCES = []
@@ -166,6 +166,7 @@ def ensure_auth_manager_loaded(auth_mgr):
 @contextmanager
 def mock_storage(data=None):
     """Mock storage.
+
     Data is a dict {'key': {'version': version, 'data': data}}
     Written data will be converted to JSON to ensure JSON parsing works.
     """

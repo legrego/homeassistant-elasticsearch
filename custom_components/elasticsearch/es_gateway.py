@@ -7,7 +7,6 @@ from homeassistant.const import (
     CONF_USERNAME,
     CONF_VERIFY_SSL,
 )
-from homeassistant.helpers.typing import HomeAssistantType
 
 from .const import CONF_SSL_CA_PATH
 from .errors import (
@@ -38,8 +37,8 @@ class ElasticsearchGateway:
         self.client = None
         self.es_version = None
 
-    async def check_connection(self, hass: HomeAssistantType):
-        """Performs connection checks for setup."""
+    async def check_connection(self):
+        """Perform connection checks for setup."""
         from elasticsearch7 import (
             AuthenticationException,
             AuthorizationException,
@@ -99,14 +98,15 @@ class ElasticsearchGateway:
         LOGGER.debug("Gateway initialized")
 
     async def async_stop_gateway(self):
+        """Stop the ES Gateway."""
         await self.client.close()
 
     def get_client(self):
-        """Returns the underlying ES Client."""
+        """Return the underlying ES Client."""
         return self.client
 
     def _create_es_client(self):
-        """Constructs an instance of the Elasticsearch client."""
+        """Construct an instance of the Elasticsearch client."""
         from elasticsearch7._async.client import AsyncElasticsearch
 
         use_basic_auth = self._username is not None and self._password is not None

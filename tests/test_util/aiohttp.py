@@ -297,6 +297,7 @@ def mock_aiohttp_client(hass):
         return session
 
     async def create_es_session(self, *args):
+        """Create ES Session."""
         print("CREATING MOCK SESSION: " + str(type(self)) + " : " + str(self.host))
         self.session = mocker.create_session(hass.loop)
         SESSIONS.append(self.session)

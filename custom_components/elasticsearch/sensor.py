@@ -1,7 +1,6 @@
 """Sensors for the Elastic component."""
 import logging
 from datetime import timedelta
-from typing import List
 from collections.abc import Callable
 
 from homeassistant.components.sensor import ENTITY_ID_FORMAT
@@ -23,9 +22,9 @@ SCAN_INTERVAL = timedelta(seconds=30)
 async def async_setup_entry(
     hass: HomeAssistantType,
     config_entry: ConfigEntry,
-    async_add_entries: Callable[[List[Entity], bool], None],
+    async_add_entries: Callable[[list[Entity], bool], None],
 ):
-    """Setup Elastic sensors."""
+    """Configure Elastic sensors."""
 
     devices = []
 
@@ -56,6 +55,7 @@ class EsBaseSensor(Entity):
     """Base Sensor."""
 
     def __init__(self, config_entry: ConfigEntry):
+        """Initialize base sensor."""
         self.config_entry = config_entry
 
 
@@ -63,6 +63,7 @@ class EsPublishQueueSensor(EsBaseSensor):
     """Representation of the publish queue sensor."""
 
     def __init__(self, config_entry: ConfigEntry, publisher: DocumentPublisher):
+        """Initialize publish queue sensor."""
         super().__init__(config_entry)
         self._publisher = publisher
         self.current_value = None
@@ -150,7 +151,7 @@ class EsClusterHealthSensor(EsBaseSensor):
                 "status", DEFAULT_CLUSTER_HEALTH
             )
             self._available = True
-        except Exception:
+        except Exception:  # pylint disable=broad-exception-caught
             LOGGER.debug(
                 "An error occurred while updating the Elasticsearch health sensor",
                 exc_info=True,

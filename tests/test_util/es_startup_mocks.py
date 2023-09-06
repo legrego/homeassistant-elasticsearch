@@ -1,3 +1,4 @@
+"""ES Startup Mocks."""
 from homeassistant.const import CONF_URL, CONTENT_TYPE_JSON
 
 from tests.const import (
@@ -17,6 +18,7 @@ def mock_es_initialization(
     mock_ilm_setup=False,
     mock_unsupported_version=False,
 ):
+    """Mock for ES initialization flow."""
 
     if mock_unsupported_version:
         aioclient_mock.get(url, status=200, json=CLUSTER_INFO_UNSUPPORTED_RESPONSE_BODY)

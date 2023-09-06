@@ -113,7 +113,9 @@ async def async_setup(hass: HomeAssistantType, config):
     return True
 
 
-async def async_migrate_entry(hass, config_entry: ConfigEntry):
+async def async_migrate_entry(
+    hass, config_entry: ConfigEntry
+):  # pylint: disable=unused-argument
     """Migrate old entry."""
     LOGGER.debug("Migrating config entry from version %s", config_entry.version)
 
@@ -138,7 +140,7 @@ async def async_migrate_entry(hass, config_entry: ConfigEntry):
 
 
 async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry):
-    """Setup integration via config flow."""
+    """Set up integration via config flow."""
 
     LOGGER.debug("Setting up integtation")
     init = await _async_init_integration(hass, config_entry)

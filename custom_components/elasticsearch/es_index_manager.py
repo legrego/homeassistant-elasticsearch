@@ -21,7 +21,7 @@ class IndexManager:
     """Index management facilities."""
 
     def __init__(self, hass, config, gateway):
-        """Initializes index management."""
+        """Initialize index management."""
 
         self._config = config
 
@@ -41,7 +41,7 @@ class IndexManager:
         self._using_ilm = True
 
     async def async_setup(self):
-        """Performs setup for index management."""
+        """Perform setup for index management."""
         if not self._config.get(CONF_PUBLISH_ENABLED):
             return
         self._using_ilm = self._config.get(CONF_ILM_ENABLED)
@@ -54,13 +54,14 @@ class IndexManager:
         LOGGER.debug("Index Manager initialized")
 
     async def _create_index_template(self):
-        """Initializes the Elasticsearch cluster with an index template, initial index, and alias."""
+        """Initialize the Elasticsearch cluster with an index template, initial index, and alias."""
         from elasticsearch7.exceptions import ElasticsearchException
 
         client = self._gateway.get_client()
 
         with open(
-            os.path.join(os.path.dirname(__file__), "index_mapping.json")
+            os.path.join(os.path.dirname(__file__), "index_mapping.json"),
+            encoding="utf-8",
         ) as json_file:
             mapping = json.load(json_file)
 
@@ -116,7 +117,7 @@ class IndexManager:
                 LOGGER.exception("Error updating index ILM settings: %s", err)
 
     async def _create_ilm_policy(self, config):
-        """Creates the index lifecycle management policy."""
+        """Create the index lifecycle management policy."""
         from elasticsearch7.exceptions import TransportError
 
         client = self._gateway.get_client()

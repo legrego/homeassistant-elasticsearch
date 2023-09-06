@@ -5,7 +5,7 @@ from pytz import utc
 
 
 def create_sample_state(**kwargs):
-    """Creates a sample state object."""
+    """Create a sample state object."""
 
     state = {
         "state": "off",

@@ -51,6 +51,7 @@ class DocumentPublisher:
 
         self._publish_frequency = config.get(CONF_PUBLISH_FREQUENCY)
         self._publish_mode = config.get(CONF_PUBLISH_MODE)
+        self._publish_timer_ref = None
         self._tags = config.get(CONF_TAGS)
 
         self._excluded_domains = config.get(CONF_EXCLUDED_DOMAINS)
@@ -107,6 +108,7 @@ class DocumentPublisher:
         self._last_publish_time = None
 
     async def async_init(self):
+        """Perform async initialization for the ES document publisher."""
         if not self.publish_enabled:
             LOGGER.debug("Aborting async_init: publish is not enabled")
             return
@@ -148,10 +150,14 @@ class DocumentPublisher:
         LOGGER.debug("async_init: done")
 
     async def async_stop_publisher(self):
+        """Perform async shutdown for ES Document Publisher."""
         LOGGER.debug("Stopping document publisher")
         attempt_flush = self.publish_active
 
         self.publish_active = False
+        if self._publish_timer_ref is not None:
+            self._publish_timer_ref.cancel()
+            self._publish_timer_ref = None
         if self.remove_state_change_listener:
             self.remove_state_change_listener()
         if attempt_flush:
@@ -159,15 +165,15 @@ class DocumentPublisher:
             await self.async_do_publish()
 
     def queue_size(self):
-        """Returns the approximate queue size."""
+        """Return the approximate queue size."""
         return self.publish_queue.qsize()
 
     def last_publish_time(self):
-        """Returns the last publish time."""
+        """Return the last publish time."""
         return self._last_publish_time
 
     def enqueue_state(self, state: StateType, event: EventType):
-        """Queues up the provided state change."""
+        """Queue up the provided state change."""
 
         domain = state.domain
         entity_id = state.entity_id
@@ -176,7 +182,7 @@ class DocumentPublisher:
             self.publish_queue.put([state, event])
 
     async def async_do_publish(self):
-        "Publishes all queued documents to the Elasticsearch cluster."
+        """Publish all queued documents to the Elasticsearch cluster."""
         from elasticsearch7.exceptions import ElasticsearchException
 
         publish_all_states = self._publish_mode == PUBLISH_MODE_ALL
@@ -235,9 +241,11 @@ class DocumentPublisher:
         return
 
     async def async_bulk_sync_wrapper(self, actions):
-        """Wrapper to publish events.
+        """Wrap event publishing.
+
         Workaround for elasticsearch_async not supporting bulk operations.
         """
+
         from elasticsearch7.exceptions import ElasticsearchException
         from elasticsearch7.helpers import async_bulk
 
@@ -249,7 +257,7 @@ class DocumentPublisher:
             LOGGER.exception("Error publishing documents to Elasticsearch: %s", err)
 
     def _should_publish_state_change(self, domain: str, entity_id: str):
-        """Determines if a state change should be published."""
+        """Determine if a state change should be published."""
         if not self.publish_enabled:
             LOGGER.warning(
                 "Attempted to queue a state change for %s.%s, but publish is not enabled. This is a no-op (and a bug).",
@@ -296,7 +304,7 @@ class DocumentPublisher:
         return True
 
     def _state_to_bulk_action(self, state: StateType, time):
-        """Creates a bulk action from the given state object."""
+        """Create a bulk action from the given state object."""
         try:
             _state = state_helper.state_as_number(state)
             if not is_valid_number(_state):
@@ -383,18 +391,18 @@ class DocumentPublisher:
 
     def _start_publish_timer(self):
         """Initialize the publish timer."""
-        asyncio.ensure_future(self._publish_queue_timer())
+        self._publish_timer_ref = asyncio.ensure_future(self._publish_queue_timer())
         self.publish_active = True
 
     def _should_publish(self):
-        """Determines if now is a good time to publish documents."""
+        """Determine if now is a good time to publish documents."""
         if self.publish_queue.empty():
             return False
 
         return True
 
     async def _publish_queue_timer(self):
-        """The publish queue timer."""
+        """Publish queue timer."""
         LOGGER.debug(
             "Starting publish timer: executes every %i seconds.",
             self._publish_frequency,
@@ -411,7 +419,7 @@ class DocumentPublisher:
 
 
 def is_valid_number(number):
-    """Determines if the passed number is valid for Elasticsearch."""
+    """Determine if the passed number is valid for Elasticsearch."""
     is_infinity = math.isinf(number)
     is_nan = number != number  # pylint: disable=comparison-with-itself
     return not is_infinity and not is_nan

@@ -2,7 +2,7 @@
 
 
 def get_serializer():
-    """Gets the custom JSON serializer."""
+    """Get the custom JSON serializer."""
     from elasticsearch7.serializer import JSONSerializer
 
     class SetEncoder(JSONSerializer):

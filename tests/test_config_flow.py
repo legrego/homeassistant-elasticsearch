@@ -1,3 +1,4 @@
+"""Test Config Flow."""
 from unittest.mock import MagicMock
 
 import aiohttp
@@ -81,6 +82,7 @@ async def test_user_flow_to_tls_flow(hass: HomeAssistantType, aioclient_mock):
 
     class MockSSLError(aiohttp.client_exceptions.ClientConnectorCertificateError):
         """Mocks an SSL error caused by an untrusted certificate.
+
         This is imperfect, but gets the job done for now.
         """
 

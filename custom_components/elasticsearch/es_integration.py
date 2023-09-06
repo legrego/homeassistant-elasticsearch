@@ -14,7 +14,10 @@ ELASTIC_COMPONENTS = ["sensor"]
 
 
 class ElasticIntegration:
+    """Integration for publishing entity state change events to Elasticsearch."""
+
     def __init__(self, hass: HomeAssistantType, config_entry: ConfigEntry):
+        """Integration initialization."""
         conf = get_merged_config(config_entry)
         self.hass = hass
         self.gateway = ElasticsearchGateway(conf)
@@ -24,6 +27,7 @@ class ElasticIntegration:
 
     # TODO investivage hepers.event.async_call_later()
     async def async_init(self):
+        """Async init procedure."""
         await self.gateway.async_init()
         await self.index_manager.async_setup()
         await self.publisher.async_init()
@@ -36,6 +40,7 @@ class ElasticIntegration:
             )
 
     async def async_shutdown(self, config_entry: ConfigEntry):
+        """Async shutdown procedure."""
         unload_ok = all(
             await asyncio.gather(
                 *[
