@@ -317,6 +317,16 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
         """Build the schema for publish options."""
         domains, entities = await self._async_get_domains_and_entities()
 
+        current_excluded_domains = self._get_config_value(CONF_EXCLUDED_DOMAINS, [])
+        current_included_domains = self._get_config_value(CONF_INCLUDED_DOMAINS, [])
+        domain_options = domains + current_excluded_domains + current_included_domains
+
+        current_excluded_entities = self._get_config_value(CONF_EXCLUDED_ENTITIES, [])
+        current_included_entities = self._get_config_value(CONF_INCLUDED_ENTITIES, [])
+        entity_options = (
+            entities + current_excluded_entities + current_included_entities
+        )
+
         schema = {
             vol.Required(
                 CONF_PUBLISH_ENABLED,
@@ -352,20 +362,20 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
             ),
             vol.Required(
                 CONF_EXCLUDED_DOMAINS,
-                default=self._get_config_value(CONF_EXCLUDED_DOMAINS, []),
-            ): cv.multi_select(domains),
+                default=current_excluded_domains,
+            ): cv.multi_select(domain_options),
             vol.Required(
                 CONF_EXCLUDED_ENTITIES,
-                default=self._get_config_value(CONF_EXCLUDED_ENTITIES, []),
-            ): cv.multi_select(entities),
+                default=current_excluded_entities,
+            ): cv.multi_select(entity_options),
             vol.Required(
                 CONF_INCLUDED_DOMAINS,
-                default=self._get_config_value(CONF_INCLUDED_DOMAINS, []),
-            ): cv.multi_select(domains),
+                default=current_included_domains,
+            ): cv.multi_select(domain_options),
             vol.Required(
                 CONF_INCLUDED_ENTITIES,
-                default=self._get_config_value(CONF_INCLUDED_ENTITIES, []),
-            ): cv.multi_select(entities),
+                default=current_included_entities,
+            ): cv.multi_select(entity_options),
         }
 
         if self.show_advanced_options:
