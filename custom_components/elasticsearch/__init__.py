@@ -183,6 +183,9 @@ async def _async_init_integration(hass: HomeAssistantType, config_entry: ConfigE
     except InsufficientPrivileges as err:
         LOGGER.error("Account does not have sufficient privileges")
         raise ConfigEntryAuthFailed from err
+    except Exception as err:  # pylint disable=broad-exception-caught
+        LOGGER.error("Exception during component initialization")
+        raise ConfigEntryNotReady from err
 
     hass.data[DOMAIN] = integration
 
