@@ -149,9 +149,7 @@ class AiohttpClientMocker:
                     raise response.exc
                 return response
 
-        assert False, "No mock registered for {} {} {}".format(
-            method.upper(), url, params
-        )
+        assert False, f"No mock registered for {method.upper()} {url} {params}"
 
 
 class AiohttpClientMockResponse:
