@@ -37,7 +37,4 @@ The available tasks are:
 
 Task | Description
 -- | --
-Run Home Assistant on port 9123 | Launch Home Assistant with your custom component code and the configuration defined in `.devcontainer/configuration.yaml`.
-Run Home Assistant configuration against /config | Check the configuration.
-Upgrade Home Assistant to latest dev | Upgrade the Home Assistant core version in the container to the latest version of the `dev` branch.
-Install a specific version of Home Assistant | Install a specific version of Home Assistant core in the container.
+Run Home Assistant on port 8123 | Launch Home Assistant with your custom component code and the configuration defined in `.devcontainer/configuration.yaml`.

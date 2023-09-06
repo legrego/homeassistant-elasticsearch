@@ -176,3 +176,7 @@ POST /_security/role/hass_writer
 ## Support
 
 This project is not endorsed or supported by either Elastic or Home-Assistant - please open a GitHub issue for any questions, bugs, or feature requests.
+
+## Contributing
+
+Contributions are welcome! Please see the [Contributing Guide](CONTRIBUTING.md) for more information.
