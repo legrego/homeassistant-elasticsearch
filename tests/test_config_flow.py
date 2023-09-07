@@ -12,14 +12,21 @@ from tests.test_util.es_startup_mocks import mock_es_initialization
 
 
 @pytest.mark.asyncio
-async def test_user_flow_minimum_fields(hass: HomeAssistantType, aioclient_mock):
+async def test_no_auth_flow(hass: HomeAssistantType, aioclient_mock):
     """Test user config flow with minimum fields."""
 
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
     )
-    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["type"] == data_entry_flow.RESULT_TYPE_MENU
     assert result["step_id"] == "user"
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], user_input={"next_step_id": "no_auth"}
+    )
+
+    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["step_id"] == "no_auth"
 
     es_url = "http://minimum-fields:9200"
 
@@ -47,14 +54,18 @@ async def test_user_flow_minimum_fields(hass: HomeAssistantType, aioclient_mock)
 
 
 @pytest.mark.asyncio
-async def test_user_flow_unsupported_version(hass: HomeAssistantType, aioclient_mock):
+async def test_no_auth_flow_unsupported_version(hass: HomeAssistantType, aioclient_mock):
     """Test user config flow with minimum fields."""
 
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
     )
-    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["type"] == data_entry_flow.RESULT_TYPE_MENU
     assert result["step_id"] == "user"
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], user_input={"next_step_id": "no_auth"}
+    )
 
     es_url = "http://minimum-fields:9200"
 
@@ -65,18 +76,22 @@ async def test_user_flow_unsupported_version(hass: HomeAssistantType, aioclient_
     )
 
     assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
-    assert result["step_id"] == "user"
+    assert result["step_id"] == "no_auth"
     assert result["errors"]["base"] == "unsupported_version"
 
 
 @pytest.mark.asyncio
-async def test_user_flow_to_tls_flow(hass: HomeAssistantType, aioclient_mock):
+async def test_no_auth_flow_with_tls_error(hass: HomeAssistantType, aioclient_mock):
     """Test user config flow with config that forces TLS configuration."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
     )
-    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["type"] == data_entry_flow.RESULT_TYPE_MENU
     assert result["step_id"] == "user"
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], user_input={"next_step_id": "no_auth"}
+    )
 
     es_url = "https://untrusted-connection:9200"
 
@@ -99,7 +114,7 @@ async def test_user_flow_to_tls_flow(hass: HomeAssistantType, aioclient_mock):
 
     assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
     assert result["errors"]["base"] == "untrusted_connection"
-    assert result["step_id"] == "tls"
+    assert result["step_id"] == "no_auth"
     assert "data" not in result
 
 
@@ -109,8 +124,12 @@ async def test_flow_fails_es_unavailable(hass: HomeAssistantType, aioclient_mock
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
     )
-    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["type"] == data_entry_flow.RESULT_TYPE_MENU
     assert result["step_id"] == "user"
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], user_input={"next_step_id": "no_auth"}
+    )
 
     es_url = "http://unavailable-host:9200"
 
@@ -122,7 +141,7 @@ async def test_flow_fails_es_unavailable(hass: HomeAssistantType, aioclient_mock
 
     assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
     assert result["errors"]["base"] == "cannot_connect"
-    assert result["step_id"] == "user"
+    assert result["step_id"] == "no_auth"
     assert "data" not in result
 
 
@@ -132,8 +151,12 @@ async def test_flow_fails_unauthorized(hass: HomeAssistantType, aioclient_mock):
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
     )
-    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["type"] == data_entry_flow.RESULT_TYPE_MENU
     assert result["step_id"] == "user"
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], user_input={"next_step_id": "no_auth"}
+    )
 
     es_url = "http://needs-auth:9200"
 
@@ -144,9 +167,93 @@ async def test_flow_fails_unauthorized(hass: HomeAssistantType, aioclient_mock):
     )
 
     assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
-    assert result["errors"]["base"] == "invalid_auth"
-    assert result["step_id"] == "user"
+    assert result["errors"]["base"] == "invalid_basic_auth"
+    assert result["step_id"] == "no_auth"
     assert "data" not in result
+
+@pytest.mark.asyncio
+async def test_basic_auth_flow(hass: HomeAssistantType, aioclient_mock):
+    """Test user config flow with minimum fields."""
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+    assert result["type"] == data_entry_flow.RESULT_TYPE_MENU
+    assert result["step_id"] == "user"
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], user_input={"next_step_id": "basic_auth"}
+    )
+
+    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["step_id"] == "basic_auth"
+
+    es_url = "http://basic-auth-flow:9200"
+
+    mock_es_initialization(
+        aioclient_mock,
+        url=es_url,
+        mock_health_check=True,
+        mock_index_creation=True,
+        mock_template_setup=True,
+    )
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], user_input={"url": es_url, "username": "hass_writer", "password": "changeme"}
+    )
+
+    assert result["type"] == data_entry_flow.RESULT_TYPE_CREATE_ENTRY
+    assert result["title"] == es_url
+    assert result["data"]["url"] == es_url
+    assert result["data"]["username"] == "hass_writer"
+    assert result["data"]["password"] == "changeme"
+    assert result["data"]["api_key"] is None
+    assert result["data"]["ssl_ca_path"] is None
+    assert result["data"]["verify_ssl"] is True
+    assert result["data"]["publish_enabled"] is True
+    assert result["data"]["health_sensor_enabled"] is True
+
+@pytest.mark.asyncio
+async def test_api_key_flow(hass: HomeAssistantType, aioclient_mock):
+    """Test user config flow with minimum fields."""
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+    assert result["type"] == data_entry_flow.RESULT_TYPE_MENU
+    assert result["step_id"] == "user"
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], user_input={"next_step_id": "api_key"}
+    )
+
+    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["step_id"] == "api_key"
+
+    es_url = "http://api_key-flow:9200"
+
+    mock_es_initialization(
+        aioclient_mock,
+        url=es_url,
+        mock_health_check=True,
+        mock_index_creation=True,
+        mock_template_setup=True,
+    )
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], user_input={"url": es_url, "api_key": "ABC123=="}
+    )
+
+    assert result["type"] == data_entry_flow.RESULT_TYPE_CREATE_ENTRY
+    assert result["title"] == es_url
+    assert result["data"]["url"] == es_url
+    assert result["data"]["username"] is None
+    assert result["data"]["password"] is None
+    assert result["data"]["api_key"] == "ABC123=="
+    assert result["data"]["ssl_ca_path"] is None
+    assert result["data"]["verify_ssl"] is True
+    assert result["data"]["publish_enabled"] is True
+    assert result["data"]["health_sensor_enabled"] is True
 
 
 @pytest.mark.skip(

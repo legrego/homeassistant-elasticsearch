@@ -1,6 +1,7 @@
 """Encapsulates Elasticsearch operations."""
 import aiohttp
 from homeassistant.const import (
+    CONF_API_KEY,
     CONF_PASSWORD,
     CONF_TIMEOUT,
     CONF_URL,
@@ -31,6 +32,7 @@ class ElasticsearchGateway:
         self._timeout = config.get(CONF_TIMEOUT)
         self._username = config.get(CONF_USERNAME)
         self._password = config.get(CONF_PASSWORD)
+        self._api_key = config.get(CONF_API_KEY)
         self._verify_certs = config.get(CONF_VERIFY_SSL, True)
         self._ca_certs = config.get(CONF_SSL_CA_PATH)
 
@@ -110,6 +112,7 @@ class ElasticsearchGateway:
         from elasticsearch7._async.client import AsyncElasticsearch
 
         use_basic_auth = self._username is not None and self._password is not None
+        use_api_key = self._api_key is not None
 
         serializer = get_serializer()
 
@@ -118,6 +121,17 @@ class ElasticsearchGateway:
             return AsyncElasticsearch(
                 [self._url],
                 http_auth=auth,
+                serializer=serializer,
+                verify_certs=self._verify_certs,
+                ssl_show_warn=self._verify_certs,
+                ca_certs=self._ca_certs,
+                timeout=self._timeout,
+            )
+
+        if use_api_key:
+            return AsyncElasticsearch(
+                [self._url],
+                headers={"Authorization": f"ApiKey {self._api_key}"},
                 serializer=serializer,
                 verify_certs=self._verify_certs,
                 ssl_show_warn=self._verify_certs,
