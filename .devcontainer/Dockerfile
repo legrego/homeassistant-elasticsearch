@@ -8,5 +8,11 @@ RUN chmod g+rw /var/lib/elasticsearch
 RUN chmod g+rw /var/log/elasticsearch
 RUN usermod -G elasticsearch -a vscode
 
+# Install peek utility
+RUN pip install es-peek
+RUN mkdir /home/vscode/.config/peek
+COPY ".devcontainer/peek" /home/vscode/.config/peek/
+RUN chown -R vscode:vscode /home/vscode/.config/peek
+
 RUN mv /etc/elasticsearch/elasticsearch.yml /etc/elasticsearch/elasticsearch.yml.old
 COPY ".devcontainer/elasticsearch/config_7x" /etc/elasticsearch/

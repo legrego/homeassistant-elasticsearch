@@ -42,6 +42,7 @@ async def test_minimal_setup_component(hass: HomeAssistantType, aioclient_mock) 
         "timeout": 30,
         "username": None,
         "password": None,
+        "api_key": None,
         "verify_ssl": True,
         "ssl_ca_path": None,
         "ilm_delete_after": "365d",
@@ -76,6 +77,7 @@ async def test_complex_setup_component(hass: HomeAssistantType, aioclient_mock) 
         "included_entities": [],
         "ssl_ca_path": None,
         "publish_mode": "Any changes",
+        "api_key": None,
         **MOCK_COMPLEX_LEGACY_CONFIG,
     }
 

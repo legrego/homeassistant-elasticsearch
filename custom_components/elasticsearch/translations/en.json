@@ -7,7 +7,8 @@
         },
         "error": {
             "cannot_connect": "Failed to connect",
-            "invalid_auth": "Invalid username or password.",
+            "invalid_basic_auth": "Invalid username or password.",
+            "invalid_api_key": "Invalid API Key.",
             "insufficient_privileges": "Insufficient privileges for specified user.",
             "missing_credentials": "This cluster requires authentication. Please provide a username and password.",
             "untrusted_connection": "Elasticsearch's server certificate could not be verified. Either disable TLS verification, or specify a custom CA path below.",
@@ -15,16 +16,31 @@
         },
         "step": {
             "user": {
+                "title": "Choose authentication type"
+            },
+            "no_auth": {
+                "title": "Connect without authenticating",
                 "data": {
                     "url": "URL",
-                    "password": "Password",
-                    "username": "Username",
-                    "timeout": "Connection timeout in seconds"
-                },
-                "title": "Fill in your Elasticsearch login information"
+                    "verify_ssl": "Verify TLS certificate (recommended)",
+                    "ssl_ca_path": "Fully qualified path to custom certificate authority"
+                }
             },
-            "tls": {
+            "basic_auth": {
+                "title": "Authenticate via username/password",
                 "data": {
+                    "url": "URL",
+                    "username": "Username",
+                    "password": "Password",
+                    "verify_ssl": "Verify TLS certificate (recommended)",
+                    "ssl_ca_path": "Fully qualified path to custom certificate authority"
+                }
+            },
+            "api_key": {
+                "title": "Authenticate via API Key",
+                "data": {
+                    "url": "URL",
+                    "api_key": "API Key",
                     "verify_ssl": "Verify TLS certificate (recommended)",
                     "ssl_ca_path": "Fully qualified path to custom certificate authority"
                 }

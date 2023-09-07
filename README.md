@@ -145,10 +145,51 @@ elasticsearch:
 
 ## Security
 
-If you are connecting to a secured Elasticsearch cluster, the user you authenticate with (see `username` and `password` configuration options above)
-should have a role assigned with the following privileges. Note that if you adjust the `index_format` or `alias` settings that the role definition must be updated accordingly:
+There are two ways to connect to a secured Elasticsearch cluster: via API Key (recommended), or via traditional `username`/`password`.
+
+### Authenticating via API Key
+
+You must first create an API Key with the appropriate privileges.
+Note that if you adjust the `index_format` or `alias` settings that the role definition must be updated accordingly:
 
 ```json
+POST /_security/api_key
+{
+  "name": "home_assistant_component",
+  "role_descriptors": {
+    "hass_writer": {
+      "cluster": [
+        "manage_index_templates",
+        "manage_ilm",
+        "monitor"
+      ],
+      "indices": [
+        {
+          "names": [
+            "hass-events*",
+            "active-hass-index-*",
+            "all-hass-events"
+          ],
+          "privileges": [
+            "manage",
+            "index",
+            "create_index",
+            "create"
+          ]
+        }
+      ]
+    }
+  }
+}
+```
+
+### Authenticating via username/password
+
+You need to create a user and role with appropriate privileges.
+Note that if you adjust the `index_format` or `alias` settings that the role definition must be updated accordingly:
+
+```json
+# Create role
 POST /_security/role/hass_writer
 {
   "cluster": [
@@ -173,6 +214,17 @@ POST /_security/role/hass_writer
   ]
 }
 ```
+
+```json
+# Create user
+POST /_security/user/hass_writer
+{
+  "full_name": "Home Assistant Writer",
+  "password": "changeme",
+  "roles": ["hass_writer"]
+}
+```
+
 ## Support
 
 This project is not endorsed or supported by either Elastic or Home-Assistant - please open a GitHub issue for any questions, bugs, or feature requests.

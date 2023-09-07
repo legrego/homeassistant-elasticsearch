@@ -12,6 +12,7 @@ from homeassistant.const import (
     CONF_URL,
     CONF_USERNAME,
     CONF_VERIFY_SSL,
+    CONF_API_KEY,
 )
 from homeassistant.core import callback
 from homeassistant.helpers.selector import selector
@@ -63,6 +64,14 @@ DEFAULT_ILM_MAX_SIZE = "30gb"
 DEFAULT_ILM_DELETE_AFTER = "365d"
 
 
+def optional_string(value) -> str:
+    """Coerce value to string, except for None."""
+    if value is None:
+        return ""
+
+    return str(value)
+
+
 class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
     """Handle an Elastic config flow."""
 
@@ -79,10 +88,16 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         """Initialize the Elastic flow."""
         self.config = {}
 
-        self.tls_schema = {
-            vol.Optional(CONF_VERIFY_SSL, default=DEFAULT_VERIFY_SSL): bool,
-            vol.Optional(CONF_SSL_CA_PATH, default=""): str,
-        }
+    def build_setup_menu(self):
+        """Build setup menu to choose authentication method."""
+        return self.async_show_menu(
+            step_id="user",
+            menu_options={
+                "api_key": "Authenticate via API Key",
+                "basic_auth": "Authenticate via username/password",
+                "no_auth": "No authentication",
+            },
+        )
 
     def build_setup_schema(self):
         """Build validation schema for integration setup flow."""
@@ -104,12 +119,70 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
         return schema
 
+    def build_common_schema(self, errors=None):
+        """Build validation schema that is common across all setup types."""
+        schema = {
+            vol.Required(
+                CONF_URL, default=self.config.get(CONF_URL, "http://localhost:9200")
+            ): str,
+        }
+        if errors:
+            if errors["base"] == "untrusted_connection":
+                schema.update(
+                    {
+                        vol.Required(
+                            CONF_VERIFY_SSL,
+                            default=self.config.get(
+                                CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL
+                            ),
+                        ): bool,
+                        vol.Optional(
+                            CONF_SSL_CA_PATH
+                        ): str,
+                    }
+                )
+
+        return schema
+
+    def build_no_auth_schema(self, errors=None):
+        """Build validation schema for the no-authentication setup flow."""
+        schema = {**self.build_common_schema(errors)}
+        return schema
+
+    def build_basic_auth_schema(self, errors=None):
+        """Build validation schema for the basic authentication setup flow."""
+        schema = {**self.build_common_schema(errors)}
+        schema.update(
+            {
+                vol.Required(
+                    CONF_USERNAME, default=self.config.get(CONF_USERNAME, "")
+                ): str,
+                vol.Required(
+                    CONF_PASSWORD, default=self.config.get(CONF_PASSWORD, "")
+                ): str,
+            }
+        )
+        return schema
+
+    def build_api_key_auth_schema(self, errors=None):
+        """Build validation schema for the ApiKey authentication setup flow."""
+        schema = {**self.build_common_schema(errors)}
+        schema.update(
+            {
+                vol.Required(
+                    CONF_API_KEY, default=self.config.get(CONF_API_KEY, "")
+                ): str,
+            }
+        )
+        return schema
+
     def build_full_config(self, user_input=None):
         """Build the entire config validation schema."""
         if user_input is None:
             user_input = {}
-        return {
+        config = {
             CONF_URL: user_input.get(CONF_URL, DEFAULT_URL),
+            CONF_API_KEY: user_input.get(CONF_API_KEY),
             CONF_USERNAME: user_input.get(CONF_USERNAME),
             CONF_PASSWORD: user_input.get(CONF_PASSWORD),
             CONF_TIMEOUT: user_input.get(CONF_TIMEOUT, DEFAULT_TIMEOUT_SECONDS),
@@ -141,34 +214,76 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             ),
         }
 
+        if len(user_input.get(CONF_SSL_CA_PATH, "")):
+            config[CONF_SSL_CA_PATH] = user_input[CONF_SSL_CA_PATH]
+
+        return config
+
     async def async_step_user(self, user_input=None):
         """Handle a flow initialized by the user."""
         if self._async_current_entries():
             return self.async_abort(reason="single_instance_allowed")
 
+        return self.build_setup_menu()
+
+    async def async_step_no_auth(self, user_input=None):
+        """Handle connection to an unsecured Elasticsearch cluster."""
         if user_input is None:
             return self.async_show_form(
-                step_id="user",
-                data_schema=vol.Schema(self.build_setup_schema()),
+                step_id="no_auth", data_schema=vol.Schema(self.build_no_auth_schema())
             )
 
         self.config = self.build_full_config(user_input)
+        (success, errors) = await self._async_elasticsearch_login()
 
-        return await self._async_elasticsearch_login()
+        if success:
+            return await self._async_create_entry()
 
-    async def async_step_tls(self, user_input=None):
-        """Handle establishing a trusted connection to Elasticsearch."""
+        return self.async_show_form(
+            step_id="no_auth",
+            data_schema=vol.Schema(self.build_no_auth_schema(errors)),
+            errors=errors,
+        )
 
+    async def async_step_basic_auth(self, user_input=None):
+        """Handle connection to an Elasticsearch cluster using basic authentication."""
         if user_input is None:
             return self.async_show_form(
-                step_id="tls", data_schema=vol.Schema(self.tls_schema)
+                step_id="basic_auth",
+                data_schema=vol.Schema(self.build_basic_auth_schema()),
             )
 
-        self.config[CONF_VERIFY_SSL] = user_input[CONF_VERIFY_SSL]
-        if len(user_input[CONF_SSL_CA_PATH]):
-            self.config[CONF_SSL_CA_PATH] = user_input[CONF_SSL_CA_PATH]
+        self.config = self.build_full_config(user_input)
+        (success, errors) = await self._async_elasticsearch_login()
 
-        return await self._async_elasticsearch_login()
+        if success:
+            return await self._async_create_entry()
+
+        return self.async_show_form(
+            step_id="basic_auth",
+            data_schema=vol.Schema(self.build_basic_auth_schema(errors)),
+            errors=errors,
+        )
+
+    async def async_step_api_key(self, user_input=None):
+        """Handle connection to an Elasticsearch cluster using basic authentication."""
+        if user_input is None:
+            return self.async_show_form(
+                step_id="api_key",
+                data_schema=vol.Schema(self.build_api_key_auth_schema()),
+            )
+
+        self.config = self.build_full_config(user_input)
+        (success, errors) = await self._async_elasticsearch_login()
+
+        if success:
+            return await self._async_create_entry()
+
+        return self.async_show_form(
+            step_id="api_key",
+            data_schema=vol.Schema(self.build_api_key_auth_schema(errors)),
+            errors=errors,
+        )
 
     async def async_step_import(self, import_config):
         """Import a config entry from configuration.yaml."""
@@ -191,7 +306,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             LOGGER.warning("Already configured. Only a single configuration possible.")
             return self.async_abort(reason="single_instance_allowed")
 
-        return await self.async_step_user(user_input=import_config)
+        return await self.async_step_no_auth(user_input=import_config)
 
     async def _async_elasticsearch_login(self):
         """Handle connection & authentication to Elasticsearch."""
@@ -202,11 +317,11 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             await gateway.check_connection()
         except UntrustedCertificate:
             errors["base"] = "untrusted_connection"
-            return self.async_show_form(
-                step_id="tls", data_schema=vol.Schema(self.tls_schema), errors=errors
-            )
         except AuthenticationRequired:
-            errors["base"] = "invalid_auth"
+            if self.config.get(CONF_API_KEY):
+                errors["base"] = "invalid_api_key"
+            else:
+                errors["base"] = "invalid_basic_auth"
         except InsufficientPrivileges:
             errors["base"] = "insufficient_privileges"
         except CannotConnect:
@@ -220,14 +335,8 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             )
             errors["base"] = "cannot_connect"
 
-        if errors:
-            return self.async_show_form(
-                step_id="user",
-                data_schema=vol.Schema(self.build_setup_schema()),
-                errors=errors,
-            )
-
-        return await self._async_create_entry()
+        success = not errors
+        return (success, errors)
 
     async def _async_create_entry(self):
         """Create the config entry."""
@@ -245,6 +354,19 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             return self.async_abort(reason="reauth_successful")
 
         return self.async_create_entry(title=self.config[CONF_URL], data=self.config)
+
+    def _get_chosen_flow(self, user_input=None):
+        """Determine the chosen setup flow."""
+        if user_input is None:
+            return "user"
+
+        if user_input.get(CONF_API_KEY):
+            return "api_key"
+
+        if user_input.get(CONF_USERNAME):
+            return "basic"
+
+        return "user"
 
 
 class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
