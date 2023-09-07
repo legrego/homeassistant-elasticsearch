@@ -64,14 +64,6 @@ DEFAULT_ILM_MAX_SIZE = "30gb"
 DEFAULT_ILM_DELETE_AFTER = "365d"
 
 
-def optional_string(value) -> str:
-    """Coerce value to string, except for None."""
-    if value is None:
-        return ""
-
-    return str(value)
-
-
 class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
     """Handle an Elastic config flow."""
 
@@ -98,26 +90,6 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                 "no_auth": "No authentication",
             },
         )
-
-    def build_setup_schema(self):
-        """Build validation schema for integration setup flow."""
-        schema = {
-            vol.Required(
-                CONF_URL, default=self.config.get(CONF_URL, "http://localhost:9200")
-            ): str,
-            vol.Optional(CONF_USERNAME): str,
-            vol.Optional(CONF_PASSWORD): str,
-        }
-
-        if self.show_advanced_options:
-            schema[
-                vol.Required(
-                    CONF_TIMEOUT,
-                    default=self.config.get(CONF_TIMEOUT, DEFAULT_TIMEOUT_SECONDS),
-                )
-            ] = int
-
-        return schema
 
     def build_common_schema(self, errors=None):
         """Build validation schema that is common across all setup types."""
@@ -354,19 +326,6 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             return self.async_abort(reason="reauth_successful")
 
         return self.async_create_entry(title=self.config[CONF_URL], data=self.config)
-
-    def _get_chosen_flow(self, user_input=None):
-        """Determine the chosen setup flow."""
-        if user_input is None:
-            return "user"
-
-        if user_input.get(CONF_API_KEY):
-            return "api_key"
-
-        if user_input.get(CONF_USERNAME):
-            return "basic"
-
-        return "user"
 
 
 class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
