@@ -29,7 +29,6 @@ async def test_minimal_setup_component(hass: HomeAssistantType, aioclient_mock) 
 
     expected_config = {
         "alias": "active-hass-index",
-        "health_sensor_enabled": True,
         "ilm_enabled": True,
         "publish_enabled": True,
         "excluded_domains": [],
@@ -83,5 +82,6 @@ async def test_complex_setup_component(hass: HomeAssistantType, aioclient_mock) 
 
     del expected_config["exclude"]
     del expected_config["only_publish_changed"]
+    del expected_config["health_sensor_enabled"]
 
     assert merged_config == expected_config

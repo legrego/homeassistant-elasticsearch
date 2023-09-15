@@ -50,7 +50,7 @@ async def test_no_auth_flow(hass: HomeAssistantType, aioclient_mock):
     assert result["data"]["ssl_ca_path"] is None
     assert result["data"]["verify_ssl"] is True
     assert result["data"]["publish_enabled"] is True
-    assert result["data"]["health_sensor_enabled"] is True
+    assert "health_sensor_enabled" not in result["data"]
 
 
 @pytest.mark.asyncio
@@ -211,7 +211,7 @@ async def test_basic_auth_flow(hass: HomeAssistantType, aioclient_mock):
     assert result["data"]["ssl_ca_path"] is None
     assert result["data"]["verify_ssl"] is True
     assert result["data"]["publish_enabled"] is True
-    assert result["data"]["health_sensor_enabled"] is True
+    assert "health_sensor_enabled" not in result["data"]
 
 @pytest.mark.asyncio
 async def test_api_key_flow(hass: HomeAssistantType, aioclient_mock):
@@ -253,7 +253,7 @@ async def test_api_key_flow(hass: HomeAssistantType, aioclient_mock):
     assert result["data"]["ssl_ca_path"] is None
     assert result["data"]["verify_ssl"] is True
     assert result["data"]["publish_enabled"] is True
-    assert result["data"]["health_sensor_enabled"] is True
+    assert "health_sensor_enabled" not in result["data"]
 
 
 @pytest.mark.skip(

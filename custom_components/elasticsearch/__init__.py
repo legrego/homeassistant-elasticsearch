@@ -134,6 +134,15 @@ async def async_migrate_entry(
 
         config_entry.version = 2
 
+    if config_entry.version == 2:
+        new = get_merged_config(config_entry)
+        if CONF_HEALTH_SENSOR_ENABLED in new:
+            del new[CONF_HEALTH_SENSOR_ENABLED]
+
+        config_entry.data = {**new}
+
+        config_entry.version = 3
+
     LOGGER.info("Migration to version %s successful", config_entry.version)
 
     return True
