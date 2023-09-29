@@ -385,11 +385,11 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
 
         current_excluded_domains = self._get_config_value(CONF_EXCLUDED_DOMAINS, [])
         current_included_domains = self._get_config_value(CONF_INCLUDED_DOMAINS, [])
-        domain_options = domains + current_excluded_domains + current_included_domains
+        domain_options = self._dedup_list(domains + current_excluded_domains + current_included_domains)
 
         current_excluded_entities = self._get_config_value(CONF_EXCLUDED_ENTITIES, [])
         current_included_entities = self._get_config_value(CONF_INCLUDED_ENTITIES, [])
-        entity_options = (
+        entity_options = self._dedup_list(
             entities + current_excluded_entities + current_included_entities
         )
 
@@ -487,6 +487,9 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
         }
 
         return schema
+    
+    def _dedup_list(self, list_to_dedup):
+        return list(dict.fromkeys(list_to_dedup))
 
     @callback
     async def _async_get_domains_and_entities(self):
