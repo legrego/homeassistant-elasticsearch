@@ -487,7 +487,7 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
         }
 
         return schema
-    
+
     def _dedup_list(self, list_to_dedup):
         return list(dict.fromkeys(list_to_dedup))
 
