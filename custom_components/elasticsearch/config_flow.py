@@ -20,7 +20,6 @@ from homeassistant.helpers.selector import selector
 from .const import (
     CONF_EXCLUDED_DOMAINS,
     CONF_EXCLUDED_ENTITIES,
-    CONF_HEALTH_SENSOR_ENABLED,
     CONF_ILM_DELETE_AFTER,
     CONF_ILM_ENABLED,
     CONF_ILM_MAX_SIZE,
@@ -67,7 +66,7 @@ DEFAULT_ILM_DELETE_AFTER = "365d"
 class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
     """Handle an Elastic config flow."""
 
-    VERSION = 2
+    VERSION = 3
     CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_PUSH
 
     @staticmethod
@@ -173,9 +172,6 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             CONF_EXCLUDED_ENTITIES: user_input.get(CONF_EXCLUDED_ENTITIES, []),
             CONF_INCLUDED_DOMAINS: user_input.get(CONF_INCLUDED_DOMAINS, []),
             CONF_INCLUDED_ENTITIES: user_input.get(CONF_INCLUDED_ENTITIES, []),
-            CONF_HEALTH_SENSOR_ENABLED: user_input.get(
-                CONF_HEALTH_SENSOR_ENABLED, True
-            ),
             CONF_ILM_ENABLED: user_input.get(CONF_ILM_ENABLED, DEFAULT_ILM_ENABLED),
             CONF_ILM_POLICY_NAME: user_input.get(
                 CONF_ILM_POLICY_NAME, DEFAULT_ILM_POLICY_NAME
@@ -365,23 +361,12 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
 
         if user_input is not None:
             self.options.update(user_input)
-            return await self.async_step_health_options()
+            return await self._update_options()
 
         return self.async_show_form(
             step_id="ilm_options",
             data_schema=vol.Schema(self._build_ilm_options_schema()),
             errors=errors,
-        )
-
-    async def async_step_health_options(self, user_input=None):
-        """Health Sensor Options."""
-        if user_input is not None:
-            self.options.update(user_input)
-            return await self._update_options()
-
-        return self.async_show_form(
-            step_id="health_options",
-            data_schema=vol.Schema(self._build_health_options_schema()),
         )
 
     async def _update_options(self):
@@ -499,16 +484,6 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
                     CONF_ILM_DELETE_AFTER, DEFAULT_ILM_DELETE_AFTER
                 ),
             ): str,
-        }
-
-        return schema
-
-    def _build_health_options_schema(self):
-        schema = {
-            vol.Required(
-                CONF_HEALTH_SENSOR_ENABLED,
-                default=self._get_config_value(CONF_HEALTH_SENSOR_ENABLED, True),
-            ): bool,
         }
 
         return schema

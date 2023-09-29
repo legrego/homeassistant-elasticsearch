@@ -1,6 +1,5 @@
 """Support for sending event data to an Elasticsearch cluster."""
 
-import asyncio
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.typing import HomeAssistantType
@@ -9,8 +8,6 @@ from .es_doc_publisher import DocumentPublisher
 from .es_gateway import ElasticsearchGateway
 from .es_index_manager import IndexManager
 from .utils import get_merged_config
-
-ELASTIC_COMPONENTS = ["sensor"]
 
 
 class ElasticIntegration:
@@ -32,25 +29,9 @@ class ElasticIntegration:
         await self.index_manager.async_setup()
         await self.publisher.async_init()
 
-        for component in ELASTIC_COMPONENTS:
-            self.hass.async_create_task(
-                self.hass.config_entries.async_forward_entry_setup(
-                    self.config_entry, component
-                )
-            )
 
-    async def async_shutdown(self, config_entry: ConfigEntry):
+    async def async_shutdown(self, config_entry: ConfigEntry): # pylint disable=unused-argument
         """Async shutdown procedure."""
-        unload_ok = all(
-            await asyncio.gather(
-                *[
-                    self.hass.config_entries.async_forward_entry_unload(
-                        config_entry, component
-                    )
-                    for component in ELASTIC_COMPONENTS
-                ]
-            )
-        )
         await self.publisher.async_stop_publisher()
         await self.gateway.async_stop_gateway()
-        return unload_ok
+        return True
