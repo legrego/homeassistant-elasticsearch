@@ -10,7 +10,6 @@ Publish HASS events to your [Elasticsearch](https://elastic.co) cluster!
 - Efficiently publishes Home-Assistant events to Elasticsearch using the Bulk API
 - Automatically maintains Indexes and Index Templates using Index Lifecycle Management ("ILM")
 - Supports [X-Pack Security](https://www.elastic.co/products/x-pack/security) via optional username and password
-- Tracks the Elasticsearch cluster health in the `sensor.es_cluster_health` sensor
 - Exclude specific entities or groups from publishing
 
 ## Compatibility
@@ -18,7 +17,7 @@ Publish HASS events to your [Elasticsearch](https://elastic.co) cluster!
 - Elasticsearch 8.0+, 7.11+ (Self or [Cloud](https://www.elastic.co/cloud) hosted). [Version `0.4.0`](https://github.com/legrego/homeassistant-elasticsearch/releases/tag/v0.4.0) includes support for older versions of Elasticsearch.
 - [Elastic Common Schema version 1.0.0](https://github.com/elastic/ecs/releases/tag/v1.0.0)
 - [Home Assistant Community Store](https://github.com/custom-components/hacs)
-- Home Assistant 2022.4+
+- Home Assistant 2023.2+
 
 ## Getting Started
 
@@ -223,6 +222,37 @@ POST /_security/user/hass_writer
   "password": "changeme",
   "roles": ["hass_writer"]
 }
+```
+
+## Create your own cluster health sensor
+Versions prior to `0.6.0` included a cluster health sensor. This has been removed in favor of a more generic approach. You can create your own cluster health sensor by using Home Assistant's built-in [REST sensor](https://www.home-assistant.io/integrations/sensor.rest).
+
+```yaml
+# Example configuration
+sensor:
+  - platform: rest
+    name: "Cluster Health"
+    unique_id: "cluster_health" # Replace with your own unique id. See https://www.home-assistant.io/integrations/sensor.rest#unique_id
+    resource: "https://example.com/_cluster/health" # Replace with your Elasticsearch URL
+    username: hass # Replace with your username
+    password: changeme # Replace with your password
+    value_template: "{{ value_json.status }}"
+    json_attributes: # Optional attributes you may want to include from the /_cluster/health API response
+      - "cluster_name"
+      - "status"
+      - "timed_out"
+      - "number_of_nodes"
+      - "number_of_data_nodes"
+      - "active_primary_shards"
+      - "active_shards"
+      - "relocating_shards"
+      - "initializing_shards"
+      - "unassigned_shards"
+      - "delayed_unassigned_shards"
+      - "number_of_pending_tasks"
+      - "number_of_in_flight_fetch"
+      - "task_max_waiting_in_queue_millis"
+      - "active_shards_percent_as_number"
 ```
 
 ## Support
