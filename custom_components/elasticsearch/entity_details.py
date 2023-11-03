@@ -10,7 +10,7 @@ from custom_components.elasticsearch.errors import ElasticException
 from .logger import LOGGER
 
 @dataclass
-class FullEntityDetails():
+class FullEntityDetails:
     """Details about an entity."""
 
     entity: entity_registry.RegistryEntry
