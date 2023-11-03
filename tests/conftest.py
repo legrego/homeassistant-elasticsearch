@@ -14,14 +14,39 @@
 #
 # See here for more info: https://docs.pytest.org/en/latest/fixture.html (note that
 # pytest includes fixtures OOB which you can use as defined on this page)
+
+from contextlib import contextmanager
 from unittest.mock import patch
 
+from asyncio import get_running_loop
 import pytest
-
-from tests.test_util.aiohttp import mock_aiohttp_client
-
+from unittest import mock
+from homeassistant.const import EVENT_HOMEASSISTANT_CLOSE
+from homeassistant.helpers.typing import HomeAssistantType
+from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
+from elasticsearch7._async.http_aiohttp import AIOHttpConnection
 pytest_plugins = "pytest_homeassistant_custom_component"
 
+@contextmanager
+def mock_es_aiohttp_client():
+    """Context manager to mock aiohttp client."""
+    mocker = AiohttpClientMocker()
+
+    def create_session(*args, **kwargs):
+        print(args)
+        session = mocker.create_session(get_running_loop())
+
+        return session
+
+    with mock.patch("elasticsearch7._async.http_aiohttp.aiohttp.ClientSession", side_effect=create_session):
+        yield mocker
+
+@pytest.fixture
+def es_aioclient_mock():
+    """Fixture to mock aioclient calls."""
+    with mock_es_aiohttp_client() as mock_session:
+        yield mock_session
 
 # This fixture enables loading custom integrations in all tests.
 # Remove to enable selective use of this fixture
@@ -42,32 +67,9 @@ def skip_notifications_fixture():
     ):
         yield
 
-
-# This fixture, when used, will result in calls to async_get_data to return None. To have the call
-# return a value, we would add the `return_value=<VALUE_TO_RETURN>` parameter to the patch call.
-@pytest.fixture(name="bypass_get_data")
-def bypass_get_data_fixture():
-    """Skip calls to get data from API."""
-    with patch(
-        "custom_components.integration_blueprint.IntegrationBlueprintApiClient.async_get_data"
-    ):
-        yield
-
-
-# In this fixture, we are forcing calls to async_get_data to raise an Exception. This is useful
-# for exception handling.
-@pytest.fixture(name="error_on_get_data")
-def error_get_data_fixture():
-    """Simulate error when retrieving data from API."""
-    with patch(
-        "custom_components.integration_blueprint.IntegrationBlueprintApiClient.async_get_data",
-        side_effect=Exception,
-    ):
-        yield
-
-
-@pytest.fixture
-def aioclient_mock(hass):
-    """Fixture to mock aioclient calls."""
-    with mock_aiohttp_client(hass) as mock_session:
-        yield mock_session
+@pytest.fixture()
+def mock_config_entry(hass: HomeAssistantType) -> MockConfigEntry:
+    """Create a mock config entry and add it to hass."""
+    entry = MockConfigEntry(title=None)
+    entry.add_to_hass(hass)
+    return entry
