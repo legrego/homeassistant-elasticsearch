@@ -21,11 +21,9 @@ from unittest.mock import patch
 from asyncio import get_running_loop
 import pytest
 from unittest import mock
-from homeassistant.const import EVENT_HOMEASSISTANT_CLOSE
 from homeassistant.helpers.typing import HomeAssistantType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
-from elasticsearch7._async.http_aiohttp import AIOHttpConnection
 pytest_plugins = "pytest_homeassistant_custom_component"
 
 @contextmanager

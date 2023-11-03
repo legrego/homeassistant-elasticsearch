@@ -152,6 +152,7 @@ class ElasticsearchGateway:
 
 class ESConnection(AIOHttpConnection):
     """Connection class for ES connections."""
+
     def __init__ (self, **kwargs):
         """Init ESConnection."""
         super().__init__(**kwargs)

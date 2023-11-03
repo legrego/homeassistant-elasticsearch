@@ -11,7 +11,6 @@ from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.elasticsearch.const import DOMAIN
-from tests.conftest import mock_es_aiohttp_client
 from tests.test_util.es_startup_mocks import mock_es_initialization
 
 
