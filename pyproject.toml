@@ -6,21 +6,25 @@ use_parentheses = true
 ensure_newline_before_comments = true
 line_length = 88
 
+[tool.coverage.html]
+directory = "test_results/cov_html"
+
+[tool.coverage.xml]
+output = "test_results/cov_xml/coverage.xml"
+
 [tool.pytest.ini_options]
 addopts = [
   "-rxf",
   "-x",
   "-v",
   "-l",
-  "--cov=./",
-  "--cov-report=xml"
+  "--junitxml=test_results/pytest.xml",
+  "--cov=./custom_components",
+  "--cov-report=xml",
+  "--cov-report=html",
 ]
 filterwarnings = [
-  "ignore:coroutine 'AiohttpClientMockResponse.release' was never awaited:RuntimeWarning"
+  "ignore:coroutine 'AiohttpClientMockResponse.release' was never awaited:RuntimeWarning",
 ]
-testpaths = [
-  "tests"
-]
-python_files = [
-  "test_*.py"
-]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
