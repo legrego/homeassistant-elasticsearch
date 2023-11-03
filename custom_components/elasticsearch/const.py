@@ -27,7 +27,7 @@ CONF_TAGS = "tags"
 ONE_MINUTE = 60
 ONE_HOUR = 60 * 60
 
-VERSION_SUFFIX = "-v4_1"
+VERSION_SUFFIX = "-v4_2"
 
 INDEX_TEMPLATE_NAME = "hass-index-template" + VERSION_SUFFIX
 

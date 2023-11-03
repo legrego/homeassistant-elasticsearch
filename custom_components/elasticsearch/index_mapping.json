@@ -18,6 +18,24 @@
           }
         }
       }
+    },
+    {
+      "hass_entity_attributes": {
+        "path_match": "hass.entity.attributes.*",
+        "mapping": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "ignore_above": 128,
+              "type": "keyword"
+            },
+            "float": {
+              "ignore_malformed": true,
+              "type": "float"
+            }
+          }
+        }
+      }
     }
   ],
   "properties": {
@@ -49,6 +67,60 @@
           "properties": {
             "location": {
               "type": "geo_point"
+            }
+          }
+        },
+        "entity": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "keyword"
+            },
+            "domain": {
+              "type": "keyword"
+            },
+            "attributes": {
+              "type": "object",
+              "dynamic": true
+            },
+            "value": {
+              "type": "keyword"
+            },
+            "platform": {
+              "type": "keyword"
+            },
+            "area": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "keyword"
+                },
+                "name": {
+                  "type": "keyword"
+                }
+              }
+            },
+            "device": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "keyword"
+                },
+                "name": {
+                  "type": "keyword"
+                },
+                "area": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "keyword"
+                    },
+                    "name": {
+                      "type": "keyword"
+                    }
+                  }
+                }
+              }
             }
           }
         },

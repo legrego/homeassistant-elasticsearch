@@ -12,9 +12,9 @@ from tests.test_util.es_startup_mocks import mock_es_initialization
 
 
 @pytest.mark.asyncio
-async def test_minimal_setup_component(hass: HomeAssistantType, aioclient_mock) -> None:
+async def test_minimal_setup_component(hass: HomeAssistantType, es_aioclient_mock) -> None:
     """Test component setup via legacy yml-based configuration."""
-    mock_es_initialization(aioclient_mock, url=MOCK_MINIMAL_LEGACY_CONFIG.get(CONF_URL))
+    mock_es_initialization(es_aioclient_mock, url=MOCK_MINIMAL_LEGACY_CONFIG.get(CONF_URL))
 
     assert await async_setup_component(
         hass, ELASTIC_DOMAIN, {ELASTIC_DOMAIN: MOCK_MINIMAL_LEGACY_CONFIG}
@@ -54,9 +54,9 @@ async def test_minimal_setup_component(hass: HomeAssistantType, aioclient_mock) 
 
 
 @pytest.mark.asyncio
-async def test_complex_setup_component(hass: HomeAssistantType, aioclient_mock) -> None:
+async def test_complex_setup_component(hass: HomeAssistantType, es_aioclient_mock) -> None:
     """Test component setup via legacy yml-based configuration."""
-    mock_es_initialization(aioclient_mock, url=MOCK_COMPLEX_LEGACY_CONFIG.get(CONF_URL))
+    mock_es_initialization(es_aioclient_mock, url=MOCK_COMPLEX_LEGACY_CONFIG.get(CONF_URL))
 
     assert await async_setup_component(
         hass, ELASTIC_DOMAIN, {ELASTIC_DOMAIN: MOCK_COMPLEX_LEGACY_CONFIG}

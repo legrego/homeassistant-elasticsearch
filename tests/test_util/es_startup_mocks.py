@@ -29,13 +29,13 @@ def mock_es_initialization(
 
     if mock_template_setup:
         aioclient_mock.get(
-            url + "/_template/hass-index-template-v4_1",
+            url + "/_template/hass-index-template-v4_2",
             status=404,
             headers={"content-type": CONTENT_TYPE_JSON},
             json={},
         )
         aioclient_mock.put(
-            url + "/_template/hass-index-template-v4_1",
+            url + "/_template/hass-index-template-v4_2",
             status=200,
             headers={"content-type": CONTENT_TYPE_JSON},
             json={},
@@ -43,7 +43,7 @@ def mock_es_initialization(
 
     if mock_index_creation:
         aioclient_mock.get(
-            url + "/_alias/active-hass-index-v4_1",
+            url + "/_alias/active-hass-index-v4_2",
             status=404,
             headers={"content-type": CONTENT_TYPE_JSON},
             json={},

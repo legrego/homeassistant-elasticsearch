@@ -9,6 +9,8 @@ from homeassistant.helpers import state as state_helper
 from homeassistant.helpers.typing import EventType, HomeAssistantType, StateType
 from pytz import utc
 
+from custom_components.elasticsearch.entity_details import EntityDetails
+
 from .const import (
     CONF_EXCLUDED_DOMAINS,
     CONF_EXCLUDED_ENTITIES,
@@ -48,6 +50,8 @@ class DocumentPublisher:
         self._serializer = get_serializer()
 
         self._static_doc_properties = None
+
+        self._entity_details = EntityDetails(hass)
 
         self._publish_frequency = config.get(CONF_PUBLISH_FREQUENCY)
         self._publish_mode = config.get(CONF_PUBLISH_MODE)
@@ -145,6 +149,9 @@ class DocumentPublisher:
         LOGGER.debug(
             "async_init: static doc properties: %s", str(self._static_doc_properties)
         )
+
+        await self._entity_details.async_init()
+
         LOGGER.debug("async_init: starting publish timer")
         self._start_publish_timer()
         LOGGER.debug("async_init: done")
@@ -195,6 +202,7 @@ class DocumentPublisher:
         actions = []
         entity_counts = {}
         self._last_publish_time = datetime.now()
+        self._entity_details.reset_cache()
 
         while not self.publish_queue.empty():
             [state, event] = self.publish_queue.get()
@@ -352,6 +360,14 @@ class DocumentPublisher:
                 self._serializer.dumps(value) if should_serialize else value
             )
 
+        device = {}
+        entity = {
+            "id": state.entity_id,
+            "domain": state.domain,
+            "attributes": attributes,
+            "device": device,
+            "value": _state
+        }
         document_body = {
             "hass.domain": state.domain,
             "hass.object_id": state.object_id,
@@ -361,7 +377,33 @@ class DocumentPublisher:
             "hass.attributes": attributes,
             "hass.value": _state,
             "@timestamp": time_tz,
+            # new values below. Yes this is duplicitive in the short term.
+            "hass.entity": entity
         }
+
+        deets = self._entity_details.async_get(state.entity_id)
+        if deets is not None:
+            if deets.entity.platform:
+                entity["platform"] = deets.entity.platform
+            if deets.entity.name:
+                entity["name"] = deets.entity.name
+
+            if deets.entity_area:
+                entity["area"] = {
+                    "id": deets.entity_area.id,
+                    "name": deets.entity_area.name
+                }
+
+            if deets.device:
+                device["id"] = deets.device.id
+                device["name"] = deets.device.name
+
+            if deets.device_area:
+                device["area"] = {
+                    "id": deets.device_area.id,
+                    "name": deets.device_area.name
+                }
+
 
         if self._static_doc_properties is None:
             LOGGER.warning(
