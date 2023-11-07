@@ -4,6 +4,8 @@ import os
 
 from homeassistant.const import CONF_ALIAS
 
+from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
+
 from .const import (
     CONF_ILM_DELETE_AFTER,
     CONF_ILM_ENABLED,
@@ -32,7 +34,7 @@ class IndexManager:
 
         self._hass = hass
 
-        self._gateway = gateway
+        self._gateway: ElasticsearchGateway = gateway
 
         self._ilm_policy_name = config.get(CONF_ILM_POLICY_NAME)
 
@@ -65,7 +67,13 @@ class IndexManager:
         ) as json_file:
             mapping = json.load(json_file)
 
-        if not await client.indices.exists_template(name=INDEX_TEMPLATE_NAME):
+        LOGGER.debug('checking if template exists')
+
+        template = await client.indices.get_template(name=INDEX_TEMPLATE_NAME, ignore=[404])
+        LOGGER.debug('got template response: ' + str(template))
+        template_exists = template and template.get(INDEX_TEMPLATE_NAME)
+
+        if not template_exists:
             LOGGER.debug("Creating index template")
 
             index_template = {
@@ -93,7 +101,9 @@ class IndexManager:
             except ElasticsearchException as err:
                 LOGGER.exception("Error creating index template: %s", err)
 
-        if not await client.indices.exists_alias(name=self.index_alias):
+        alias = await client.indices.get_alias(name=self.index_alias, ignore=[404])
+        alias_exists = alias and alias.get(self.index_alias)
+        if not alias_exists:
             LOGGER.debug("Creating initial index and alias")
             try:
                 await client.indices.create(

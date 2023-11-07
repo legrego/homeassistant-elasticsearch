@@ -1,6 +1,7 @@
 """Publishes documents to Elasticsearch."""
 import asyncio
 import math
+import time
 from datetime import datetime
 from queue import Queue
 
@@ -8,8 +9,9 @@ from homeassistant.const import EVENT_STATE_CHANGED
 from homeassistant.helpers import state as state_helper
 from homeassistant.helpers.typing import EventType, HomeAssistantType, StateType
 from pytz import utc
-
+from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 from custom_components.elasticsearch.entity_details import EntityDetails
+from custom_components.elasticsearch.es_index_manager import IndexManager
 
 from .const import (
     CONF_EXCLUDED_DOMAINS,
@@ -31,7 +33,7 @@ from .system_info import async_get_system_info
 class DocumentPublisher:
     """Publishes documents to Elasticsearch."""
 
-    def __init__(self, config, gateway, index_manager, hass: HomeAssistantType):
+    def __init__(self, config, gateway: ElasticsearchGateway, index_manager: IndexManager, hass: HomeAssistantType):
         """Initialize the publisher."""
 
         self.publish_enabled = config.get(CONF_PUBLISH_ENABLED)
@@ -436,9 +438,11 @@ class DocumentPublisher:
         self._publish_timer_ref = asyncio.ensure_future(self._publish_queue_timer())
         self.publish_active = True
 
-    def _should_publish(self):
+
+    def _has_entries_to_publish(self):
         """Determine if now is a good time to publish documents."""
         if self.publish_queue.empty():
+            LOGGER.debug("Nothing to publish")
             return False
 
         return True
@@ -449,15 +453,21 @@ class DocumentPublisher:
             "Starting publish timer: executes every %i seconds.",
             self._publish_frequency,
         )
+        next_publish = time.monotonic() + self._publish_frequency
         while self.publish_active:
             try:
-                if self._should_publish():
-                    await self.async_do_publish()
-                else:
-                    LOGGER.debug("Nothing to publish")
+                can_publish = next_publish <= time.monotonic()
+                LOGGER.debug("Can Publish: %s", can_publish)
+                if can_publish and self._has_entries_to_publish():
+                    try:
+                        await self.async_do_publish()
+                    finally:
+                        next_publish = time.monotonic() + self._publish_frequency
+            except Exception as err:
+                LOGGER.exception("Error during publish queue handling %s", err)
             finally:
                 if self.publish_active:
-                    await asyncio.sleep(self._publish_frequency)
+                    await asyncio.sleep(1)
 
 
 def is_valid_number(number):

@@ -1,6 +1,6 @@
 """ES Startup Mocks."""
 from homeassistant.const import CONF_URL, CONTENT_TYPE_JSON
-
+from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 from tests.const import (
     CLUSTER_HEALTH_RESPONSE_BODY,
     CLUSTER_INFO_RESPONSE_BODY,
@@ -10,7 +10,7 @@ from tests.const import (
 
 
 def mock_es_initialization(
-    aioclient_mock,
+    aioclient_mock: AiohttpClientMocker,
     url=MOCK_COMPLEX_LEGACY_CONFIG.get(CONF_URL),
     mock_template_setup=False,
     mock_index_creation=False,
@@ -32,13 +32,13 @@ def mock_es_initialization(
             url + "/_template/hass-index-template-v4_2",
             status=404,
             headers={"content-type": CONTENT_TYPE_JSON},
-            json={},
+            json={"error": "template missing"},
         )
         aioclient_mock.put(
             url + "/_template/hass-index-template-v4_2",
             status=200,
             headers={"content-type": CONTENT_TYPE_JSON},
-            json={},
+            json={"hi": "need dummy content"},
         )
 
     if mock_index_creation:
@@ -46,7 +46,7 @@ def mock_es_initialization(
             url + "/_alias/active-hass-index-v4_2",
             status=404,
             headers={"content-type": CONTENT_TYPE_JSON},
-            json={},
+            json={"error": "alias missing"},
         )
         aioclient_mock.get(
             url + "/_cluster/health",
@@ -57,10 +57,10 @@ def mock_es_initialization(
 
     if mock_health_check:
         aioclient_mock.put(
-            url + "/hass-events-v4_1-000001",
+            url + "/hass-events-v4_2-000001",
             status=200,
             headers={"content-type": CONTENT_TYPE_JSON},
-            json={},
+            json={"hi": "need dummy content"},
         )
 
     if mock_ilm_setup:
@@ -68,11 +68,11 @@ def mock_es_initialization(
             url + "/_ilm/policy/home-assistant",
             status=404,
             headers={"content-type": CONTENT_TYPE_JSON},
-            json={},
+            json={"error": "policy missing"},
         )
         aioclient_mock.put(
             url + "/_ilm/policy/home-assistant",
             status=200,
             headers={"content-type": CONTENT_TYPE_JSON},
-            json={},
+            json={"hi": "need dummy content"},
         )
