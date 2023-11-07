@@ -15,6 +15,7 @@ from homeassistant.const import (
     CONF_API_KEY,
 )
 from homeassistant.core import callback
+from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.selector import selector
 
 from .const import (
@@ -61,6 +62,46 @@ DEFAULT_ILM_ENABLED = True
 DEFAULT_ILM_POLICY_NAME = "home-assistant"
 DEFAULT_ILM_MAX_SIZE = "30gb"
 DEFAULT_ILM_DELETE_AFTER = "365d"
+
+def build_full_config(user_input=None):
+    """Build the entire config validation schema."""
+    if user_input is None:
+        user_input = {}
+    config = {
+        CONF_URL: user_input.get(CONF_URL, DEFAULT_URL),
+        CONF_API_KEY: user_input.get(CONF_API_KEY),
+        CONF_USERNAME: user_input.get(CONF_USERNAME),
+        CONF_PASSWORD: user_input.get(CONF_PASSWORD),
+        CONF_TIMEOUT: user_input.get(CONF_TIMEOUT, DEFAULT_TIMEOUT_SECONDS),
+        CONF_VERIFY_SSL: user_input.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL),
+        CONF_SSL_CA_PATH: user_input.get(CONF_SSL_CA_PATH, None),
+        CONF_PUBLISH_ENABLED: user_input.get(
+            CONF_PUBLISH_ENABLED, DEFAULT_PUBLISH_ENABLED
+        ),
+        CONF_PUBLISH_FREQUENCY: user_input.get(
+            CONF_PUBLISH_FREQUENCY, DEFAULT_PUBLISH_FREQUENCY
+        ),
+        CONF_PUBLISH_MODE: user_input.get(CONF_PUBLISH_MODE, DEFAULT_PUBLISH_MODE),
+        CONF_ALIAS: user_input.get(CONF_ALIAS, DEFAULT_ALIAS),
+        CONF_INDEX_FORMAT: user_input.get(CONF_INDEX_FORMAT, DEFAULT_INDEX_FORMAT),
+        CONF_EXCLUDED_DOMAINS: user_input.get(CONF_EXCLUDED_DOMAINS, []),
+        CONF_EXCLUDED_ENTITIES: user_input.get(CONF_EXCLUDED_ENTITIES, []),
+        CONF_INCLUDED_DOMAINS: user_input.get(CONF_INCLUDED_DOMAINS, []),
+        CONF_INCLUDED_ENTITIES: user_input.get(CONF_INCLUDED_ENTITIES, []),
+        CONF_ILM_ENABLED: user_input.get(CONF_ILM_ENABLED, DEFAULT_ILM_ENABLED),
+        CONF_ILM_POLICY_NAME: user_input.get(
+            CONF_ILM_POLICY_NAME, DEFAULT_ILM_POLICY_NAME
+        ),
+        CONF_ILM_MAX_SIZE: user_input.get(CONF_ILM_MAX_SIZE, DEFAULT_ILM_MAX_SIZE),
+        CONF_ILM_DELETE_AFTER: user_input.get(
+            CONF_ILM_DELETE_AFTER, DEFAULT_ILM_DELETE_AFTER
+        ),
+    }
+
+    if len(user_input.get(CONF_SSL_CA_PATH, "")):
+        config[CONF_SSL_CA_PATH] = user_input[CONF_SSL_CA_PATH]
+
+    return config
 
 
 class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
@@ -147,46 +188,6 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         )
         return schema
 
-    def build_full_config(self, user_input=None):
-        """Build the entire config validation schema."""
-        if user_input is None:
-            user_input = {}
-        config = {
-            CONF_URL: user_input.get(CONF_URL, DEFAULT_URL),
-            CONF_API_KEY: user_input.get(CONF_API_KEY),
-            CONF_USERNAME: user_input.get(CONF_USERNAME),
-            CONF_PASSWORD: user_input.get(CONF_PASSWORD),
-            CONF_TIMEOUT: user_input.get(CONF_TIMEOUT, DEFAULT_TIMEOUT_SECONDS),
-            CONF_VERIFY_SSL: user_input.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL),
-            CONF_SSL_CA_PATH: user_input.get(CONF_SSL_CA_PATH, None),
-            CONF_PUBLISH_ENABLED: user_input.get(
-                CONF_PUBLISH_ENABLED, DEFAULT_PUBLISH_ENABLED
-            ),
-            CONF_PUBLISH_FREQUENCY: user_input.get(
-                CONF_PUBLISH_FREQUENCY, DEFAULT_PUBLISH_FREQUENCY
-            ),
-            CONF_PUBLISH_MODE: user_input.get(CONF_PUBLISH_MODE, DEFAULT_PUBLISH_MODE),
-            CONF_ALIAS: user_input.get(CONF_ALIAS, DEFAULT_ALIAS),
-            CONF_INDEX_FORMAT: user_input.get(CONF_INDEX_FORMAT, DEFAULT_INDEX_FORMAT),
-            CONF_EXCLUDED_DOMAINS: user_input.get(CONF_EXCLUDED_DOMAINS, []),
-            CONF_EXCLUDED_ENTITIES: user_input.get(CONF_EXCLUDED_ENTITIES, []),
-            CONF_INCLUDED_DOMAINS: user_input.get(CONF_INCLUDED_DOMAINS, []),
-            CONF_INCLUDED_ENTITIES: user_input.get(CONF_INCLUDED_ENTITIES, []),
-            CONF_ILM_ENABLED: user_input.get(CONF_ILM_ENABLED, DEFAULT_ILM_ENABLED),
-            CONF_ILM_POLICY_NAME: user_input.get(
-                CONF_ILM_POLICY_NAME, DEFAULT_ILM_POLICY_NAME
-            ),
-            CONF_ILM_MAX_SIZE: user_input.get(CONF_ILM_MAX_SIZE, DEFAULT_ILM_MAX_SIZE),
-            CONF_ILM_DELETE_AFTER: user_input.get(
-                CONF_ILM_DELETE_AFTER, DEFAULT_ILM_DELETE_AFTER
-            ),
-        }
-
-        if len(user_input.get(CONF_SSL_CA_PATH, "")):
-            config[CONF_SSL_CA_PATH] = user_input[CONF_SSL_CA_PATH]
-
-        return config
-
     async def async_step_user(self, user_input=None):
         """Handle a flow initialized by the user."""
         if self._async_current_entries():
@@ -201,9 +202,8 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                 step_id="no_auth", data_schema=vol.Schema(self.build_no_auth_schema())
             )
 
-        self.config = self.build_full_config(user_input)
+        self.config = build_full_config(user_input)
         (success, errors) = await self._async_elasticsearch_login()
-
         if success:
             return await self._async_create_entry()
 
@@ -221,7 +221,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                 data_schema=vol.Schema(self.build_basic_auth_schema()),
             )
 
-        self.config = self.build_full_config(user_input)
+        self.config = build_full_config(user_input)
         (success, errors) = await self._async_elasticsearch_login()
 
         if success:
@@ -241,7 +241,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                 data_schema=vol.Schema(self.build_api_key_auth_schema()),
             )
 
-        self.config = self.build_full_config(user_input)
+        self.config = build_full_config(user_input)
         (success, errors) = await self._async_elasticsearch_login()
 
         if success:
@@ -255,6 +255,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
     async def async_step_import(self, import_config):
         """Import a config entry from configuration.yaml."""
+
         # Check if new config entry matches any existing config entries
         entries = self.hass.config_entries.async_entries(ELASTIC_DOMAIN)
         for entry in entries:
@@ -265,7 +266,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             if entry.data[CONF_URL] == import_config[CONF_URL]:
                 self.hass.config_entries.async_update_entry(
                     entry=entry,
-                    data=self.build_full_config(import_config),
+                    data=build_full_config(import_config),
                     options=import_config,
                 )
                 return self.async_abort(reason="updated_entry")
@@ -274,7 +275,13 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             LOGGER.warning("Already configured. Only a single configuration possible.")
             return self.async_abort(reason="single_instance_allowed")
 
-        return await self.async_step_no_auth(user_input=import_config)
+        self.config = build_full_config(import_config)
+        (success, errors) = await self._async_elasticsearch_login()
+
+        if success:
+            return await self._async_create_entry()
+
+        raise ConfigEntryNotReady
 
     async def _async_elasticsearch_login(self):
         """Handle connection & authentication to Elasticsearch."""
