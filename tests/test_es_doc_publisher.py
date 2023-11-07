@@ -19,7 +19,7 @@ from homeassistant.components.counter import (
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
 @pytest.mark.asyncio
-async def test_publish_state_change(hass, es_aioclient_mock: AiohttpClientMocker, snapshot, freezer: FrozenDateTimeFactory):
+async def test_publish_state_change(hass, es_aioclient_mock: AiohttpClientMocker, freezer: FrozenDateTimeFactory):
     """Test entity change is published."""
 
     freezer.move_to(datetime(2023, 4, 12, 12, tzinfo=UTC))  # Monday
