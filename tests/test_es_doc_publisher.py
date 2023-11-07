@@ -85,9 +85,13 @@ async def test_publish_state_change(hass, es_aioclient_mock: AiohttpClientMocker
             "host.geo.location":{"lat":32.87336,"lon":-117.22743},
             "host.architecture":"aarch64",
             "host.os.name":"Linux",
-            "host.hostname":"53561d460d26",
+            "host.hostname":"abc123",
             "tags":None
         }
     ]
+
+    # These properties depend on where the tests are being run.
+    request.data[1]["host.architecture"] = "aarch64"
+    request.data[1]["host.hostname"] = "abc123"
 
     assert diff(request.data, expected) == {}
