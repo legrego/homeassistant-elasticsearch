@@ -5,13 +5,16 @@ import time
 from datetime import datetime
 from queue import Queue
 
-from homeassistant.const import EVENT_STATE_CHANGED
+from homeassistant.const import EVENT_HOMEASSISTANT_CLOSE, EVENT_STATE_CHANGED
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import state as state_helper
-from homeassistant.helpers.typing import EventType, HomeAssistantType, StateType
+from homeassistant.helpers.typing import EventType, StateType
 from pytz import utc
-from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
+
 from custom_components.elasticsearch.entity_details import EntityDetails
+from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 from custom_components.elasticsearch.es_index_manager import IndexManager
+from custom_components.elasticsearch.system_info import SystemInfo
 
 from .const import (
     CONF_EXCLUDED_DOMAINS,
@@ -27,13 +30,12 @@ from .const import (
 )
 from .es_serializer import get_serializer
 from .logger import LOGGER
-from .system_info import async_get_system_info
 
 
 class DocumentPublisher:
     """Publishes documents to Elasticsearch."""
 
-    def __init__(self, config, gateway: ElasticsearchGateway, index_manager: IndexManager, hass: HomeAssistantType):
+    def __init__(self, config, gateway: ElasticsearchGateway, index_manager: IndexManager, hass: HomeAssistant):
         """Initialize the publisher."""
 
         self.publish_enabled = config.get(CONF_PUBLISH_ENABLED)
@@ -44,16 +46,17 @@ class DocumentPublisher:
             LOGGER.debug("Not initializing document publisher")
             return
 
-        self._gateway = gateway
-        self._hass = hass
+        self._gateway: ElasticsearchGateway = gateway
+        self._hass: HomeAssistant = hass
 
-        self._index_alias = index_manager.index_alias
+        self._index_alias: str = index_manager.index_alias
 
         self._serializer = get_serializer()
 
         self._static_doc_properties = None
 
-        self._entity_details = EntityDetails(hass)
+        self._system_info: SystemInfo = SystemInfo(hass)
+        self._entity_details: EntityDetails = EntityDetails(hass)
 
         self._publish_frequency = config.get(CONF_PUBLISH_FREQUENCY)
         self._publish_mode = config.get(CONF_PUBLISH_MODE)
@@ -110,6 +113,15 @@ class DocumentPublisher:
             EVENT_STATE_CHANGED, elastic_event_listener
         )
 
+        @callback
+        def hass_close_event_listener(event: EventType):
+            LOGGER.debug("Detected Home Assistant Close Event.")
+            self.stop_publisher()
+
+        self.remove_hass_close_listener = hass.bus.async_listen_once(
+            EVENT_HOMEASSISTANT_CLOSE, hass_close_event_listener
+        )
+
         self.publish_queue = Queue()
         self._last_publish_time = None
 
@@ -120,7 +132,7 @@ class DocumentPublisher:
             return
         config_dict = self._hass.config.as_dict()
         LOGGER.debug("async_init: getting system info")
-        system_info = await async_get_system_info(self._hass)
+        system_info = await self._system_info.async_get_system_info()
         LOGGER.debug("async_init: initializing static doc properties")
         self._static_doc_properties = {
             "agent.name": config_dict["name"]
@@ -158,28 +170,36 @@ class DocumentPublisher:
         self._start_publish_timer()
         LOGGER.debug("async_init: done")
 
+    def stop_publisher(self):
+        """Perform shutdown for ES Document Publisher."""
+        LOGGER.debug("Stopping document publisher")
+        self.publish_active = False
+        if self._publish_timer_ref is not None:
+            self._publish_timer_ref.cancel()
+            self._publish_timer_ref = None
+
+        if self.remove_state_change_listener:
+            self.remove_state_change_listener()
+
+        if self.remove_hass_close_listener:
+            self.remove_hass_close_listener()
+
+        LOGGER.debug("Publisher stopped")
+
     async def async_stop_publisher(self):
         """Perform async shutdown for ES Document Publisher."""
         LOGGER.debug("Stopping document publisher")
         attempt_flush = self.publish_active
 
-        self.publish_active = False
-        if self._publish_timer_ref is not None:
-            self._publish_timer_ref.cancel()
-            self._publish_timer_ref = None
-        if self.remove_state_change_listener:
-            self.remove_state_change_listener()
         if attempt_flush:
             LOGGER.debug("Flushing event cache to ES")
             await self.async_do_publish()
 
+        self.stop_publisher()
+
     def queue_size(self):
         """Return the approximate queue size."""
         return self.publish_queue.qsize()
-
-    def last_publish_time(self):
-        """Return the last publish time."""
-        return self._last_publish_time
 
     def enqueue_state(self, state: StateType, event: EventType):
         """Queue up the provided state change."""
@@ -206,7 +226,7 @@ class DocumentPublisher:
         self._last_publish_time = datetime.now()
         self._entity_details.reset_cache()
 
-        while not self.publish_queue.empty():
+        while self.publish_active and not self.publish_queue.empty():
             [state, event] = self.publish_queue.get()
 
             key = state.entity_id

@@ -9,6 +9,7 @@ select = [
     "D",       # docstrings
     "E",       # pycodestyle
     "F",       # pyflakes/autoflake
+    "I",       # isort
     "ICN001",  # import concentions; {name} should be imported as {asname}
     "PGH004",  # Use specific rule codes when using noqa
     "PLC0414", # Useless import alias. Import alias does not rename original package.

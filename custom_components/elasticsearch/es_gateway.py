@@ -1,6 +1,5 @@
 """Encapsulates Elasticsearch operations."""
 import aiohttp
-from elasticsearch7 import AIOHttpConnection
 from homeassistant.const import (
     CONF_API_KEY,
     CONF_PASSWORD,
@@ -45,9 +44,11 @@ class ElasticsearchGateway:
         from elasticsearch7 import (
             AuthenticationException,
             AuthorizationException,
-            ConnectionError as ESConnectionError,
             ElasticsearchException,
             SSLError,
+        )
+        from elasticsearch7 import (
+            ConnectionError as ESConnectionError,
         )
 
         client = None
@@ -148,11 +149,3 @@ class ElasticsearchGateway:
             ca_certs=self._ca_certs,
             timeout=self._timeout,
         )
-
-
-class ESConnection(AIOHttpConnection):
-    """Connection class for ES connections."""
-
-    def __init__ (self, **kwargs):
-        """Init ESConnection."""
-        super().__init__(**kwargs)

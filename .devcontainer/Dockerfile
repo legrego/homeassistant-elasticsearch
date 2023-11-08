@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/vscode/devcontainers/python:0-3.10-bullseye
+FROM mcr.microsoft.com/vscode/devcontainers/python:0-3.11-bullseye
 
 RUN apt-get update && apt-get install -y apt-transport-https gnupg2 procps less curl
 RUN wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | apt-key add -
