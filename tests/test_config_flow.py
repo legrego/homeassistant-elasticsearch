@@ -7,7 +7,6 @@ from homeassistant import data_entry_flow
 from homeassistant.config_entries import SOURCE_USER
 from homeassistant.helpers.typing import HomeAssistantType
 from homeassistant.setup import async_setup_component
-
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.elasticsearch.const import DOMAIN
@@ -15,7 +14,7 @@ from tests.test_util.es_startup_mocks import mock_es_initialization
 
 
 @pytest.mark.asyncio
-async def test_no_auth_flow(hass: HomeAssistantType, es_aioclient_mock):
+async def test_no_auth_flow_isolate(hass: HomeAssistantType, es_aioclient_mock):
     """Test user config flow with minimum fields."""
 
     result = await hass.config_entries.flow.async_init(
@@ -39,6 +38,7 @@ async def test_no_auth_flow(hass: HomeAssistantType, es_aioclient_mock):
         mock_health_check=True,
         mock_index_creation=True,
         mock_template_setup=True,
+        mock_ilm_setup=True
     )
 
     result = await hass.config_entries.flow.async_configure(

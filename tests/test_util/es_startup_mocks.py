@@ -1,6 +1,7 @@
 """ES Startup Mocks."""
 from homeassistant.const import CONF_URL, CONTENT_TYPE_JSON
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
+
 from tests.const import (
     CLUSTER_HEALTH_RESPONSE_BODY,
     CLUSTER_INFO_RESPONSE_BODY,

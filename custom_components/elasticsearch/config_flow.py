@@ -7,12 +7,12 @@ from homeassistant import config_entries
 from homeassistant.config_entries import SOURCE_IGNORE, SOURCE_IMPORT
 from homeassistant.const import (
     CONF_ALIAS,
+    CONF_API_KEY,
     CONF_PASSWORD,
     CONF_TIMEOUT,
     CONF_URL,
     CONF_USERNAME,
     CONF_VERIFY_SSL,
-    CONF_API_KEY,
 )
 from homeassistant.core import callback
 from homeassistant.exceptions import ConfigEntryNotReady
@@ -32,14 +32,12 @@ from .const import (
     CONF_PUBLISH_FREQUENCY,
     CONF_PUBLISH_MODE,
     CONF_SSL_CA_PATH,
-)
-from .const import DOMAIN as ELASTIC_DOMAIN
-from .const import (
     ONE_MINUTE,
     PUBLISH_MODE_ALL,
     PUBLISH_MODE_ANY_CHANGES,
     PUBLISH_MODE_STATE_CHANGES,
 )
+from .const import DOMAIN as ELASTIC_DOMAIN
 from .errors import (
     AuthenticationRequired,
     CannotConnect,

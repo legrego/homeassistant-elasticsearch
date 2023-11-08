@@ -15,15 +15,16 @@
 # See here for more info: https://docs.pytest.org/en/latest/fixture.html (note that
 # pytest includes fixtures OOB which you can use as defined on this page)
 
+from asyncio import get_running_loop
 from contextlib import contextmanager
+from unittest import mock
 from unittest.mock import patch
 
-from asyncio import get_running_loop
 import pytest
-from unittest import mock
 from homeassistant.helpers.typing import HomeAssistantType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
+
 pytest_plugins = "pytest_homeassistant_custom_component"
 
 @contextmanager
@@ -52,6 +53,14 @@ def es_aioclient_mock():
 def auto_enable_custom_integrations(enable_custom_integrations):
     """Auto enable custom integrations."""
     yield
+
+@pytest.fixture()
+def skip_system_info():
+    """Fixture to skip returning system info."""
+    async def get_system_info():
+        return {}
+    with mock.patch("custom_components.elasticsearch.system_info.SystemInfo.async_get_system_info", side_effect=get_system_info):
+        yield
 
 
 # This fixture is used to prevent HomeAssistant from attempting to create and dismiss persistent

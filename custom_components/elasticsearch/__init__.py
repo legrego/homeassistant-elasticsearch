@@ -19,8 +19,6 @@ from homeassistant.const import (
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers.typing import HomeAssistantType
 
-from .utils import get_merged_config
-
 from .const import (
     CONF_EXCLUDED_DOMAINS,
     CONF_EXCLUDED_ENTITIES,
@@ -44,6 +42,7 @@ from .const import (
 from .errors import AuthenticationRequired, InsufficientPrivileges, UnsupportedVersion
 from .es_integration import ElasticIntegration
 from .logger import LOGGER
+from .utils import get_merged_config
 
 # Legacy (yml-based) configuration schema
 CONFIG_SCHEMA = vol.Schema(

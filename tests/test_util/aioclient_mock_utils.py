@@ -1,10 +1,12 @@
 """Utilities for working with the AIOClient Mock."""
 
-from dataclasses import dataclass
 import json
+from dataclasses import dataclass
+from typing import cast
+
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 from yarl import URL
-from typing import cast
+
 
 @dataclass
 class MockCall:

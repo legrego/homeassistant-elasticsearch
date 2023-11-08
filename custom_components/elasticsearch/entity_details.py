@@ -2,12 +2,14 @@
 """Retrieve entity details."""
 
 from dataclasses import dataclass
-from homeassistant.helpers.typing import HomeAssistantType
+
 from homeassistant.helpers import area_registry, device_registry, entity_registry
+from homeassistant.helpers.typing import HomeAssistantType
 
 from custom_components.elasticsearch.errors import ElasticException
 
 from .logger import LOGGER
+
 
 @dataclass
 class FullEntityDetails:

@@ -4,6 +4,8 @@
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.typing import HomeAssistantType
 
+from custom_components.elasticsearch.logger import LOGGER
+
 from .es_doc_publisher import DocumentPublisher
 from .es_gateway import ElasticsearchGateway
 from .es_index_manager import IndexManager
@@ -32,6 +34,8 @@ class ElasticIntegration:
 
     async def async_shutdown(self, config_entry: ConfigEntry): # pylint disable=unused-argument
         """Async shutdown procedure."""
+        LOGGER.debug("async_shutdown: starting shutdown")
         await self.publisher.async_stop_publisher()
         await self.gateway.async_stop_gateway()
+        LOGGER.debug("async_shutdown: shutdown complete")
         return True

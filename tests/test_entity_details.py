@@ -1,16 +1,16 @@
 """Test Entity Details."""
 
 import pytest
+from homeassistant.components.counter import DOMAIN as COUNTER_DOMAIN
+from homeassistant.helpers import area_registry, device_registry, entity_registry
 from homeassistant.helpers.typing import HomeAssistantType
 from homeassistant.setup import async_setup_component
-from homeassistant.components.counter import (
-    DOMAIN as COUNTER_DOMAIN
-)
-from custom_components.elasticsearch.entity_details import EntityDetails, FullEntityDetails
-
-from homeassistant.helpers import area_registry, device_registry, entity_registry
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.elasticsearch.entity_details import (
+    EntityDetails,
+    FullEntityDetails,
+)
 
 
 @pytest.mark.asyncio
