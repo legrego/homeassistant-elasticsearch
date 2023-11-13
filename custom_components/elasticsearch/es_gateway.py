@@ -17,6 +17,7 @@ from .errors import (
     InsufficientPrivileges,
     UnsupportedVersion,
     UntrustedCertificate,
+    convert_es_error,
 )
 from .es_serializer import get_serializer
 from .es_version import ElasticsearchVersion
@@ -60,22 +61,8 @@ class ElasticsearchGateway:
             await es_version.async_init()
 
             is_supported_version = es_version.is_supported_version()
-        except SSLError as err:
-            raise UntrustedCertificate(err) from err
-        except ESConnectionError as err:
-            if isinstance(
-                err.info, aiohttp.client_exceptions.ClientConnectorCertificateError
-            ):
-                raise UntrustedCertificate(err) from err
-            raise CannotConnect(err) from err
-        except AuthenticationException as err:
-            raise AuthenticationRequired(err) from err
-        except AuthorizationException as err:
-            raise InsufficientPrivileges(err) from err
-        except ElasticsearchException as err:
-            raise ElasticException(err) from err
         except Exception as err:
-            raise ElasticException(err) from err
+            raise convert_es_error(err) from err
         finally:
             if client:
                 await client.close()

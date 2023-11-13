@@ -3,6 +3,7 @@
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.typing import HomeAssistantType
+from custom_components.elasticsearch.errors import convert_es_error
 
 from custom_components.elasticsearch.logger import LOGGER
 
@@ -27,15 +28,18 @@ class ElasticIntegration:
     # TODO investivage hepers.event.async_call_later()
     async def async_init(self):
         """Async init procedure."""
-        await self.gateway.async_init()
-        await self.index_manager.async_setup()
-        await self.publisher.async_init()
+        try:
+            await self.gateway.async_init()
+            await self.index_manager.async_setup()
+            await self.publisher.async_init()
+        except Exception as err:
+            raise convert_es_error(err) from err
 
 
     async def async_shutdown(self, config_entry: ConfigEntry): # pylint disable=unused-argument
         """Async shutdown procedure."""
         LOGGER.debug("async_shutdown: starting shutdown")
-        await self.publisher.async_stop_publisher()
+        self.publisher.stop_publisher()
         await self.gateway.async_stop_gateway()
         LOGGER.debug("async_shutdown: shutdown complete")
         return True

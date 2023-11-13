@@ -54,14 +54,6 @@ def auto_enable_custom_integrations(enable_custom_integrations):
     """Auto enable custom integrations."""
     yield
 
-@pytest.fixture()
-def skip_system_info():
-    """Fixture to skip returning system info."""
-    async def get_system_info():
-        return {}
-    with mock.patch("custom_components.elasticsearch.system_info.SystemInfo.async_get_system_info", side_effect=get_system_info):
-        yield
-
 
 # This fixture is used to prevent HomeAssistant from attempting to create and dismiss persistent
 # notifications. These calls would fail without this fixture since the persistent_notification

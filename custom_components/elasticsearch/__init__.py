@@ -183,17 +183,20 @@ async def _async_init_integration(hass: HomeAssistantType, config_entry: ConfigE
         integration = ElasticIntegration(hass, config_entry)
         await integration.async_init()
     except UnsupportedVersion as err:
-        LOGGER.error("Unsupported Elasticsearch version detected")
-        raise ConfigEntryNotReady from err
+        msg = "Unsupported Elasticsearch version detected"
+        LOGGER.error(msg)
+        raise ConfigEntryNotReady(msg) from err
     except AuthenticationRequired as err:
-        LOGGER.error("Missing or invalid credentials")
-        raise ConfigEntryAuthFailed from err
+        msg = "Missing or invalid credentials"
+        LOGGER.error(msg)
+        raise ConfigEntryAuthFailed(msg) from err
     except InsufficientPrivileges as err:
         LOGGER.error("Account does not have sufficient privileges")
         raise ConfigEntryAuthFailed from err
     except Exception as err:  # pylint disable=broad-exception-caught
-        LOGGER.error("Exception during component initialization")
-        raise ConfigEntryNotReady from err
+        msg = "Exception during component initialization"
+        LOGGER.error(msg)
+        raise ConfigEntryNotReady(msg) from err
 
     hass.data[DOMAIN] = integration
 
