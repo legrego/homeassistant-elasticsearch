@@ -11,7 +11,9 @@ def get_serializer():
         def default(self, data):
             """Entry point."""
             if isinstance(data, set):
-                return list(data)
+                output = list(data)
+                output.sort()
+                return output
             return JSONSerializer.default(self, data)
 
     return SetEncoder()

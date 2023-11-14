@@ -172,6 +172,10 @@ class DocumentPublisher:
 
     def stop_publisher(self):
         """Perform shutdown for ES Document Publisher."""
+        if not self.publish_active:
+            LOGGER.debug("Not stopping document publisher, publish is not active.")
+            return
+
         LOGGER.debug("Stopping document publisher")
         self.publish_active = False
         if self._publish_timer_ref is not None:
@@ -186,17 +190,6 @@ class DocumentPublisher:
 
         LOGGER.debug("Publisher stopped")
 
-    async def async_stop_publisher(self):
-        """Perform async shutdown for ES Document Publisher."""
-        LOGGER.debug("Stopping document publisher")
-        attempt_flush = self.publish_active
-
-        if attempt_flush:
-            LOGGER.debug("Flushing event cache to ES")
-            await self.async_do_publish()
-
-        self.stop_publisher()
-
     def queue_size(self):
         """Return the approximate queue size."""
         return self.publish_queue.qsize()
@@ -207,7 +200,7 @@ class DocumentPublisher:
         domain = state.domain
         entity_id = state.entity_id
 
-        if self._should_publish_state_change(domain, entity_id):
+        if self._should_publish_entity_state(domain, entity_id):
             self.publish_queue.put([state, event])
 
     async def async_do_publish(self):
@@ -239,25 +232,7 @@ class DocumentPublisher:
         if publish_all_states:
             all_states = self._hass.states.async_all()
             for state in all_states:
-                if (
-                    # Explicitly excluded domains
-                    state.domain in self._excluded_domains
-                    # Explicitly excluded entities
-                    or state.entity_id in self._excluded_entities
-                    # If set, only included domains
-                    or (
-                        self._included_domains
-                        and state.domain not in self._included_domains
-                    )
-                    # If set, only included entities
-                    or (
-                        self._included_entities
-                        and state.entity_id not in self._included_entities
-                    )
-                ):
-                    continue
-
-                if state.entity_id not in entity_counts:
+                if state.entity_id not in entity_counts and self._should_publish_entity_state(state.domain, state.entity_id):
                     actions.append(
                         self._state_to_bulk_action(state, self._last_publish_time)
                     )
@@ -286,7 +261,7 @@ class DocumentPublisher:
         except ElasticsearchException as err:
             LOGGER.exception("Error publishing documents to Elasticsearch: %s", err)
 
-    def _should_publish_state_change(self, domain: str, entity_id: str):
+    def _should_publish_entity_state(self, domain: str, entity_id: str):
         """Determine if a state change should be published."""
         if not self.publish_enabled:
             LOGGER.warning(
@@ -296,41 +271,39 @@ class DocumentPublisher:
             )
             return False
 
-        # Publish entities if they are explicitly included
-        if self._included_entities and entity_id in self._included_entities:
-            LOGGER.debug("Including %s: this entity is explicitly included", entity_id)
-            return True
+        is_domain_included = self._included_domains and domain in self._included_domains
+        is_domain_excluded = self._excluded_domains and domain in self._excluded_domains
 
-        # Skip entities if they are explicitly excluded
-        if entity_id in self._excluded_entities:
-            LOGGER.debug("Skipping %s: this entity is explicitly excluded", entity_id)
+        is_entity_included = self._included_entities and entity_id in self._included_entities
+        is_entity_excluded = self._excluded_entities and entity_id in self._excluded_entities
+
+        if is_entity_excluded:
+            message_suffix = ''
+            if is_domain_included:
+                message_suffix += ', which supersedes the configured domain inclusion.'
+
+            LOGGER.debug("Skipping %s: this entity is explicitly excluded%s", entity_id, message_suffix)
             return False
 
-        # Skip entities belonging to an excluded domain
-        if domain in self._excluded_domains:
+        if is_entity_included:
+            message_suffix = ''
+            if is_domain_excluded:
+                message_suffix += ', which supersedes the configured domain exclusion.'
+
+            LOGGER.debug("Including %s: this entity is explicitly included%s", entity_id, message_suffix)
+            return True
+
+        if is_domain_included:
+            LOGGER.debug("Including %s: this entity belongs to an included domain (%s)", entity_id, domain)
+            return True
+
+        if is_domain_excluded:
             LOGGER.debug(
                 "Skipping %s: it belongs to an excluded domain (%s)", entity_id, domain
             )
             return False
 
-        # Skip entities if they do not belong to an explicitly included domain.
-        # Having 0 explicitly included domains indicates that all domains are allowed.
-        if self._included_domains and domain not in self._included_domains:
-            LOGGER.debug(
-                "Skipping %s: it does not belong to an included domain (%s)",
-                entity_id,
-                domain,
-            )
-            return False
-
-        # Skip entities if they are not explicitly included.
-        # Having 0 explicitly included entities indicates that all entities are allowed.
-        if self._included_entities and entity_id not in self._included_entities:
-            LOGGER.debug(
-                "Skipping %s: this entity is not specifically included", entity_id
-            )
-            return False
-
+        # At this point, neither the domain nor entity belong to an explicit include/exclude list.
         return True
 
     def _state_to_bulk_action(self, state: StateType, time):

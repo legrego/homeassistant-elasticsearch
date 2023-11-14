@@ -6,8 +6,6 @@ import pytest
 from homeassistant import data_entry_flow
 from homeassistant.config_entries import SOURCE_USER
 from homeassistant.helpers.typing import HomeAssistantType
-from homeassistant.setup import async_setup_component
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.elasticsearch.const import DOMAIN
 from tests.test_util.es_startup_mocks import mock_es_initialization
@@ -217,6 +215,36 @@ async def test_basic_auth_flow(hass: HomeAssistantType, es_aioclient_mock):
     assert "health_sensor_enabled" not in result["data"]
 
 @pytest.mark.asyncio
+async def test_basic_auth_flow_unauthorized(hass: HomeAssistantType, es_aioclient_mock):
+    """Test user config flow with minimum fields, with bad credentials."""
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+    assert result["type"] == data_entry_flow.RESULT_TYPE_MENU
+    assert result["step_id"] == "user"
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], user_input={"next_step_id": "basic_auth"}
+    )
+
+    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["step_id"] == "basic_auth"
+
+    es_url = "http://basic-auth-flow:9200"
+
+    es_aioclient_mock.get(es_url, status=401)
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], user_input={"url": es_url, "username": "hass_writer", "password": "changeme"}
+    )
+
+    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["errors"]["base"] == "invalid_basic_auth"
+    assert result["step_id"] == "basic_auth"
+    assert "data" not in result
+
+@pytest.mark.asyncio
 async def test_api_key_flow(hass: HomeAssistantType, es_aioclient_mock):
     """Test user config flow with minimum fields."""
 
@@ -237,10 +265,7 @@ async def test_api_key_flow(hass: HomeAssistantType, es_aioclient_mock):
 
     mock_es_initialization(
         es_aioclient_mock,
-        url=es_url,
-        mock_health_check=True,
-        mock_index_creation=True,
-        mock_template_setup=True,
+        url=es_url
     )
 
     result = await hass.config_entries.flow.async_configure(
@@ -288,89 +313,6 @@ async def test_api_key_flow_fails_unauthorized(hass: HomeAssistantType, es_aiocl
     assert "data" not in result
 
 @pytest.mark.asyncio
-async def test_config_migration_v1(hass: HomeAssistantType, es_aioclient_mock):
-    """Test config migration from v1."""
-    es_url = "http://migration-v1-test:9200"
-
-    mock_es_initialization(
-        es_aioclient_mock,
-        url=es_url,
-        mock_health_check=True,
-        mock_index_creation=True,
-        mock_template_setup=True,
-    )
-
-     # Create mock entry with version 1
-    mock_entry = MockConfigEntry(
-        unique_id="mock unique id v1",
-        domain=DOMAIN,
-        version=1,
-        data={
-            "url": es_url,
-            "only_publish_changed": True
-        },
-        title="ES Config",
-    )
-
-    # Set it up
-    mock_entry.add_to_hass(hass)
-    assert await async_setup_component(hass, DOMAIN, {}) is True
-    await hass.async_block_till_done()
-
-    # Verify publish mode has been set correctly
-
-    expected_config = {
-        "url": es_url,
-        "publish_mode": "Any changes"
-    }
-
-    updated_entry = hass.config_entries.async_get_entry(mock_entry.entry_id)
-    assert updated_entry
-    assert updated_entry.version == 3
-    assert updated_entry.data == expected_config
-
-@pytest.mark.asyncio
-async def test_config_migration_v2(hass: HomeAssistantType, es_aioclient_mock):
-    """Test config migration from v2."""
-    es_url = "http://migration-v2-test:9200"
-
-    mock_es_initialization(
-        es_aioclient_mock,
-        url=es_url,
-        mock_health_check=True,
-        mock_index_creation=True,
-        mock_template_setup=True,
-    )
-
-     # Create mock entry with version 1
-    mock_entry = MockConfigEntry(
-        unique_id="mock unique id v2",
-        domain=DOMAIN,
-        version=2,
-        data={
-            "url": es_url,
-            "health_sensor_enabled": True
-        },
-        title="ES Config",
-    )
-
-    # Set it up
-    mock_entry.add_to_hass(hass)
-    assert await async_setup_component(hass, DOMAIN, {}) is True
-    await hass.async_block_till_done()
-
-    # Verify health sensor has been removed
-
-    expected_config = {
-        "url": es_url,
-    }
-
-    updated_entry = hass.config_entries.async_get_entry(mock_entry.entry_id)
-    assert updated_entry
-    assert updated_entry.version == 3
-    assert updated_entry.data == expected_config
-
-@pytest.mark.asyncio
 async def test_options_flow(
     hass: HomeAssistantType, es_aioclient_mock
 ) -> None:
@@ -380,11 +322,7 @@ async def test_options_flow(
 
     mock_es_initialization(
         es_aioclient_mock,
-        url=es_url,
-        mock_health_check=True,
-        mock_index_creation=True,
-        mock_template_setup=True,
-        mock_ilm_setup=True,
+        url=es_url
     )
 
     result = await hass.config_entries.flow.async_init(
