@@ -1,8 +1,12 @@
 """ES Startup Mocks."""
 from homeassistant.const import CONF_URL, CONTENT_TYPE_JSON
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
-from custom_components.elasticsearch.config_flow import DEFAULT_ALIAS, DEFAULT_ILM_POLICY_NAME, DEFAULT_INDEX_FORMAT
 
+from custom_components.elasticsearch.config_flow import (
+    DEFAULT_ALIAS,
+    DEFAULT_ILM_POLICY_NAME,
+    DEFAULT_INDEX_FORMAT,
+)
 from tests.const import (
     CLUSTER_HEALTH_RESPONSE_BODY,
     CLUSTER_INFO_RESPONSE_BODY,

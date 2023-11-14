@@ -1,5 +1,4 @@
 """Encapsulates Elasticsearch operations."""
-import aiohttp
 from homeassistant.const import (
     CONF_API_KEY,
     CONF_PASSWORD,
@@ -11,12 +10,7 @@ from homeassistant.const import (
 
 from .const import CONF_SSL_CA_PATH
 from .errors import (
-    AuthenticationRequired,
-    CannotConnect,
-    ElasticException,
-    InsufficientPrivileges,
     UnsupportedVersion,
-    UntrustedCertificate,
     convert_es_error,
 )
 from .es_serializer import get_serializer
@@ -42,15 +36,6 @@ class ElasticsearchGateway:
 
     async def check_connection(self):
         """Perform connection checks for setup."""
-        from elasticsearch7 import (
-            AuthenticationException,
-            AuthorizationException,
-            ElasticsearchException,
-            SSLError,
-        )
-        from elasticsearch7 import (
-            ConnectionError as ESConnectionError,
-        )
 
         client = None
         is_supported_version = True

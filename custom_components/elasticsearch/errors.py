@@ -32,11 +32,16 @@ class UnsupportedVersion(ElasticException):
 
 def convert_es_error(err):
     """Convert an internal error from the elasticsearch package into one of our own."""
-    from elasticsearch7 import SSLError, AuthenticationException, AuthorizationException, ElasticsearchException
+    import aiohttp
+    from elasticsearch7 import (
+        AuthenticationException,
+        AuthorizationException,
+        ElasticsearchException,
+        SSLError,
+    )
     from elasticsearch7 import (
         ConnectionError as ESConnectionError,
     )
-    import aiohttp
 
     if isinstance(err, SSLError):
           return UntrustedCertificate(err)

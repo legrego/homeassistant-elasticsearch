@@ -3,8 +3,8 @@
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.typing import HomeAssistantType
-from custom_components.elasticsearch.errors import convert_es_error
 
+from custom_components.elasticsearch.errors import convert_es_error
 from custom_components.elasticsearch.logger import LOGGER
 
 from .es_doc_publisher import DocumentPublisher

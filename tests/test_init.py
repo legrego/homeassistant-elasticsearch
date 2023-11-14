@@ -1,20 +1,25 @@
 """Tests for Elastic init."""
 import pytest
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
-from homeassistant.const import CONF_URL, CONF_ALIAS
+from homeassistant.config_entries import ConfigEntryState
+from homeassistant.const import CONF_ALIAS, CONF_URL
 from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
-from homeassistant.config_entries import ConfigEntryState
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
-from custom_components.elasticsearch.const import CONF_EXCLUDED_DOMAINS, CONF_ILM_POLICY_NAME, CONF_INDEX_FORMAT, DOMAIN as ELASTIC_DOMAIN
+from custom_components.elasticsearch.const import (
+    CONF_EXCLUDED_DOMAINS,
+    CONF_ILM_POLICY_NAME,
+    CONF_INDEX_FORMAT,
+)
+from custom_components.elasticsearch.const import DOMAIN as ELASTIC_DOMAIN
 from custom_components.elasticsearch.utils import get_merged_config
 from tests.const import MOCK_COMPLEX_LEGACY_CONFIG, MOCK_MINIMAL_LEGACY_CONFIG
 from tests.test_util.es_startup_mocks import mock_es_initialization
-from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
 
-async def setup_config_entry(hass: HomeAssistant, mock_entry: MockConfigEntry):
+async def _setup_config_entry(hass: HomeAssistant, mock_entry: MockConfigEntry):
     mock_entry.add_to_hass(hass)
     assert await async_setup_component(hass, ELASTIC_DOMAIN, {}) is True
     await hass.async_block_till_done()
@@ -128,7 +133,7 @@ async def test_update_entry(hass: HomeAssistant, es_aioclient_mock: AiohttpClien
         title="ES Config",
     )
 
-    entry = await setup_config_entry(hass, mock_entry)
+    entry = await _setup_config_entry(hass, mock_entry)
 
     assert hass.config_entries.async_update_entry(entry=entry, options={
         CONF_EXCLUDED_DOMAINS: ["sensor", "weather"]
@@ -166,7 +171,7 @@ async def test_unsupported_version(hass: HomeAssistant, es_aioclient_mock: Aioht
         title="ES Config",
     )
 
-    entry = await setup_config_entry(hass, mock_entry)
+    entry = await _setup_config_entry(hass, mock_entry)
 
     assert entry.state == ConfigEntryState.SETUP_RETRY
     assert entry.reason == "Unsupported Elasticsearch version detected"
@@ -189,7 +194,7 @@ async def test_authentication_error(hass: HomeAssistant, es_aioclient_mock: Aioh
         title="ES Config",
     )
 
-    entry = await setup_config_entry(hass, mock_entry)
+    entry = await _setup_config_entry(hass, mock_entry)
 
     assert entry.state == ConfigEntryState.SETUP_ERROR
     assert entry.reason == "Missing or invalid credentials"
@@ -211,7 +216,7 @@ async def test_connection_error(hass: HomeAssistant, es_aioclient_mock: AiohttpC
         title="ES Config",
     )
 
-    entry = await setup_config_entry(hass, mock_entry)
+    entry = await _setup_config_entry(hass, mock_entry)
 
     assert entry.state == ConfigEntryState.SETUP_RETRY
     assert entry.reason == "Exception during component initialization"
