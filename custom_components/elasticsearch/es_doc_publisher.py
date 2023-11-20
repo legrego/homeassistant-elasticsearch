@@ -31,6 +31,7 @@ from .const import (
 from .es_serializer import get_serializer
 from .logger import LOGGER
 
+ALLOWED_ATTRIBUTE_TYPES = tuple | dict | set | list | int | float | bool | str | None
 
 class DocumentPublisher:
     """Publishes documents to Elasticsearch."""
@@ -335,6 +336,13 @@ class DocumentPublisher:
                 LOGGER.warning(
                     "Not publishing keyless attribute from entity [%s].",
                     state.entity_id,
+                )
+                continue
+
+            if not isinstance(orig_value, ALLOWED_ATTRIBUTE_TYPES):
+                LOGGER.debug(
+                    "Not publishing attribute [%s] of disallowed type [%s] from entity [%s].",
+                    key, type(orig_value), state.entity_id
                 )
                 continue
 
