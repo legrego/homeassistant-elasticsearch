@@ -34,36 +34,17 @@ class ElasticsearchGateway:
         self.client = None
         self.es_version = None
 
-    async def check_connection(self):
-        """Perform connection checks for setup."""
-
-        client = None
-        is_supported_version = True
-        try:
-            client = self._create_es_client()
-
-            es_version = ElasticsearchVersion(client)
-            await es_version.async_init()
-
-            is_supported_version = es_version.is_supported_version()
-        except Exception as err:
-            raise convert_es_error(err) from err
-        finally:
-            if client:
-                await client.close()
-                client = None
-
-        if not is_supported_version:
-            raise UnsupportedVersion()
-
     async def async_init(self):
         """I/O bound init."""
 
         LOGGER.debug("Creating Elasticsearch client for %s", self._url)
-        self.client = self._create_es_client()
-        self.es_version = ElasticsearchVersion(self.client)
+        try:
+            self.client = self._create_es_client()
 
-        await self.es_version.async_init()
+            self.es_version = ElasticsearchVersion(self.client)
+            await self.es_version.async_init()
+        except Exception as err:
+            raise convert_es_error("Gateway initialization failed", err) from err
 
         if not self.es_version.is_supported_version():
             LOGGER.fatal(
@@ -75,7 +56,9 @@ class ElasticsearchGateway:
 
     async def async_stop_gateway(self):
         """Stop the ES Gateway."""
-        await self.client.close()
+        if self.client:
+            await self.client.close()
+            self.client = None
 
     def get_client(self):
         """Return the underlying ES Client."""

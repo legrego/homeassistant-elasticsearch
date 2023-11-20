@@ -33,7 +33,7 @@ class ElasticIntegration:
             await self.index_manager.async_setup()
             await self.publisher.async_init()
         except Exception as err:
-            raise convert_es_error(err) from err
+            raise convert_es_error("Failed to initialize integration", err) from err
 
 
     async def async_shutdown(self, config_entry: ConfigEntry): # pylint disable=unused-argument

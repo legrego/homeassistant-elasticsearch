@@ -18,6 +18,8 @@ from homeassistant.core import callback
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.selector import selector
 
+from custom_components.elasticsearch.es_privilege_check import ESPrivilegeCheck
+
 from .const import (
     CONF_EXCLUDED_DOMAINS,
     CONF_EXCLUDED_ENTITIES,
@@ -287,7 +289,10 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
         try:
             gateway = ElasticsearchGateway(self.config)
-            await gateway.check_connection()
+            await gateway.async_init()
+
+            privilege_check = ESPrivilegeCheck(gateway)
+            await privilege_check.enforce_privileges(self.config)
         except UntrustedCertificate:
             errors["base"] = "untrusted_connection"
         except AuthenticationRequired:
@@ -307,6 +312,9 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                 ex,
             )
             errors["base"] = "cannot_connect"
+        finally:
+            if gateway:
+                await gateway.async_stop_gateway()
 
         success = not errors
         return (success, errors)

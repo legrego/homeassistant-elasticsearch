@@ -245,6 +245,40 @@ async def test_basic_auth_flow_unauthorized(hass: HomeAssistantType, es_aioclien
     assert "data" not in result
 
 @pytest.mark.asyncio
+async def test_basic_auth_flow_missing_index_privilege(hass: HomeAssistantType, es_aioclient_mock):
+    """Test user config flow with minimum fields, with insufficient index privileges."""
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+    assert result["type"] == data_entry_flow.RESULT_TYPE_MENU
+    assert result["step_id"] == "user"
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], user_input={"next_step_id": "basic_auth"}
+    )
+
+    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["step_id"] == "basic_auth"
+
+    es_url = "http://basic-auth-flow:9200"
+
+    mock_es_initialization(
+        es_aioclient_mock,
+        url=es_url,
+        mock_index_authorization_error=True
+    )
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], user_input={"url": es_url, "username": "hass_writer", "password": "changeme"}
+    )
+
+    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["errors"]["base"] == "insufficient_privileges"
+    assert result["step_id"] == "basic_auth"
+    assert "data" not in result
+
+@pytest.mark.asyncio
 async def test_api_key_flow(hass: HomeAssistantType, es_aioclient_mock):
     """Test user config flow with minimum fields."""
 
