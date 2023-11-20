@@ -197,6 +197,11 @@ async def test_attribute_publishing(hass, es_aioclient_mock: AiohttpClientMocker
 
     assert publisher.queue_size() == 0
 
+    class CustomAttributeClass:
+        def __init__(self) -> None:
+            self.field = "This class should be skipped, as it cannot be serialized."
+            pass
+
     hass.states.async_set("counter.test_1", "3", {
         "string": "abc123",
         "int": 123,
@@ -208,8 +213,11 @@ async def test_attribute_publishing(hass, es_aioclient_mock: AiohttpClientMocker
         },
         "list": [1,2,3,4],
         "set": {5,5},
+        "none": None,
         # Keyless entry should be excluded from output
-        "": "Keyless entry"
+        "": "Keyless entry",
+        # Custom classes should be excluded from output
+        "naughty": CustomAttributeClass(),
     })
     await hass.async_block_till_done()
 
@@ -240,7 +248,8 @@ async def test_attribute_publishing(hass, es_aioclient_mock: AiohttpClientMocker
                 "float": 123.456,
             }),
             "list": [1,2,3,4],
-            "set": [5] # set should be converted to a list
+            "set": [5], # set should be converted to a list,
+            "none": None
         }
     }]
 
