@@ -24,6 +24,7 @@ def mock_es_initialization(
     mock_ilm_setup=True,
     mock_unsupported_version=False,
     mock_authentication_error=False,
+    mock_index_authorization_error=False,
     mock_connection_error=False,
     alias_name=DEFAULT_ALIAS,
     index_format=DEFAULT_INDEX_FORMAT,
@@ -41,6 +42,67 @@ def mock_es_initialization(
         aioclient_mock.get(url, status=200, json=CLUSTER_INFO_RESPONSE_BODY)
 
     aioclient_mock.post(url + "/_bulk", status=200, json={"items": []})
+
+    if mock_index_authorization_error:
+        aioclient_mock.post(url + "/_security/user/_has_privileges", status=200, json={
+            "username": "test_user",
+            "has_all_requested": False,
+            "cluster": {
+                "manage_index_templates": True,
+                "manage_ilm": True,
+                "monitor": True
+            },
+            "index": {
+                f"{index_format}*": {
+                    "manage": True,
+                    "index": False,
+                    "create_index": True,
+                    "create": True
+                },
+                f"{alias_name}*": {
+                    "manage": True,
+                    "index": True,
+                    "create_index": True,
+                    "create": True
+                },
+                "all-hass-events": {
+                    "manage": True,
+                    "index": True,
+                    "create_index": True,
+                    "create": True
+                }
+            }
+        })
+    else:
+        aioclient_mock.post(url + "/_security/user/_has_privileges", status=200, json={
+            "username": "test_user",
+            "has_all_requested": True,
+            "cluster": {
+                "manage_index_templates": True,
+                "manage_ilm": True,
+                "monitor": True
+            },
+            "index": {
+                f"{index_format}*": {
+                    "manage": True,
+                    "index": True,
+                    "create_index": True,
+                    "create": True
+                },
+                f"{alias_name}*": {
+                    "manage": True,
+                    "index": True,
+                    "create_index": True,
+                    "create": True
+                },
+                "all-hass-events": {
+                    "manage": True,
+                    "index": True,
+                    "create_index": True,
+                    "create": True
+                }
+            }
+        })
 
     if mock_template_setup:
         aioclient_mock.get(

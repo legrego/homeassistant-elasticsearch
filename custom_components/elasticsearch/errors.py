@@ -30,7 +30,7 @@ class UnsupportedVersion(ElasticException):
     """Connected to an unsupported version of Elasticsearch."""
 
 
-def convert_es_error(err):
+def convert_es_error(msg, err):
     """Convert an internal error from the elasticsearch package into one of our own."""
     import aiohttp
     from elasticsearch7 import (
@@ -44,22 +44,22 @@ def convert_es_error(err):
     )
 
     if isinstance(err, SSLError):
-          return UntrustedCertificate(err)
+          return UntrustedCertificate(msg, err)
 
     if isinstance(err, ESConnectionError):
         if isinstance(
             err.info, aiohttp.client_exceptions.ClientConnectorCertificateError
         ):
-            return UntrustedCertificate(err)
-        return CannotConnect(err)
+            return UntrustedCertificate(msg, err)
+        return CannotConnect(msg, err)
 
     if isinstance(err, AuthenticationException):
-         return AuthenticationRequired(err)
+         return AuthenticationRequired(msg, err)
 
     if isinstance(err, AuthorizationException):
-         return InsufficientPrivileges(err)
+         return InsufficientPrivileges(msg, err)
 
     if isinstance(err, ElasticsearchException):
-        return ElasticException(err)
+        return ElasticException(msg, err)
 
     return err
