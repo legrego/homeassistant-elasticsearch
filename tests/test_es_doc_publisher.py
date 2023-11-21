@@ -215,9 +215,14 @@ async def test_attribute_publishing(hass, es_aioclient_mock: AiohttpClientMocker
         "set": {5,5},
         "none": None,
         # Keyless entry should be excluded from output
-        "": "Keyless entry",
+        "": "Key is empty, and should be excluded",
         # Custom classes should be excluded from output
         "naughty": CustomAttributeClass(),
+        # Entries with non-string keys should be excluded from output
+        datetime.now(): "Key is a datetime, and should be excluded",
+        123: "Key is a number, and should be excluded",
+        True: "Key is a bool, and should be excluded"
+
     })
     await hass.async_block_till_done()
 
