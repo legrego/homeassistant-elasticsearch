@@ -79,6 +79,9 @@
             "domain": {
               "type": "keyword"
             },
+            "name": {
+              "type": "keyword"
+            },
             "attributes": {
               "type": "object",
               "dynamic": true
