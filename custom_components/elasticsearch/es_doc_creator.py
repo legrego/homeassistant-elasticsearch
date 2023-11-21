@@ -14,7 +14,7 @@ from custom_components.elasticsearch.system_info import SystemInfo
 
 ALLOWED_ATTRIBUTE_TYPES = tuple | dict | set | list | int | float | bool | str | None
 
-class DocumentCreator():
+class DocumentCreator:
     """Create ES documents from Home Assistant state change events."""
 
     def __init__(self, hass: HomeAssistant, config: dict) -> None:
