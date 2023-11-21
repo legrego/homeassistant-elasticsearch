@@ -15,6 +15,7 @@ from homeassistant.const import (
     CONF_VERIFY_SSL,
 )
 from homeassistant.core import callback
+from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.selector import selector
 
@@ -120,6 +121,8 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         """Initialize the Elastic flow."""
         self.config = {}
 
+        self._reauth_entry = None
+
     def build_setup_menu(self):
         """Build setup menu to choose authentication method."""
         return self.async_show_menu(
@@ -161,9 +164,9 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         schema = {**self.build_common_schema(errors)}
         return schema
 
-    def build_basic_auth_schema(self, errors=None):
+    def build_basic_auth_schema(self, errors=None, skip_common=False):
         """Build validation schema for the basic authentication setup flow."""
-        schema = {**self.build_common_schema(errors)}
+        schema = {} if skip_common else {**self.build_common_schema(errors)}
         schema.update(
             {
                 vol.Required(
@@ -176,9 +179,9 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         )
         return schema
 
-    def build_api_key_auth_schema(self, errors=None):
+    def build_api_key_auth_schema(self, errors=None, skip_common = False):
         """Build validation schema for the ApiKey authentication setup flow."""
-        schema = {**self.build_common_schema(errors)}
+        schema = {} if skip_common else {**self.build_common_schema(errors)}
         schema.update(
             {
                 vol.Required(
@@ -187,6 +190,13 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             }
         )
         return schema
+
+    def build_reauth_schema(self, errors=None):
+        """Build validation schema for all reauth flows."""
+        assert self._reauth_entry
+        if self._reauth_entry.data.get(CONF_API_KEY):
+            return self.build_api_key_auth_schema(errors=errors, skip_common=True)
+        return self.build_basic_auth_schema(errors=errors, skip_common=True)
 
     async def async_step_user(self, user_input=None):
         """Handle a flow initialized by the user."""
@@ -283,6 +293,42 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
         raise ConfigEntryNotReady
 
+    async def async_step_reauth(self, user_input) -> FlowResult:
+        """Handle reauthorization."""
+        entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
+        assert entry is not None
+        self._reauth_entry = entry
+        return await self.async_step_reauth_confirm(user_input)
+
+    async def async_step_reauth_confirm(self, user_input: dict | None = None) -> FlowResult:
+        """Dialog that informs the user that reauth is required."""
+        if user_input is None:
+            return self.async_show_form(
+                step_id="reauth_confirm",
+                data_schema=vol.Schema(self.build_reauth_schema(user_input))
+            )
+
+        username = user_input.get(CONF_USERNAME)
+        password = user_input.get(CONF_PASSWORD)
+        api_key = user_input.get(CONF_API_KEY)
+
+        self.config = self._reauth_entry.data.copy()
+        if username:
+            self.config[CONF_USERNAME] = username
+            self.config[CONF_PASSWORD] = password
+        if api_key:
+            self.config[CONF_API_KEY] = api_key
+
+        success, errors = await self._async_elasticsearch_login()
+        if success:
+            return await self._async_create_entry()
+
+        return self.async_show_form(
+            step_id="reauth_confirm",
+            errors=errors,
+            data_schema=vol.Schema(self.build_reauth_schema(errors))
+        )
+
     async def _async_elasticsearch_login(self):
         """Handle connection & authentication to Elasticsearch."""
         errors = {}
@@ -321,15 +367,16 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
     async def _async_create_entry(self):
         """Create the config entry."""
-        existing_entry = await self.async_set_unique_id(self.config[CONF_URL])
 
-        if existing_entry:
+        if self._reauth_entry:
+            LOGGER.debug("Reauthorization successful")
             self.hass.config_entries.async_update_entry(
-                existing_entry, data=self.config
+                self._reauth_entry, data=self.config
             )
+
             # Reload the config entry otherwise devices will remain unavailable
             self.hass.async_create_task(
-                self.hass.config_entries.async_reload(existing_entry.entry_id)
+                self.hass.config_entries.async_reload(self._reauth_entry.entry_id)
             )
 
             return self.async_abort(reason="reauth_successful")

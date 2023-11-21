@@ -4,15 +4,32 @@ from unittest.mock import MagicMock
 import aiohttp
 import pytest
 from homeassistant import data_entry_flow
-from homeassistant.config_entries import SOURCE_USER
-from homeassistant.helpers.typing import HomeAssistantType
+from homeassistant.config_entries import SOURCE_REAUTH, SOURCE_USER
+from homeassistant.const import CONF_API_KEY, CONF_PASSWORD, CONF_URL, CONF_USERNAME
+from homeassistant.core import HomeAssistant
+from homeassistant.setup import async_setup_component
+from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
 from custom_components.elasticsearch.const import DOMAIN
+from tests.conftest import mock_config_entry
 from tests.test_util.es_startup_mocks import mock_es_initialization
 
 
+async def _setup_config_entry(hass: HomeAssistant, mock_entry: mock_config_entry):
+    mock_entry.add_to_hass(hass)
+    assert await async_setup_component(hass, DOMAIN, {}) is True
+    await hass.async_block_till_done()
+
+    config_entries = hass.config_entries.async_entries(DOMAIN)
+    assert len(config_entries) == 1
+    entry = config_entries[0]
+
+    return entry
+
+
 @pytest.mark.asyncio
-async def test_no_auth_flow_isolate(hass: HomeAssistantType, es_aioclient_mock):
+async def test_no_auth_flow_isolate(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker):
     """Test user config flow with minimum fields."""
 
     result = await hass.config_entries.flow.async_init(
@@ -55,7 +72,7 @@ async def test_no_auth_flow_isolate(hass: HomeAssistantType, es_aioclient_mock):
 
 
 @pytest.mark.asyncio
-async def test_no_auth_flow_unsupported_version(hass: HomeAssistantType, es_aioclient_mock):
+async def test_no_auth_flow_unsupported_version(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker):
     """Test user config flow with minimum fields."""
 
     result = await hass.config_entries.flow.async_init(
@@ -82,7 +99,7 @@ async def test_no_auth_flow_unsupported_version(hass: HomeAssistantType, es_aioc
 
 
 @pytest.mark.asyncio
-async def test_no_auth_flow_with_tls_error(hass: HomeAssistantType, es_aioclient_mock):
+async def test_no_auth_flow_with_tls_error(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker):
     """Test user config flow with config that forces TLS configuration."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
@@ -120,7 +137,7 @@ async def test_no_auth_flow_with_tls_error(hass: HomeAssistantType, es_aioclient
 
 
 @pytest.mark.asyncio
-async def test_flow_fails_es_unavailable(hass: HomeAssistantType, es_aioclient_mock):
+async def test_flow_fails_es_unavailable(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker):
     """Test user config flow fails if connection cannot be established."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
@@ -147,7 +164,7 @@ async def test_flow_fails_es_unavailable(hass: HomeAssistantType, es_aioclient_m
 
 
 @pytest.mark.asyncio
-async def test_flow_fails_unauthorized(hass: HomeAssistantType, es_aioclient_mock):
+async def test_flow_fails_unauthorized(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker):
     """Test user config flow fails if connection cannot be established."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
@@ -173,7 +190,7 @@ async def test_flow_fails_unauthorized(hass: HomeAssistantType, es_aioclient_moc
     assert "data" not in result
 
 @pytest.mark.asyncio
-async def test_basic_auth_flow(hass: HomeAssistantType, es_aioclient_mock):
+async def test_basic_auth_flow(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker):
     """Test user config flow with minimum fields."""
 
     result = await hass.config_entries.flow.async_init(
@@ -215,7 +232,7 @@ async def test_basic_auth_flow(hass: HomeAssistantType, es_aioclient_mock):
     assert "health_sensor_enabled" not in result["data"]
 
 @pytest.mark.asyncio
-async def test_basic_auth_flow_unauthorized(hass: HomeAssistantType, es_aioclient_mock):
+async def test_basic_auth_flow_unauthorized(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker):
     """Test user config flow with minimum fields, with bad credentials."""
 
     result = await hass.config_entries.flow.async_init(
@@ -245,7 +262,7 @@ async def test_basic_auth_flow_unauthorized(hass: HomeAssistantType, es_aioclien
     assert "data" not in result
 
 @pytest.mark.asyncio
-async def test_basic_auth_flow_missing_index_privilege(hass: HomeAssistantType, es_aioclient_mock):
+async def test_basic_auth_flow_missing_index_privilege(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker):
     """Test user config flow with minimum fields, with insufficient index privileges."""
 
     result = await hass.config_entries.flow.async_init(
@@ -279,7 +296,246 @@ async def test_basic_auth_flow_missing_index_privilege(hass: HomeAssistantType, 
     assert "data" not in result
 
 @pytest.mark.asyncio
-async def test_api_key_flow(hass: HomeAssistantType, es_aioclient_mock):
+async def test_reauth_flow_basic(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker):
+    """Test reauth flow with basic credentials."""
+    es_url = "http://test_reauth_flow_basic:9200"
+
+    mock_es_initialization(
+        es_aioclient_mock,
+        url=es_url
+    )
+
+    mock_entry = MockConfigEntry(
+        unique_id="test_reauth_flow_basic",
+        domain=DOMAIN,
+        version=3,
+        data={
+            "url": es_url,
+            "username": "elastic",
+            "password": "changeme"
+        },
+        title="ES Config",
+    )
+
+    entry = await _setup_config_entry(hass, mock_entry)
+
+    # Simulate authorization error (403)
+    es_aioclient_mock.clear_requests()
+    mock_es_initialization(es_aioclient_mock, url=es_url, mock_index_authorization_error=True)
+
+    # Start reauth flow
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": SOURCE_REAUTH, "entry_id": entry.entry_id},
+        data=entry.data,
+    )
+    assert result["type"] == "form"
+    assert result["step_id"] == "reauth_confirm"
+
+    # New creds valid, but privileges still insufficient
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {
+            CONF_USERNAME: "other_user",
+            CONF_PASSWORD: "other_password",
+        },
+    )
+    await hass.async_block_till_done()
+    assert result["type"] == "form"
+    assert result["step_id"] == "reauth_confirm"
+    assert result["errors"] == {"base": "insufficient_privileges"}
+
+    # Simulate authentication error (401)
+    es_aioclient_mock.clear_requests()
+    mock_es_initialization(es_aioclient_mock, url=es_url, mock_authentication_error=True)
+
+    # New creds invalid
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {
+            CONF_USERNAME: "other_user",
+            CONF_PASSWORD: "other_password",
+        },
+    )
+    await hass.async_block_till_done()
+    assert result["type"] == "form"
+    assert result["step_id"] == "reauth_confirm"
+    assert result["errors"] == {"base": "invalid_basic_auth"}
+
+    # Simulate success
+    es_aioclient_mock.clear_requests()
+    mock_es_initialization(es_aioclient_mock, url=es_url)
+
+    # Success
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {
+            CONF_USERNAME: "successful_user",
+            CONF_PASSWORD: "successful_password",
+        },
+    )
+    await hass.async_block_till_done()
+    assert result["type"] == "abort"
+    assert result["reason"] == "reauth_successful"
+    assert entry.data.copy() == {
+        CONF_URL: es_url,
+        CONF_USERNAME: "successful_user",
+        CONF_PASSWORD: "successful_password"
+    }
+
+@pytest.mark.asyncio
+async def test_reauth_flow_api_key(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker):
+    """Test reauth flow with API Key credentials."""
+    es_url = "http://test_reauth_flow_api_key:9200"
+
+    mock_es_initialization(
+        es_aioclient_mock,
+        url=es_url
+    )
+
+    mock_entry = MockConfigEntry(
+        unique_id="test_reauth_flow_basic",
+        domain=DOMAIN,
+        version=3,
+        data={
+            "url": es_url,
+            "api_key": "abc123"
+        },
+        title="ES Config",
+    )
+
+    entry = await _setup_config_entry(hass, mock_entry)
+
+    # Simulate authorization error (403)
+    es_aioclient_mock.clear_requests()
+    mock_es_initialization(es_aioclient_mock, url=es_url, mock_index_authorization_error=True)
+
+    # Start reauth flow
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": SOURCE_REAUTH, "entry_id": entry.entry_id},
+        data=entry.data,
+    )
+    assert result["type"] == "form"
+    assert result["step_id"] == "reauth_confirm"
+
+    # New creds valid, but privileges still insufficient
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {
+            CONF_API_KEY: "plo312"
+        },
+    )
+    await hass.async_block_till_done()
+    assert result["type"] == "form"
+    assert result["step_id"] == "reauth_confirm"
+    assert result["errors"] == {"base": "insufficient_privileges"}
+
+    # Simulate authentication error (401)
+    es_aioclient_mock.clear_requests()
+    mock_es_initialization(es_aioclient_mock, url=es_url, mock_authentication_error=True)
+
+    # New creds invalid
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {
+            CONF_API_KEY: "xyc321",
+        },
+    )
+    await hass.async_block_till_done()
+    assert result["type"] == "form"
+    assert result["step_id"] == "reauth_confirm"
+    assert result["errors"] == {"base": "invalid_api_key"}
+
+    # Simulate success
+    es_aioclient_mock.clear_requests()
+    mock_es_initialization(es_aioclient_mock, url=es_url)
+
+    # Success
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {
+            CONF_API_KEY: "good456",
+        },
+    )
+    await hass.async_block_till_done()
+    assert result["type"] == "abort"
+    assert result["reason"] == "reauth_successful"
+    assert entry.data.copy() == {
+        CONF_URL: es_url,
+        CONF_API_KEY: "good456"
+    }
+
+@pytest.mark.asyncio
+async def test_step_import_already_exist(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker):
+    """Test that errors are shown when duplicates are added."""
+    es_url = "http://test_step_import_already_exist:9200"
+
+    mock_es_initialization(
+        es_aioclient_mock,
+        url=es_url
+    )
+
+    mock_entry = MockConfigEntry(
+        unique_id="test_step_import_already_exist",
+        domain=DOMAIN,
+        version=3,
+        data={
+            "url": es_url,
+            "api_key": "abc123"
+        },
+        title="ES Config",
+    )
+
+    await _setup_config_entry(hass, mock_entry)
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": "import"}, data={
+            "url": "http://other-url:9200",
+            "username": "xyz321",
+            "password": "123"
+        }
+    )
+    assert result["type"] == data_entry_flow.FlowResultType.ABORT
+    assert result["reason"] == "single_instance_allowed"
+
+@pytest.mark.asyncio
+async def test_step_import_update_existing(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker):
+    """Test that yml config is reflected in existing config entry."""
+    es_url = "http://test_step_import_update_existing:9200"
+
+    mock_es_initialization(
+        es_aioclient_mock,
+        url=es_url
+    )
+
+    mock_entry = MockConfigEntry(
+        unique_id="test_step_import_update_existing",
+        domain=DOMAIN,
+        version=3,
+        data={
+            "url": es_url,
+            "username": "original_user",
+            "password": "abc123"
+        },
+        title="ES Config",
+    )
+
+    await _setup_config_entry(hass, mock_entry)
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": "import"}, data={
+            "url": es_url,
+            "username": "new_user",
+            "password": "xyz321"
+        }
+    )
+    assert result["type"] == data_entry_flow.FlowResultType.ABORT
+    assert result["reason"] == "updated_entry"
+
+
+@pytest.mark.asyncio
+async def test_api_key_flow(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker):
     """Test user config flow with minimum fields."""
 
     result = await hass.config_entries.flow.async_init(
@@ -318,7 +574,7 @@ async def test_api_key_flow(hass: HomeAssistantType, es_aioclient_mock):
     assert "health_sensor_enabled" not in result["data"]
 
 @pytest.mark.asyncio
-async def test_api_key_flow_fails_unauthorized(hass: HomeAssistantType, es_aioclient_mock):
+async def test_api_key_flow_fails_unauthorized(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker):
     """Test user config flow fails if connection cannot be established."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
@@ -348,7 +604,7 @@ async def test_api_key_flow_fails_unauthorized(hass: HomeAssistantType, es_aiocl
 
 @pytest.mark.asyncio
 async def test_options_flow(
-    hass: HomeAssistantType, es_aioclient_mock
+    hass: HomeAssistant, es_aioclient_mock
 ) -> None:
     """Test options config flow."""
 
@@ -393,10 +649,10 @@ async def test_options_flow(
     assert options_result["step_id"] == "ilm_options"
 
 
-    # this last step is still trying to use a real connection instead of our mock...
+    # this last step *might* attempt to use a real connection instead of our mock...
 
-    # options_result = await hass.config_entries.options.async_configure(
-    #     options_result["flow_id"], user_input={}
-    # )
+    options_result = await hass.config_entries.options.async_configure(
+        options_result["flow_id"], user_input={}
+    )
 
-    # assert options_result["type"] == data_entry_flow.RESULT_TYPE_CREATE_ENTRY
+    assert options_result["type"] == data_entry_flow.RESULT_TYPE_CREATE_ENTRY

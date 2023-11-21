@@ -44,6 +44,14 @@
                     "verify_ssl": "Verify TLS certificate (recommended)",
                     "ssl_ca_path": "Fully qualified path to custom certificate authority"
                 }
+            },
+            "reauth_confirm": {
+                "title": "Reauthenticate",
+                "data": {
+                    "api_key": "API Key",
+                    "username": "Username",
+                    "password": "Password"
+                }
             }
         }
     },
