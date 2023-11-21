@@ -324,20 +324,23 @@ class DocumentPublisher:
         orig_attributes = dict(state.attributes)
         attributes = {}
         for orig_key, orig_value in orig_attributes.items():
+
+            # Skip any attributes with invalid keys. Elasticsearch cannot index these.
+            # https://github.com/legrego/homeassistant-elasticsearch/issues/96
+            # https://github.com/legrego/homeassistant-elasticsearch/issues/192
+            if not orig_key or not isinstance(orig_key, str):
+                LOGGER.debug(
+                    "Not publishing attribute with unsupported key [%s] from entity [%s].",
+                    orig_key if isinstance(orig_key, str) else f"type:{type(orig_key)}",
+                    state.entity_id,
+                )
+                continue
+
             # ES will attempt to expand any attribute keys which contain a ".",
             # so we replace them with an "_" instead.
             # https://github.com/legrego/homeassistant-elasticsearch/issues/92
             key = str.replace(orig_key, ".", "_")
             value = orig_value
-
-            # Skip any attributes with empty keys. Elasticsearch cannot index these.
-            # https://github.com/legrego/homeassistant-elasticsearch/issues/96
-            if not key:
-                LOGGER.warning(
-                    "Not publishing keyless attribute from entity [%s].",
-                    state.entity_id,
-                )
-                continue
 
             if not isinstance(orig_value, ALLOWED_ATTRIBUTE_TYPES):
                 LOGGER.debug(
