@@ -25,14 +25,17 @@ class PrivilegeCheckResult:
 class ESPrivilegeCheck:
     """Privilege check encapsulation."""
 
-    def __init__(self, es_gateway: ElasticsearchGateway):
+    def __init__(self, es_gateway: ElasticsearchGateway, config: dict = {}):
         """Initialize Privilege Checker."""
         self.es_gateway = es_gateway
+        self.config = config
 
-    async def enforce_privileges(self, config: dict):
+    async def enforce_privileges(self, config: dict = None):
         """Ensure client is configured with properly authorized credentials."""
-        result = await self.check_privileges(config)
+        LOGGER.debug("Starting privilege enforcement")
+        result = await self.check_privileges(config if config else self.config)
         if not result.has_all_requested:
+            LOGGER.debug("Required privileges are missing.")
             raise InsufficientPrivileges()
 
     async def check_privileges(self, config: dict) -> PrivilegeCheckResult:
@@ -48,7 +51,7 @@ class ESPrivilegeCheck:
         required_index_privileges = [{
             "names": [
                 f"{config.get(CONF_INDEX_FORMAT)}*",
-                f"{config.get(CONF_ALIAS)}*",
+                f"{config.get(CONF_ALIAS)}-*",
                 "all-hass-events"
             ],
             "privileges": [
@@ -60,6 +63,7 @@ class ESPrivilegeCheck:
         }]
 
         try:
+            LOGGER.debug("Privilege check starting")
             es_client = self.es_gateway.get_client()
             privilege_response =  await es_client.security.has_privileges(body={
                 "cluster": required_cluster_privileges,

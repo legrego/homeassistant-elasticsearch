@@ -102,7 +102,7 @@ class IndexManager:
                 LOGGER.exception("Error creating index template: %s", err)
 
         alias = await client.indices.get_alias(name=self.index_alias, ignore=[404])
-        alias_exists = alias and alias.get(self.index_alias)
+        alias_exists = alias and not alias.get("error")
         if not alias_exists:
             LOGGER.debug("Creating initial index and alias")
             try:
