@@ -31,8 +31,6 @@ class EntityDetails:
         self._registry_device: device_registry.DeviceRegistry = None
         self._registry_entry: entity_registry.EntityRegistry = None
 
-        self._cache = {}
-
         self._initialized = False
 
     async def async_init(self):
@@ -69,10 +67,6 @@ class EntityDetails:
         if not self._initialized:
             raise ElasticException("EntityDetails has not finished initialization.")
 
-        cached_entry = self._cache.get(entity_id)
-        if cached_entry:
-            return cached_entry
-
         entity: entity_registry.RegistryEntry = self._registry_entry.async_get(entity_id)
 
         if entity is None:
@@ -91,10 +85,5 @@ class EntityDetails:
                 device_area = self._registry_area.async_get_area(device.area_id)
 
         details = FullEntityDetails(entity, entity_area, device, device_area)
-        self._cache[entity_id] = details
         return details
-
-    def reset_cache(self):
-        """Reset the details."""
-        self._cache = {}
 

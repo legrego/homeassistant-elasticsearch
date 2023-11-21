@@ -1,20 +1,16 @@
 """Publishes documents to Elasticsearch."""
 import asyncio
-import math
 import time
 from datetime import datetime
 from queue import Queue
 
 from homeassistant.const import EVENT_HOMEASSISTANT_CLOSE, EVENT_STATE_CHANGED
-from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import state as state_helper
-from homeassistant.helpers.typing import EventType, StateType
-from pytz import utc
+from homeassistant.core import HomeAssistant, State, callback
+from homeassistant.helpers.typing import EventType
 
-from custom_components.elasticsearch.entity_details import EntityDetails
+from custom_components.elasticsearch.es_doc_creator import DocumentCreator
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 from custom_components.elasticsearch.es_index_manager import IndexManager
-from custom_components.elasticsearch.system_info import SystemInfo
 
 from .const import (
     CONF_EXCLUDED_DOMAINS,
@@ -28,10 +24,8 @@ from .const import (
     PUBLISH_MODE_ALL,
     PUBLISH_MODE_STATE_CHANGES,
 )
-from .es_serializer import get_serializer
 from .logger import LOGGER
 
-ALLOWED_ATTRIBUTE_TYPES = tuple | dict | set | list | int | float | bool | str | None
 
 class DocumentPublisher:
     """Publishes documents to Elasticsearch."""
@@ -51,13 +45,6 @@ class DocumentPublisher:
         self._hass: HomeAssistant = hass
 
         self._index_alias: str = index_manager.index_alias
-
-        self._serializer = get_serializer()
-
-        self._static_doc_properties = None
-
-        self._system_info: SystemInfo = SystemInfo(hass)
-        self._entity_details: EntityDetails = EntityDetails(hass)
 
         self._publish_frequency = config.get(CONF_PUBLISH_FREQUENCY)
         self._publish_mode = config.get(CONF_PUBLISH_MODE)
@@ -91,8 +78,8 @@ class DocumentPublisher:
 
         def elastic_event_listener(event: EventType):
             """Listen for new messages on the bus and queue them for send."""
-            state: StateType = event.data.get("new_state")
-            old_state: StateType = event.data.get("old_state")
+            state: State = event.data.get("new_state")
+            old_state: State = event.data.get("old_state")
             if state is None:
                 return
 
@@ -123,7 +110,9 @@ class DocumentPublisher:
             EVENT_HOMEASSISTANT_CLOSE, hass_close_event_listener
         )
 
-        self.publish_queue = Queue()
+        self._document_creator = DocumentCreator(hass, config)
+
+        self.publish_queue = Queue[tuple[State, EventType]]()
         self._last_publish_time = None
 
     async def async_init(self):
@@ -131,41 +120,8 @@ class DocumentPublisher:
         if not self.publish_enabled:
             LOGGER.debug("Aborting async_init: publish is not enabled")
             return
-        config_dict = self._hass.config.as_dict()
-        LOGGER.debug("async_init: getting system info")
-        system_info = await self._system_info.async_get_system_info()
-        LOGGER.debug("async_init: initializing static doc properties")
-        self._static_doc_properties = {
-            "agent.name": config_dict["name"]
-            if "name" in config_dict
-            else "My Home Assistant",
-            "agent.type": "hass",
-            "agent.version": system_info["version"]
-            if "version" in system_info
-            else "UNKNOWN",
-            "ecs.version": "1.0.0",
-            "host.geo.location": {
-                "lat": config_dict["latitude"],
-                "lon": config_dict["longitude"],
-            }
-            if "latitude" in config_dict
-            else None,
-            "host.architecture": system_info["arch"]
-            if "arch" in system_info
-            else "UNKNOWN",
-            "host.os.name": system_info["os_name"]
-            if "os_name" in system_info
-            else "UNKNOWN",
-            "host.hostname": system_info["hostname"]
-            if "hostname" in system_info
-            else "UNKNOWN",
-            "tags": self._tags,
-        }
-        LOGGER.debug(
-            "async_init: static doc properties: %s", str(self._static_doc_properties)
-        )
 
-        await self._entity_details.async_init()
+        await self._document_creator.async_init()
 
         LOGGER.debug("async_init: starting publish timer")
         self._start_publish_timer()
@@ -195,14 +151,14 @@ class DocumentPublisher:
         """Return the approximate queue size."""
         return self.publish_queue.qsize()
 
-    def enqueue_state(self, state: StateType, event: EventType):
+    def enqueue_state(self, state: State, event: EventType):
         """Queue up the provided state change."""
 
         domain = state.domain
         entity_id = state.entity_id
 
         if self._should_publish_entity_state(domain, entity_id):
-            self.publish_queue.put([state, event])
+            self.publish_queue.put((state, event))
 
     async def async_do_publish(self):
         """Publish all queued documents to the Elasticsearch cluster."""
@@ -218,10 +174,9 @@ class DocumentPublisher:
         actions = []
         entity_counts = {}
         self._last_publish_time = datetime.now()
-        self._entity_details.reset_cache()
 
         while self.publish_active and not self.publish_queue.empty():
-            [state, event] = self.publish_queue.get()
+            (state, event) = self.publish_queue.get()
 
             key = state.entity_id
 
@@ -307,131 +262,15 @@ class DocumentPublisher:
         # At this point, neither the domain nor entity belong to an explicit include/exclude list.
         return True
 
-    def _state_to_bulk_action(self, state: StateType, time):
+    def _state_to_bulk_action(self, state: State, time: datetime):
         """Create a bulk action from the given state object."""
-        try:
-            _state = state_helper.state_as_number(state)
-            if not is_valid_number(_state):
-                _state = state.state
-        except ValueError:
-            _state = state.state
 
-        if time.tzinfo is None:
-            time_tz = time.astimezone(utc)
-        else:
-            time_tz = time
-
-        orig_attributes = dict(state.attributes)
-        attributes = {}
-        for orig_key, orig_value in orig_attributes.items():
-
-            # Skip any attributes with invalid keys. Elasticsearch cannot index these.
-            # https://github.com/legrego/homeassistant-elasticsearch/issues/96
-            # https://github.com/legrego/homeassistant-elasticsearch/issues/192
-            if not orig_key or not isinstance(orig_key, str):
-                LOGGER.debug(
-                    "Not publishing attribute with unsupported key [%s] from entity [%s].",
-                    orig_key if isinstance(orig_key, str) else f"type:{type(orig_key)}",
-                    state.entity_id,
-                )
-                continue
-
-            # ES will attempt to expand any attribute keys which contain a ".",
-            # so we replace them with an "_" instead.
-            # https://github.com/legrego/homeassistant-elasticsearch/issues/92
-            key = str.replace(orig_key, ".", "_")
-            value = orig_value
-
-            if not isinstance(orig_value, ALLOWED_ATTRIBUTE_TYPES):
-                LOGGER.debug(
-                    "Not publishing attribute [%s] of disallowed type [%s] from entity [%s].",
-                    key, type(orig_value), state.entity_id
-                )
-                continue
-
-            # coerce set to list. ES does not handle sets natively
-            if isinstance(orig_value, set):
-                value = list(orig_value)
-
-            # if the list/tuple contains simple strings, numbers, or booleans, then we should
-            # index the contents as an actual list. Otherwise, we need to serialize
-            # the contents so that we can respect the index mapping
-            # (Arrays of objects cannot be indexed as-is)
-            if value and isinstance(value, list | tuple):
-                should_serialize = isinstance(value[0], tuple | dict | set | list)
-            else:
-                should_serialize = isinstance(value, dict)
-
-            attributes[key] = (
-                self._serializer.dumps(value) if should_serialize else value
-            )
-
-        device = {}
-        entity = {
-            "id": state.entity_id,
-            "domain": state.domain,
-            "attributes": attributes,
-            "device": device,
-            "value": _state
-        }
-        document_body = {
-            "hass.domain": state.domain,
-            "hass.object_id": state.object_id,
-            "hass.object_id_lower": state.object_id.lower(),
-            "hass.entity_id": state.entity_id,
-            "hass.entity_id_lower": state.entity_id.lower(),
-            "hass.attributes": attributes,
-            "hass.value": _state,
-            "@timestamp": time_tz,
-            # new values below. Yes this is duplicitive in the short term.
-            "hass.entity": entity
-        }
-
-        deets = self._entity_details.async_get(state.entity_id)
-        if deets is not None:
-            if deets.entity.platform:
-                entity["platform"] = deets.entity.platform
-            if deets.entity.name:
-                entity["name"] = deets.entity.name
-
-            if deets.entity_area:
-                entity["area"] = {
-                    "id": deets.entity_area.id,
-                    "name": deets.entity_area.name
-                }
-
-            if deets.device:
-                device["id"] = deets.device.id
-                device["name"] = deets.device.name
-
-            if deets.device_area:
-                device["area"] = {
-                    "id": deets.device_area.id,
-                    "name": deets.device_area.name
-                }
-
-
-        if self._static_doc_properties is None:
-            LOGGER.warning(
-                "Event for entity [%s] is missing static doc properties. This is a bug.",
-                state.entity_id,
-            )
-        else:
-            document_body.update(self._static_doc_properties)
-
-        if (
-            "latitude" in document_body["hass.attributes"]
-            and "longitude" in document_body["hass.attributes"]
-        ):
-            document_body["hass.geo.location"] = {
-                "lat": document_body["hass.attributes"]["latitude"],
-                "lon": document_body["hass.attributes"]["longitude"],
-            }
+        document = self._document_creator.state_to_document(state, time)
 
         return {
             "_op_type": "index",
             "_index": self._index_alias,
-            "_source": document_body,
+            "_source": document,
             # If we aren't writing to an alias, that means the
             # Index Template likely wasn't created properly, and we should bail.
             "require_alias": True,
@@ -477,11 +316,3 @@ class DocumentPublisher:
             finally:
                 if self.publish_active:
                     await asyncio.sleep(1)
-
-
-
-def is_valid_number(number):
-    """Determine if the passed number is valid for Elasticsearch."""
-    is_infinity = math.isinf(number)
-    is_nan = number != number  # pylint: disable=comparison-with-itself
-    return not is_infinity and not is_nan
