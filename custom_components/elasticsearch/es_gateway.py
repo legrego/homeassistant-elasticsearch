@@ -130,14 +130,6 @@ class ElasticsearchGateway:
                 if self._connection_monitor_active:
                     await asyncio.sleep(1)
 
-    async def async_test_connection(self):
-        """Perform basic connection test."""
-        try:
-            await self.es_version.async_refresh()
-            return True
-        except Exception:
-            return False
-
     def _create_es_client(self):
         """Construct an instance of the Elasticsearch client."""
         from elasticsearch7._async.client import AsyncElasticsearch
