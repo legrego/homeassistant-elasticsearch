@@ -100,6 +100,8 @@ async def test_publish_state_change(hass, es_aioclient_mock: AiohttpClientMocker
 
     assert diff(request.data, _build_expected_payload(events)) == {}
 
+    await gateway.async_stop_gateway()
+
 @pytest.mark.asyncio
 async def test_entity_detail_publishing(hass, es_aioclient_mock: AiohttpClientMocker, mock_config_entry: mock_config_entry):
     """Test entity details are captured correctly."""
@@ -168,7 +170,7 @@ async def test_entity_detail_publishing(hass, es_aioclient_mock: AiohttpClientMo
     payload = bulk_requests[0].data
 
     assert diff(_build_expected_payload(events, include_entity_details=True, device_id=device.id, entity_name=entity_name), payload) == {}
-
+    await gateway.async_stop_gateway()
 
 @pytest.mark.asyncio
 async def test_attribute_publishing(hass, es_aioclient_mock: AiohttpClientMocker):
@@ -259,6 +261,7 @@ async def test_attribute_publishing(hass, es_aioclient_mock: AiohttpClientMocker
     }]
 
     assert diff(request.data, _build_expected_payload(events)) == {}
+    await gateway.async_stop_gateway()
 
 @pytest.mark.asyncio
 async def test_include_exclude_publishing_mode_all(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker):
@@ -374,6 +377,7 @@ async def test_include_exclude_publishing_mode_all(hass: HomeAssistant, es_aiocl
     }]
 
     assert diff(request.data, _build_expected_payload(events)) == {}
+    await gateway.async_stop_gateway()
 
 @pytest.mark.asyncio
 async def test_include_exclude_publishing_mode_any(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker):
@@ -462,6 +466,7 @@ async def test_include_exclude_publishing_mode_any(hass: HomeAssistant, es_aiocl
     }]
 
     assert diff(request.data, _build_expected_payload(events)) == {}
+    await gateway.async_stop_gateway()
 
 
 @pytest.mark.asyncio
@@ -549,6 +554,7 @@ async def test_publish_modes(hass: HomeAssistant, es_aioclient_mock: AiohttpClie
     payload = bulk_requests[0].data
 
     assert diff(_build_expected_payload(events), payload) == {}
+    await gateway.async_stop_gateway()
 
 def _build_expected_payload(events: list, include_entity_details = False, device_id = None, entity_name = None):
     def event_to_payload(event):

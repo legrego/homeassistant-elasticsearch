@@ -453,6 +453,7 @@ class DocumentPublisher:
 
     async def _publish_queue_timer(self):
         """Publish queue timer."""
+        from elasticsearch7 import TransportError
         LOGGER.debug(
             "Starting publish timer: executes every %i seconds.",
             self._publish_frequency,
@@ -461,17 +462,22 @@ class DocumentPublisher:
         while self.publish_active:
             try:
                 can_publish = next_publish <= time.monotonic()
-                LOGGER.debug("Can Publish: %s", can_publish)
-                if can_publish and self._has_entries_to_publish():
+                if can_publish and not self._gateway.active_connection_error and self._has_entries_to_publish():
                     try:
                         await self.async_do_publish()
                     finally:
                         next_publish = time.monotonic() + self._publish_frequency
+            except TransportError as transport_error:
+                # Do not spam the logs with connection errors if we already know there is a problem.
+                if not self._gateway.active_connection_error:
+                    LOGGER.exception("Connection error during publish queue handling. Publishing will be paused until connection is fixed. %s", transport_error)
+                    self._gateway.notify_of_connection_error()
             except Exception as err:
                 LOGGER.exception("Error during publish queue handling %s", err)
             finally:
                 if self.publish_active:
                     await asyncio.sleep(1)
+
 
 
 def is_valid_number(number):
