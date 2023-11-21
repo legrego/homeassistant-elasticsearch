@@ -458,7 +458,6 @@ class DocumentPublisher:
         while self.publish_active:
             try:
                 can_publish = next_publish <= time.monotonic()
-                LOGGER.debug("Can Publish: %s", can_publish)
                 if can_publish and self._has_entries_to_publish():
                     try:
                         await self.async_do_publish()
