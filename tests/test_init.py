@@ -1,7 +1,7 @@
 """Tests for Elastic init."""
 import pytest
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
-from homeassistant.config_entries import ConfigEntryState
+from homeassistant.config_entries import SOURCE_REAUTH, ConfigEntryState
 from homeassistant.const import CONF_ALIAS, CONF_URL
 from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
@@ -177,9 +177,9 @@ async def test_unsupported_version(hass: HomeAssistant, es_aioclient_mock: Aioht
     assert entry.reason == "Unsupported Elasticsearch version detected"
 
 @pytest.mark.asyncio
-@pytest.mark.skip("TODO: Implement re-auth flow")
-async def test_authentication_error(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker) -> None:
-    """Test component setup with an unsupported version."""
+async def test_reauth_setup_entry(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker) -> None:
+    """Test reauth flow triggered by setup entry."""
+
     es_url = "http://authentication-error:9200"
 
     mock_es_initialization(es_aioclient_mock, url=es_url, mock_authentication_error=True)
@@ -198,6 +198,17 @@ async def test_authentication_error(hass: HomeAssistant, es_aioclient_mock: Aioh
 
     assert entry.state == ConfigEntryState.SETUP_ERROR
     assert entry.reason == "Missing or invalid credentials"
+
+    flows = hass.config_entries.flow.async_progress()
+    assert len(flows) == 1
+
+    flow = flows[0]
+    assert flow.get("step_id") == "reauth_confirm"
+    assert flow.get("handler") == ELASTIC_DOMAIN
+
+    assert "context" in flow
+    assert flow["context"].get("source") == SOURCE_REAUTH
+    assert flow["context"].get("entry_id") == entry.entry_id
 
 @pytest.mark.asyncio
 async def test_connection_error(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker) -> None:

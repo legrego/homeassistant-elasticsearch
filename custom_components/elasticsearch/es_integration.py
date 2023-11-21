@@ -37,6 +37,11 @@ class ElasticIntegration:
             await self.publisher.async_init()
         except Exception as err:
             raise convert_es_error("Failed to initialize integration", err) from err
+        finally:
+            try:
+                await self.gateway.async_stop_gateway()
+            except Exception as shutdown_err:
+                LOGGER.error("Error shutting down gateway following failed initialization", shutdown_err)
 
 
     async def async_shutdown(self, config_entry: ConfigEntry): # pylint disable=unused-argument
