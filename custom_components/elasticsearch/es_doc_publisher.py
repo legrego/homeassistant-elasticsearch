@@ -7,6 +7,7 @@ from queue import Queue
 from homeassistant.const import EVENT_HOMEASSISTANT_CLOSE, EVENT_STATE_CHANGED
 from homeassistant.core import HomeAssistant, State, callback
 from homeassistant.helpers.typing import EventType
+from homeassistant.config_entries import ConfigEntry
 
 from custom_components.elasticsearch.es_doc_creator import DocumentCreator
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
@@ -30,7 +31,7 @@ from .logger import LOGGER
 class DocumentPublisher:
     """Publishes documents to Elasticsearch."""
 
-    def __init__(self, config, gateway: ElasticsearchGateway, index_manager: IndexManager, hass: HomeAssistant):
+    def __init__(self, config, gateway: ElasticsearchGateway, index_manager: IndexManager, hass: HomeAssistant, config_entry: ConfigEntry):
         """Initialize the publisher."""
 
         self.publish_enabled = config.get(CONF_PUBLISH_ENABLED)
@@ -40,6 +41,8 @@ class DocumentPublisher:
         if not self.publish_enabled:
             LOGGER.debug("Not initializing document publisher")
             return
+
+        self._config_entry = config_entry
 
         self._gateway: ElasticsearchGateway = gateway
         self._hass: HomeAssistant = hass
@@ -278,7 +281,10 @@ class DocumentPublisher:
 
     def _start_publish_timer(self):
         """Initialize the publish timer."""
-        self._publish_timer_ref = asyncio.ensure_future(self._publish_queue_timer())
+        if self._config_entry:
+            self._publish_timer_ref = self._config_entry.async_create_background_task(self._hass, self._publish_queue_timer(), 'publish_queue_timer')
+        else:
+            self._publish_timer_ref = asyncio.ensure_future(self._publish_queue_timer())
         self.publish_active = True
 
 

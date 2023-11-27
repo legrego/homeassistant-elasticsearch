@@ -11,6 +11,11 @@ from homeassistant.const import (
     CONF_VERIFY_SSL,
 )
 
+from homeassistant.core import HomeAssistant
+from homeassistant.config_entries import ConfigEntry
+
+from custom_components.elasticsearch.utils import get_merged_config
+
 from .const import CONF_SSL_CA_PATH
 from .errors import (
     UnsupportedVersion,
@@ -24,8 +29,11 @@ from .logger import LOGGER
 class ElasticsearchGateway:
     """Encapsulates Elasticsearch operations."""
 
-    def __init__(self, config):
+    def __init__(self, raw_config = None, config_entry: ConfigEntry = None, hass: HomeAssistant = None):
         """Initialize the gateway."""
+        config = raw_config if raw_config else get_merged_config(config_entry)
+        self._hass = hass
+        self._config_entry = config_entry
         self._url = config.get(CONF_URL)
         self._timeout = config.get(CONF_TIMEOUT)
         self._username = config.get(CONF_USERNAME)
@@ -60,7 +68,8 @@ class ElasticsearchGateway:
             )
             raise UnsupportedVersion()
 
-        self._start_connection_monitor_task()
+        if self._hass and self._config_entry:
+            self._start_connection_monitor_task()
 
         LOGGER.debug("Gateway initialized")
 
@@ -96,7 +105,8 @@ class ElasticsearchGateway:
     def _start_connection_monitor_task(self):
         """Initialize connection monitor task."""
         LOGGER.debug("Starting connection monitor")
-        self._connection_monitor_ref = asyncio.ensure_future(self._connection_monitor_task())
+        self._config_entry.async_create_background_task(self._hass, self._connection_monitor_task(), 'connection_monitor')
+        # self._connection_monitor_ref = asyncio.ensure_future(self._connection_monitor_task())
         self._connection_monitor_active = True
 
     async def _connection_monitor_task(self):

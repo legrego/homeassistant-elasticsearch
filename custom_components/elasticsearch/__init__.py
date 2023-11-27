@@ -195,7 +195,7 @@ async def _async_init_integration(hass: HomeAssistantType, config_entry: ConfigE
         raise ConfigEntryAuthFailed from err
     except Exception as err:  # pylint disable=broad-exception-caught
         msg = "Exception during component initialization"
-        LOGGER.error(msg)
+        LOGGER.error(msg + ": %s", err)
         raise ConfigEntryNotReady(msg) from err
 
     hass.data[DOMAIN] = integration
