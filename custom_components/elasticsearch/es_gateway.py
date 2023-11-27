@@ -2,6 +2,7 @@
 import asyncio
 import time
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONF_API_KEY,
     CONF_PASSWORD,
@@ -10,9 +11,7 @@ from homeassistant.const import (
     CONF_USERNAME,
     CONF_VERIFY_SSL,
 )
-
 from homeassistant.core import HomeAssistant
-from homeassistant.config_entries import ConfigEntry
 
 from custom_components.elasticsearch.utils import get_merged_config
 

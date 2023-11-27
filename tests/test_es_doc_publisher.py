@@ -16,8 +16,8 @@ from homeassistant.helpers import area_registry, device_registry, entity_registr
 from homeassistant.setup import async_setup_component
 from homeassistant.util.dt import UTC
 from jsondiff import diff
-from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
 from custom_components.elasticsearch.config_flow import build_full_config
 from custom_components.elasticsearch.const import (

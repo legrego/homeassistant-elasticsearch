@@ -17,7 +17,6 @@ from custom_components.elasticsearch.entity_details import (
 async def test_missing_entity(hass: HomeAssistantType):
     """Verify missing entity returns None."""
     instance = EntityDetails(hass)
-    await instance.async_init()
 
     assert instance.async_get("unknown_entity_id") is None
 
@@ -33,7 +32,6 @@ async def test_entity_without_device(hass: HomeAssistantType):
     assert int(state.state) == 0
 
     instance = EntityDetails(hass)
-    await instance.async_init()
 
     deets = instance.async_get(entity_id)
     assert isinstance(deets, FullEntityDetails) is True
@@ -58,7 +56,6 @@ async def test_entity_with_area(hass: HomeAssistantType):
     assert int(state.state) == 0
 
     instance = EntityDetails(hass)
-    await instance.async_init()
 
     deets = instance.async_get(entity_id)
     assert isinstance(deets, FullEntityDetails) is True
@@ -99,7 +96,6 @@ async def test_entity_with_device(hass: HomeAssistantType, mock_config_entry: Mo
     assert int(state.state) == 0
 
     instance = EntityDetails(hass)
-    await instance.async_init()
 
     deets = instance.async_get(entity_id)
     assert isinstance(deets, FullEntityDetails) is True
