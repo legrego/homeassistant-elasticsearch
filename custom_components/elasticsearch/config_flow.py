@@ -334,7 +334,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         errors = {}
 
         try:
-            gateway = ElasticsearchGateway(self.config)
+            gateway = ElasticsearchGateway(raw_config=self.config)
             await gateway.async_init()
 
             privilege_check = ESPrivilegeCheck(gateway)

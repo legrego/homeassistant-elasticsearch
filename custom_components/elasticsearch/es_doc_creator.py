@@ -29,8 +29,6 @@ class DocumentCreator:
     async def async_init(self) -> None:
         """Async initialization."""
 
-        await self._entity_details.async_init()
-
         system_info = await self._system_info.async_get_system_info()
         LOGGER.debug("async_init: initializing static doc properties")
         hass_config = self._hass.config

@@ -21,27 +21,30 @@ class ElasticIntegration:
         """Integration initialization."""
         conf = get_merged_config(config_entry)
         self.hass = hass
-        self.gateway = ElasticsearchGateway(conf)
+        self.gateway = ElasticsearchGateway(config_entry=config_entry, hass=hass)
         self.privilege_check = ESPrivilegeCheck(self.gateway, config=conf)
         self.index_manager = IndexManager(hass, conf, self.gateway)
-        self.publisher = DocumentPublisher(conf, self.gateway, self.index_manager, hass)
+        self.publisher = DocumentPublisher(conf, self.gateway, self.index_manager, hass, config_entry=config_entry)
         self.config_entry = config_entry
 
     # TODO investivage hepers.event.async_call_later()
     async def async_init(self):
         """Async init procedure."""
+
         try:
             await self.gateway.async_init()
             await self.privilege_check.enforce_privileges()
             await self.index_manager.async_setup()
             await self.publisher.async_init()
         except Exception as err:
-            raise convert_es_error("Failed to initialize integration", err) from err
-        finally:
             try:
+                self.publisher.stop_publisher()
                 await self.gateway.async_stop_gateway()
             except Exception as shutdown_err:
                 LOGGER.error("Error shutting down gateway following failed initialization", shutdown_err)
+
+            raise convert_es_error("Failed to initialize integration", err) from err
+
 
 
     async def async_shutdown(self, config_entry: ConfigEntry): # pylint disable=unused-argument

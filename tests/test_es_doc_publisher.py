@@ -16,6 +16,7 @@ from homeassistant.helpers import area_registry, device_registry, entity_registr
 from homeassistant.setup import async_setup_component
 from homeassistant.util.dt import UTC
 from jsondiff import diff
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
 from custom_components.elasticsearch.config_flow import build_full_config
@@ -25,6 +26,7 @@ from custom_components.elasticsearch.const import (
     CONF_INCLUDED_DOMAINS,
     CONF_INCLUDED_ENTITIES,
     CONF_PUBLISH_MODE,
+    DOMAIN,
     PUBLISH_MODE_ALL,
     PUBLISH_MODE_ANY_CHANGES,
     PUBLISH_MODE_STATE_CHANGES,
@@ -51,27 +53,52 @@ def skip_system_info():
     with mock.patch("custom_components.elasticsearch.system_info.SystemInfo.async_get_system_info", side_effect=get_system_info):
         yield
 
+async def _setup_config_entry(hass: HomeAssistant, mock_entry: mock_config_entry):
+    mock_entry.add_to_hass(hass)
+    assert await async_setup_component(hass, DOMAIN, {}) is True
+    await hass.async_block_till_done()
+
+    config_entries = hass.config_entries.async_entries(DOMAIN)
+    assert len(config_entries) == 1
+    entry = config_entries[0]
+
+    return entry
+
 @pytest.mark.asyncio
-async def test_publish_state_change(hass, es_aioclient_mock: AiohttpClientMocker):
+async def test_publish_state_change(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker):
     """Test entity change is published."""
 
     counter_config = {counter.DOMAIN: {"test_1": {}}}
     assert await async_setup_component(hass, counter.DOMAIN, counter_config)
     await hass.async_block_till_done()
 
+    es_url = "http://localhost:9200"
+
     mock_es_initialization(
         es_aioclient_mock,
-        "http://localhost:9200"
+        es_url
     )
 
     config = build_full_config({
         "url": "http://localhost:9200"
     })
 
+    mock_entry = MockConfigEntry(
+        unique_id="test_publish_state_change",
+        domain=DOMAIN,
+        version=3,
+        data={
+            "url": es_url
+        },
+        title="ES Config",
+    )
+
+    entry = await _setup_config_entry(hass, mock_entry)
+
 
     gateway = ElasticsearchGateway(config)
     index_manager = IndexManager(hass, config, gateway)
-    publisher = DocumentPublisher(config, gateway, index_manager, hass)
+    publisher = DocumentPublisher(config, gateway, index_manager, hass, config_entry=entry)
 
     await gateway.async_init()
     await publisher.async_init()
@@ -132,19 +159,32 @@ async def test_entity_detail_publishing(hass, es_aioclient_mock: AiohttpClientMo
     assert await async_setup_component(hass, counter.DOMAIN, counter_config)
     await hass.async_block_till_done()
 
+    es_url = "http://localhost:9200"
+
     mock_es_initialization(
         es_aioclient_mock,
-        "http://localhost:9200"
+        es_url
     )
 
     config = build_full_config({
-        "url": "http://localhost:9200"
+        "url": es_url
     })
 
+    mock_entry = MockConfigEntry(
+        unique_id="test_entity_detail_publishing",
+        domain=DOMAIN,
+        version=3,
+        data={
+            "url": es_url
+        },
+        title="ES Config",
+    )
+
+    entry = await _setup_config_entry(hass, mock_entry)
 
     gateway = ElasticsearchGateway(config)
     index_manager = IndexManager(hass, config, gateway)
-    publisher = DocumentPublisher(config, gateway, index_manager, hass)
+    publisher = DocumentPublisher(config, gateway, index_manager, hass, config_entry=entry)
 
     await gateway.async_init()
     await publisher.async_init()
@@ -180,19 +220,33 @@ async def test_attribute_publishing(hass, es_aioclient_mock: AiohttpClientMocker
     assert await async_setup_component(hass, counter.DOMAIN, counter_config)
     await hass.async_block_till_done()
 
+    es_url = "http://localhost:9200"
+
     mock_es_initialization(
         es_aioclient_mock,
-        "http://localhost:9200"
+        es_url
     )
 
     config = build_full_config({
-        "url": "http://localhost:9200"
+        "url": es_url
     })
+
+    mock_entry = MockConfigEntry(
+        unique_id="test_entity_detail_publishing",
+        domain=DOMAIN,
+        version=3,
+        data={
+            "url": es_url
+        },
+        title="ES Config",
+    )
+
+    entry = await _setup_config_entry(hass, mock_entry)
 
 
     gateway = ElasticsearchGateway(config)
     index_manager = IndexManager(hass, config, gateway)
-    publisher = DocumentPublisher(config, gateway, index_manager, hass)
+    publisher = DocumentPublisher(config, gateway, index_manager, hass, config_entry=entry)
 
     await gateway.async_init()
     await publisher.async_init()
@@ -280,25 +334,40 @@ async def test_include_exclude_publishing_mode_all(hass: HomeAssistant, es_aiocl
     assert await async_setup_component(hass, input_text.DOMAIN, input_text_config)
     await hass.async_block_till_done()
 
+    es_url = "http://localhost:9200"
+
     mock_es_initialization(
         es_aioclient_mock,
-        "http://localhost:9200"
+        es_url
     )
 
     config = build_full_config({
-        "url": "http://localhost:9200",
+        "url": es_url,
         CONF_PUBLISH_MODE: PUBLISH_MODE_ALL,
         CONF_INCLUDED_ENTITIES: ["counter.test_1"],
         CONF_INCLUDED_DOMAINS: [input_boolean.DOMAIN, input_button.DOMAIN],
         CONF_EXCLUDED_ENTITIES: ["input_boolean.test_2"],
         CONF_EXCLUDED_DOMAINS: [counter.DOMAIN]
     })
+
+    mock_entry = MockConfigEntry(
+        unique_id="test_entity_detail_publishing",
+        domain=DOMAIN,
+        version=3,
+        data={
+            "url": es_url
+        },
+        title="ES Config",
+    )
+
+    entry = await _setup_config_entry(hass, mock_entry)
+
     # input_text is intentionally excluded from this configuration.
     # It should still be included when publish_mode == PUBLISH_MODE_ALL
 
     gateway = ElasticsearchGateway(config)
     index_manager = IndexManager(hass, config, gateway)
-    publisher = DocumentPublisher(config, gateway, index_manager, hass)
+    publisher = DocumentPublisher(config, gateway, index_manager, hass, config_entry=entry)
 
     await gateway.async_init()
     await publisher.async_init()
@@ -396,25 +465,40 @@ async def test_include_exclude_publishing_mode_any(hass: HomeAssistant, es_aiocl
     assert await async_setup_component(hass, input_text.DOMAIN, input_text_config)
     await hass.async_block_till_done()
 
+    es_url = "http://localhost:9200"
+
     mock_es_initialization(
         es_aioclient_mock,
-        "http://localhost:9200"
+        es_url
     )
 
     config = build_full_config({
-        "url": "http://localhost:9200",
+        "url": es_url,
         CONF_PUBLISH_MODE: PUBLISH_MODE_ANY_CHANGES,
         CONF_INCLUDED_ENTITIES: ["counter.test_1"],
         CONF_INCLUDED_DOMAINS: [input_boolean.DOMAIN, input_button.DOMAIN],
         CONF_EXCLUDED_ENTITIES: ["input_boolean.test_2"],
         CONF_EXCLUDED_DOMAINS: [counter.DOMAIN]
     })
+
+    mock_entry = MockConfigEntry(
+        unique_id="test_entity_detail_publishing",
+        domain=DOMAIN,
+        version=3,
+        data={
+            "url": es_url
+        },
+        title="ES Config",
+    )
+
+    entry = await _setup_config_entry(hass, mock_entry)
+
     # input_text is intentionally excluded from this configuration.
     # It should still be included when publish_mode == PUBLISH_MODE_ALL
 
     gateway = ElasticsearchGateway(config)
     index_manager = IndexManager(hass, config, gateway)
-    publisher = DocumentPublisher(config, gateway, index_manager, hass)
+    publisher = DocumentPublisher(config, gateway, index_manager, hass, config_entry=entry)
 
     await gateway.async_init()
     await publisher.async_init()
@@ -482,19 +566,33 @@ async def test_publish_modes(hass: HomeAssistant, es_aioclient_mock: AiohttpClie
     hass.states.async_set("counter.test_2", "2")
     await hass.async_block_till_done()
 
+    es_url = "http://localhost:9200"
+
     mock_es_initialization(
         es_aioclient_mock,
-        "http://localhost:9200"
+        es_url
     )
 
     config = build_full_config({
-        "url": "http://localhost:9200",
+        "url": es_url,
         CONF_PUBLISH_MODE: publish_mode
     })
 
+    mock_entry = MockConfigEntry(
+        unique_id="test_entity_detail_publishing",
+        domain=DOMAIN,
+        version=3,
+        data={
+            "url": es_url
+        },
+        title="ES Config",
+    )
+
+    entry = await _setup_config_entry(hass, mock_entry)
+
     gateway = ElasticsearchGateway(config)
     index_manager = IndexManager(hass, config, gateway)
-    publisher = DocumentPublisher(config, gateway, index_manager, hass)
+    publisher = DocumentPublisher(config, gateway, index_manager, hass, config_entry=entry)
 
     await gateway.async_init()
     await publisher.async_init()
