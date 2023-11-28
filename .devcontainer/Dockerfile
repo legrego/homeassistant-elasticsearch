@@ -8,6 +8,9 @@ RUN chmod g+rw /var/lib/elasticsearch
 RUN chmod g+rw /var/log/elasticsearch
 RUN usermod -G elasticsearch -a vscode
 
+# Install Poetry for dependency management
+RUN pip install poetry~=1.7
+
 # Install peek utility
 RUN pip install es-peek
 RUN mkdir /home/vscode/.config/peek

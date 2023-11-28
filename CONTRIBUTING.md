@@ -51,6 +51,44 @@ Use the configured linter to check your code, and make sure it follows the proje
 Visual Studio Code is the recommended code editor for this project.
 This project includes a [devcontainer](./.devcontainer) configuration for an easy to use and consistent development environment. With this container you will have a stand alone Home Assistant instance running and already configured with the included [`configuration.yaml`](./config/configuration.yaml) file.
 
+### Dependency management
+Dependencies are managed via [Poetry](https://python-poetry.org). This will be managed for you automatically if using the dev container. If you wish to run outside of a dev container, you will need to install your dependencies manually:
+
+```sh
+pip install poetry~=1.7
+poetry install
+```
+
+### Running tests
+Use `./scripts/test` to invoke the test runner. You must be within the virtual environment where project dependencies are installed:
+
+```sh
+poetry run ./scripts/test
+```
+
+Alternatively:
+
+```sh
+poetry shell
+# you now have a shell within the virtual env
+./scripts/test
+```
+
+### Linting
+Use `./scripts/lint` to invoke the project linter. You must be within the virtual environment where project dependencies are installed:
+
+```sh
+poetry run ./scripts/lint
+```
+
+Alternatively:
+
+```sh
+poetry shell
+# you now have a shell within the virtual env
+./scripts/lint
+```
+
 ## License
 
 By contributing, you agree that your contributions will be licensed under its MIT License.
