@@ -4,12 +4,17 @@ DOMAIN = "elasticsearch"
 
 CONF_PUBLISH_ENABLED = "publish_enabled"
 CONF_INDEX_FORMAT = "index_format"
+CONF_INDEX_FORMAT = "index_format"
 CONF_PUBLISH_FREQUENCY = "publish_frequency"
 CONF_EXCLUDED_DOMAINS = "excluded_domains"
 CONF_EXCLUDED_ENTITIES = "excluded_entities"
 CONF_PUBLISH_MODE = "publish_mode"
 CONF_INCLUDED_DOMAINS = "included_domains"
 CONF_INCLUDED_ENTITIES = "included_entities"
+
+CONF_DATASTREAM_TYPE = "datastream_type"
+CONF_DATASTREAM_NAME = "datastream_name"
+CONF_DATASTREAM_NAMESPACE = "datastream_namespace"
 
 CONF_ILM_ENABLED = "ilm_enabled"
 CONF_ILM_POLICY_NAME = "ilm_policy_name"
