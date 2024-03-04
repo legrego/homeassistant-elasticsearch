@@ -31,6 +31,7 @@ from .const import (
     CONF_INCLUDED_DOMAINS,
     CONF_INCLUDED_ENTITIES,
     CONF_INDEX_FORMAT,
+    CONF_INDEX_MODE,
     CONF_DATASTREAM_TYPE,
     CONF_DATASTREAM_NAME,
     CONF_DATASTREAM_NAMESPACE,
@@ -72,6 +73,7 @@ DEFAULT_ILM_ENABLED = True
 DEFAULT_ILM_POLICY_NAME = "home-assistant"
 DEFAULT_ILM_MAX_SIZE = "30gb"
 DEFAULT_ILM_DELETE_AFTER = "365d"
+DEFAULT_INDEX_MODE = "datastream"
 
 def build_full_config(user_input=None):
     """Build the entire config validation schema."""
@@ -103,6 +105,9 @@ def build_full_config(user_input=None):
         CONF_EXCLUDED_ENTITIES: user_input.get(CONF_EXCLUDED_ENTITIES, []),
         CONF_INCLUDED_DOMAINS: user_input.get(CONF_INCLUDED_DOMAINS, []),
         CONF_INCLUDED_ENTITIES: user_input.get(CONF_INCLUDED_ENTITIES, []),
+
+        CONF_INDEX_MODE = user_input.get(CONF_INDEX_MODE, DEFAULT_INDEX_MODE),
+
         CONF_ILM_ENABLED: user_input.get(CONF_ILM_ENABLED, DEFAULT_ILM_ENABLED),
         CONF_ILM_POLICY_NAME: user_input.get(
             CONF_ILM_POLICY_NAME, DEFAULT_ILM_POLICY_NAME

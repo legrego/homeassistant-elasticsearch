@@ -47,8 +47,10 @@ class DocumentPublisher:
         self._gateway: ElasticsearchGateway = gateway
         self._hass: HomeAssistant = hass
 
-        self._index_alias: str = index_manager.index_alias
+        self._destination_type: str = index_manager.index_mode
 
+        self._index_alias: str = index_manager.index_alias
+        self._datastream: str = index_manager.datastream_type + "-" + index_manager.datastream_name + "-" + index_manager.datastream_namespace
         self._publish_frequency = config.get(CONF_PUBLISH_FREQUENCY)
         self._publish_mode = config.get(CONF_PUBLISH_MODE)
         self._publish_timer_ref = None
@@ -270,6 +272,17 @@ class DocumentPublisher:
 
         document = self._document_creator.state_to_document(state, time)
 
+        # Write to an index or datastream depending on mode
+        if self._destination_type == "index":
+            return self._create_index_bulk_action(state, time)
+        elif self._destination_type == "datastream":
+            return self._create_datastream_bulk_action(state, time)
+
+    def _state_to_index_bulk_action(self, state: State, time: datetime):
+        """Create a bulk action from the given state object."""
+
+        document = self._document_creator.state_to_document(state, time)
+
         return {
             "_op_type": "index",
             "_index": self._index_alias,
@@ -277,6 +290,17 @@ class DocumentPublisher:
             # If we aren't writing to an alias, that means the
             # Index Template likely wasn't created properly, and we should bail.
             "require_alias": True,
+        }
+
+    def _state_to_datastream_bulk_action(self, state: State, time: datetime):
+        """Create a bulk action from the given state object."""
+
+        document = self._document_creator.state_to_document(state, time)
+
+        return {
+            "_op_type": "index",
+            "_index": self._datastream,
+            "_source": document
         }
 
     def _start_publish_timer(self):

@@ -4,7 +4,7 @@ DOMAIN = "elasticsearch"
 
 CONF_PUBLISH_ENABLED = "publish_enabled"
 CONF_INDEX_FORMAT = "index_format"
-CONF_INDEX_FORMAT = "index_format"
+CONF_INDEX_MODE = "index_mode"
 CONF_PUBLISH_FREQUENCY = "publish_frequency"
 CONF_EXCLUDED_DOMAINS = "excluded_domains"
 CONF_EXCLUDED_ENTITIES = "excluded_entities"
@@ -34,7 +34,9 @@ ONE_HOUR = 60 * 60
 
 VERSION_SUFFIX = "-v4_2"
 
-INDEX_TEMPLATE_NAME = "hass-index-template" + VERSION_SUFFIX
+
+INDEX_TEMPLATE_NAME = "homeassistant-template"
+LEGACY_TEMPLATE_NAME = "hass-index-template" + VERSION_SUFFIX
 
 PUBLISH_MODE_ALL = "All"
 PUBLISH_MODE_STATE_CHANGES = "State changes"
