@@ -49,11 +49,11 @@
                     "properties": {
                         "domain": {
                             "type": "keyword",
-                            "ignore_above": 124
+                            "time_series_dimension": true
                         },
                         "object_id": {
                             "type": "keyword",
-                            "ignore_above": 124
+                            "time_series_dimension": true
                         },
                         "object_id_lower": {
                             "type": "keyword",
@@ -300,77 +300,6 @@
                         }
                     }
                 },
-                "event": {
-                    "properties": {
-                        "action": {
-                            "ignore_above": 1024,
-                            "type": "keyword"
-                        },
-                        "category": {
-                            "ignore_above": 1024,
-                            "type": "keyword"
-                        },
-                        "created": {
-                            "type": "date"
-                        },
-                        "dataset": {
-                            "ignore_above": 1024,
-                            "type": "keyword"
-                        },
-                        "duration": {
-                            "type": "long"
-                        },
-                        "end": {
-                            "type": "date"
-                        },
-                        "hash": {
-                            "ignore_above": 1024,
-                            "type": "keyword"
-                        },
-                        "id": {
-                            "ignore_above": 1024,
-                            "type": "keyword"
-                        },
-                        "kind": {
-                            "ignore_above": 1024,
-                            "type": "keyword"
-                        },
-                        "module": {
-                            "ignore_above": 1024,
-                            "type": "keyword"
-                        },
-                        "original": {
-                            "doc_values": false,
-                            "ignore_above": 1024,
-                            "index": false,
-                            "type": "keyword"
-                        },
-                        "outcome": {
-                            "ignore_above": 1024,
-                            "type": "keyword"
-                        },
-                        "risk_score": {
-                            "type": "float"
-                        },
-                        "risk_score_norm": {
-                            "type": "float"
-                        },
-                        "severity": {
-                            "type": "long"
-                        },
-                        "start": {
-                            "type": "date"
-                        },
-                        "timezone": {
-                            "ignore_above": 1024,
-                            "type": "keyword"
-                        },
-                        "type": {
-                            "ignore_above": 1024,
-                            "type": "keyword"
-                        }
-                    }
-                },
                 "ecs": {
                     "properties": {
                         "version": {
@@ -383,6 +312,7 @@
         },
         "settings": {
             "codec": "best_compression",
+            "index.mode": "time_series",
             "mapping": {
                 "total_fields": {
                     "limit": "10000"

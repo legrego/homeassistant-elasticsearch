@@ -36,8 +36,7 @@ ONE_HOUR = 60 * 60
 
 VERSION_SUFFIX = "-v4_2"
 
-
-INDEX_TEMPLATE_NAME = "homeassistant-template"
+DATASTREAM_METRICS_INDEX_TEMPLATE_NAME = "metrics-homeassistant"
 LEGACY_TEMPLATE_NAME = "hass-index-template" + VERSION_SUFFIX
 
 PUBLISH_MODE_ALL = "All"

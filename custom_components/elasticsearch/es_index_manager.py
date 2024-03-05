@@ -17,7 +17,7 @@ from .const import (
     CONF_DATASTREAM_TYPE,
     CONF_DATASTREAM_NAME_PREFIX,
     CONF_DATASTREAM_NAMESPACE,
-    INDEX_TEMPLATE_NAME,
+    DATASTREAM_METRICS_INDEX_TEMPLATE_NAME,
     LEGACY_TEMPLATE_NAME,
     VERSION_SUFFIX,
 )
@@ -89,21 +89,26 @@ class IndexManager:
             index_template = json.load(json_file)
 
         # Check if the index template already exists
-        existingTemplate = await client.indices.get_index_template(name=INDEX_TEMPLATE_NAME, ignore=[404])
+        existingTemplate = await client.indices.get_index_template(name=DATASTREAM_METRICS_INDEX_TEMPLATE_NAME, ignore=[404])
         LOGGER.debug('got template response: ' + str(existingTemplate))
-        template_exists = existingTemplate and existingTemplate.get(INDEX_TEMPLATE_NAME)
+        template_exists = existingTemplate and existingTemplate.get(DATASTREAM_METRICS_INDEX_TEMPLATE_NAME)
 
-        if not template_exists:
+        if template_exists:
+            LOGGER.debug("Updating index template")
+        else:
             LOGGER.debug("Creating index template")
 
-            # Load Index Template
-            try:
-                await client.indices.put_index_template(
-                    name=INDEX_TEMPLATE_NAME, body=index_template
-                )
+        try:
+            await client.indices.put_index_template(
+                name=DATASTREAM_METRICS_INDEX_TEMPLATE_NAME, body=index_template
+            )
 
-            except ElasticsearchException as err:
-                LOGGER.exception("Error creating index template: %s", err)
+        except ElasticsearchException as err:
+            LOGGER.exception("Error creating/updating index template: %s", err)
+            # We do not want to proceed with indexing if we don't have any index templates as this
+            # will result in the user having to clean-up indices with improper mappings.
+            if not template_exists:
+                raise err
 
     async def _create_legacy_template(self):
         """Initialize the Elasticsearch cluster with an index template, initial index, and alias."""

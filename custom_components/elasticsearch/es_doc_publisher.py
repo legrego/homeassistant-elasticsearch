@@ -283,7 +283,10 @@ class DocumentPublisher:
         document = self._document_creator.state_to_document(state, time)
 
         if self._destination_type == "datastream":
-            desination_data_stream = self.datastream_prefix + "." + state.domain + ".events-" + self.datastream_suffix
+            # <type>-<name>-<namespace>
+            # <datastream_prefix>.<domain>-<suffix>
+            # metrics-homeassistant.device_tracker-default
+            desination_data_stream = self.datastream_prefix + "." + state.domain + "-" + self.datastream_suffix
             return {
                 "_op_type": "create",
                 "_index": desination_data_stream,

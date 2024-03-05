@@ -127,7 +127,7 @@ def build_full_config(user_input=None):
 class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
     """Handle an Elastic config flow."""
 
-    VERSION = 3
+    VERSION = 4
     CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_PUSH
 
     @staticmethod
