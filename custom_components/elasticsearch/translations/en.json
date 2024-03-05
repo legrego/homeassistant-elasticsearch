@@ -3,7 +3,7 @@
         "abort": {
             "reauth_successful": "Re-authentication was successful",
             "single_instance_allowed": "Already configured. Only a single configuration possible.",
-            "configured_via_yaml": "Configuration impored from configuration.yaml. Remove entry from configuration.yaml, restart, and re-add this integration to proceed."
+            "configured_via_yaml": "Configuration imported from configuration.yaml. Remove entry from configuration.yaml, restart, and re-add this integration to proceed."
         },
         "error": {
             "cannot_connect": "Failed to connect",
@@ -12,7 +12,7 @@
             "insufficient_privileges": "Insufficient privileges for specified user.",
             "missing_credentials": "This cluster requires authentication. Please provide a username and password.",
             "untrusted_connection": "Elasticsearch's server certificate could not be verified. Either disable TLS verification, or specify a custom CA path below.",
-            "unsupported_version": "Unsupported version of Elastcsearch detected. The minimum supported version is 7.11.0."
+            "unsupported_version": "Unsupported version of Elasticsearch detected. The minimum supported version is 7.11.0."
         },
         "step": {
             "user": {
@@ -57,7 +57,7 @@
     },
     "options": {
         "abort": {
-            "configured_via_yaml": "Configuration impored from configuration.yaml. Remove entry from configuration.yaml, restart, and re-add this integration to proceed."
+            "configured_via_yaml": "Configuration imported from configuration.yaml. Remove entry from configuration.yaml, restart, and re-add this integration to proceed."
         },
         "step": {
             "publish_options": {
