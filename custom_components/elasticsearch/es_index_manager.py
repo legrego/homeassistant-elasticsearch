@@ -12,10 +12,12 @@ from .const import (
     CONF_ILM_MAX_SIZE,
     CONF_ILM_POLICY_NAME,
     CONF_INDEX_FORMAT,
+    CONF_INDEX_MODE,
     CONF_PUBLISH_ENABLED,
     CONF_DATASTREAM_TYPE,
     CONF_DATASTREAM_NAME,
     CONF_DATASTREAM_NAMESPACE,
+    INDEX_TEMPLATE_NAME,
     LEGACY_TEMPLATE_NAME,
     VERSION_SUFFIX,
 )
@@ -38,7 +40,7 @@ class IndexManager:
         self._gateway: ElasticsearchGateway = gateway
 
         # Differentiate between index and datastream
-        
+
         self.index_mode = config.get(CONF_INDEX_MODE)
 
         if self.index_mode == "index":
@@ -46,7 +48,7 @@ class IndexManager:
             self._ilm_policy_name = config.get(CONF_ILM_POLICY_NAME)
             self._index_format = config.get(CONF_INDEX_FORMAT) + VERSION_SUFFIX
             self._using_ilm = True
-        else if self.index_mode == "datastream":
+        elif self.index_mode == "datastream":
             self.datastream_type = config.get(CONF_DATASTREAM_TYPE)
             self.datastream_name = config.get(CONF_DATASTREAM_NAME)
             self.datastream_namespace = config.get(CONF_DATASTREAM_NAMESPACE)
@@ -99,7 +101,7 @@ class IndexManager:
                 await client.indices.put_index_template(
                     name=INDEX_TEMPLATE_NAME, body=index_template
                 )
-            
+
             except ElasticsearchException as err:
                 LOGGER.exception("Error creating index template: %s", err)
 

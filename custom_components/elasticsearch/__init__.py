@@ -150,7 +150,7 @@ async def async_migrate_entry(
 async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry):
     """Set up integration via config flow."""
 
-    LOGGER.debug("Setting up integtation")
+    LOGGER.debug("Setting up integration")
     init = await _async_init_integration(hass, config_entry)
     config_entry.add_update_listener(async_config_entry_updated)
     return init

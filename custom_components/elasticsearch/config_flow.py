@@ -106,7 +106,7 @@ def build_full_config(user_input=None):
         CONF_INCLUDED_DOMAINS: user_input.get(CONF_INCLUDED_DOMAINS, []),
         CONF_INCLUDED_ENTITIES: user_input.get(CONF_INCLUDED_ENTITIES, []),
 
-        CONF_INDEX_MODE = user_input.get(CONF_INDEX_MODE, DEFAULT_INDEX_MODE),
+        CONF_INDEX_MODE: user_input.get(CONF_INDEX_MODE, DEFAULT_INDEX_MODE),
 
         CONF_ILM_ENABLED: user_input.get(CONF_ILM_ENABLED, DEFAULT_ILM_ENABLED),
         CONF_ILM_POLICY_NAME: user_input.get(
@@ -485,6 +485,19 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
                     CONF_PUBLISH_FREQUENCY, DEFAULT_PUBLISH_FREQUENCY
                 ),
             ): int,
+            vol.Required(
+                CONF_INDEX_MODE,
+                default=self._get_config_value(CONF_INDEX_MODE, DEFAULT_INDEX_MODE),
+            ): selector(
+                {
+                    "select": {
+                        "options": [
+                            {"label": "Datastream", "value": "datastream"},
+                            {"label": "Legacy Index", "value": "index"}
+                        ]
+                    }
+                }
+            ),
             vol.Required(
                 CONF_PUBLISH_MODE,
                 default=self._get_config_value(CONF_PUBLISH_MODE, DEFAULT_PUBLISH_MODE),

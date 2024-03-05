@@ -4,7 +4,9 @@ DOMAIN = "elasticsearch"
 
 CONF_PUBLISH_ENABLED = "publish_enabled"
 CONF_INDEX_FORMAT = "index_format"
+
 CONF_INDEX_MODE = "index_mode"
+
 CONF_PUBLISH_FREQUENCY = "publish_frequency"
 CONF_EXCLUDED_DOMAINS = "excluded_domains"
 CONF_EXCLUDED_ENTITIES = "excluded_entities"
