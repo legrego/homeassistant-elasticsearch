@@ -50,9 +50,16 @@ class DocumentPublisher:
         self._destination_type: str = index_manager.index_mode
 
         if self._destination_type == "index":
-            self._destination_index: str = index_manager.index_alias
+            self.legacy_index_name: str = index_manager.index_alias
         elif self._destination_type == "datastream":
-            self._destination_index: str = index_manager.datastream_type + "-" + index_manager.datastream_name + "-" + index_manager.datastream_namespace
+            LOGGER.debug(
+                "type: %s", str(index_manager.datastream_type)
+            )
+            LOGGER.debug(
+                "name prefix: %s", str(index_manager.datastream_name_prefix)
+            )
+            self.datastream_prefix: str = index_manager.datastream_type + "-" + index_manager.datastream_name_prefix
+            self.datastream_suffix: str = index_manager.datastream_namespace
 
         self._publish_frequency = config.get(CONF_PUBLISH_FREQUENCY)
         self._publish_mode = config.get(CONF_PUBLISH_MODE)
@@ -275,14 +282,24 @@ class DocumentPublisher:
 
         document = self._document_creator.state_to_document(state, time)
 
-        return {
-            "_op_type": "create",
-            "_index": self._destination_index,
-            "_source": document,
-            # If we aren't writing to an alias, that means the
-            # Index Template likely wasn't created properly, and we should bail.
-            "require_alias": True,
-        }
+        if self._destination_type == "datastream":
+            desination_data_stream = self.datastream_prefix + "." + state.domain + ".events-" + self.datastream_suffix
+            return {
+                "_op_type": "create",
+                "_index": desination_data_stream,
+                "_source": document,
+            }
+        if self._destination_type == "index":
+            return {
+                "_op_type": "index",
+                "_index": self.legacy_index_name,
+                "_source": document,
+                # If we aren't writing to an alias, that means the
+                # Index Template likely wasn't created properly, and we should bail.
+                "require_alias": True,
+            }
+
+
 
     def _start_publish_timer(self):
         """Initialize the publish timer."""

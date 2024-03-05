@@ -1,9 +1,8 @@
 {
     "index_patterns": [
-        "metrics-homeassistant.events-default*"
+        "metrics-homeassistant.*.events-default*"
     ],
     "template": {
-
         "mappings": {
             "dynamic": "strict",
             "dynamic_templates": [
@@ -395,8 +394,7 @@
         }
     },
     "priority": 500,
-    "data_stream": { },
-    "composed_of": [
-    ],
+    "data_stream": {},
+    "composed_of": [],
     "version": 1
 }

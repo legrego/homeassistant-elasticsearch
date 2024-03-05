@@ -15,7 +15,7 @@ CONF_INCLUDED_DOMAINS = "included_domains"
 CONF_INCLUDED_ENTITIES = "included_entities"
 
 CONF_DATASTREAM_TYPE = "datastream_type"
-CONF_DATASTREAM_NAME = "datastream_name"
+CONF_DATASTREAM_NAME_PREFIX = "datastream_name_prefix"
 CONF_DATASTREAM_NAMESPACE = "datastream_namespace"
 
 CONF_ILM_ENABLED = "ilm_enabled"

@@ -15,7 +15,7 @@ from .const import (
     CONF_INDEX_MODE,
     CONF_PUBLISH_ENABLED,
     CONF_DATASTREAM_TYPE,
-    CONF_DATASTREAM_NAME,
+    CONF_DATASTREAM_NAME_PREFIX,
     CONF_DATASTREAM_NAMESPACE,
     INDEX_TEMPLATE_NAME,
     LEGACY_TEMPLATE_NAME,
@@ -50,7 +50,7 @@ class IndexManager:
             self._using_ilm = True
         elif self.index_mode == "datastream":
             self.datastream_type = config.get(CONF_DATASTREAM_TYPE)
-            self.datastream_name = config.get(CONF_DATASTREAM_NAME)
+            self.datastream_name_prefix = config.get(CONF_DATASTREAM_NAME_PREFIX)
             self.datastream_namespace = config.get(CONF_DATASTREAM_NAMESPACE)
         else:
             return
