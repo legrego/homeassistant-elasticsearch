@@ -36,8 +36,8 @@ from .const import (
     CONF_SSL_CA_PATH,
     CONF_TAGS,
     DOMAIN,
-    ONE_MINUTE,
     INDEX_MODE_LEGACY,
+    ONE_MINUTE,
     PUBLISH_MODE_ALL,
     PUBLISH_MODE_ANY_CHANGES,
 )

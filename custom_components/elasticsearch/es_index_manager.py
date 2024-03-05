@@ -7,6 +7,9 @@ from homeassistant.const import CONF_ALIAS
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 
 from .const import (
+    CONF_DATASTREAM_NAME_PREFIX,
+    CONF_DATASTREAM_NAMESPACE,
+    CONF_DATASTREAM_TYPE,
     CONF_ILM_DELETE_AFTER,
     CONF_ILM_ENABLED,
     CONF_ILM_MAX_SIZE,
@@ -14,9 +17,6 @@ from .const import (
     CONF_INDEX_FORMAT,
     CONF_INDEX_MODE,
     CONF_PUBLISH_ENABLED,
-    CONF_DATASTREAM_TYPE,
-    CONF_DATASTREAM_NAME_PREFIX,
-    CONF_DATASTREAM_NAMESPACE,
     DATASTREAM_METRICS_INDEX_TEMPLATE_NAME,
     LEGACY_TEMPLATE_NAME,
     VERSION_SUFFIX,
