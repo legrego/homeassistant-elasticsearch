@@ -10,7 +10,6 @@ RUN usermod -G elasticsearch -a vscode
 
 # Install Poetry for dependency management
 RUN pip install poetry~=1.7
-RUN pip3 install homeassistant==2024.2.5
 
 # Install peek utility
 RUN pip install es-peek
