@@ -67,6 +67,7 @@
                     "publish_enabled": "Publish events to Elasticsearch",
                     "publish_frequency": "How frequently events are published, in seconds",
                     "publish_mode": "Choose which entity states to publish",
+                    "index_mode": "Choose what type of Index to publish data to",
                     "excluded_domains": "Domains to exclude from publishing. Defaults to none.",
                     "excluded_entities": "Entities to exclude from publishing. Defaults to none.",
                     "included_domains": "Domains to publish. Defaults to all domains.",

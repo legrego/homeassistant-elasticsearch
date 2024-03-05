@@ -40,6 +40,8 @@ from .const import (
     CONF_PUBLISH_MODE,
     CONF_SSL_CA_PATH,
     ONE_MINUTE,
+    INDEX_MODE_LEGACY,
+    INDEX_MODE_DATASTREAM,
     PUBLISH_MODE_ALL,
     PUBLISH_MODE_ANY_CHANGES,
     PUBLISH_MODE_STATE_CHANGES,
@@ -175,7 +177,6 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                         ): str,
                     }
                 )
-
         return schema
 
     def build_no_auth_schema(self, errors=None):
@@ -486,19 +487,6 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
                 ),
             ): int,
             vol.Required(
-                CONF_INDEX_MODE,
-                default=self._get_config_value(CONF_INDEX_MODE, DEFAULT_INDEX_MODE),
-            ): selector(
-                {
-                    "select": {
-                        "options": [
-                            {"label": "Datastream", "value": "datastream"},
-                            {"label": "Legacy Index", "value": "index"}
-                        ]
-                    }
-                }
-            ),
-            vol.Required(
                 CONF_PUBLISH_MODE,
                 default=self._get_config_value(CONF_PUBLISH_MODE, DEFAULT_PUBLISH_MODE),
             ): selector(
@@ -514,6 +502,19 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
                                 "label": "Entities with state or attribute changes",
                                 "value": PUBLISH_MODE_ANY_CHANGES,
                             },
+                        ]
+                    }
+                }
+            ),
+            vol.Required(
+                CONF_INDEX_MODE,
+                default=self._get_config_value(CONF_INDEX_MODE, DEFAULT_INDEX_MODE),
+            ): selector(
+                {
+                    "select": {
+                        "options": [
+                            {"label": "Time-series Datastream (ES 8.7+)", "value": INDEX_MODE_DATASTREAM},
+                            {"label": "Legacy Index", "value": INDEX_MODE_LEGACY}
                         ]
                     }
                 }

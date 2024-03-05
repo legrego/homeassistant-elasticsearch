@@ -37,6 +37,7 @@ from .const import (
     CONF_TAGS,
     DOMAIN,
     ONE_MINUTE,
+    INDEX_MODE_LEGACY,
     PUBLISH_MODE_ALL,
     PUBLISH_MODE_ANY_CHANGES,
 )
@@ -144,15 +145,13 @@ async def async_migrate_entry(
         config_entry.version = 3
 
     if config_entry.version == 3:
-        new = get_merged_config(config_entry)
+        newOptions = {**config_entry.options}
 
-        # Set default index_mode for existing installs to "index"
-        if CONF_INDEX_MODE not in new:
-            new[CONF_INDEX_MODE] = "index"
+        # Check the configured options for the index_mode
+        if CONF_INDEX_MODE not in newOptions:
+            newOptions[CONF_INDEX_MODE] = INDEX_MODE_LEGACY
 
-        config_entry.data = {**new}
-
-        config_entry.version = 4
+        hass.config_entries.async_update_entry(config_entry, options=newOptions, version=4)
 
     LOGGER.info("Migration to version %s successful", config_entry.version)
 
