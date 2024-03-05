@@ -235,7 +235,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         self.config = build_full_config(user_input)
         (success, errors) = await self._async_elasticsearch_login()
         if success:
-            return await self._async_create_entry()
+            return await self.async_step_index_mode()
 
         return self.async_show_form(
             step_id="no_auth",
@@ -255,7 +255,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         (success, errors) = await self._async_elasticsearch_login()
 
         if success:
-            return await self._async_create_entry()
+            return await self.async_step_index_mode()
 
         return self.async_show_form(
             step_id="basic_auth",
@@ -275,7 +275,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         (success, errors) = await self._async_elasticsearch_login()
 
         if success:
-            return await self._async_create_entry()
+            return await self.async_step_index_mode()
 
         return self.async_show_form(
             step_id="api_key",
@@ -319,6 +319,34 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         assert entry is not None
         self._reauth_entry = entry
         return await self.async_step_reauth_confirm(user_input)
+
+    async def async_step_index_mode(self, user_input: dict | None = None) -> FlowResult:
+        """Handle the selection of index mode."""
+        if user_input is None:
+            return self.async_show_form(
+                step_id="index_mode",
+                data_schema=vol.Schema(
+                    {
+                        vol.Required(
+                            CONF_INDEX_MODE,
+                            default=self.config.get(CONF_INDEX_MODE, DEFAULT_INDEX_MODE),
+                        ): selector(
+                            {
+                                "select": {
+                                    "options": [
+                                        {"label": "Time-series Datastream (ES 8.7+)", "value": INDEX_MODE_DATASTREAM},
+                                        {"label": "Legacy Indices", "value": INDEX_MODE_LEGACY}
+                                    ]
+                                }
+                            }
+                        )
+                    }
+                ),
+            )
+
+        if user_input is not None:
+            self.config[CONF_INDEX_MODE] = user_input[CONF_INDEX_MODE]
+            return await self._async_create_entry()
 
     async def async_step_reauth_confirm(self, user_input: dict | None = None) -> FlowResult:
         """Dialog that informs the user that reauth is required."""

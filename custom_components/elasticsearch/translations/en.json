@@ -45,6 +45,12 @@
                     "ssl_ca_path": "Fully qualified path to custom certificate authority"
                 }
             },
+            "index_mode": {
+                "title": "Choose what type of Index to publish data to",
+                "data": {
+                    "index_mode": "Choose what type of Index to publish data to"
+                }
+            },
             "reauth_confirm": {
                 "title": "Reauthenticate",
                 "data": {
