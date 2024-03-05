@@ -10,7 +10,7 @@
         {
             "label": "Run Elasticsearch on port 9200",
             "type": "shell",
-            "command": "poetry run scrits/run_es"
+            "command": "poetry run scripts/run_es"
         }
     ]
 }
