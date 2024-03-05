@@ -535,19 +535,6 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
                 }
             ),
             vol.Required(
-                CONF_INDEX_MODE,
-                default=self._get_config_value(CONF_INDEX_MODE, DEFAULT_INDEX_MODE),
-            ): selector(
-                {
-                    "select": {
-                        "options": [
-                            {"label": "Time-series Datastream (ES 8.7+)", "value": INDEX_MODE_DATASTREAM},
-                            {"label": "Legacy Index", "value": INDEX_MODE_LEGACY}
-                        ]
-                    }
-                }
-            ),
-            vol.Required(
                 CONF_EXCLUDED_DOMAINS,
                 default=current_excluded_domains,
             ): cv.multi_select(domain_options),
