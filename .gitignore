@@ -9,7 +9,8 @@ pytestdebug.log
 
 # misc
 .coverage
-.vscode
+.vscode/*
+!.vscode/tasks.json
 coverage.xml
 test_results/*
 
