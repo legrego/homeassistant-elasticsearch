@@ -142,6 +142,17 @@ async def async_migrate_entry(
 
         config_entry.version = 3
 
+    if config_entry.version == 3:
+        new = get_merged_config(config_entry)
+
+        # Set default index_mode for existing installs to "index"
+        if CONF_INDEX_MODE not in new:
+            new[CONF_INDEX_MODE] = "index"
+
+        config_entry.data = {**new}
+
+        config_entry.version = 4
+
     LOGGER.info("Migration to version %s successful", config_entry.version)
 
     return True
