@@ -10,6 +10,7 @@ from custom_components.elasticsearch.config_flow import (
 from tests.const import (
     CLUSTER_HEALTH_RESPONSE_BODY,
     CLUSTER_INFO_RESPONSE_BODY,
+    CLUSTER_INFO_SERVERLESS_RESPONSE_BODY,
     CLUSTER_INFO_UNSUPPORTED_RESPONSE_BODY,
     MOCK_COMPLEX_LEGACY_CONFIG,
 )
@@ -22,6 +23,7 @@ def mock_es_initialization(
     mock_index_creation=True,
     mock_health_check=True,
     mock_ilm_setup=True,
+    mock_serverless_version=False,
     mock_unsupported_version=False,
     mock_authentication_error=False,
     mock_index_authorization_error=False,
@@ -32,7 +34,9 @@ def mock_es_initialization(
 ):
     """Mock for ES initialization flow."""
 
-    if mock_unsupported_version:
+    if mock_serverless_version:
+        aioclient_mock.get(url, status=200, json=CLUSTER_INFO_SERVERLESS_RESPONSE_BODY)
+    elif mock_unsupported_version:
         aioclient_mock.get(url, status=200, json=CLUSTER_INFO_UNSUPPORTED_RESPONSE_BODY)
     elif mock_authentication_error:
         aioclient_mock.get(url, status=401, json={"error": "unauthorized"})
