@@ -80,6 +80,11 @@ class IndexManager:
 
         LOGGER.debug("Initializing modern index templates")
 
+        if not self._gateway.es_version.meets_minimum_version(major=8, minor=7):
+            raise ElasticsearchException(
+                "A version of Elasticsearch that is not compatible with TSDS datastreams detected (<8.7). Use Legacy Index mode."
+            )
+
         client = self._gateway.get_client()
 
         # Open datastreams/index_template.json and load the ES modern index template
@@ -91,9 +96,8 @@ class IndexManager:
         # Check if the index template already exists
         existingTemplate = await client.indices.get_index_template(name=DATASTREAM_METRICS_INDEX_TEMPLATE_NAME, ignore=[404])
         LOGGER.debug('got template response: ' + str(existingTemplate))
-        template_exists = existingTemplate and existingTemplate.get(DATASTREAM_METRICS_INDEX_TEMPLATE_NAME)
 
-        if template_exists:
+        if existingTemplate:
             LOGGER.debug("Updating index template")
         else:
             LOGGER.debug("Creating index template")
@@ -107,7 +111,7 @@ class IndexManager:
             LOGGER.exception("Error creating/updating index template: %s", err)
             # We do not want to proceed with indexing if we don't have any index templates as this
             # will result in the user having to clean-up indices with improper mappings.
-            if not template_exists:
+            if not existingTemplate:
                 raise err
 
     async def _create_legacy_template(self):
@@ -115,6 +119,11 @@ class IndexManager:
         from elasticsearch7.exceptions import ElasticsearchException
 
         LOGGER.debug("Initializing legacy index templates")
+
+        if self._gateway.es_version.is_serverless():
+            raise ElasticsearchException(
+                "Serverless environment detected, legacy index usage not allowed in ES Serverless. Switch to datastreams."
+            )
 
         client = self._gateway.get_client()
 

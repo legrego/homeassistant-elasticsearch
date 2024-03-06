@@ -22,10 +22,10 @@ from .const import (
     CONF_PUBLISH_FREQUENCY,
     CONF_PUBLISH_MODE,
     CONF_TAGS,
-    PUBLISH_MODE_ALL,
-    PUBLISH_MODE_STATE_CHANGES,
     INDEX_MODE_DATASTREAM,
     INDEX_MODE_LEGACY,
+    PUBLISH_MODE_ALL,
+    PUBLISH_MODE_STATE_CHANGES,
 )
 from .logger import LOGGER
 
@@ -282,19 +282,23 @@ class DocumentPublisher:
     def _state_to_bulk_action(self, state: State, time: datetime):
         """Create a bulk action from the given state object."""
 
-        document = self._document_creator.state_to_document(state, time)
 
         if self._destination_type == INDEX_MODE_DATASTREAM:
+            document = self._document_creator.state_to_document(state, time, version=2)
             # <type>-<name>-<namespace>
             # <datastream_prefix>.<domain>-<suffix>
             # metrics-homeassistant.device_tracker-default
-            desination_data_stream = self.datastream_prefix + "." + state.domain + "-" + self.datastream_suffix
+            destination_data_stream = self.datastream_prefix + "." + state.domain + "-" + self.datastream_suffix
+
             return {
                 "_op_type": "create",
-                "_index": desination_data_stream,
+                "_index": destination_data_stream,
                 "_source": document,
             }
+
         if self._destination_type == INDEX_MODE_LEGACY:
+            document = self._document_creator.state_to_document(state, time, version=1)
+
             return {
                 "_op_type": "index",
                 "_index": self.legacy_index_name,

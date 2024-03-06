@@ -2,10 +2,10 @@
 
 import pytest
 from homeassistant.helpers.typing import HomeAssistantType
-from custom_components.elasticsearch.config_flow import build_full_config
-from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
+from custom_components.elasticsearch.config_flow import build_full_config
+from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 from tests.test_util.es_startup_mocks import mock_es_initialization
 
 

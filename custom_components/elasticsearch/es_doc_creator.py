@@ -50,7 +50,7 @@ class DocumentCreator:
             "tags": self._config.get(CONF_TAGS),
         }
 
-    def state_to_document(self, state: State, time: datetime) -> dict:
+    def state_to_document(self, state: State, time: datetime, version: int = 2) -> dict:
         """Convert entity state to ES document."""
         try:
             _state = state_helper.state_as_number(state)
@@ -118,18 +118,50 @@ class DocumentCreator:
             "device": device,
             "value": _state,
         }
+        # log the python type of 'value' for debugging purposes
+        LOGGER.debug(
+            "Entity [%s] has value [%s] of type [%s]",
+            state.entity_id,
+            _state,
+            type(_state)
+        )
+
         document_body = {
-            "hass.domain": state.domain,
-            "hass.object_id": state.object_id,
-            "hass.object_id_lower": state.object_id.lower(),
-            "hass.entity_id": state.entity_id,
-            "hass.entity_id_lower": state.entity_id.lower(),
-            "hass.attributes": attributes,
-            "hass.value": _state,
             "@timestamp": time_tz,
+            "hass.object_id": state.object_id,
             # new values below. Yes this is duplicitive in the short term.
             "hass.entity": entity,
         }
+
+        # We only include object_id, attributes, and domain in version 1
+        if version == 1:
+            document_body.update(
+                {
+                    "hass.domain": state.domain,
+                    "hass.attributes": attributes,
+                    "hass.object_id_lower": state.object_id.lower(),
+                    "hass.entity_id": state.entity_id,
+                    "hass.entity_id_lower": state.entity_id.lower(),
+                }
+            )
+            if (
+                "latitude" in document_body["hass.attributes"]
+                and "longitude" in document_body["hass.attributes"]
+            ):
+                document_body["hass.geo.location"] = {
+                    "lat": document_body["hass.attributes"]["latitude"],
+                    "lon": document_body["hass.attributes"]["longitude"],
+                }
+
+        if version == 2:
+            if (
+                "latitude" in document_body["hass.entity"]["attributes"]
+                and "longitude" in document_body["hass.entity"]["attributes"]
+            ):
+                document_body["hass.entity.geo.location"] = {
+                    "lat": document_body["hass.entity"]["attributes"]["latitude"],
+                    "lon": document_body["hass.entity"]["attributes"]["longitude"],
+                }
 
         deets = self._entity_details.async_get(state.entity_id)
         if deets is not None:
@@ -161,15 +193,6 @@ class DocumentCreator:
             )
         else:
             document_body.update(self._static_doc_properties)
-
-        if (
-            "latitude" in document_body["hass.attributes"]
-            and "longitude" in document_body["hass.attributes"]
-        ):
-            document_body["hass.geo.location"] = {
-                "lat": document_body["hass.attributes"]["latitude"],
-                "lon": document_body["hass.attributes"]["longitude"],
-            }
 
         return document_body
 

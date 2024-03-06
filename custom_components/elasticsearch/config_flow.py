@@ -320,38 +320,66 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         self._reauth_entry = entry
         return await self.async_step_reauth_confirm(user_input)
 
+    def build_index_mode_schema(self):
+        """Build the index mode schema."""
+        return vol.Schema(
+            {
+                vol.Required(
+                    CONF_INDEX_MODE,
+                    default=self.config.get(CONF_INDEX_MODE, DEFAULT_INDEX_MODE),
+                ): selector(
+                    {
+                        "select": {
+                            "options": [
+                                {"label": "Time-series Datastream (ES 8.7+)", "value": INDEX_MODE_DATASTREAM},
+                                {"label": "Legacy Indices", "value": INDEX_MODE_LEGACY}
+                            ]
+                        }
+                    }
+                )
+            }
+        )
+
     async def async_step_index_mode(self, user_input: dict | None = None) -> FlowResult:
         """Handle the selection of index mode."""
         if user_input is None:
-            return self.async_show_form(
-                step_id="index_mode",
-                data_schema=vol.Schema(
-                    {
-                        vol.Required(
-                            CONF_INDEX_MODE,
-                            default=self.config.get(CONF_INDEX_MODE, DEFAULT_INDEX_MODE),
-                        ): selector(
-                            {
-                                "select": {
-                                    "options": [
-                                        {"label": "Time-series Datastream (ES 8.7+)", "value": INDEX_MODE_DATASTREAM},
-                                        {"label": "Legacy Indices", "value": INDEX_MODE_LEGACY}
-                                    ]
-                                }
-                            }
-                        )
-                    }
-                ),
-            )
 
-        if user_input is not None:
-            self.config = build_full_config(user_input)
+            try:
+                gateway = ElasticsearchGateway(raw_config=self.config)
+                await gateway.async_init()
 
-            # If the user picked datastreams we need to disable the ILM options
-            if user_input[CONF_INDEX_MODE] == INDEX_MODE_DATASTREAM:
+            finally:
+                if gateway:
+                    await gateway.async_stop_gateway()
+
+            # Default to datastreams on serverless
+            if gateway.es_version.is_serverless():
+
+                self.config[CONF_INDEX_MODE] = INDEX_MODE_DATASTREAM
                 self.config[CONF_ILM_ENABLED] = False
 
-            return await self._async_create_entry()
+                return await self._async_create_entry()
+
+            # Default to Indices on pre-8.7 Elasticsearch
+            elif not gateway.es_version.meets_minimum_version(major=8, minor=7):
+
+                self.config[CONF_INDEX_MODE] = INDEX_MODE_LEGACY
+                self.config[CONF_ILM_ENABLED] = True
+
+                return await self._async_create_entry()
+
+            # Allow users to choose mode if not on serverless and post-8.7
+            else:
+                return self.async_show_form(
+                        step_id="index_mode",
+                        data_schema= self.build_index_mode_schema()
+                    )
+
+        # If the user picked datastreams we need to disable the ILM options
+        if user_input[CONF_INDEX_MODE] == INDEX_MODE_DATASTREAM:
+            self.config[CONF_ILM_ENABLED] = False
+
+        return await self._async_create_entry()
 
     async def async_step_reauth_confirm(self, user_input: dict | None = None) -> FlowResult:
         """Dialog that informs the user that reauth is required."""
@@ -389,6 +417,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         try:
             gateway = ElasticsearchGateway(raw_config=self.config)
             await gateway.async_init()
+
 
             privilege_check = ESPrivilegeCheck(gateway)
             await privilege_check.enforce_privileges(self.config)
