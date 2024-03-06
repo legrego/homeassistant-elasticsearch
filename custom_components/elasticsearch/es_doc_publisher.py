@@ -24,6 +24,8 @@ from .const import (
     CONF_TAGS,
     PUBLISH_MODE_ALL,
     PUBLISH_MODE_STATE_CHANGES,
+    INDEX_MODE_DATASTREAM,
+    INDEX_MODE_LEGACY,
 )
 from .logger import LOGGER
 
@@ -282,7 +284,7 @@ class DocumentPublisher:
 
         document = self._document_creator.state_to_document(state, time)
 
-        if self._destination_type == "datastream":
+        if self._destination_type == INDEX_MODE_DATASTREAM:
             # <type>-<name>-<namespace>
             # <datastream_prefix>.<domain>-<suffix>
             # metrics-homeassistant.device_tracker-default
@@ -292,7 +294,7 @@ class DocumentPublisher:
                 "_index": desination_data_stream,
                 "_source": document,
             }
-        if self._destination_type == "index":
+        if self._destination_type == INDEX_MODE_LEGACY:
             return {
                 "_op_type": "index",
                 "_index": self.legacy_index_name,

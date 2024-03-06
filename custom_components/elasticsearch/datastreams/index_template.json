@@ -1,6 +1,6 @@
 {
     "index_patterns": [
-        "metrics-homeassistant.*.events-default*"
+        "metrics-homeassistant.*-default"
     ],
     "template": {
         "mappings": {

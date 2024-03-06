@@ -345,7 +345,12 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             )
 
         if user_input is not None:
-            self.config[CONF_INDEX_MODE] = user_input[CONF_INDEX_MODE]
+            self.config = build_full_config(user_input)
+
+            # If the user picked datastreams we need to disable the ILM options
+            if user_input[CONF_INDEX_MODE] == INDEX_MODE_DATASTREAM:
+                self.config[CONF_ILM_ENABLED] = False
+
             return await self._async_create_entry()
 
     async def async_step_reauth_confirm(self, user_input: dict | None = None) -> FlowResult:
@@ -456,7 +461,10 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
         """Publish Options."""
         if user_input is not None:
             self.options.update(user_input)
-            return await self.async_step_ilm_options()
+            if (self._get_config_value(CONF_INDEX_MODE) == INDEX_MODE_DATASTREAM):
+                return await self._update_options()
+            else:
+                return await self.async_step_ilm_options()
 
         return self.async_show_form(
             step_id="publish_options",
