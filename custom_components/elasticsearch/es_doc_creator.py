@@ -118,6 +118,8 @@ class DocumentCreator:
             "device": device,
             "value": _state,
         }
+
+        """
         # log the python type of 'value' for debugging purposes
         LOGGER.debug(
             "Entity [%s] has value [%s] of type [%s]",
@@ -125,6 +127,7 @@ class DocumentCreator:
             _state,
             type(_state)
         )
+        """
 
         document_body = {
             "@timestamp": time_tz,
@@ -162,6 +165,21 @@ class DocumentCreator:
                     "lat": document_body["hass.entity"]["attributes"]["latitude"],
                     "lon": document_body["hass.entity"]["attributes"]["longitude"],
                 }
+
+            # Detect the python type of state and populate valueas hass.entity.valueas subfields accordingly
+            if isinstance(_state, int):
+                document_body["hass.entity"]["valueas"] = {"integer": _state}
+            elif isinstance(_state, float):
+                document_body["hass.entity"]["valueas"] = {"float": _state}
+            elif isinstance(_state, str):
+                try:
+                    document_body["hass.entity"]["valueas"]["date"] = datetime.fromisoformat(_state).isoformat()
+                except ValueError:
+                    document_body["hass.entity"]["valueas"] = {"string": _state}
+            elif isinstance(_state, bool):
+                document_body["hass.entity"]["valueas"] = {"bool": _state}
+            elif isinstance(_state, datetime):
+                document_body["hass.entity"]["valueas"] = {"date": _state}
 
         deets = self._entity_details.async_get(state.entity_id)
         if deets is not None:

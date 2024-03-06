@@ -490,7 +490,7 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
         """Publish Options."""
         if user_input is not None:
             self.options.update(user_input)
-            if (self._get_config_value(CONF_INDEX_MODE) == INDEX_MODE_DATASTREAM):
+            if (self._get_config_value(CONF_INDEX_MODE, INDEX_MODE_DATASTREAM) == INDEX_MODE_DATASTREAM):
                 return await self._update_options()
             else:
                 return await self.async_step_ilm_options()

@@ -70,6 +70,32 @@
                                         }
                                     }
                                 },
+                                "valueas": {
+                                    "properties": {
+                                        "string": {
+                                            "type": "text",
+                                            "fields": {
+                                                "keyword": {
+                                                    "ignore_above": 1024,
+                                                    "type": "keyword"
+                                                }
+                                            }
+                                        },
+                                        "float": {
+                                            "ignore_malformed": true,
+                                            "type": "float"
+                                        },
+                                        "boolean": {
+                                            "type": "boolean"
+                                        },
+                                        "date": {
+                                            "type": "date"
+                                        },
+                                        "integer": {
+                                            "type": "integer"
+                                        }
+                                    }
+                                },
                                 "platform": {
                                     "type": "keyword"
                                 },
