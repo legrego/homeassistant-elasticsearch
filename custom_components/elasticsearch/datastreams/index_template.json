@@ -86,12 +86,22 @@
                                             "type": "float"
                                         },
                                         "boolean": {
+                                            "ignore_malformed": true,
                                             "type": "boolean"
                                         },
-                                        "date": {
+                                        "datetime": {
                                             "type": "date"
                                         },
+                                        "date": {
+                                            "type": "date",
+                                            "format": "strict_date"
+                                        },
+                                        "time": {
+                                            "type": "date",
+                                            "format": "HH:mm:ss.SSSSSS||time||strict_hour_minute_second||time_no_millis"
+                                        },
                                         "integer": {
+                                            "ignore_malformed": true,
                                             "type": "integer"
                                         }
                                     }

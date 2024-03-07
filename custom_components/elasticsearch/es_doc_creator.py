@@ -173,7 +173,12 @@ class DocumentCreator:
                 document_body["hass.entity"]["valueas"] = {"float": _state}
             elif isinstance(_state, str):
                 try:
-                    document_body["hass.entity"]["valueas"]["date"] = datetime.fromisoformat(_state).isoformat()
+                    # Create a datetime, date and time field if the string is a valid date
+                    document_body["hass.entity"]["valueas"]["datetime"] = datetime.fromisoformat(_state).isoformat()
+
+                    document_body["hass.entity"]["valueas"]["date"] = datetime.fromisoformat(_state).date().isoformat()
+                    document_body["hass.entity"]["valueas"]["time"] = datetime.fromisoformat(_state).time().isoformat()
+
                 except ValueError:
                     document_body["hass.entity"]["valueas"] = {"string": _state}
             elif isinstance(_state, bool):
