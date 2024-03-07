@@ -33,6 +33,9 @@ jobs:
   tests:
     runs-on: "ubuntu-latest"
     name: Run tests
+    permissions:
+      issues: write
+      pull-requests: write
     steps:
       - name: Check out code from GitHub
         uses: "actions/checkout@v2"
@@ -50,3 +53,5 @@ jobs:
         with:
           pytest-xml-coverage-path: ./test_results/cov_xml/coverage.xml
           junitxml-path: ./test_results/pytest.xml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
