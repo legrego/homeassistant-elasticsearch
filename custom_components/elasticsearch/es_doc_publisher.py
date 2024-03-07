@@ -51,15 +51,9 @@ class DocumentPublisher:
 
         self._destination_type: str = index_manager.index_mode
 
-        if self._destination_type == "index":
+        if self._destination_type == INDEX_MODE_LEGACY:
             self.legacy_index_name: str = index_manager.index_alias
-        elif self._destination_type == "datastream":
-            LOGGER.debug(
-                "type: %s", str(index_manager.datastream_type)
-            )
-            LOGGER.debug(
-                "name prefix: %s", str(index_manager.datastream_name_prefix)
-            )
+        elif self._destination_type == INDEX_MODE_DATASTREAM:
             self.datastream_prefix: str = index_manager.datastream_type + "-" + index_manager.datastream_name_prefix
             self.datastream_suffix: str = index_manager.datastream_namespace
 

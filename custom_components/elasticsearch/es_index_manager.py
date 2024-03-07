@@ -19,6 +19,8 @@ from .const import (
     CONF_PUBLISH_ENABLED,
     DATASTREAM_METRICS_INDEX_TEMPLATE_NAME,
     LEGACY_TEMPLATE_NAME,
+    INDEX_MODE_LEGACY,
+    INDEX_MODE_DATASTREAM,
     VERSION_SUFFIX,
 )
 from .logger import LOGGER
@@ -43,12 +45,12 @@ class IndexManager:
 
         self.index_mode = config.get(CONF_INDEX_MODE)
 
-        if self.index_mode == "index":
+        if self.index_mode == INDEX_MODE_LEGACY:
             self.index_alias = config.get(CONF_ALIAS) + VERSION_SUFFIX
             self._ilm_policy_name = config.get(CONF_ILM_POLICY_NAME)
             self._index_format = config.get(CONF_INDEX_FORMAT) + VERSION_SUFFIX
-            self._using_ilm = True
-        elif self.index_mode == "datastream":
+            self._using_ilm = config.get(CONF_ILM_ENABLED)
+        elif self.index_mode == INDEX_MODE_DATASTREAM:
             self.datastream_type = config.get(CONF_DATASTREAM_TYPE)
             self.datastream_name_prefix = config.get(CONF_DATASTREAM_NAME_PREFIX)
             self.datastream_namespace = config.get(CONF_DATASTREAM_NAMESPACE)
@@ -61,7 +63,7 @@ class IndexManager:
         if not self._config.get(CONF_PUBLISH_ENABLED):
             return
 
-        if self.index_mode == "index":
+        if self.index_mode == INDEX_MODE_LEGACY:
             self._using_ilm = self._config.get(CONF_ILM_ENABLED)
 
             await self._create_legacy_template()
