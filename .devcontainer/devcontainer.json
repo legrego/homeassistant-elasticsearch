@@ -17,24 +17,22 @@
 			"onAutoForward": "notify"
 		}
 	},
-	"postCreateCommand": "scripts/setup",
+	"postCreateCommand": "bash ./.devcontainer/post-install.sh",
 	"customizations": {
 		"vscode": {
 			"extensions": [
 				"ms-python.python",
 				"github.vscode-pull-request-github",
 				"ryanluker.vscode-coverage-gutters",
-				"ms-python.vscode-pylance"
+				"charliermarsh.ruff"
 			],
 			"settings": {
 				"files.eol": "\n",
 				"editor.tabSize": 4,
-				"python.pythonPath": "/usr/bin/python3",
+				"python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
 				"python.analysis.autoSearchPaths": false,
-				"python.linting.pylintEnabled": true,
-				"python.linting.enabled": true,
-				"python.formatting.provider": "black",
 				"python.formatting.blackPath": "/usr/local/py-utils/bin/black",
+				"python.terminal.activateEnvInCurrentTerminal": true,
 				"editor.formatOnPaste": false,
 				"editor.formatOnSave": true,
 				"editor.formatOnType": true,
@@ -44,7 +42,7 @@
 	},
 	"remoteUser": "vscode",
 	"features": {
-		"ghcr.io/devcontainers/features/rust:1": {},
+		"github-cli": "latest",
 		"ghcr.io/wxw-matt/devcontainer-features/command_runner:0": {}
 	}
 }

@@ -8,7 +8,10 @@ pytestdebug.log
 
 
 # misc
+.cache
 .coverage
+.ruff_cache
+.venv
 .vscode/*
 !.vscode/tasks.json
 coverage.xml
