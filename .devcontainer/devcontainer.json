@@ -32,6 +32,7 @@
 				"python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
 				"python.analysis.autoSearchPaths": false,
 				"python.formatting.blackPath": "/usr/local/py-utils/bin/black",
+				"python.terminal.activateEnvInCurrentTerminal": true,
 				"editor.formatOnPaste": false,
 				"editor.formatOnSave": true,
 				"editor.formatOnType": true,
