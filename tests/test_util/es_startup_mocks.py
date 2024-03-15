@@ -1,4 +1,5 @@
 """ES Startup Mocks."""
+
 from homeassistant.const import CONF_URL, CONTENT_TYPE_JSON
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
@@ -30,7 +31,7 @@ def mock_es_initialization(
     mock_connection_error=False,
     alias_name=DEFAULT_ALIAS,
     index_format=DEFAULT_INDEX_FORMAT,
-    ilm_policy_name=DEFAULT_ILM_POLICY_NAME
+    ilm_policy_name=DEFAULT_ILM_POLICY_NAME,
 ):
     """Mock for ES initialization flow."""
 
@@ -48,75 +49,83 @@ def mock_es_initialization(
     aioclient_mock.post(url + "/_bulk", status=200, json={"items": []})
 
     if mock_index_authorization_error:
-        aioclient_mock.post(url + "/_security/user/_has_privileges", status=200, json={
-            "username": "test_user",
-            "has_all_requested": False,
-            "cluster": {
-                "manage_index_templates": True,
-                "manage_ilm": True,
-                "monitor": True
+        aioclient_mock.post(
+            url + "/_security/user/_has_privileges",
+            status=200,
+            json={
+                "username": "test_user",
+                "has_all_requested": False,
+                "cluster": {
+                    "manage_index_templates": True,
+                    "manage_ilm": True,
+                    "monitor": True,
+                },
+                "index": {
+                    f"{index_format}*": {
+                        "manage": True,
+                        "index": False,
+                        "create_index": True,
+                        "create": True,
+                    },
+                    f"{alias_name}*": {
+                        "manage": True,
+                        "index": True,
+                        "create_index": True,
+                        "create": True,
+                    },
+                    "all-hass-events": {
+                        "manage": True,
+                        "index": True,
+                        "create_index": True,
+                        "create": True,
+                    },
+                },
             },
-            "index": {
-                f"{index_format}*": {
-                    "manage": True,
-                    "index": False,
-                    "create_index": True,
-                    "create": True
-                },
-                f"{alias_name}*": {
-                    "manage": True,
-                    "index": True,
-                    "create_index": True,
-                    "create": True
-                },
-                "all-hass-events": {
-                    "manage": True,
-                    "index": True,
-                    "create_index": True,
-                    "create": True
-                }
-            }
-        })
+        )
     else:
-        aioclient_mock.post(url + "/_security/user/_has_privileges", status=200, json={
-            "username": "test_user",
-            "has_all_requested": True,
-            "cluster": {
-                "manage_index_templates": True,
-                "manage_ilm": True,
-                "monitor": True
+        aioclient_mock.post(
+            url + "/_security/user/_has_privileges",
+            status=200,
+            json={
+                "username": "test_user",
+                "has_all_requested": True,
+                "cluster": {
+                    "manage_index_templates": True,
+                    "manage_ilm": True,
+                    "monitor": True,
+                },
+                "index": {
+                    f"{index_format}*": {
+                        "manage": True,
+                        "index": True,
+                        "create_index": True,
+                        "create": True,
+                    },
+                    f"{alias_name}*": {
+                        "manage": True,
+                        "index": True,
+                        "create_index": True,
+                        "create": True,
+                    },
+                    "all-hass-events": {
+                        "manage": True,
+                        "index": True,
+                        "create_index": True,
+                        "create": True,
+                    },
+                },
             },
-            "index": {
-                f"{index_format}*": {
-                    "manage": True,
-                    "index": True,
-                    "create_index": True,
-                    "create": True
-                },
-                f"{alias_name}*": {
-                    "manage": True,
-                    "index": True,
-                    "create_index": True,
-                    "create": True
-                },
-                "all-hass-events": {
-                    "manage": True,
-                    "index": True,
-                    "create_index": True,
-                    "create": True
-                }
-            }
-        })
+        )
 
     if mock_template_setup:
         aioclient_mock.get(
-            url + "/_template/hass-index-template-v4_2",
+            url + "/_template/hass-index-template-v4_3",
             status=404,
             headers={"content-type": CONTENT_TYPE_JSON},
             json={"error": "template missing"},
         )
         aioclient_mock.put(
-            url + "/_template/hass-index-template-v4_2",
+            url + "/_template/hass-index-template-v4_3",
             status=200,
             headers={"content-type": CONTENT_TYPE_JSON},
             json={"hi": "need dummy content"},
@@ -124,7 +133,7 @@ def mock_es_initialization(
 
     if mock_index_creation:
         aioclient_mock.get(
-            url + f"/_alias/{alias_name}-v4_2",
+            url + f"/_alias/{alias_name}-v4_3",
             status=404,
             headers={"content-type": CONTENT_TYPE_JSON},
             json={"error": "alias missing"},
@@ -138,7 +147,7 @@ def mock_es_initialization(
 
     if mock_health_check:
         aioclient_mock.put(
-            url + f"/{index_format}-v4_2-000001",
+            url + f"/{index_format}-v4_3-000001",
             status=200,
             headers={"content-type": CONTENT_TYPE_JSON},
             json={"hi": "need dummy content"},

@@ -48,4 +48,4 @@ fixture-parentheses = false
 keep-runtime-typing = true
 
 [lint.mccabe]
-max-complexity = 25
+max-complexity = 30

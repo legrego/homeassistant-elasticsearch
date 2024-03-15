@@ -1,10 +1,11 @@
 """Config flow for Elastic."""
 
+from dataclasses import dataclass
 
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from homeassistant import config_entries
-from homeassistant.config_entries import SOURCE_IGNORE, SOURCE_IMPORT
+from homeassistant.config_entries import SOURCE_IGNORE, SOURCE_IMPORT, ConfigEntry
 from homeassistant.const import (
     CONF_ALIAS,
     CONF_API_KEY,
@@ -20,6 +21,7 @@ from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.selector import selector
 
 from custom_components.elasticsearch.es_privilege_check import ESPrivilegeCheck
+from custom_components.elasticsearch.es_version import ElasticsearchVersion
 
 from .const import (
     CONF_DATASTREAM_NAME_PREFIX,
@@ -77,6 +79,7 @@ DEFAULT_ILM_MAX_SIZE = "30gb"
 DEFAULT_ILM_DELETE_AFTER = "365d"
 DEFAULT_INDEX_MODE = "datastream"
 
+
 def build_full_config(user_input=None):
     """Build the entire config validation schema."""
     if user_input is None:
@@ -98,18 +101,20 @@ def build_full_config(user_input=None):
         CONF_PUBLISH_MODE: user_input.get(CONF_PUBLISH_MODE, DEFAULT_PUBLISH_MODE),
         CONF_ALIAS: user_input.get(CONF_ALIAS, DEFAULT_ALIAS),
         CONF_INDEX_FORMAT: user_input.get(CONF_INDEX_FORMAT, DEFAULT_INDEX_FORMAT),
-
-        CONF_DATASTREAM_TYPE: user_input.get(CONF_DATASTREAM_TYPE, DEFAULT_DATASTREAM_TYPE),
-        CONF_DATASTREAM_NAME_PREFIX: user_input.get(CONF_DATASTREAM_NAME_PREFIX, DEFAULT_DATASTREAM_NAME_PREFIX),
-        CONF_DATASTREAM_NAMESPACE: user_input.get(CONF_DATASTREAM_NAMESPACE, DEFAULT_DATASTREAM_NAMESPACE),
-
+        CONF_DATASTREAM_TYPE: user_input.get(
+            CONF_DATASTREAM_TYPE, DEFAULT_DATASTREAM_TYPE
+        ),
+        CONF_DATASTREAM_NAME_PREFIX: user_input.get(
+            CONF_DATASTREAM_NAME_PREFIX, DEFAULT_DATASTREAM_NAME_PREFIX
+        ),
+        CONF_DATASTREAM_NAMESPACE: user_input.get(
+            CONF_DATASTREAM_NAMESPACE, DEFAULT_DATASTREAM_NAMESPACE
+        ),
         CONF_EXCLUDED_DOMAINS: user_input.get(CONF_EXCLUDED_DOMAINS, []),
         CONF_EXCLUDED_ENTITIES: user_input.get(CONF_EXCLUDED_ENTITIES, []),
         CONF_INCLUDED_DOMAINS: user_input.get(CONF_INCLUDED_DOMAINS, []),
         CONF_INCLUDED_ENTITIES: user_input.get(CONF_INCLUDED_ENTITIES, []),
-
         CONF_INDEX_MODE: user_input.get(CONF_INDEX_MODE, DEFAULT_INDEX_MODE),
-
         CONF_ILM_ENABLED: user_input.get(CONF_ILM_ENABLED, DEFAULT_ILM_ENABLED),
         CONF_ILM_POLICY_NAME: user_input.get(
             CONF_ILM_POLICY_NAME, DEFAULT_ILM_POLICY_NAME
@@ -124,6 +129,15 @@ def build_full_config(user_input=None):
         config[CONF_SSL_CA_PATH] = user_input[CONF_SSL_CA_PATH]
 
     return config
+
+
+@dataclass
+class ClusterCheckResult:
+    """Result of cluster connection check."""
+
+    success: bool
+    errors: dict | None
+    version: ElasticsearchVersion | None
 
 
 class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
@@ -142,6 +156,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         """Initialize the Elastic flow."""
         self.config = {}
 
+        self._cluster_check_result: ClusterCheckResult | None = None
         self._reauth_entry = None
 
     def build_setup_menu(self):
@@ -172,9 +187,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                                 CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL
                             ),
                         ): bool,
-                        vol.Optional(
-                            CONF_SSL_CA_PATH
-                        ): str,
+                        vol.Optional(CONF_SSL_CA_PATH): str,
                     }
                 )
         return schema
@@ -199,7 +212,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         )
         return schema
 
-    def build_api_key_auth_schema(self, errors=None, skip_common = False):
+    def build_api_key_auth_schema(self, errors=None, skip_common=False):
         """Build validation schema for the ApiKey authentication setup flow."""
         schema = {} if skip_common else {**self.build_common_schema(errors)}
         schema.update(
@@ -233,14 +246,14 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             )
 
         self.config = build_full_config(user_input)
-        (success, errors) = await self._async_elasticsearch_login()
-        if success:
+        result = await self._async_elasticsearch_login()
+        if result.success:
             return await self.async_step_index_mode()
 
         return self.async_show_form(
             step_id="no_auth",
-            data_schema=vol.Schema(self.build_no_auth_schema(errors)),
-            errors=errors,
+            data_schema=vol.Schema(self.build_no_auth_schema(result.errors)),
+            errors=result.errors,
         )
 
     async def async_step_basic_auth(self, user_input=None):
@@ -252,15 +265,15 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             )
 
         self.config = build_full_config(user_input)
-        (success, errors) = await self._async_elasticsearch_login()
+        result = await self._async_elasticsearch_login()
 
-        if success:
+        if result.success:
             return await self.async_step_index_mode()
 
         return self.async_show_form(
             step_id="basic_auth",
-            data_schema=vol.Schema(self.build_basic_auth_schema(errors)),
-            errors=errors,
+            data_schema=vol.Schema(self.build_basic_auth_schema(result.errors)),
+            errors=result.errors,
         )
 
     async def async_step_api_key(self, user_input=None):
@@ -272,15 +285,15 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             )
 
         self.config = build_full_config(user_input)
-        (success, errors) = await self._async_elasticsearch_login()
+        result = await self._async_elasticsearch_login()
 
-        if success:
+        if result.success:
             return await self.async_step_index_mode()
 
         return self.async_show_form(
             step_id="api_key",
-            data_schema=vol.Schema(self.build_api_key_auth_schema(errors)),
-            errors=errors,
+            data_schema=vol.Schema(self.build_api_key_auth_schema(result.errors)),
+            errors=result.errors,
         )
 
     async def async_step_import(self, import_config):
@@ -306,9 +319,12 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             return self.async_abort(reason="single_instance_allowed")
 
         self.config = build_full_config(import_config)
-        (success, errors) = await self._async_elasticsearch_login()
+        # Configure legacy yml to use legacy index mode
+        self.config[CONF_INDEX_MODE] = INDEX_MODE_LEGACY
 
-        if success:
+        result = await self._async_elasticsearch_login()
+
+        if result.success:
             return await self._async_create_entry()
 
         raise ConfigEntryNotReady
@@ -331,8 +347,11 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                     {
                         "select": {
                             "options": [
-                                {"label": "Time-series Datastream (ES 8.7+)", "value": INDEX_MODE_DATASTREAM},
-                                {"label": "Legacy Indices", "value": INDEX_MODE_LEGACY}
+                                {
+                                    "label": "Time-series Datastream (ES 8.7+)",
+                                    "value": INDEX_MODE_DATASTREAM,
+                                },
+                                {"label": "Legacy Indices", "value": INDEX_MODE_LEGACY},
                             ]
                         }
                     }
@@ -342,27 +361,24 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
     async def async_step_index_mode(self, user_input: dict | None = None) -> FlowResult:
         """Handle the selection of index mode."""
+        if (
+            self._cluster_check_result is None
+            or self._cluster_check_result.version is None
+        ):
+            return self.async_abort("invalid_flow")
+
         if user_input is None:
-
-            try:
-                gateway = ElasticsearchGateway(raw_config=self.config)
-                await gateway.async_init()
-
-            finally:
-                if gateway:
-                    await gateway.async_stop_gateway()
-
             # Default to datastreams on serverless
-            if gateway.es_version.is_serverless():
-
+            if self._cluster_check_result.version.is_serverless():
                 self.config[CONF_INDEX_MODE] = INDEX_MODE_DATASTREAM
                 self.config[CONF_ILM_ENABLED] = False
 
                 return await self._async_create_entry()
 
             # Default to Indices on pre-8.7 Elasticsearch
-            elif not gateway.es_version.meets_minimum_version(major=8, minor=7):
-
+            elif not self._cluster_check_result.version.meets_minimum_version(
+                major=8, minor=7
+            ):
                 self.config[CONF_INDEX_MODE] = INDEX_MODE_LEGACY
                 self.config[CONF_ILM_ENABLED] = True
 
@@ -371,9 +387,8 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             # Allow users to choose mode if not on serverless and post-8.7
             else:
                 return self.async_show_form(
-                        step_id="index_mode",
-                        data_schema= self.build_index_mode_schema()
-                    )
+                    step_id="index_mode", data_schema=self.build_index_mode_schema()
+                )
 
         # If the user picked datastreams we need to disable the ILM options
         if user_input[CONF_INDEX_MODE] == INDEX_MODE_DATASTREAM:
@@ -381,12 +396,14 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
         return await self._async_create_entry()
 
-    async def async_step_reauth_confirm(self, user_input: dict | None = None) -> FlowResult:
+    async def async_step_reauth_confirm(
+        self, user_input: dict | None = None
+    ) -> FlowResult:
         """Dialog that informs the user that reauth is required."""
         if user_input is None:
             return self.async_show_form(
                 step_id="reauth_confirm",
-                data_schema=vol.Schema(self.build_reauth_schema(user_input))
+                data_schema=vol.Schema(self.build_reauth_schema(user_input)),
             )
 
         username = user_input.get(CONF_USERNAME)
@@ -400,27 +417,29 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         if api_key:
             self.config[CONF_API_KEY] = api_key
 
-        success, errors = await self._async_elasticsearch_login()
-        if success:
+        result = await self._async_elasticsearch_login()
+        if result.success:
             return await self._async_create_entry()
 
         return self.async_show_form(
             step_id="reauth_confirm",
-            errors=errors,
-            data_schema=vol.Schema(self.build_reauth_schema(errors))
+            errors=result.errors,
+            data_schema=vol.Schema(self.build_reauth_schema(result.errors)),
         )
 
-    async def _async_elasticsearch_login(self):
+    async def _async_elasticsearch_login(self) -> ClusterCheckResult:
         """Handle connection & authentication to Elasticsearch."""
         errors = {}
+        version: ElasticsearchVersion | None = None
 
         try:
             gateway = ElasticsearchGateway(raw_config=self.config)
             await gateway.async_init()
 
-
             privilege_check = ESPrivilegeCheck(gateway)
             await privilege_check.enforce_privileges(self.config)
+
+            version = gateway.es_version
         except UntrustedCertificate:
             errors["base"] = "untrusted_connection"
         except AuthenticationRequired:
@@ -445,7 +464,8 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                 await gateway.async_stop_gateway()
 
         success = not errors
-        return (success, errors)
+        self._cluster_check_result = ClusterCheckResult(success, errors, version)
+        return self._cluster_check_result
 
     async def _async_create_entry(self):
         """Create the config entry."""
@@ -469,7 +489,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
     """Handle Elastic options."""
 
-    def __init__(self, config_entry):
+    def __init__(self, config_entry: ConfigEntry):
         """Initialize Elastic options flow."""
         self.config_entry = config_entry
         self.options = dict(config_entry.options)
@@ -490,7 +510,10 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
         """Publish Options."""
         if user_input is not None:
             self.options.update(user_input)
-            if (self._get_config_value(CONF_INDEX_MODE, INDEX_MODE_DATASTREAM) == INDEX_MODE_DATASTREAM):
+            if (
+                self.config_entry.data.get(CONF_INDEX_MODE, INDEX_MODE_DATASTREAM)
+                == INDEX_MODE_DATASTREAM
+            ):
                 return await self._update_options()
             else:
                 return await self.async_step_ilm_options()
@@ -530,7 +553,9 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
 
         current_excluded_domains = self._get_config_value(CONF_EXCLUDED_DOMAINS, [])
         current_included_domains = self._get_config_value(CONF_INCLUDED_DOMAINS, [])
-        domain_options = self._dedup_list(domains + current_excluded_domains + current_included_domains)
+        domain_options = self._dedup_list(
+            domains + current_excluded_domains + current_included_domains
+        )
 
         current_excluded_entities = self._get_config_value(CONF_EXCLUDED_ENTITIES, [])
         current_included_entities = self._get_config_value(CONF_INCLUDED_ENTITIES, [])
@@ -589,7 +614,11 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
             ): cv.multi_select(entity_options),
         }
 
-        if self.show_advanced_options:
+        if (
+            self.show_advanced_options
+            and self.config_entry.data.get(CONF_INDEX_MODE, DEFAULT_INDEX_MODE)
+            != INDEX_MODE_DATASTREAM
+        ):
             schema[
                 vol.Required(
                     CONF_INDEX_FORMAT,
