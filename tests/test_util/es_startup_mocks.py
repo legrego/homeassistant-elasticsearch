@@ -119,13 +119,13 @@ def mock_es_initialization(
 
     if mock_template_setup:
         aioclient_mock.get(
-            url + "/_template/hass-index-template-v4_3",
+            url + "/_template/hass-index-template-v4_2",
             status=404,
             headers={"content-type": CONTENT_TYPE_JSON},
             json={"error": "template missing"},
         )
         aioclient_mock.put(
-            url + "/_template/hass-index-template-v4_3",
+            url + "/_template/hass-index-template-v4_2",
             status=200,
             headers={"content-type": CONTENT_TYPE_JSON},
             json={"hi": "need dummy content"},
@@ -133,7 +133,7 @@ def mock_es_initialization(
 
     if mock_index_creation:
         aioclient_mock.get(
-            url + f"/_alias/{alias_name}-v4_3",
+            url + f"/_alias/{alias_name}-v4_2",
             status=404,
             headers={"content-type": CONTENT_TYPE_JSON},
             json={"error": "alias missing"},
@@ -147,7 +147,7 @@ def mock_es_initialization(
 
     if mock_health_check:
         aioclient_mock.put(
-            url + f"/{index_format}-v4_3-000001",
+            url + f"/{index_format}-v4_2-000001",
             status=200,
             headers={"content-type": CONTENT_TYPE_JSON},
             json={"hi": "need dummy content"},

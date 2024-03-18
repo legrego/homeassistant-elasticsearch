@@ -729,7 +729,7 @@ def _build_expected_payload(
 ):
     def event_to_payload(event):
         entity_id = event["domain"] + "." + event["object_id"]
-        payload = [{"index": {"_index": "active-hass-index-v4_3"}}]
+        payload = [{"index": {"_index": "active-hass-index-v4_2"}}]
 
         entry = {
             "hass.domain": event["domain"],
