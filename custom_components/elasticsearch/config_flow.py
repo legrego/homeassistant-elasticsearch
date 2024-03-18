@@ -390,6 +390,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                     step_id="index_mode", data_schema=self.build_index_mode_schema()
                 )
 
+        self.config[CONF_INDEX_MODE] = user_input[CONF_INDEX_MODE]
         # If the user picked datastreams we need to disable the ILM options
         if user_input[CONF_INDEX_MODE] == INDEX_MODE_DATASTREAM:
             self.config[CONF_ILM_ENABLED] = False

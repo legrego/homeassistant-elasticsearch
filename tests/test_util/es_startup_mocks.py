@@ -10,6 +10,7 @@ from custom_components.elasticsearch.config_flow import (
 )
 from tests.const import (
     CLUSTER_HEALTH_RESPONSE_BODY,
+    CLUSTER_INFO_8DOT8_RESPONSE_BODY,
     CLUSTER_INFO_RESPONSE_BODY,
     CLUSTER_INFO_SERVERLESS_RESPONSE_BODY,
     CLUSTER_INFO_UNSUPPORTED_RESPONSE_BODY,
@@ -17,6 +18,8 @@ from tests.const import (
 )
 
 
+# This is officially out of hand.
+# We need a different mechanism for configuring the mock cluster for all of the different test scenarios.
 def mock_es_initialization(
     aioclient_mock: AiohttpClientMocker,
     url=MOCK_COMPLEX_LEGACY_CONFIG.get(CONF_URL),
@@ -29,6 +32,7 @@ def mock_es_initialization(
     mock_authentication_error=False,
     mock_index_authorization_error=False,
     mock_connection_error=False,
+    mock_v88_cluster=False,
     alias_name=DEFAULT_ALIAS,
     index_format=DEFAULT_INDEX_FORMAT,
     ilm_policy_name=DEFAULT_ILM_POLICY_NAME,
@@ -43,6 +47,8 @@ def mock_es_initialization(
         aioclient_mock.get(url, status=401, json={"error": "unauthorized"})
     elif mock_connection_error:
         aioclient_mock.get(url, status=500, json={"error": "idk"})
+    elif mock_v88_cluster:
+        aioclient_mock.get(url, status=200, json=CLUSTER_INFO_8DOT8_RESPONSE_BODY)
     else:
         aioclient_mock.get(url, status=200, json=CLUSTER_INFO_RESPONSE_BODY)
 
