@@ -1,7 +1,7 @@
 name: Pull actions
 
 on:
-  pull_request:
+  pull_request_target:
 
 jobs:
   validate:
@@ -33,9 +33,6 @@ jobs:
   tests:
     runs-on: "ubuntu-latest"
     name: Run tests
-    permissions:
-      issues: write
-      pull-requests: write
     steps:
       - name: Check out code from GitHub
         uses: "actions/checkout@v2"
