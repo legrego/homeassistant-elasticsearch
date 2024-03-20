@@ -158,8 +158,6 @@ class DocumentCreator:
                 }
 
         if version == 2:
-
-
             if (
                 "latitude" in document_body["hass.entity"]["attributes"]
                 and "longitude" in document_body["hass.entity"]["attributes"]
@@ -168,7 +166,6 @@ class DocumentCreator:
                     "lat": document_body["hass.entity"]["attributes"]["latitude"],
                     "lon": document_body["hass.entity"]["attributes"]["longitude"],
                 }
-
 
             # Detect the python type of state and populate valueas hass.entity.valueas subfields accordingly
             document_body["hass.entity"]["valueas"] = {}
@@ -203,9 +200,7 @@ class DocumentCreator:
             elif isinstance(_state, bool):
                 document_body["hass.entity"]["valueas"] = {"bool": _state}
             elif isinstance(_state, datetime):
-                document_body["hass.entity"]["valueas"]["datetime"] = (
-                    parsed.isoformat()
-                )
+                document_body["hass.entity"]["valueas"]["datetime"] = parsed.isoformat()
                 document_body["hass.entity"]["valueas"]["date"] = (
                     parsed.date().isoformat()
                 )
