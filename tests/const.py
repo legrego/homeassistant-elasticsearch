@@ -50,6 +50,8 @@ MOCK_COMPLEX_LEGACY_CONFIG = {
     },
 }
 
+MOCK_MARCH_12TH = "2023-04-12T12:00:00+00:00"
+
 CLUSTER_INFO_MISSING_CREDENTIALS_RESPONSE_BODY = {
     "error": {
         "root_cause": [
