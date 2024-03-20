@@ -158,6 +158,8 @@ class DocumentCreator:
                 }
 
         if version == 2:
+
+
             if (
                 "latitude" in document_body["hass.entity"]["attributes"]
                 and "longitude" in document_body["hass.entity"]["attributes"]
@@ -167,7 +169,10 @@ class DocumentCreator:
                     "lon": document_body["hass.entity"]["attributes"]["longitude"],
                 }
 
+
             # Detect the python type of state and populate valueas hass.entity.valueas subfields accordingly
+            document_body["hass.entity"]["valueas"] = {}
+
             if isinstance(_state, int):
                 document_body["hass.entity"]["valueas"] = {"integer": _state}
             elif isinstance(_state, float):
@@ -198,7 +203,15 @@ class DocumentCreator:
             elif isinstance(_state, bool):
                 document_body["hass.entity"]["valueas"] = {"bool": _state}
             elif isinstance(_state, datetime):
-                document_body["hass.entity"]["valueas"] = {"date": _state}
+                document_body["hass.entity"]["valueas"]["datetime"] = (
+                    parsed.isoformat()
+                )
+                document_body["hass.entity"]["valueas"]["date"] = (
+                    parsed.date().isoformat()
+                )
+                document_body["hass.entity"]["valueas"]["time"] = (
+                    parsed.time().isoformat()
+                )
 
         deets = self._entity_details.async_get(state.entity_id)
         if deets is not None:
