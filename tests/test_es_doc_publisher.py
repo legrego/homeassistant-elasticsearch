@@ -14,6 +14,7 @@ from homeassistant.components import (
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import area_registry, device_registry, entity_registry
 from homeassistant.setup import async_setup_component
+from homeassistant.util import dt as dt_util
 from homeassistant.util.dt import UTC
 from jsondiff import diff
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -28,6 +29,7 @@ from custom_components.elasticsearch.const import (
     CONF_INDEX_MODE,
     CONF_PUBLISH_MODE,
     DOMAIN,
+    INDEX_MODE_DATASTREAM,
     INDEX_MODE_LEGACY,
     PUBLISH_MODE_ALL,
     PUBLISH_MODE_ANY_CHANGES,
@@ -127,7 +129,6 @@ async def test_publish_state_change(
             "domain": "counter",
             "object_id": "test_1",
             "value": 2.0,
-            "valueas": {},
             "platform": "counter",
             "attributes": {},
         }
@@ -211,7 +212,6 @@ async def test_entity_detail_publishing(
             "domain": "counter",
             "object_id": "test_1",
             "value": 3.0,
-            "valueas": {},
             "platform": "counter",
             "attributes": {},
         }
@@ -231,6 +231,115 @@ async def test_entity_detail_publishing(
         )
         == {}
     )
+    await gateway.async_stop_gateway()
+
+
+@pytest.mark.asyncio
+@pytest.mark.enable_socket
+async def test_datastream_attribute_publishing(
+    hass, es_aioclient_mock: AiohttpClientMocker
+):
+    """Test entity attributes can be serialized correctly."""
+
+    counter_config = {counter.DOMAIN: {"test_1": {}}}
+    assert await async_setup_component(hass, counter.DOMAIN, counter_config)
+    await hass.async_block_till_done()
+
+    es_url = "http://localhost:9200"
+
+    mock_es_initialization(es_aioclient_mock, es_url)
+
+    config = build_full_config({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_DATASTREAM})
+
+    mock_entry = MockConfigEntry(
+        unique_id="test_entity_detail_publishing",
+        domain=DOMAIN,
+        version=3,
+        data=config,
+        title="ES Config",
+    )
+
+    entry = await _setup_config_entry(hass, mock_entry)
+
+    gateway = ElasticsearchGateway(config)
+    index_manager = IndexManager(hass, config, gateway)
+    publisher = DocumentPublisher(
+        config, gateway, index_manager, hass, config_entry=entry
+    )
+
+    await gateway.async_init()
+    await publisher.async_init()
+
+    assert publisher.queue_size() == 0
+
+    class CustomAttributeClass:
+        def __init__(self) -> None:
+            self.field = "This class should be skipped, as it cannot be serialized."
+            pass
+
+    hass.states.async_set(
+        "counter.test_1",
+        "3",
+        {
+            "string": "abc123",
+            "int": 123,
+            "float": 123.456,
+            "dict": {
+                "string": "abc123",
+                "int": 123,
+                "float": 123.456,
+            },
+            "list": [1, 2, 3, 4],
+            "set": {5, 5},
+            "none": None,
+            # Keyless entry should be excluded from output
+            "": "Key is empty, and should be excluded",
+            # Custom classes should be excluded from output
+            "naughty": CustomAttributeClass(),
+            # Entries with non-string keys should be excluded from output
+            datetime.now(): "Key is a datetime, and should be excluded",
+            123: "Key is a number, and should be excluded",
+            True: "Key is a bool, and should be excluded",
+        },
+    )
+    await hass.async_block_till_done()
+
+    assert publisher.queue_size() == 1
+
+    await publisher.async_do_publish()
+
+    bulk_requests = extract_es_bulk_requests(es_aioclient_mock)
+
+    assert len(bulk_requests) == 1
+    request = bulk_requests[0]
+
+    serializer = get_serializer()
+
+    events = [
+        {
+            "domain": "counter",
+            "object_id": "test_1",
+            "value": 3.0,
+            "platform": "counter",
+            "attributes": {
+                "string": "abc123",
+                "int": 123,
+                "float": 123.456,
+                "dict": serializer.dumps(
+                    {
+                        "string": "abc123",
+                        "int": 123,
+                        "float": 123.456,
+                    }
+                ),
+                "list": [1, 2, 3, 4],
+                "set": [5],  # set should be converted to a list,
+                "none": None,
+            },
+        }
+    ]
+
+    assert diff(request.data, _build_expected_payload(events, version=2)) == {}
     await gateway.async_stop_gateway()
 
 
@@ -317,7 +426,6 @@ async def test_attribute_publishing(hass, es_aioclient_mock: AiohttpClientMocker
             "domain": "counter",
             "object_id": "test_1",
             "value": 3.0,
-            "valueas": {},
             "platform": "counter",
             "attributes": {
                 "string": "abc123",
@@ -423,7 +531,6 @@ async def test_include_exclude_publishing_mode_all(
             "domain": "counter",
             "object_id": "test_1",
             "value": 0.0,
-            "valueas": {},
             "platform": "counter",
             "attributes": {"editable": False, "initial": 0, "step": 1},
         },
@@ -431,7 +538,6 @@ async def test_include_exclude_publishing_mode_all(
             "domain": "input_boolean",
             "object_id": "test_1",
             "value": 0,
-            "valueas": {},
             "platform": "input_boolean",
             "attributes": {"editable": False, "friendly_name": "test boolean 1"},
         },
@@ -439,7 +545,6 @@ async def test_include_exclude_publishing_mode_all(
             "domain": "input_button",
             "object_id": "test_1",
             "value": 0,
-            "valueas": {},
             "platform": "input_button",
             "attributes": {"editable": False},
         },
@@ -447,7 +552,6 @@ async def test_include_exclude_publishing_mode_all(
             "domain": "input_button",
             "object_id": "test_2",
             "value": 0,
-            "valueas": {},
             "platform": "input_button",
             "attributes": {"editable": False},
         },
@@ -455,7 +559,6 @@ async def test_include_exclude_publishing_mode_all(
             "domain": "input_text",
             "object_id": "test_1",
             "value": "Hello",
-            "valueas": {},
             "platform": "input_text",
             "attributes": {
                 "editable": False,
@@ -470,7 +573,6 @@ async def test_include_exclude_publishing_mode_all(
             "domain": "input_text",
             "object_id": "test_2",
             "value": "World",
-            "valueas": {},
             "platform": "input_text",
             "attributes": {
                 "editable": False,
@@ -585,7 +687,6 @@ async def test_include_exclude_publishing_mode_any(
             "domain": "counter",
             "object_id": "test_1",
             "value": 3.0,
-            "valueas": {},
             "platform": "counter",
             "attributes": {},
         },
@@ -593,7 +694,6 @@ async def test_include_exclude_publishing_mode_any(
             "domain": "counter",
             "object_id": "test_1",
             "value": "Infinity",
-            "valueas": {},
             "platform": "counter",
             "attributes": {},
         },
@@ -601,7 +701,6 @@ async def test_include_exclude_publishing_mode_any(
             "domain": "input_button",
             "object_id": "test_2",
             "value": 1,
-            "valueas": {},
             "platform": "input_button",
             "attributes": {},
         },
@@ -688,7 +787,6 @@ async def test_publish_modes(
             "domain": "counter",
             "object_id": "test_1",
             "value": 3.0,
-            "valueas": {},
             "platform": "counter",
             "attributes": {},
         }
@@ -700,7 +798,6 @@ async def test_publish_modes(
                 "domain": "counter",
                 "object_id": "test_1",
                 "value": 3.0,
-                "valueas": {},
                 "platform": "counter",
                 "attributes": {"new_attr": "attr_value"},
             }
@@ -712,7 +809,6 @@ async def test_publish_modes(
                 "domain": "counter",
                 "object_id": "test_2",
                 "value": 2.0,
-                "valueas": {},
                 "platform": "counter",
                 "attributes": {},
             }
@@ -725,9 +821,92 @@ async def test_publish_modes(
 
 
 def _build_expected_payload(
-    events: list, include_entity_details=False, device_id=None, entity_name=None
+    events: list,
+    include_entity_details=False,
+    device_id=None,
+    entity_name=None,
+    version=1,
 ):
     def event_to_payload(event):
+        if version == 1:
+            return event_to_payload_v1(event)
+        else:
+            return event_to_payload_v2(event)
+
+    def event_to_payload_v2(event):
+        entity_id = event["domain"] + "." + event["object_id"]
+        payload = [{"create": {"_index": "metrics-homeassistant.counter-default"}}]
+
+        entry = {
+            "hass.object_id": event["object_id"],
+            "@timestamp": "2023-04-12T12:00:00+00:00",
+            "hass.entity": {
+                "id": entity_id,
+                "domain": event["domain"],
+                "attributes": event["attributes"],
+                "device": {},
+                "value": event["value"],
+                "platform": event["platform"],
+            },
+            "agent.name": "My Home Assistant",
+            "agent.type": "hass",
+            "agent.version": "UNKNOWN",
+            "ecs.version": "1.0.0",
+            "host.geo.location": {"lat": 32.87336, "lon": -117.22743},
+            "host.architecture": "UNKNOWN",
+            "host.os.name": "UNKNOWN",
+            "host.hostname": "UNKNOWN",
+            "tags": None,
+        }
+
+        entry["hass.entity"]["valueas"] = {}
+
+        if isinstance(event["value"], int):
+            entry["hass.entity"]["valueas"] = {"integer": event["value"]}
+        elif isinstance(event["value"], float):
+            entry["hass.entity"]["valueas"] = {"float": event["value"]}
+        elif isinstance(event["value"], str):
+            try:
+                parsed = dt_util.parse_datetime(event["value"])
+                # TODO: More recent versions of HA allow us to pass `raise_on_error`.
+                # We can remove this explicit `raise` once we update the minimum supported HA version.
+                # parsed = dt_util.parse_datetime(event["value"], raise_on_error=True)
+                if parsed is None:
+                    raise ValueError
+
+                # Create a datetime, date and time field if the string is a valid date
+                entry["hass.entity"]["valueas"]["datetime"] = parsed.isoformat()
+
+                entry["hass.entity"]["valueas"]["date"] = parsed.date().isoformat()
+                entry["hass.entity"]["valueas"]["time"] = parsed.time().isoformat()
+
+            except ValueError:
+                entry["hass.entity"]["valueas"] = {"string": event["value"]}
+        elif isinstance(event["value"], bool):
+            entry["hass.entity"]["valueas"] = {"bool": event["value"]}
+        elif isinstance(event["value"], datetime):
+            entry["hass.entity"]["valueas"]["datetime"] = parsed.isoformat()
+            entry["hass.entity"]["valueas"]["date"] = parsed.date().isoformat()
+            entry["hass.entity"]["valueas"]["time"] = parsed.time().isoformat()
+
+        if include_entity_details:
+            entry["hass.entity"].update(
+                {
+                    "name": entity_name,
+                    "area": {"id": "entity_area", "name": "entity area"},
+                    "device": {
+                        "id": device_id,
+                        "name": "name",
+                        "area": {"id": "device_area", "name": "device area"},
+                    },
+                }
+            )
+
+        payload.append(entry)
+
+        return payload
+
+    def event_to_payload_v1(event):
         entity_id = event["domain"] + "." + event["object_id"]
         payload = [{"index": {"_index": "active-hass-index-v4_2"}}]
 
@@ -746,7 +925,6 @@ def _build_expected_payload(
                 "attributes": event["attributes"],
                 "device": {},
                 "value": event["value"],
-                "valueas": event["valueas"],
                 "platform": event["platform"],
             },
             "agent.name": "My Home Assistant",
