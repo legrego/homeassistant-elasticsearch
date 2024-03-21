@@ -64,6 +64,15 @@ class DocumentCreator:
         }
 
     def _state_to_attributes(self, state: State) -> dict:
+        """Convert the attributes of a State object into a dictionary compatible with Elasticsearch mappings.
+
+        Args:
+            state (State): The State object containing the attributes.
+
+        Returns:
+            dict: A dictionary containing the converted attributes.
+
+        """
         orig_attributes = dict(state.attributes)
         attributes = {}
         for orig_key, orig_value in orig_attributes.items():
@@ -93,10 +102,24 @@ class DocumentCreator:
             if value and isinstance(value, list | tuple):
                 should_serialize = isinstance(value[0], tuple | dict | set | list)
             else:
-                attributes[key] = value
+                should_serialize = isinstance(value, dict)
+
+            attributes[key] = (
+                self._serializer.dumps(value) if should_serialize else value
+            )
+
         return attributes
 
     def _state_to_entity_details(self, state: State) -> dict:
+        """Gather entity details from the state object and return a mapped dictionary ready to be put in an elasticsearch document.
+
+        Args:
+            state (State): The state object to convert.
+
+        Returns:
+            dict: An Elasticsearch mapping-compatible entity details dictionary.
+
+        """
         entity_details = self._entity_details.async_get(state.entity_id)
 
         additions = {}
@@ -128,32 +151,57 @@ class DocumentCreator:
         return additions
 
     def _state_to_value_v1(self, state: State) -> str | float:
-        """Try to coerce our state to a boolean."""
+        """Coerce the value from state into a string or a float.
 
+        Args:
+            state (State): The state to be coerced.
+
+        Returns:
+            str | float: The coerced state value.
+
+        """
         _state = state.state
 
         if isinstance(_state, float):
             return _state
 
         elif isinstance(_state, str) and self.try_state_as_number(state):
-            return state_helper.state_as_number(state)
+            tempState = state_helper.state_as_number(state)
+
+            # Ensure we don't return "Infinity" as a number...
+            if self.is_valid_number(tempState):
+                return tempState
+            else:
+                return _state
 
         else:
             return _state
 
     def _state_to_value_v2(self, state: State) -> dict:
-        """Try to coerce our state to a boolean."""
+        """Convert the given state value into to a dictionary containing value and valueas keys representing the values in version 2 format.
+
+        Args:
+            state (State): The state to convert.
+
+        Returns:
+            dict: A dictionary representing the value in version 2 format. i.e. {value: "thisValue", valueas: {<type>: "thisCoercedValue"}}
+
+        """
         additions = {"valueas": {}}
 
         _state = state.state
 
-        if isinstance(_state, float):
+        if isinstance(_state, float) and self.is_valid_number(_state):
             additions["valueas"]["float"] = _state
 
         elif isinstance(_state, str) and self.try_state_as_boolean(state):
             additions["valueas"]["boolean"] = self.state_as_boolean(state)
 
-        elif isinstance(_state, str) and self.try_state_as_number(state):
+        elif (
+            isinstance(_state, str)
+            and self.try_state_as_number(state)
+            and self.is_valid_number(state_helper.state_as_number(state))
+        ):
             additions["valueas"]["float"] = state_helper.state_as_number(state)
 
         elif isinstance(_state, str) and self.try_state_as_datetime(state):
@@ -171,7 +219,7 @@ class DocumentCreator:
 
         return additions
 
-    def state_to_document_v1(self, state: State, entity: dict, time: datetime) -> dict:
+    def _state_to_document_v1(self, state: State, entity: dict, time: datetime) -> dict:
         """Convert entity state to Legacy ES document format."""
         additions = {
             "hass.domain": state.domain,
@@ -193,7 +241,7 @@ class DocumentCreator:
 
         return additions
 
-    def state_to_document_v2(self, state: State, entity: dict, time: datetime) -> dict:
+    def _state_to_document_v2(self, state: State, entity: dict, time: datetime) -> dict:
         """Convert entity state to modern ES document format."""
         additions = {"hass.entity": entity}
 
@@ -243,10 +291,10 @@ class DocumentCreator:
         }
 
         if version == 1:
-            document_body.update(self.state_to_document_v1(state, entity, time_tz))
+            document_body.update(self._state_to_document_v1(state, entity, time_tz))
 
         if version == 2:
-            document_body.update(self.state_to_document_v2(state, entity, time_tz))
+            document_body.update(self._state_to_document_v2(state, entity, time_tz))
 
         if self._static_doc_properties is None:
             LOGGER.warning(
@@ -258,7 +306,7 @@ class DocumentCreator:
 
         return document_body
 
-    def is_valid_number(number):
+    def is_valid_number(self, number) -> bool:
         """Determine if the passed number is valid for Elasticsearch."""
         is_infinity = isinf(number)
         is_nan = number != number  # pylint: disable=comparison-with-itself
@@ -286,6 +334,7 @@ class DocumentCreator:
         """Try to coerce our state to a boolean."""
         # copied from helper state_as_number function
         if state.state in (
+            "true",
             STATE_ON,
             STATE_LOCKED,
             STATE_ABOVE_HORIZON,
@@ -294,6 +343,7 @@ class DocumentCreator:
         ):
             return True
         if state.state in (
+            "false",
             STATE_OFF,
             STATE_UNLOCKED,
             STATE_UNKNOWN,

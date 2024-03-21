@@ -14,7 +14,6 @@ from homeassistant.components import (
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import area_registry, device_registry, entity_registry
 from homeassistant.setup import async_setup_component
-from homeassistant.util import dt as dt_util
 from homeassistant.util.dt import UTC
 from jsondiff import diff
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -235,7 +234,6 @@ async def test_entity_detail_publishing(
 
 
 @pytest.mark.asyncio
-@pytest.mark.enable_socket
 async def test_datastream_attribute_publishing(
     hass, es_aioclient_mock: AiohttpClientMocker
 ):
@@ -313,33 +311,41 @@ async def test_datastream_attribute_publishing(
     assert len(bulk_requests) == 1
     request = bulk_requests[0]
 
-    serializer = get_serializer()
-
-    events = [
+    expected = [
+        {"create": {"_index": "metrics-homeassistant.counter-default"}},
         {
-            "domain": "counter",
-            "object_id": "test_1",
-            "value": 3.0,
-            "platform": "counter",
-            "attributes": {
-                "string": "abc123",
-                "int": 123,
-                "float": 123.456,
-                "dict": serializer.dumps(
-                    {
-                        "string": "abc123",
-                        "int": 123,
-                        "float": 123.456,
-                    }
-                ),
-                "list": [1, 2, 3, 4],
-                "set": [5],  # set should be converted to a list,
-                "none": None,
+            "@timestamp": "2023-04-12T12:00:00+00:00",
+            "agent.name": "My Home Assistant",
+            "agent.type": "hass",
+            "agent.version": "UNKNOWN",
+            "ecs.version": "1.0.0",
+            "hass.entity": {
+                "attributes": {
+                    "dict": '{"string":"abc123","int":123,"float":123.456}',
+                    "float": 123.456,
+                    "int": 123,
+                    "list": [1, 2, 3, 4],
+                    "none": None,
+                    "set": [5],
+                    "string": "abc123",
+                },
+                "device": {},
+                "domain": "counter",
+                "id": "counter.test_1",
+                "platform": "counter",
+                "value": "3",
+                "valueas": {"float": 3.0},
             },
-        }
+            "hass.object_id": "test_1",
+            "host.architecture": "UNKNOWN",
+            "host.geo.location": {"lat": 32.87336, "lon": -117.22743},
+            "host.hostname": "UNKNOWN",
+            "host.os.name": "UNKNOWN",
+            "tags": None,
+        },
     ]
 
-    assert diff(request.data, _build_expected_payload(events, version=2)) == {}
+    assert diff(request.data, expected) == {}
     await gateway.async_stop_gateway()
 
 
@@ -827,84 +833,11 @@ def _build_expected_payload(
     entity_name=None,
     version=1,
 ):
-    def event_to_payload(event):
+    def event_to_payload(event, version=version):
         if version == 1:
             return event_to_payload_v1(event)
         else:
-            return event_to_payload_v2(event)
-
-    def event_to_payload_v2(event):
-        entity_id = event["domain"] + "." + event["object_id"]
-        payload = [{"create": {"_index": "metrics-homeassistant.counter-default"}}]
-
-        entry = {
-            "hass.object_id": event["object_id"],
-            "@timestamp": "2023-04-12T12:00:00+00:00",
-            "hass.entity": {
-                "id": entity_id,
-                "domain": event["domain"],
-                "attributes": event["attributes"],
-                "device": {},
-                "value": event["value"],
-                "platform": event["platform"],
-            },
-            "agent.name": "My Home Assistant",
-            "agent.type": "hass",
-            "agent.version": "UNKNOWN",
-            "ecs.version": "1.0.0",
-            "host.geo.location": {"lat": 32.87336, "lon": -117.22743},
-            "host.architecture": "UNKNOWN",
-            "host.os.name": "UNKNOWN",
-            "host.hostname": "UNKNOWN",
-            "tags": None,
-        }
-
-        entry["hass.entity"]["valueas"] = {}
-
-        if isinstance(event["value"], int):
-            entry["hass.entity"]["valueas"] = {"integer": event["value"]}
-        elif isinstance(event["value"], float):
-            entry["hass.entity"]["valueas"] = {"float": event["value"]}
-        elif isinstance(event["value"], str):
-            try:
-                parsed = dt_util.parse_datetime(event["value"])
-                # TODO: More recent versions of HA allow us to pass `raise_on_error`.
-                # We can remove this explicit `raise` once we update the minimum supported HA version.
-                # parsed = dt_util.parse_datetime(event["value"], raise_on_error=True)
-                if parsed is None:
-                    raise ValueError
-
-                # Create a datetime, date and time field if the string is a valid date
-                entry["hass.entity"]["valueas"]["datetime"] = parsed.isoformat()
-
-                entry["hass.entity"]["valueas"]["date"] = parsed.date().isoformat()
-                entry["hass.entity"]["valueas"]["time"] = parsed.time().isoformat()
-
-            except ValueError:
-                entry["hass.entity"]["valueas"] = {"string": event["value"]}
-        elif isinstance(event["value"], bool):
-            entry["hass.entity"]["valueas"] = {"bool": event["value"]}
-        elif isinstance(event["value"], datetime):
-            entry["hass.entity"]["valueas"]["datetime"] = parsed.isoformat()
-            entry["hass.entity"]["valueas"]["date"] = parsed.date().isoformat()
-            entry["hass.entity"]["valueas"]["time"] = parsed.time().isoformat()
-
-        if include_entity_details:
-            entry["hass.entity"].update(
-                {
-                    "name": entity_name,
-                    "area": {"id": "entity_area", "name": "entity area"},
-                    "device": {
-                        "id": device_id,
-                        "name": "name",
-                        "area": {"id": "device_area", "name": "device area"},
-                    },
-                }
-            )
-
-        payload.append(entry)
-
-        return payload
+            raise ValueError(f"Unsupported version: {version}")
 
     def event_to_payload_v1(event):
         entity_id = event["domain"] + "." + event["object_id"]
@@ -957,7 +890,7 @@ def _build_expected_payload(
 
     payload = []
     for event in events:
-        for entry in event_to_payload(event):
+        for entry in event_to_payload(event, version=version):
             payload.append(entry)
 
     return payload
