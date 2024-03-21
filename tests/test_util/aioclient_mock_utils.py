@@ -74,3 +74,23 @@ def extract_es_legacy_index_template_requests(
             bulk_requests.append(MockCall(method, url, output, headers))
 
     return bulk_requests
+
+
+def extract_es_ilm_template_requests(
+    aioclient_mock: AiohttpClientMocker,
+) -> list[MockCall]:
+    """Extract ES Bulk request from the collection of mock calls."""
+    assert isinstance(aioclient_mock.mock_calls, list)
+
+    bulk_requests: list[MockCall] = []
+
+    for call in aioclient_mock.mock_calls:
+        (method, url, data, headers) = cast(tuple[str, URL, dict, dict], call)
+        if method == "PUT" and "/_ilm/policy" in url.path:
+            output = []
+            for payload in data.decode().rstrip().split("\n"):
+                output.append(json.loads(payload))
+
+            bulk_requests.append(MockCall(method, url, output, headers))
+
+    return bulk_requests

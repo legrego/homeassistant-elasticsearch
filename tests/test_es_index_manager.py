@@ -21,6 +21,7 @@ from tests.conftest import mock_config_entry
 from tests.test_util.aioclient_mock_utils import (
     extract_es_legacy_index_template_requests,
     extract_es_modern_index_template_requests,
+    extract_es_ilm_template_requests,
 )
 from tests.test_util.es_startup_mocks import mock_es_initialization
 
@@ -113,6 +114,10 @@ async def test_legacy_index_mode_setup(
 
     assert legacy_template_requests[0].method == "PUT"
 
+    ilm_template_requests = extract_es_ilm_template_requests(es_aioclient_mock)
+
+    assert len(ilm_template_requests) == 1
+
 
 async def test_modern_index_mode_setup(
     modern_index_manager: modern_index_manager, es_aioclient_mock: AiohttpClientMocker
@@ -131,3 +136,7 @@ async def test_modern_index_mode_setup(
     )
 
     assert modern_template_requests[0].method == "PUT"
+
+    ilm_template_requests = extract_es_ilm_template_requests(es_aioclient_mock)
+
+    assert len(ilm_template_requests) == 0
