@@ -63,10 +63,6 @@
                                         "keyword": {
                                             "ignore_above": 1024,
                                             "type": "keyword"
-                                        },
-                                        "float": {
-                                            "ignore_malformed": true,
-                                            "type": "float"
                                         }
                                     }
                                 },

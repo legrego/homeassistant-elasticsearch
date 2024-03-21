@@ -4,7 +4,6 @@ from datetime import datetime
 from unittest import mock
 
 import pytest
-from const import MOCK_NOON_APRIL_12TH_2023
 from freezegun.api import FrozenDateTimeFactory
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
@@ -20,6 +19,7 @@ from custom_components.elasticsearch.const import (
     INDEX_MODE_LEGACY,
 )
 from custom_components.elasticsearch.es_doc_creator import DocumentCreator
+from tests.const import MOCK_NOON_APRIL_12TH_2023
 
 
 @pytest.fixture(autouse=True)
@@ -77,7 +77,6 @@ async def test_v1_doc_creation(
         "hass.domain": "sensor",
         "hass.entity": {
             "attributes": {"unit_of_measurement": "kg"},
-            "device": {},
             "domain": "sensor",
             "id": "sensor.test_1",
             "value": 2.0,
@@ -89,6 +88,63 @@ async def test_v1_doc_creation(
         "hass.value": 2.0,
     }
 
+    assert diff(document, expected) == {}
+
+    # Test on/off coercion to Float
+
+    hass.states.async_set("sensor.test_1", "off", {"unit_of_measurement": "kg"}, True)
+    await hass.async_block_till_done()
+    _state = hass.states.get("sensor.test_1")
+
+    document = creator.state_to_document(
+        _state, dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023), version=1
+    )
+
+    expected = {
+        "@timestamp": dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023),
+        "hass.attributes": {"unit_of_measurement": "kg"},
+        "hass.domain": "sensor",
+        "hass.entity": {
+            "attributes": {"unit_of_measurement": "kg"},
+            "domain": "sensor",
+            "id": "sensor.test_1",
+            "value": 0,
+        },
+        "hass.entity_id": "sensor.test_1",
+        "hass.entity_id_lower": "sensor.test_1",
+        "hass.object_id": "test_1",
+        "hass.object_id_lower": "test_1",
+        "hass.value": 0,
+    }
+
+    # Test date handling to Float
+
+    hass.states.async_set(
+        "sensor.test_1", MOCK_NOON_APRIL_12TH_2023, {"unit_of_measurement": "kg"}, True
+    )
+    await hass.async_block_till_done()
+    _state = hass.states.get("sensor.test_1")
+
+    document = creator.state_to_document(
+        _state, dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023), version=1
+    )
+
+    expected = {
+        "@timestamp": dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023),
+        "hass.attributes": {"unit_of_measurement": "kg"},
+        "hass.domain": "sensor",
+        "hass.entity": {
+            "attributes": {"unit_of_measurement": "kg"},
+            "domain": "sensor",
+            "id": "sensor.test_1",
+            "value": MOCK_NOON_APRIL_12TH_2023,
+        },
+        "hass.entity_id": "sensor.test_1",
+        "hass.entity_id_lower": "sensor.test_1",
+        "hass.object_id": "test_1",
+        "hass.object_id_lower": "test_1",
+        "hass.value": MOCK_NOON_APRIL_12TH_2023,
+    }
     assert diff(document, expected) == {}
 
 
@@ -125,11 +181,33 @@ async def test_v2_doc_creation(
         "@timestamp": dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023),
         "hass.entity": {
             "attributes": {"unit_of_measurement": "kg"},
-            "device": {},
             "domain": "sensor",
             "id": "sensor.test_1",
             "value": "tomato",
             "valueas": {"string": "tomato"},
+        },
+        "hass.object_id": "test_1",
+    }
+
+    assert diff(document, expected) == {}
+
+    # Test v2 Document Creation with stringed Float Value
+    hass.states.async_set("sensor.test_1", "2.0", {"unit_of_measurement": "kg"}, True)
+    await hass.async_block_till_done()
+    _state = hass.states.get("sensor.test_1")
+
+    document = creator.state_to_document(
+        _state, dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023), version=2
+    )
+
+    expected = {
+        "@timestamp": dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023),
+        "hass.entity": {
+            "attributes": {"unit_of_measurement": "kg"},
+            "domain": "sensor",
+            "id": "sensor.test_1",
+            "value": "2.0",
+            "valueas": {"float": 2.0},
         },
         "hass.object_id": "test_1",
     }
@@ -149,10 +227,9 @@ async def test_v2_doc_creation(
         "@timestamp": dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023),
         "hass.entity": {
             "attributes": {"unit_of_measurement": "kg"},
-            "device": {},
             "domain": "sensor",
             "id": "sensor.test_1",
-            "value": 2.0,
+            "value": "2.0",
             "valueas": {"float": 2.0},
         },
         "hass.object_id": "test_1",
@@ -180,7 +257,6 @@ async def test_v2_doc_creation(
         "@timestamp": dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023),
         "hass.entity": {
             "attributes": {"unit_of_measurement": "kg"},
-            "device": {},
             "domain": "sensor",
             "id": "sensor.test_1",
             "value": testDateTimeString,
@@ -189,6 +265,36 @@ async def test_v2_doc_creation(
                 "date": testDateTime.date().isoformat(),
                 "time": testDateTime.time().isoformat(),
             },
+        },
+        "hass.object_id": "test_1",
+    }
+
+    assert diff(document, expected) == {}
+
+    # Test v2 Document Creation with Boolean Value
+    testDateTimeString = MOCK_NOON_APRIL_12TH_2023
+    testDateTime = dt_util.parse_datetime(testDateTimeString)
+
+    hass.states.async_set(
+        "sensor.test_1",
+        "off",
+        {"unit_of_measurement": "kg"},
+        True,
+    )
+    await hass.async_block_till_done()
+    _state = hass.states.get("sensor.test_1")
+    document = creator.state_to_document(
+        _state, dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023), version=2
+    )
+
+    expected = {
+        "@timestamp": dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023),
+        "hass.entity": {
+            "attributes": {"unit_of_measurement": "kg"},
+            "domain": "sensor",
+            "id": "sensor.test_1",
+            "value": "off",
+            "valueas": {"boolean": False},
         },
         "hass.object_id": "test_1",
     }
