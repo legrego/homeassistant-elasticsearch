@@ -102,25 +102,27 @@ class DocumentCreator:
         additions = {}
 
         if entity_details is not None:
+            additions["device"] = {}
+
             if entity_details.device:
                 additions["device"]["id"] = entity_details.device.id
                 additions["device"]["name"] = entity_details.device.name
+
+            if entity_details.entity_area:
+                additions["area"] = {
+                    "id": entity_details.entity_area.id,
+                    "name": entity_details.entity_area.name,
+                }
+
+            if entity_details.entity.platform:
+                additions["platform"] = entity_details.entity.platform
+            if entity_details.entity.name:
+                additions["name"] = entity_details.entity.name
 
             if entity_details.device_area:
                 additions["device"]["area"] = {
                     "id": entity_details.device_area.id,
                     "name": entity_details.device_area.name,
-                }
-
-            if entity_details.platform:
-                additions["platform"] = entity_details.platform
-            if entity_details.name:
-                additions["name"] = entity_details.name
-
-            if entity_details.area:
-                additions["area"] = {
-                    "id": entity_details.area.id,
-                    "name": entity_details.area.name,
                 }
 
         return additions
@@ -133,7 +135,7 @@ class DocumentCreator:
         if isinstance(_state, float):
             return _state
 
-        elif isinstance(_state, str) and try_state_as_number(state):
+        elif isinstance(_state, str) and self.try_state_as_number(state):
             return state_helper.state_as_number(state)
 
         else:
@@ -148,14 +150,14 @@ class DocumentCreator:
         if isinstance(_state, float):
             additions["valueas"]["float"] = _state
 
-        elif isinstance(_state, str) and try_state_as_boolean(state):
-            additions["valueas"]["boolean"] = state_as_boolean(state)
+        elif isinstance(_state, str) and self.try_state_as_boolean(state):
+            additions["valueas"]["boolean"] = self.state_as_boolean(state)
 
-        elif isinstance(_state, str) and try_state_as_number(state):
+        elif isinstance(_state, str) and self.try_state_as_number(state):
             additions["valueas"]["float"] = state_helper.state_as_number(state)
 
-        elif isinstance(_state, str) and try_state_as_datetime(state):
-            _tempState = state_as_datetime(state)
+        elif isinstance(_state, str) and self.try_state_as_datetime(state):
+            _tempState = self.state_as_datetime(state)
 
             additions["valueas"]["datetime"] = _tempState.isoformat()
             additions["valueas"]["date"] = _tempState.date().isoformat()
@@ -256,78 +258,72 @@ class DocumentCreator:
 
         return document_body
 
+    def is_valid_number(number):
+        """Determine if the passed number is valid for Elasticsearch."""
+        is_infinity = isinf(number)
+        is_nan = number != number  # pylint: disable=comparison-with-itself
+        return not is_infinity and not is_nan
 
-def is_valid_number(number):
-    """Determine if the passed number is valid for Elasticsearch."""
-    is_infinity = isinf(number)
-    is_nan = number != number  # pylint: disable=comparison-with-itself
-    return not is_infinity and not is_nan
+    def try_state_as_number(self, state: State) -> bool:
+        """Try to coerce our state to a number and return true if we can, false if we can't."""
 
+        try:
+            state_helper.state_as_number(state)
+            return True
+        except ValueError:
+            return False
 
-def try_state_as_number(state: State) -> bool:
-    """Try to coerce our state to a number and return true if we can, false if we can't."""
+    def try_state_as_boolean(self, state: State) -> bool:
+        """Try to coerce our state to a boolean and return true if we can, false if we can't."""
 
-    try:
-        state_helper.state_as_number(state)
-        return True
-    except ValueError:
-        return False
+        try:
+            self.state_as_boolean(state)
+            return True
+        except ValueError:
+            return False
 
+    def state_as_boolean(self, state: State) -> bool:
+        """Try to coerce our state to a boolean."""
+        # copied from helper state_as_number function
+        if state.state in (
+            STATE_ON,
+            STATE_LOCKED,
+            STATE_ABOVE_HORIZON,
+            STATE_OPEN,
+            STATE_HOME,
+        ):
+            return True
+        if state.state in (
+            STATE_OFF,
+            STATE_UNLOCKED,
+            STATE_UNKNOWN,
+            STATE_BELOW_HORIZON,
+            STATE_CLOSED,
+            STATE_NOT_HOME,
+        ):
+            return False
 
-def try_state_as_boolean(state: State) -> bool:
-    """Try to coerce our state to a boolean and return true if we can, false if we can't."""
+        raise ValueError("Could not coerce state to a boolean.")
 
-    try:
-        state_as_boolean(state)
-        return True
-    except ValueError:
-        return False
+    def try_state_as_datetime(self, state: State) -> datetime:
+        """Try to coerce our state to a datetime and return True if we can, false if we can't."""
 
+        try:
+            self.state_as_datetime(state)
+            return True
+        except ValueError:
+            return False
 
-def state_as_boolean(state: State) -> bool:
-    """Try to coerce our state to a boolean."""
-    # copied from helper state_as_number function
-    if state.state in (
-        STATE_ON,
-        STATE_LOCKED,
-        STATE_ABOVE_HORIZON,
-        STATE_OPEN,
-        STATE_HOME,
-    ):
-        return True
-    if state.state in (
-        STATE_OFF,
-        STATE_UNLOCKED,
-        STATE_UNKNOWN,
-        STATE_BELOW_HORIZON,
-        STATE_CLOSED,
-        STATE_NOT_HOME,
-    ):
-        return False
+    def state_as_datetime(self, state: State) -> datetime:
+        """Try to coerce our state to a datetime."""
 
-    raise ValueError("Could not coerce state to a boolean.")
+        parsed = dt_util.parse_datetime(state.state)
 
+        # TODO: More recent versions of HA allow us to pass `raise_on_error`.
+        # We can remove this explicit `raise` once we update the minimum supported HA version.
+        # parsed = dt_util.parse_datetime(_state, raise_on_error=True)
 
-def try_state_as_datetime(state: State) -> datetime:
-    """Try to coerce our state to a datetime and return True if we can, false if we can't."""
+        if parsed is None:
+            raise ValueError("Could not coerce state to a datetime.")
 
-    try:
-        state_as_datetime(state)
-        return True
-    except ValueError:
-        return False
-
-
-def state_as_datetime(state: State) -> datetime:
-    """Try to coerce our state to a datetime."""
-
-    parsed = dt_util.parse_datetime(state.state)
-
-    # TODO: More recent versions of HA allow us to pass `raise_on_error`.
-    # We can remove this explicit `raise` once we update the minimum supported HA version.
-    # parsed = dt_util.parse_datetime(_state, raise_on_error=True)
-
-    if parsed is None:
-        raise ValueError("Could not coerce state to a datetime.")
-
-    return parsed
+        return parsed

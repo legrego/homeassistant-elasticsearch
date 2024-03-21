@@ -5,7 +5,15 @@ from unittest import mock
 
 import pytest
 from freezegun.api import FrozenDateTimeFactory
-from homeassistant.core import HomeAssistant
+from homeassistant.components import (
+    counter,
+    input_boolean,
+    input_button,
+    input_text,
+)
+from homeassistant.core import HomeAssistant, State
+from homeassistant.helpers import area_registry, device_registry, entity_registry
+from homeassistant.setup import async_setup_component
 from homeassistant.util import dt as dt_util
 from homeassistant.util.dt import UTC
 from jsondiff import diff
@@ -19,6 +27,7 @@ from custom_components.elasticsearch.const import (
     INDEX_MODE_LEGACY,
 )
 from custom_components.elasticsearch.es_doc_creator import DocumentCreator
+from tests.conftest import mock_config_entry
 from tests.const import MOCK_NOON_APRIL_12TH_2023
 
 
@@ -42,15 +51,80 @@ def skip_system_info():
         yield
 
 
+async def _setup_config_entry(hass: HomeAssistant, mock_entry: mock_config_entry):
+    mock_entry.add_to_hass(hass)
+    assert await async_setup_component(hass, DOMAIN, {}) is True
+    await hass.async_block_till_done()
+
+    config_entries = hass.config_entries.async_entries(DOMAIN)
+    assert len(config_entries) == 1
+    entry = config_entries[0]
+
+    return entry
+
+
+async def test_entity_details_creation(hass: HomeAssistant):
+    """Test entity details creation."""
+    es_url = "http://localhost:9200"
+
+    mock_entry = MockConfigEntry(
+        unique_id="test_entity_details",
+        domain=DOMAIN,
+        version=3,
+        data=build_full_config({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_LEGACY}),
+        title="ES Config",
+    )
+
+    await _setup_config_entry(hass, mock_entry)
+
+    entity_area = area_registry.async_get(hass).async_create("entity area")
+    area_registry.async_get(hass).async_create("device area")
+
+    dr = device_registry.async_get(hass)
+    device = dr.async_get_or_create(
+        config_entry_id=mock_entry.entry_id,
+        connections={(device_registry.CONNECTION_NETWORK_MAC, "12:34:56:AB:CD:EF")},
+        identifiers={("bridgeid", "0123")},
+        sw_version="sw-version",
+        name="name",
+        manufacturer="manufacturer",
+        model="model",
+        suggested_area="device area",
+    )
+
+    config = {counter.DOMAIN: {"test_1": {}}}
+    assert await async_setup_component(hass, counter.DOMAIN, config)
+    entity_id = "counter.test_1"
+    entity_name = "My Test Counter"
+    entity_registry.async_get(hass).async_update_entity(
+        entity_id, area_id=entity_area.id, device_id=device.id, name=entity_name
+    )
+
+    creator = DocumentCreator(hass, mock_entry)
+
+    document = creator._state_to_entity_details(hass.states.get(entity_id))
+
+    expected = {
+        "area": {"id": "entity_area", "name": "entity area"},
+        "device": {
+            "area": {"id": "device_area", "name": "device area"},
+            "id": device.id,
+            "name": "name",
+        },
+        "name": "My Test Counter",
+        "platform": "counter",
+    }
+
+    assert diff(document, expected) == {}
+
+
 @pytest.mark.asyncio
-async def test_v1_doc_creation(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
-):
+async def test_v1_doc_creation(hass: HomeAssistant):
     """Test v1 document creation."""
     es_url = "http://localhost:9200"
 
     mock_entry = MockConfigEntry(
-        unique_id="test_publish_state_change",
+        unique_id="test_v1_doc_creation",
         domain=DOMAIN,
         version=3,
         data=build_full_config({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_LEGACY}),
@@ -156,7 +230,7 @@ async def test_v2_doc_creation(
     es_url = "http://localhost:9200"
 
     mock_entry = MockConfigEntry(
-        unique_id="test_publish_state_change",
+        unique_id="test_v2_doc_creation",
         domain=DOMAIN,
         version=3,
         data=build_full_config({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_LEGACY}),
@@ -300,3 +374,120 @@ async def test_v2_doc_creation(
     }
 
     assert diff(document, expected) == {}
+
+
+# Unit tests for state conversions
+@pytest.mark.asyncio
+async def test_try_state_as_number(hass: HomeAssistant):
+    """Test state to float conversion."""
+    creator = DocumentCreator(hass, None)
+
+    # Test on/off coercion to Float
+    assert creator.try_state_as_number(State("domain.entity_id", "1")) is True
+
+    assert creator.try_state_as_number(State("domain.entity_id", "0")) is True
+
+    assert creator.try_state_as_number(State("domain.entity_id", "1.0")) is True
+
+    assert creator.try_state_as_number(State("domain.entity_id", "0.0")) is True
+
+    assert creator.try_state_as_number(State("domain.entity_id", "2.0")) is True
+
+    assert creator.try_state_as_number(State("domain.entity_id", "2")) is True
+
+    assert creator.try_state_as_number(State("domain.entity_id", "tomato")) is False
+
+    assert (
+        creator.try_state_as_number(
+            State("domain.entity_id", MOCK_NOON_APRIL_12TH_2023)
+        )
+        is False
+    )
+
+
+@pytest.mark.asyncio
+async def test_try_state_as_boolean(hass: HomeAssistant):
+    """Test state to boolean conversion."""
+    creator = DocumentCreator(hass, None)
+
+    # Test on/off coercion to Float
+    assert creator.try_state_as_boolean(State("domain.entity_id", "on")) is True
+
+    assert creator.try_state_as_boolean(State("domain.entity_id", "off")) is True
+
+    assert creator.try_state_as_boolean(State("domain.entity_id", "1")) is False
+
+    assert creator.try_state_as_boolean(State("domain.entity_id", "0")) is False
+
+    assert creator.try_state_as_boolean(State("domain.entity_id", "1.0")) is False
+
+    assert (
+        creator.try_state_as_boolean(
+            State("domain.entity_id", MOCK_NOON_APRIL_12TH_2023)
+        )
+        is False
+    )
+
+
+@pytest.mark.asyncio
+async def test_state_as_boolean(hass: HomeAssistant):
+    """Test state to boolean conversion."""
+    creator = DocumentCreator(hass, None)
+
+    # Test on/off coercion to Float
+    assert creator.state_as_boolean(State("domain.entity_id", "on")) is True
+    assert creator.state_as_boolean(State("domain.entity_id", "off")) is False
+
+    with pytest.raises(ValueError):
+        assert creator.state_as_boolean(State("domain.entity_id", "1"))
+    with pytest.raises(ValueError):
+        assert creator.state_as_boolean(State("domain.entity_id", "0"))
+    with pytest.raises(ValueError):
+        assert creator.state_as_boolean(State("domain.entity_id", "1.0"))
+    with pytest.raises(ValueError):
+        assert creator.state_as_boolean(
+            State("domain.entity_id", MOCK_NOON_APRIL_12TH_2023)
+        )
+
+
+@pytest.mark.asyncio
+async def test_state_as_datetime(hass: HomeAssistant):
+    """Test state to datetime conversion."""
+    creator = DocumentCreator(hass, None)
+
+    assert creator.state_as_datetime(
+        State("domain.entity_id", MOCK_NOON_APRIL_12TH_2023)
+    ) == dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023)
+
+    with pytest.raises(ValueError):
+        creator.state_as_datetime(State("domain.entity_id", "tomato"))
+
+    with pytest.raises(ValueError):
+        creator.state_as_datetime(State("domain.entity_id", "1"))
+
+    with pytest.raises(ValueError):
+        creator.state_as_datetime(State("domain.entity_id", "0"))
+
+    with pytest.raises(ValueError):
+        creator.state_as_datetime(State("domain.entity_id", "on"))
+
+    with pytest.raises(ValueError):
+        creator.state_as_datetime(State("domain.entity_id", "off"))
+
+
+@pytest.mark.asyncio
+async def test_try_state_as_datetime(hass: HomeAssistant):
+    """Test state to datetime conversion."""
+    creator = DocumentCreator(hass, None)
+
+    assert creator.try_state_as_datetime(State("domain.entity_id", "tomato")) is False
+    assert creator.try_state_as_datetime(State("domain.entity_id", "1")) is False
+    assert creator.try_state_as_datetime(State("domain.entity_id", "0")) is False
+    assert creator.try_state_as_datetime(State("domain.entity_id", "on")) is False
+    assert creator.try_state_as_datetime(State("domain.entity_id", "off")) is False
+
+    # Add a true case test
+    assert (
+        creator.try_state_as_datetime(State("domain.entity_id", "2023-04-12T12:00:00Z"))
+        is True
+    )
