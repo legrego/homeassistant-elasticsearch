@@ -24,6 +24,7 @@ def mock_es_initialization(
     aioclient_mock: AiohttpClientMocker,
     url=MOCK_COMPLEX_LEGACY_CONFIG.get(CONF_URL),
     mock_template_setup=True,
+    mock_modern_template_setup=True,
     mock_index_creation=True,
     mock_health_check=True,
     mock_ilm_setup=True,
@@ -123,6 +124,19 @@ def mock_es_initialization(
             },
         )
 
+    if mock_modern_template_setup:
+        aioclient_mock.get(
+            url + "/_index_template/metrics-homeassistant",
+            status=404,
+            headers={"content-type": CONTENT_TYPE_JSON},
+            json={"error": "template missing"},
+        )
+        aioclient_mock.put(
+            url + "/_index_template/metrics-homeassistant",
+            status=200,
+            headers={"content-type": CONTENT_TYPE_JSON},
+            json={"hi": "need dummy content"},
+        )
     if mock_template_setup:
         aioclient_mock.get(
             url + "/_template/hass-index-template-v4_2",
