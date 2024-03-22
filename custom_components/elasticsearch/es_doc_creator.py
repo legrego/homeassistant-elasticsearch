@@ -101,6 +101,9 @@ class DocumentCreator:
         orig_attributes = dict(state.attributes)
         attributes = {}
         for orig_key, orig_value in orig_attributes.items():
+            # Skip any attributes with invalid keys. Elasticsearch cannot index these.
+            # https://github.com/legrego/homeassistant-elasticsearch/issues/96
+            # https://github.com/legrego/homeassistant-elasticsearch/issues/192
             if not orig_key or not isinstance(orig_key, str):
                 LOGGER.debug(
                     "Not publishing attribute with unsupported key [%s] from entity [%s].",
@@ -109,9 +112,12 @@ class DocumentCreator:
                 )
                 continue
 
+            # so we replace them with an "_" instead.
+            # https://github.com/legrego/homeassistant-elasticsearch/issues/92
             key = str.replace(orig_key, ".", "_")
             value = orig_value
 
+            # coerce set to list. ES does not handle sets natively
             if not isinstance(orig_value, ALLOWED_ATTRIBUTE_TYPES):
                 LOGGER.debug(
                     "Not publishing attribute [%s] of disallowed type [%s] from entity [%s].",
@@ -124,6 +130,10 @@ class DocumentCreator:
             if isinstance(orig_value, set):
                 value = list(orig_value)
 
+            # if the list/tuple contains simple strings, numbers, or booleans, then we should
+            # index the contents as an actual list. Otherwise, we need to serialize
+            # the contents so that we can respect the index mapping
+            # (Arrays of objects cannot be indexed as-is)
             if value and isinstance(value, list | tuple):
                 should_serialize = isinstance(value[0], tuple | dict | set | list)
             else:
