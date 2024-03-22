@@ -1,6 +1,6 @@
 ---
     name: Comment coverage report on the pull request
-    on: # yamllint disable-line rule:truthy
+    on:
       workflow_run:
         workflows: ["Pull actions"]
         types:
@@ -44,5 +44,5 @@
             uses: MishaKav/pytest-coverage-comment@v1.1.51
             with:
               issue-number: ${{ steps.pr_number.outputs.content }}
-              pytest-xml-coverage-path: ./test_results/cov_xml/coverage.xml
+              pytest-xml-coverage-path: ./test_results/coverage.xml
               junitxml-path: ./test_results/pytest.xml
