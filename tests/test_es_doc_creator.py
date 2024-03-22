@@ -22,7 +22,11 @@ from custom_components.elasticsearch.const import (
 )
 from custom_components.elasticsearch.es_doc_creator import DocumentCreator
 from tests.conftest import mock_config_entry
-from tests.const import MOCK_NOON_APRIL_12TH_2023
+from tests.const import (
+    MOCK_LOCATION_DEVICE,
+    MOCK_LOCATION_SERVER,
+    MOCK_NOON_APRIL_12TH_2023,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -57,6 +61,11 @@ async def _setup_config_entry(
 @pytest.fixture(autouse=True)
 async def document_creator(hass: HomeAssistant):
     """Fixture to create a DocumentCreator instance."""
+
+    # Fix the location for the tests
+    hass.config.latitude = MOCK_LOCATION_SERVER["lat"]
+    hass.config.longitude = MOCK_LOCATION_SERVER["lon"]
+
     es_url = "http://localhost:9200"
     mock_entry = MockConfigEntry(
         unique_id="test_doc_creator",
@@ -84,6 +93,7 @@ async def create_and_return_document(
     version=2,
 ):
     """Create and return a test document."""
+
     state = await create_and_return_state(
         hass, domain=domain, entity_id=entity_id, value=value, attributes=attributes
     )
@@ -450,8 +460,8 @@ async def test_v1_doc_creation_geolocation(
 ):
     """Test v1 document creation with geolocation."""
 
-    hass.config.latitude = 32.87336
-    hass.config.longitude = -117.22743
+    hass.config.latitude = MOCK_LOCATION_SERVER["lat"]
+    hass.config.longitude = MOCK_LOCATION_SERVER["lon"]
 
     await document_creator.async_init()
 
@@ -487,7 +497,75 @@ async def test_v1_doc_creation_geolocation(
         "host.hostname": "UNKNOWN",
         "host.os.name": "UNKNOWN",
         "tags": None,
-        "host.geo.location": {"lat": 32.87336, "lon": -117.22743},
+        "host.geo.location": {
+            "lat": MOCK_LOCATION_SERVER["lat"],
+            "lon": MOCK_LOCATION_SERVER["lon"],
+        },
+    }
+
+    assert diff(document, expected) == {}
+
+
+@pytest.mark.asyncio
+async def test_v1_doc_creation_geolocation_from_attributes(
+    hass: HomeAssistant, document_creator: DocumentCreator
+):
+    """Test v1 document creation with geolocation."""
+
+    hass.config.latitude = MOCK_LOCATION_SERVER["lat"]
+    hass.config.longitude = MOCK_LOCATION_SERVER["lon"]
+
+    await document_creator.async_init()
+
+    # Mock a state object with attributes
+    document = await create_and_return_document(
+        hass,
+        value="2",
+        attributes={
+            "latitude": MOCK_LOCATION_DEVICE["lat"],
+            "longitude": MOCK_LOCATION_DEVICE["lon"],
+        },
+        document_creator=document_creator,
+        version=1,
+    )
+
+    expected = {
+        "@timestamp": dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023),
+        "agent.name": "My Home Assistant",
+        "agent.type": "hass",
+        "agent.version": "UNKNOWN",
+        "ecs.version": "1.0.0",
+        "hass.attributes": {
+            "latitude": MOCK_LOCATION_DEVICE["lat"],
+            "longitude": MOCK_LOCATION_DEVICE["lon"],
+        },
+        "hass.domain": "sensor",
+        "hass.entity": {
+            "attributes": {
+                "latitude": MOCK_LOCATION_DEVICE["lat"],
+                "longitude": MOCK_LOCATION_DEVICE["lon"],
+            },
+            "domain": "sensor",
+            "id": "sensor.test_1",
+            "value": 2.0,
+        },
+        "hass.entity_id": "sensor.test_1",
+        "hass.entity_id_lower": "sensor.test_1",
+        "hass.object_id": "test_1",
+        "hass.object_id_lower": "test_1",
+        "hass.value": 2.0,
+        "host.architecture": "UNKNOWN",
+        "host.hostname": "UNKNOWN",
+        "host.os.name": "UNKNOWN",
+        "tags": None,
+        "host.geo.location": {
+            "lat": MOCK_LOCATION_SERVER["lat"],
+            "lon": MOCK_LOCATION_SERVER["lon"],
+        },
+        "hass.geo.location": {
+            "lat": MOCK_LOCATION_DEVICE["lat"],
+            "lon": MOCK_LOCATION_DEVICE["lon"],
+        },
     }
 
     assert diff(document, expected) == {}
@@ -674,8 +752,8 @@ async def test_v2_doc_creation_geolocation(
 ):
     """Test v2 document creation with geolocation."""
 
-    hass.config.latitude = 32.87336
-    hass.config.longitude = -117.22743
+    hass.config.latitude = MOCK_LOCATION_SERVER["lat"]
+    hass.config.longitude = MOCK_LOCATION_SERVER["lon"]
 
     await document_creator.async_init()
 
@@ -699,9 +777,69 @@ async def test_v2_doc_creation_geolocation(
             "id": "sensor.test_1",
             "value": "2",
             "valueas": {"float": 2.0},
+            "geo.location": {
+                "lat": MOCK_LOCATION_SERVER["lat"],
+                "lon": MOCK_LOCATION_SERVER["lon"],
+            },
         },
         "hass.object_id": "test_1",
-        "host.geo.location": {"lat": 32.87336, "lon": -117.22743},
+        "host.geo.location": {
+            "lat": MOCK_LOCATION_SERVER["lat"],
+            "lon": MOCK_LOCATION_SERVER["lon"],
+        },
+        "tags": None,
+    }
+
+    assert diff(document, expected) == {}
+
+
+@pytest.mark.asyncio
+async def test_v2_doc_creation_geolocation_from_attributes(
+    hass: HomeAssistant, document_creator: DocumentCreator
+):
+    """Test v2 document creation with geolocation."""
+
+    hass.config.latitude = MOCK_LOCATION_SERVER["lat"]
+    hass.config.longitude = MOCK_LOCATION_SERVER["lon"]
+
+    await document_creator.async_init()
+
+    # Mock a state object with attributes
+    document = await create_and_return_document(
+        hass,
+        value="2",
+        attributes={
+            "latitude": MOCK_LOCATION_DEVICE["lat"],
+            "longitude": MOCK_LOCATION_DEVICE["lon"],
+        },
+        document_creator=document_creator,
+        version=2,
+    )
+
+    expected = {
+        "@timestamp": dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023),
+        "agent.name": "My Home Assistant",
+        "agent.type": "hass",
+        "ecs.version": "1.0.0",
+        "hass.entity": {
+            "attributes": {
+                "latitude": MOCK_LOCATION_DEVICE["lat"],
+                "longitude": MOCK_LOCATION_DEVICE["lon"],
+            },
+            "geo.location": {
+                "lat": MOCK_LOCATION_DEVICE["lat"],
+                "lon": MOCK_LOCATION_DEVICE["lon"],
+            },
+            "domain": "sensor",
+            "id": "sensor.test_1",
+            "value": "2",
+            "valueas": {"float": 2.0},
+        },
+        "hass.object_id": "test_1",
+        "host.geo.location": {
+            "lat": MOCK_LOCATION_SERVER["lat"],
+            "lon": MOCK_LOCATION_SERVER["lon"],
+        },
         "tags": None,
     }
 
@@ -727,6 +865,10 @@ async def test_v2_doc_creation_attributes(
         "hass.entity": {
             "attributes": {"unit_of_measurement": "kg"},
             "domain": "sensor",
+            "geo.location": {
+                "lat": MOCK_LOCATION_SERVER["lat"],
+                "lon": MOCK_LOCATION_SERVER["lon"],
+            },
             "id": "sensor.test_1",
             "value": "tomato",
             "valueas": {"string": "tomato"},
@@ -757,6 +899,10 @@ async def test_v2_doc_creation_float_as_string(
         "hass.entity": {
             "attributes": {},
             "domain": "sensor",
+            "geo.location": {
+                "lat": MOCK_LOCATION_SERVER["lat"],
+                "lon": MOCK_LOCATION_SERVER["lon"],
+            },
             "id": "sensor.test_1",
             "value": "2.0",
             "valueas": {"float": 2.0},
@@ -788,6 +934,10 @@ async def test_v2_doc_creation_float_infinity(
         "hass.entity": {
             "attributes": {},
             "domain": "sensor",
+            "geo.location": {
+                "lat": MOCK_LOCATION_SERVER["lat"],
+                "lon": MOCK_LOCATION_SERVER["lon"],
+            },
             "id": "sensor.test_1",
             "value": "inf",
             "valueas": {"string": "inf"},
@@ -818,6 +968,10 @@ async def test_v2_doc_creation_float(
         "hass.entity": {
             "attributes": {},
             "domain": "sensor",
+            "geo.location": {
+                "lat": MOCK_LOCATION_SERVER["lat"],
+                "lon": MOCK_LOCATION_SERVER["lon"],
+            },
             "id": "sensor.test_1",
             "value": "2.0",
             "valueas": {"float": 2.0},
@@ -850,6 +1004,10 @@ async def test_v2_doc_creation_datetime(
         "hass.entity": {
             "attributes": {},
             "domain": "sensor",
+            "geo.location": {
+                "lat": MOCK_LOCATION_SERVER["lat"],
+                "lon": MOCK_LOCATION_SERVER["lon"],
+            },
             "id": "sensor.test_1",
             "value": testDateTimeString,
             "valueas": {
@@ -884,6 +1042,10 @@ async def test_v2_doc_creation_boolean_truefalse(
         "hass.entity": {
             "attributes": {},
             "domain": "sensor",
+            "geo.location": {
+                "lat": MOCK_LOCATION_SERVER["lat"],
+                "lon": MOCK_LOCATION_SERVER["lon"],
+            },
             "id": "sensor.test_1",
             "value": "true",
             "valueas": {"boolean": True},
@@ -914,6 +1076,10 @@ async def test_v2_doc_creation_boolean_onoff(
         "hass.entity": {
             "attributes": {},
             "domain": "sensor",
+            "geo.location": {
+                "lat": MOCK_LOCATION_SERVER["lat"],
+                "lon": MOCK_LOCATION_SERVER["lon"],
+            },
             "id": "sensor.test_1",
             "value": "off",
             "valueas": {"boolean": False},

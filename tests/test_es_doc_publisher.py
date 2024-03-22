@@ -4,6 +4,7 @@ from datetime import datetime
 from unittest import mock
 
 import pytest
+from elasticsearch.errors import ElasticException
 from freezegun.api import FrozenDateTimeFactory
 from homeassistant.components import (
     counter,
@@ -39,8 +40,17 @@ from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 from custom_components.elasticsearch.es_index_manager import IndexManager
 from custom_components.elasticsearch.es_serializer import get_serializer
 from tests.conftest import mock_config_entry
+from tests.const import MOCK_LOCATION_SERVER
 from tests.test_util.aioclient_mock_utils import extract_es_bulk_requests
 from tests.test_util.es_startup_mocks import mock_es_initialization
+
+
+@pytest.fixture(autouse=True)
+def freeze_location(hass: HomeAssistant):
+    """Freeze location so we can properly assert on payload contents."""
+
+    hass.config.latitude = MOCK_LOCATION_SERVER["lat"]
+    hass.config.longitude = MOCK_LOCATION_SERVER["lon"]
 
 
 @pytest.fixture(autouse=True)
@@ -73,6 +83,145 @@ async def _setup_config_entry(hass: HomeAssistant, mock_entry: mock_config_entry
     entry = config_entries[0]
 
     return entry
+
+
+@pytest.mark.asyncio
+async def test_sanitize_datastream_name(
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
+):
+    """Test datastream names are sanitized correctly."""
+    es_url = "http://localhost:9200"
+
+    mock_es_initialization(es_aioclient_mock, es_url)
+
+    config = build_full_config({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_DATASTREAM})
+
+    mock_entry = MockConfigEntry(
+        unique_id="test_entity_detail_publishing",
+        domain=DOMAIN,
+        version=3,
+        data=config,
+        title="ES Config",
+    )
+
+    entry = await _setup_config_entry(hass, mock_entry)
+
+    gateway = ElasticsearchGateway(config)
+    index_manager = IndexManager(hass, config, gateway)
+    publisher = DocumentPublisher(
+        config, gateway, index_manager, hass, config_entry=entry
+    )
+
+    await gateway.async_init()
+    await publisher.async_init()
+
+    # Test case: name starts with invalid characters
+    name = "-test_name"
+    expected = "test_name"
+    assert publisher._sanitize_datastream_name(name) == expected
+
+    # Test case: name contains invalid characters
+    name = "test/name"
+    expected = "testname"
+    assert publisher._sanitize_datastream_name(name) == expected
+
+    # Test case: name contains invalid characters and spaces
+    name = "test? name"
+    expected = "test_name"
+    assert publisher._sanitize_datastream_name(name) == expected
+
+    # Test case: name exceeds 255 bytes
+    name = "a" * 256
+    expected = "a" * 255
+    assert publisher._sanitize_datastream_name(name) == expected
+
+    # Test case: name contains uppercase characters
+    name = "Test_Name"
+    expected = "test_name"
+    assert publisher._sanitize_datastream_name(name) == expected
+
+    # Test case: name contains multiple consecutive invalid characters
+    name = "test..name"
+    expected = "test..name"
+    assert publisher._sanitize_datastream_name(name) == expected
+
+    # Test case: name contains only invalid characters
+    name = ".,?/:*<>|#+"
+    with pytest.raises(ElasticException):
+        publisher._sanitize_datastream_name(name)
+
+    # Test case: name contains one period
+    name = "."
+    with pytest.raises(ElasticException):
+        publisher._sanitize_datastream_name(name)
+
+    # Test case: name is blank
+    name = ""
+    with pytest.raises(ElasticException):
+        publisher._sanitize_datastream_name(name)
+
+    # Test case: name contains only periods
+    name = "......"
+    with pytest.raises(ElasticException):
+        publisher._sanitize_datastream_name(name)
+
+    # Test case: name contains valid characters
+    name = "test_name"
+    expected = "test_name"
+    assert publisher._sanitize_datastream_name(name) == expected
+
+
+@pytest.mark.asyncio
+async def test_queue_functions(
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
+):
+    """Test entity change is published."""
+
+    counter_config = {counter.DOMAIN: {"test_1": {}}}
+    assert await async_setup_component(hass, counter.DOMAIN, counter_config)
+    await hass.async_block_till_done()
+
+    es_url = "http://localhost:9200"
+
+    mock_es_initialization(es_aioclient_mock, es_url)
+
+    mock_entry = MockConfigEntry(
+        unique_id="test_queue_functions",
+        domain=DOMAIN,
+        version=3,
+        data=build_full_config({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_LEGACY}),
+        title="ES Config",
+    )
+
+    entry = await _setup_config_entry(hass, mock_entry)
+
+    config = entry.data
+    gateway = ElasticsearchGateway(config)
+    index_manager = IndexManager(hass, config, gateway)
+    publisher = DocumentPublisher(
+        config, gateway, index_manager, hass, config_entry=entry
+    )
+
+    await gateway.async_init()
+    await publisher.async_init()
+
+    assert publisher.queue_size() == 0
+    assert not publisher._has_entries_to_publish()
+
+    hass.states.async_set("counter.test_1", "2")
+    await hass.async_block_till_done()
+
+    assert publisher._has_entries_to_publish()
+    assert publisher.queue_size() == 1
+    assert publisher._should_publish_entity_state(domain="counter", entity_id="test_1")
+
+    publisher.publish_enabled = False
+    assert not publisher._should_publish_entity_state(
+        domain="counter", entity_id="test_1"
+    )
+    publisher.publish_enabled = True
+
+    await gateway.async_stop_gateway()
 
 
 @pytest.mark.asyncio
@@ -334,9 +483,97 @@ async def test_datastream_attribute_publishing(
                 "platform": "counter",
                 "value": "3",
                 "valueas": {"float": 3.0},
+                "geo.location": {
+                    "lat": MOCK_LOCATION_SERVER["lat"],
+                    "lon": MOCK_LOCATION_SERVER["lon"],
+                },
             },
             "hass.object_id": "test_1",
-            "host.geo.location": {"lat": 32.87336, "lon": -117.22743},
+            "host.geo.location": {
+                "lat": MOCK_LOCATION_SERVER["lat"],
+                "lon": MOCK_LOCATION_SERVER["lon"],
+            },
+            "tags": None,
+        },
+    ]
+
+    assert diff(request.data, expected) == {}
+    await gateway.async_stop_gateway()
+
+
+@pytest.mark.asyncio
+async def test_datastream_invalid_but_fixable_domain(
+    hass, es_aioclient_mock: AiohttpClientMocker
+):
+    """Test entity attributes can be serialized correctly."""
+
+    counter_config = {counter.DOMAIN: {"test_1": {}}}
+    assert await async_setup_component(hass, counter.DOMAIN, counter_config)
+    await hass.async_block_till_done()
+
+    es_url = "http://localhost:9200"
+
+    mock_es_initialization(es_aioclient_mock, es_url)
+
+    config = build_full_config({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_DATASTREAM})
+
+    mock_entry = MockConfigEntry(
+        unique_id="test_entity_detail_publishing",
+        domain=DOMAIN,
+        version=3,
+        data=config,
+        title="ES Config",
+    )
+
+    entry = await _setup_config_entry(hass, mock_entry)
+
+    gateway = ElasticsearchGateway(config)
+    index_manager = IndexManager(hass, config, gateway)
+    publisher = DocumentPublisher(
+        config, gateway, index_manager, hass, config_entry=entry
+    )
+
+    await gateway.async_init()
+    await publisher.async_init()
+
+    assert publisher.queue_size() == 0
+
+    hass.states.async_set("TOM_ATO.test_1", "3")
+
+    await hass.async_block_till_done()
+
+    assert publisher.queue_size() == 1
+
+    await publisher.async_do_publish()
+
+    bulk_requests = extract_es_bulk_requests(es_aioclient_mock)
+
+    assert len(bulk_requests) == 1
+    request = bulk_requests[0]
+
+    expected = [
+        {"create": {"_index": "metrics-homeassistant.tom_ato-default"}},
+        {
+            "@timestamp": "2023-04-12T12:00:00+00:00",
+            "agent.name": "My Home Assistant",
+            "agent.type": "hass",
+            "ecs.version": "1.0.0",
+            "hass.entity": {
+                "attributes": {},
+                "domain": "tom_ato",
+                "geo.location": {
+                    "lat": MOCK_LOCATION_SERVER["lat"],
+                    "lon": MOCK_LOCATION_SERVER["lon"],
+                },
+                "id": "tom_ato.test_1",
+                "value": "3",
+                "valueas": {"float": 3.0},
+            },
+            "hass.object_id": "test_1",
+            "host.geo.location": {
+                "lat": MOCK_LOCATION_SERVER["lat"],
+                "lon": MOCK_LOCATION_SERVER["lon"],
+            },
             "tags": None,
         },
     ]
@@ -860,7 +1097,10 @@ def _build_expected_payload(
             "agent.type": "hass",
             "agent.version": "UNKNOWN",
             "ecs.version": "1.0.0",
-            "host.geo.location": {"lat": 32.87336, "lon": -117.22743},
+            "host.geo.location": {
+                "lat": MOCK_LOCATION_SERVER["lat"],
+                "lon": MOCK_LOCATION_SERVER["lon"],
+            },
             "host.architecture": "UNKNOWN",
             "host.os.name": "UNKNOWN",
             "host.hostname": "UNKNOWN",

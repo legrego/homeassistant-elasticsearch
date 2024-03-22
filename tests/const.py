@@ -52,6 +52,16 @@ MOCK_COMPLEX_LEGACY_CONFIG = {
 
 MOCK_NOON_APRIL_12TH_2023 = "2023-04-12T12:00:00+00:00"
 
+MOCK_LOCATION_SERVER = {
+    "lat": 99.0,
+    "lon": 99.0,
+}
+
+MOCK_LOCATION_DEVICE = {
+    "lat": 44.0,
+    "lon": 44.0,
+}
+
 CLUSTER_INFO_MISSING_CREDENTIALS_RESPONSE_BODY = {
     "error": {
         "root_cause": [

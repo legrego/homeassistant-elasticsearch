@@ -262,6 +262,7 @@ class DocumentCreator:
         additions["hass.entity"]["value"] = self._state_to_value_v1(state)
         additions["hass.value"] = additions["hass.entity"]["value"]
 
+        # If the entity has its own latitude and longitude, use it instead of the hass server's location
         if "latitude" in entity["attributes"] and "longitude" in entity["attributes"]:
             additions["hass.geo.location"] = {
                 "lat": entity["attributes"]["latitude"],
@@ -276,10 +277,16 @@ class DocumentCreator:
 
         additions["hass.entity"].update(self._state_to_value_v2(state))
 
+        # If the entity has its own latitude and longitude, use it instead of the hass server's location
         if "latitude" in entity["attributes"] and "longitude" in entity["attributes"]:
             additions["hass.entity"]["geo.location"] = {
                 "lat": entity["attributes"]["latitude"],
                 "lon": entity["attributes"]["longitude"],
+            }
+        else:
+            additions["hass.entity"]["geo.location"] = {
+                "lat": self._hass.config.latitude,
+                "lon": self._hass.config.longitude,
             }
 
         return additions

@@ -4,6 +4,7 @@ import time
 from datetime import datetime
 from queue import Queue
 
+from elasticsearch.errors import ElasticException
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EVENT_HOMEASSISTANT_CLOSE, EVENT_STATE_CHANGED
 from homeassistant.core import HomeAssistant, State, callback
@@ -283,7 +284,13 @@ class DocumentPublisher:
             # <type>-<name>-<namespace>
             # <datastream_prefix>.<domain>-<suffix>
             # metrics-homeassistant.device_tracker-default
-            destination_data_stream = self.datastream_prefix + "." + state.domain + "-" + self.datastream_suffix
+            destination_data_stream = self._sanitize_datastream_name(
+                self.datastream_prefix
+                + "."
+                + state.domain
+                + "-"
+                + self.datastream_suffix
+            )
 
             return {
                 "_op_type": "create",
@@ -321,6 +328,72 @@ class DocumentPublisher:
             return False
 
         return True
+
+    def _sanitize_datastream_name(self, name: str):
+        """Sanitize a datastream name."""
+
+        newname = name
+
+        if self._datastream_has_fatal_name(newname):
+            raise ElasticException("Invalid / unfixable datastream name: %s", newname)
+
+        if self._datastream_has_unsafe_name(newname):
+            LOGGER.debug(
+                "Datastream name %s is unsafe, attempting to sanitize.", newname
+            )
+
+        # Cannot include \, /, *, ?, ", <, >, |, ` ` (space character), comma, #, :
+        invalid_chars = r"\\/*?\":<>|,#+"
+        newname = newname.translate(str.maketrans("", "", invalid_chars))
+        newname = newname.replace(" ", "_")
+
+        # Cannot be . or ..
+        if newname in (".", ".."):
+            raise ElasticException("Invalid datastream name: %s", newname)
+
+        while newname.startswith(("-", "_", "+", ".")):
+            newname = newname[1::]
+
+        newname = newname.lower()
+
+        newname = newname[:255]
+
+        # if the datastream still has an unsafe name after sanitization, throw an error
+        if self._datastream_has_unsafe_name(newname):
+            raise ElasticException("Invalid / unfixable datastream name: %s", newname)
+
+        return newname
+
+    def _datastream_has_unsafe_name(self, name: str):
+        """Check if a datastream name is unsafe."""
+
+        if self._datastream_has_fatal_name(name):
+            return True
+
+        invalid_chars = r"\\/*?\":<>|,#+"
+        if name != name.translate(str.maketrans("", "", invalid_chars)):
+            return True
+
+        if len(name) > 255:
+            return True
+
+        if name.startswith(("-", "_", "+", ".")):
+            return True
+
+        if name != name.lower():
+            return True
+
+        return False
+
+    def _datastream_has_fatal_name(self, name: str):
+        """Check if a datastream name is invalid."""
+        if name in (".", ".."):
+            return True
+
+        if name == "":
+            return True
+
+        return False
 
     async def _publish_queue_timer(self):
         """Publish queue timer."""
