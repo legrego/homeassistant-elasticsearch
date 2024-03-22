@@ -49,7 +49,7 @@ class DocumentPublisher:
         self._gateway: ElasticsearchGateway = gateway
         self._hass: HomeAssistant = hass
 
-        self._destination_type: str = index_manager.index_mode
+        self._destination_type: str = config.get(CONF_INDEX_MODE)
 
         if self._destination_type == INDEX_MODE_LEGACY:
             self.legacy_index_name: str = index_manager.index_alias

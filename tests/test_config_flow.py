@@ -595,7 +595,7 @@ async def test_modern_index_mode_flow_choice(
 ):
     """Test user config flow with explicit choice of modern datastream index mode."""
 
-    es_url = "http://legacy_index_mode-flow:9200"
+    es_url = "http://modern_index_mode-flow:9200"
     mock_es_initialization(es_aioclient_mock, url=es_url, mock_v88_cluster=True)
 
     result = await hass.config_entries.flow.async_init(
@@ -634,7 +634,7 @@ async def test_old_legacy_index_mode_flow(
 ):
     """Test user config flow with explicit choice of legacy index mode."""
 
-    es_url = "http://legacy_index_mode-flow:9200"
+    es_url = "http://old_legacy_index_mode-flow:9200"
     mock_es_initialization(es_aioclient_mock, url=es_url)
 
     result = await hass.config_entries.flow.async_init(
@@ -666,7 +666,7 @@ async def test_serverless_modern_index_mode_flow(
 ):
     """Test user config flow with explicit choice of legacy index mode."""
 
-    es_url = "http://legacy_index_mode-flow:9200"
+    es_url = "http://serverless_modern_index_mode-flow:9200"
     mock_es_initialization(es_aioclient_mock, url=es_url, mock_serverless_version=True)
 
     result = await hass.config_entries.flow.async_init(

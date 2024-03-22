@@ -45,7 +45,7 @@ class DocumentCreator:
     async def async_init(self) -> None:
         """Async initialization."""
 
-        LOGGER.warning("async_init: initializing static doc properties")
+        LOGGER.debug("async_init: initializing static doc properties")
 
         await self._populate_static_doc_properties()
 

@@ -26,7 +26,9 @@ def mock_es_initialization(
     mock_template_setup=True,
     mock_modern_template_setup=True,
     mock_modern_template_update=False,
+    mock_modern_template_error=False,
     mock_template_update=False,
+    mock_template_error=False,
     mock_index_creation=True,
     mock_health_check=True,
     mock_ilm_setup=True,
@@ -158,11 +160,37 @@ def mock_es_initialization(
             url + "/_index_template/metrics-homeassistant",
             status=200,
             headers={"content-type": CONTENT_TYPE_JSON},
-            json={"hi": "need dummy content"},
+            json={"index_templates": [{"name": "metrics-homeassistant"}]},
         )
         aioclient_mock.put(
             url + "/_index_template/metrics-homeassistant",
             status=200,
+            headers={"content-type": CONTENT_TYPE_JSON},
+            json={"hi": "need dummy content"},
+        )
+    if mock_modern_template_error:
+        # Return no templates and fail to update
+        aioclient_mock.get(
+            url + "/_index_template/metrics-homeassistant",
+            status=404,
+            headers={"content-type": CONTENT_TYPE_JSON},
+            json={
+                "error": {
+                    "root_cause": [
+                        {
+                            "type": "resource_not_found_exception",
+                            "reason": "index template matching [metrics-homeassistant] not found",
+                        }
+                    ],
+                    "type": "resource_not_found_exception",
+                    "reason": "index template matching [metrics-homeassistant] not found",
+                },
+                "status": 404,
+            },
+        )
+        aioclient_mock.put(
+            url + "/_index_template/metrics-homeassistant",
+            status=500,
             headers={"content-type": CONTENT_TYPE_JSON},
             json={"hi": "need dummy content"},
         )
@@ -172,11 +200,25 @@ def mock_es_initialization(
             url + "/_template/hass-index-template-v4_2",
             status=200,
             headers={"content-type": CONTENT_TYPE_JSON},
-            json={"hi": "need dummy content"},
+            json={"hass-index-template-v4_2": {}},
         )
         aioclient_mock.put(
             url + "/_template/hass-index-template-v4_2",
             status=200,
+            headers={"content-type": CONTENT_TYPE_JSON},
+            json={"hi": "need dummy content"},
+        )
+    if mock_template_error:
+        # Return no templates and fail to update
+        aioclient_mock.get(
+            url + "/_template/hass-index-template-v4_2",
+            status=404,
+            headers={"content-type": CONTENT_TYPE_JSON},
+            json={},
+        )
+        aioclient_mock.put(
+            url + "/_template/hass-index-template-v4_2",
+            status=500,
             headers={"content-type": CONTENT_TYPE_JSON},
             json={"hi": "need dummy content"},
         )

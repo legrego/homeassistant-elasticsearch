@@ -3,6 +3,7 @@
 import json
 import os
 
+from elasticsearch7 import ElasticsearchException
 from homeassistant.const import CONF_ALIAS
 
 from custom_components.elasticsearch.errors import ElasticException
@@ -78,8 +79,6 @@ class IndexManager:
 
     async def _create_index_template(self):
         """Initialize the Elasticsearch cluster with an index template, initial index, and alias."""
-        from elasticsearch7.exceptions import ElasticsearchException
-
         LOGGER.debug("Initializing modern index templates")
 
         if not self._gateway.es_version.meets_minimum_version(major=8, minor=7):
@@ -100,12 +99,16 @@ class IndexManager:
             index_template = json.load(json_file)
 
         # Check if the index template already exists
-        existingTemplate = await client.indices.get_index_template(
+        matching_templates = await client.indices.get_index_template(
             name=DATASTREAM_METRICS_INDEX_TEMPLATE_NAME, ignore=[404]
         )
-        LOGGER.debug("got template response: " + str(existingTemplate))
+        matching_templates_count = len(matching_templates.get("index_templates", []))
 
-        if existingTemplate:
+        template_exists = matching_templates and matching_templates_count > 0
+
+        LOGGER.debug("got template response: " + str(template_exists))
+
+        if template_exists:
             LOGGER.debug("Updating index template")
         else:
             LOGGER.debug("Creating index template")
@@ -119,17 +122,16 @@ class IndexManager:
             LOGGER.exception("Error creating/updating index template: %s", err)
             # We do not want to proceed with indexing if we don't have any index templates as this
             # will result in the user having to clean-up indices with improper mappings.
-            if not existingTemplate:
+            if not template_exists:
                 raise err
 
     async def _create_legacy_template(self):
         """Initialize the Elasticsearch cluster with an index template, initial index, and alias."""
-        from elasticsearch7.exceptions import ElasticsearchException
 
         LOGGER.debug("Initializing legacy index templates")
 
         if self._gateway.es_version.is_serverless():
-            raise ElasticsearchException(
+            raise ElasticException(
                 "Serverless environment detected, legacy index usage not allowed in ES Serverless. Switch to datastreams."
             )
 
@@ -148,7 +150,7 @@ class IndexManager:
         )
 
         LOGGER.debug("got template response: " + str(template))
-        template_exists = template and template.get(LEGACY_TEMPLATE_NAME)
+        template_exists = template and LEGACY_TEMPLATE_NAME in template
 
         if not template_exists:
             LOGGER.debug("Creating index template")
@@ -177,6 +179,9 @@ class IndexManager:
                 )
             except ElasticsearchException as err:
                 LOGGER.exception("Error creating index template: %s", err)
+
+                # Our template doesn't exist and we failed to create one, so we should not proceed
+                raise err
 
         alias = await client.indices.get_alias(name=self.index_alias, ignore=[404])
         alias_exists = alias and not alias.get("error")
