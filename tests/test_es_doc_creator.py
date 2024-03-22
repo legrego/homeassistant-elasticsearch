@@ -4,7 +4,6 @@ from datetime import datetime
 from unittest import mock
 
 import pytest
-from freezegun.api import FrozenDateTimeFactory
 from homeassistant.components import (
     counter,
 )
@@ -12,7 +11,6 @@ from homeassistant.core import HomeAssistant, State
 from homeassistant.helpers import area_registry, device_registry, entity_registry
 from homeassistant.setup import async_setup_component
 from homeassistant.util import dt as dt_util
-from homeassistant.util.dt import UTC
 from jsondiff import diff
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -28,12 +26,6 @@ from tests.const import MOCK_NOON_APRIL_12TH_2023
 
 
 @pytest.fixture(autouse=True)
-def freeze_time(freezer: FrozenDateTimeFactory):
-    """Freeze time so we can properly assert on payload contents."""
-    freezer.move_to(datetime(2023, 4, 12, 12, tzinfo=UTC))  # Monday
-
-
-@pytest.fixture(autouse=True)
 def skip_system_info():
     """Fixture to skip returning system info."""
 
@@ -44,7 +36,22 @@ def skip_system_info():
         "custom_components.elasticsearch.system_info.SystemInfo.async_get_system_info",
         side_effect=get_system_info,
     ):
-        yield
+        yield {}
+
+
+async def _setup_config_entry(
+    hass: HomeAssistant,
+    mock_entry: mock_config_entry,
+):
+    mock_entry.add_to_hass(hass)
+    assert await async_setup_component(hass, DOMAIN, {}) is True
+    await hass.async_block_till_done()
+
+    config_entries = hass.config_entries.async_entries(DOMAIN)
+    assert len(config_entries) == 1
+    entry = config_entries[0]
+
+    return entry
 
 
 @pytest.fixture(autouse=True)
@@ -58,7 +65,11 @@ async def document_creator(hass: HomeAssistant):
         data=build_full_config({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_LEGACY}),
         title="ES Config",
     )
+
     creator = DocumentCreator(hass, mock_entry)
+
+    # await creator.async_init()
+
     yield creator
 
 
@@ -97,21 +108,6 @@ async def create_and_return_state(
     await hass.async_block_till_done()
 
     return hass.states.get(entity)
-
-
-async def _setup_config_entry(
-    hass: HomeAssistant,
-    mock_entry: mock_config_entry,
-):
-    mock_entry.add_to_hass(hass)
-    assert await async_setup_component(hass, DOMAIN, {}) is True
-    await hass.async_block_till_done()
-
-    config_entries = hass.config_entries.async_entries(DOMAIN)
-    assert len(config_entries) == 1
-    entry = config_entries[0]
-
-    return entry
 
 
 # Unit tests for state conversions
@@ -374,8 +370,6 @@ async def test_state_to_value_v1(
 ):
     """Test state to value doc component creation."""
 
-    # Initialize a document creator
-
     assert document_creator._state_to_value_v1(State("sensor.test_1", "2")) == 2.0
 
     assert document_creator._state_to_value_v1(State("sensor.test_1", "2.0")) == 2.0
@@ -448,6 +442,55 @@ async def test_state_to_value_v2(
         "value": "false",
         "valueas": {"boolean": False},
     }
+
+
+@pytest.mark.asyncio
+async def test_v1_doc_creation_geolocation(
+    hass: HomeAssistant, document_creator: DocumentCreator
+):
+    """Test v1 document creation with geolocation."""
+
+    hass.config.latitude = 32.87336
+    hass.config.longitude = -117.22743
+
+    await document_creator.async_init()
+
+    # Mock a state object with attributes
+    document = await create_and_return_document(
+        hass,
+        value="2",
+        attributes={},
+        document_creator=document_creator,
+        version=1,
+    )
+
+    expected = {
+        "@timestamp": dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023),
+        "agent.name": "My Home Assistant",
+        "agent.type": "hass",
+        "agent.version": "UNKNOWN",
+        "ecs.version": "1.0.0",
+        "hass.attributes": {},
+        "hass.domain": "sensor",
+        "hass.entity": {
+            "attributes": {},
+            "domain": "sensor",
+            "id": "sensor.test_1",
+            "value": 2.0,
+        },
+        "hass.entity_id": "sensor.test_1",
+        "hass.entity_id_lower": "sensor.test_1",
+        "hass.object_id": "test_1",
+        "hass.object_id_lower": "test_1",
+        "hass.value": 2.0,
+        "host.architecture": "UNKNOWN",
+        "host.hostname": "UNKNOWN",
+        "host.os.name": "UNKNOWN",
+        "tags": None,
+        "host.geo.location": {"lat": 32.87336, "lon": -117.22743},
+    }
+
+    assert diff(document, expected) == {}
 
 
 @pytest.mark.asyncio
@@ -622,6 +665,46 @@ async def test_v1_doc_creation_leave_datetime_alone(
         "hass.object_id_lower": "test_1",
         "hass.value": MOCK_NOON_APRIL_12TH_2023,
     }
+    assert diff(document, expected) == {}
+
+
+@pytest.mark.asyncio
+async def test_v2_doc_creation_geolocation(
+    hass: HomeAssistant, document_creator: DocumentCreator
+):
+    """Test v2 document creation with geolocation."""
+
+    hass.config.latitude = 32.87336
+    hass.config.longitude = -117.22743
+
+    await document_creator.async_init()
+
+    # Mock a state object with attributes
+    document = await create_and_return_document(
+        hass,
+        value="2",
+        attributes={},
+        document_creator=document_creator,
+        version=2,
+    )
+
+    expected = {
+        "@timestamp": dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023),
+        "agent.name": "My Home Assistant",
+        "agent.type": "hass",
+        "ecs.version": "1.0.0",
+        "hass.entity": {
+            "attributes": {},
+            "domain": "sensor",
+            "id": "sensor.test_1",
+            "value": "2",
+            "valueas": {"float": 2.0},
+        },
+        "hass.object_id": "test_1",
+        "host.geo.location": {"lat": 32.87336, "lon": -117.22743},
+        "tags": None,
+    }
+
     assert diff(document, expected) == {}
 
 

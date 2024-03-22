@@ -317,7 +317,6 @@ async def test_datastream_attribute_publishing(
             "@timestamp": "2023-04-12T12:00:00+00:00",
             "agent.name": "My Home Assistant",
             "agent.type": "hass",
-            "agent.version": "UNKNOWN",
             "ecs.version": "1.0.0",
             "hass.entity": {
                 "attributes": {
@@ -337,10 +336,7 @@ async def test_datastream_attribute_publishing(
                 "valueas": {"float": 3.0},
             },
             "hass.object_id": "test_1",
-            "host.architecture": "UNKNOWN",
             "host.geo.location": {"lat": 32.87336, "lon": -117.22743},
-            "host.hostname": "UNKNOWN",
-            "host.os.name": "UNKNOWN",
             "tags": None,
         },
     ]

@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+set -e
+
+cd "$(dirname "$0")/.."
+
+pytest . -vv --cov=./custom_components --cov-report=xml --cov-report=html

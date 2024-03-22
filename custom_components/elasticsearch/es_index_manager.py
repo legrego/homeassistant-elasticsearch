@@ -143,18 +143,9 @@ class IndexManager:
 
         LOGGER.debug("checking if template exists")
 
-        # check for 410 return code to detect serverless environment
-        try:
-            template = await client.indices.get_template(
-                name=LEGACY_TEMPLATE_NAME, ignore=[404]
-            )
-
-        except ElasticsearchException as err:
-            if err.status_code == 410:
-                LOGGER.error(
-                    "Serverless environment detected, legacy index usage not allowed in ES Serverless. Switch to datastreams."
-                )
-                raise err
+        template = await client.indices.get_template(
+            name=LEGACY_TEMPLATE_NAME, ignore=[404]
+        )
 
         LOGGER.debug("got template response: " + str(template))
         template_exists = template and template.get(LEGACY_TEMPLATE_NAME)

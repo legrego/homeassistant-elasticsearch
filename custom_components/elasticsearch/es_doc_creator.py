@@ -35,7 +35,8 @@ class DocumentCreator:
     def __init__(self, hass: HomeAssistant, config: dict) -> None:
         """Initialize."""
         self._entity_details = EntityDetails(hass)
-        self._static_doc_properties: dict | None = None
+        self._static_v1doc_properties: dict | None = None
+        self._static_v2doc_properties: dict | None = None
         self._serializer = get_serializer()
         self._system_info: SystemInfo = SystemInfo(hass)
         self._hass = hass
@@ -44,24 +45,48 @@ class DocumentCreator:
     async def async_init(self) -> None:
         """Async initialization."""
 
-        system_info = await self._system_info.async_get_system_info()
-        LOGGER.debug("async_init: initializing static doc properties")
+        LOGGER.warning("async_init: initializing static doc properties")
+
+        await self._populate_static_doc_properties()
+
+    async def _populate_static_doc_properties(self) -> dict:
         hass_config = self._hass.config
 
-        self._static_doc_properties = {
+        shared_properties = {
             "agent.name": "My Home Assistant",
             "agent.type": "hass",
-            "agent.version": system_info.get("version", "UNKNOWN"),
             "ecs.version": "1.0.0",
             "host.geo.location": {
                 "lat": hass_config.latitude,
                 "lon": hass_config.longitude,
             },
-            "host.architecture": system_info.get("arch", "UNKNOWN"),
-            "host.os.name": system_info.get("os_name", "UNKNOWN"),
-            "host.hostname": system_info.get("hostname", "UNKNOWN"),
-            "tags": self._config.get(CONF_TAGS),
+            "tags": self._config.get(CONF_TAGS, None),
         }
+
+        system_info = await self._system_info.async_get_system_info()
+
+        self._static_v1doc_properties = shared_properties.copy()
+
+        self._static_v1doc_properties["agent.version"] = system_info.get(
+            "version", "UNKNOWN"
+        )
+        self._static_v1doc_properties["host.architecture"] = system_info.get(
+            "arch", "UNKNOWN"
+        )
+        self._static_v1doc_properties["host.os.name"] = system_info.get(
+            "os_name", "UNKNOWN"
+        )
+        self._static_v1doc_properties["host.hostname"] = system_info.get(
+            "hostname", "UNKNOWN"
+        )
+
+        self._static_v2doc_properties = shared_properties.copy()
+
+        if system_info:
+            self._static_v2doc_properties["agent.version"] = system_info.get("version")
+            self._static_v2doc_properties["host.architecture"] = system_info.get("arch")
+            self._static_v2doc_properties["host.os.name"] = system_info.get("os_name")
+            self._static_v2doc_properties["host.hostname"] = system_info.get("hostname")
 
     def _state_to_attributes(self, state: State) -> dict:
         """Convert the attributes of a State object into a dictionary compatible with Elasticsearch mappings.
@@ -162,10 +187,7 @@ class DocumentCreator:
         """
         _state = state.state
 
-        if isinstance(_state, float):
-            return _state
-
-        elif isinstance(_state, str) and self.try_state_as_number(state):
+        if isinstance(_state, str) and self.try_state_as_number(state):
             tempState = state_helper.state_as_number(state)
 
             # Ensure we don't return "Infinity" as a number...
@@ -191,10 +213,7 @@ class DocumentCreator:
 
         _state = state.state
 
-        if isinstance(_state, float) and self.is_valid_number(_state):
-            additions["valueas"]["float"] = _state
-
-        elif isinstance(_state, str) and self.try_state_as_boolean(state):
+        if isinstance(_state, str) and self.try_state_as_boolean(state):
             additions["valueas"]["boolean"] = self.state_as_boolean(state)
 
         elif (
@@ -290,19 +309,28 @@ class DocumentCreator:
             "hass.object_id": state.object_id,
         }
 
-        if version == 1:
-            document_body.update(self._state_to_document_v1(state, entity, time_tz))
-
-        if version == 2:
-            document_body.update(self._state_to_document_v2(state, entity, time_tz))
-
-        if self._static_doc_properties is None:
+        if (
+            self._static_v1doc_properties is None
+            or self._static_v2doc_properties is None
+        ):
             LOGGER.warning(
                 "Event for entity [%s] is missing static doc properties. This is a bug.",
                 state.entity_id,
             )
         else:
-            document_body.update(self._static_doc_properties)
+            pass
+
+        if version == 1:
+            document_body.update(self._state_to_document_v1(state, entity, time_tz))
+
+            if self._static_v1doc_properties is not None:
+                document_body.update(self._static_v1doc_properties)
+
+        if version == 2:
+            document_body.update(self._state_to_document_v2(state, entity, time_tz))
+
+            if self._static_v2doc_properties is not None:
+                document_body.update(self._static_v2doc_properties)
 
         return document_body
 
