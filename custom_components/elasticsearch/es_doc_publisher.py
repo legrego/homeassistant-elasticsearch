@@ -4,7 +4,7 @@ import time
 from datetime import datetime
 from queue import Queue
 
-from elasticsearch.errors import ElasticException
+from custom_components.elasticsearch.errors import ElasticException
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EVENT_HOMEASSISTANT_CLOSE, EVENT_STATE_CHANGED
 from homeassistant.core import HomeAssistant, State, callback
