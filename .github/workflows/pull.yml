@@ -1,7 +1,7 @@
 name: Pull actions
 
 on:
-  pull_request_target:
+  pull_request:
 
 jobs:
   validate:
@@ -45,10 +45,12 @@ jobs:
       - name: Run tests
         run: |
           poetry run pytest
-      - name: Pytest coverage comment
-        uses: MishaKav/pytest-coverage-comment@v1.1.48
+      - name: Save PR number and coverage results
+        run: |
+          mkdir -p ./pr
+          echo ${{ github.event.number }} > ./pr/PR-number.txt
+          cp ./test_results/pytest.xml ./pr/pytest.xml
+      - uses: actions/upload-artifact@v4
         with:
-          pytest-xml-coverage-path: ./test_results/cov_xml/coverage.xml
-          junitxml-path: ./test_results/pytest.xml
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: pr
+          path: pr/
