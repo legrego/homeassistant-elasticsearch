@@ -8,8 +8,8 @@ Publish HASS events to your [Elasticsearch](https://elastic.co) cluster!
 ## Features
 
 - Efficiently publishes Home-Assistant events to Elasticsearch using the Bulk API
-- Automatically maintains Indexes and Index Templates using Index Lifecycle Management ("ILM")
-- Supports [X-Pack Security](https://www.elastic.co/products/x-pack/security) via optional username and password
+- Automatically sets up Datastreams or maintains Indexes and Index Templates using Index Lifecycle Management ("ILM") depending on your cluster's capabilities
+- Supports [X-Pack Security](https://www.elastic.co/products/x-pack/security) via optional username, password, and API keys
 - Exclude specific entities or groups from publishing
 
 ## Compatibility
@@ -36,6 +36,20 @@ Elasticsearch is open source and free to use: just bring your own hardware!
 Elastic has a [great setup guide](https://www.elastic.co/start) if you need help getting your first cluster up and running.
 
 If you don't want to maintain your own cluster, then give the [Elastic Cloud](https://www.elastic.co/cloud) a try! There is a free trial available to get you started.
+
+## Inspiration
+
+### HVAC Usage
+Graph your home's climate and HVAC Usage:
+
+![img](assets/hvac-history.png)
+
+### Weather Station
+Visualize and alert on data from your weather station:
+
+![img](assets/weather-station.png)
+
+![img](assets/weather-station-wind-pressure.png)
 
 ## Installation
 
