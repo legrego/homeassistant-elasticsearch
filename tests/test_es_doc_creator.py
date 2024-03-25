@@ -4,6 +4,7 @@ from datetime import datetime
 from unittest import mock
 
 import pytest
+from elasticsearch.utils import get_merged_config
 from homeassistant.components import (
     counter,
 )
@@ -77,7 +78,9 @@ async def document_creator(hass: HomeAssistant):
         title="ES Config",
     )
 
-    creator = DocumentCreator(hass, mock_entry)
+    config = get_merged_config(mock_entry)
+
+    creator = DocumentCreator(hass, config)
 
     # TODO: Consider initializing the document creator before returning it, requires rewriting tests and initializing the whole integration
     # await creator.async_init()

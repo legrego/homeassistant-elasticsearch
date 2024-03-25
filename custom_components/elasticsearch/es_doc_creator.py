@@ -62,11 +62,7 @@ class DocumentCreator:
             },
         }
 
-        # This is a bit of a hack that allows us to still work if we're passed a mocked config
-        if isinstance(self._config, dict):
-            shared_properties["tags"] = self._config.get(CONF_TAGS, None)
-        else:
-            shared_properties["tags"] = None
+        shared_properties["tags"] = self._config.get(CONF_TAGS, None)
 
         system_info = await self._system_info.async_get_system_info()
 
