@@ -60,6 +60,7 @@ Example: `/home/pi/.homeassistant` and `/home/pi/.homeassistant/custom_component
 
 ## Create Elasticsearch Credentials
 
+The integration supports authenticating via API Key, Username and Password or unauthenticated access.
 
 ### Authenticating via API Key
 
@@ -82,7 +83,8 @@ POST /_security/api_key
           "names": [
             "hass-events*",
             "active-hass-index-*",
-            "all-hass-events"
+            "all-hass-events",
+            "metrics-homeassistant*"
           ],
           "privileges": [
             "manage",
@@ -99,7 +101,7 @@ POST /_security/api_key
 
 ### Authenticating via username/password
 
-You need to create a user and role with appropriate privileges.
+If you choose not to authenticate via an API Key, you need to create a user and role with appropriate privileges.
 
 ```json
 # Create role
@@ -141,14 +143,14 @@ POST /_security/user/hass_writer
 
 ## Setup
 
-This component supports interactive configuration via Home Assistant's integration configuration page.
-
-This will be the only supported configuration method in the future.
+This component is configured interactively via Home Assistant's integration configuration page.
 
 1. Restart Home-assistant once you've completed the installation instructions above.
 2. From the `Integrations` configuration menu, add a new `Elasticsearch` integration. ![img](assets/add-integration.png)
-3. Provide connection information and optionally credentials to begin setup. ![img](assets/configure-integration.png)
-4. Once the integration is setup, you may tweak all settings via the "Options" button on the integrations page.
+3. Select the appropriate authentication method
+4. Provide connection information and optionally credentials to begin setup. ![img](assets/configure-integration.png)
+5. Depending on the version of your Elasticsearch cluster you may be offered to choose between Datastreams (Preferred) and legacy indexing.
+5. Once the integration is setup, you may tweak all settings via the "Options" button on the integrations page.
    ![img](assets/publish-options.png)
 
 ### Expected file structure
