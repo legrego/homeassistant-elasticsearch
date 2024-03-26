@@ -4,12 +4,19 @@ DOMAIN = "elasticsearch"
 
 CONF_PUBLISH_ENABLED = "publish_enabled"
 CONF_INDEX_FORMAT = "index_format"
+
+CONF_INDEX_MODE = "index_mode"
+
 CONF_PUBLISH_FREQUENCY = "publish_frequency"
 CONF_EXCLUDED_DOMAINS = "excluded_domains"
 CONF_EXCLUDED_ENTITIES = "excluded_entities"
 CONF_PUBLISH_MODE = "publish_mode"
 CONF_INCLUDED_DOMAINS = "included_domains"
 CONF_INCLUDED_ENTITIES = "included_entities"
+
+CONF_DATASTREAM_TYPE = "datastream_type"
+CONF_DATASTREAM_NAME_PREFIX = "datastream_name_prefix"
+CONF_DATASTREAM_NAMESPACE = "datastream_namespace"
 
 CONF_ILM_ENABLED = "ilm_enabled"
 CONF_ILM_POLICY_NAME = "ilm_policy_name"
@@ -29,8 +36,12 @@ ONE_HOUR = 60 * 60
 
 VERSION_SUFFIX = "-v4_2"
 
-INDEX_TEMPLATE_NAME = "hass-index-template" + VERSION_SUFFIX
+DATASTREAM_METRICS_INDEX_TEMPLATE_NAME = "metrics-homeassistant"
+LEGACY_TEMPLATE_NAME = "hass-index-template" + VERSION_SUFFIX
 
 PUBLISH_MODE_ALL = "All"
 PUBLISH_MODE_STATE_CHANGES = "State changes"
 PUBLISH_MODE_ANY_CHANGES = "Any changes"
+
+INDEX_MODE_LEGACY = "index"
+INDEX_MODE_DATASTREAM = "datastream"

@@ -1,19 +1,29 @@
 """Index management facilities."""
+
 import json
 import os
 
+from elasticsearch7 import ElasticsearchException
 from homeassistant.const import CONF_ALIAS
 
+from custom_components.elasticsearch.errors import ElasticException
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 
 from .const import (
+    CONF_DATASTREAM_NAME_PREFIX,
+    CONF_DATASTREAM_NAMESPACE,
+    CONF_DATASTREAM_TYPE,
     CONF_ILM_DELETE_AFTER,
     CONF_ILM_ENABLED,
     CONF_ILM_MAX_SIZE,
     CONF_ILM_POLICY_NAME,
     CONF_INDEX_FORMAT,
+    CONF_INDEX_MODE,
     CONF_PUBLISH_ENABLED,
-    INDEX_TEMPLATE_NAME,
+    DATASTREAM_METRICS_INDEX_TEMPLATE_NAME,
+    INDEX_MODE_DATASTREAM,
+    INDEX_MODE_LEGACY,
+    LEGACY_TEMPLATE_NAME,
     VERSION_SUFFIX,
 )
 from .logger import LOGGER
@@ -30,34 +40,100 @@ class IndexManager:
         if not config.get(CONF_PUBLISH_ENABLED):
             return
 
-        self.index_alias = config.get(CONF_ALIAS) + VERSION_SUFFIX
-
         self._hass = hass
 
         self._gateway: ElasticsearchGateway = gateway
 
-        self._ilm_policy_name = config.get(CONF_ILM_POLICY_NAME)
+        # Differentiate between index and datastream
 
-        self._index_format = config.get(CONF_INDEX_FORMAT) + VERSION_SUFFIX
+        self.index_mode = config.get(CONF_INDEX_MODE)
 
-        self._using_ilm = True
+        if self.index_mode == INDEX_MODE_LEGACY:
+            self.index_alias = config.get(CONF_ALIAS) + VERSION_SUFFIX
+            self._ilm_policy_name = config.get(CONF_ILM_POLICY_NAME)
+            self._index_format = config.get(CONF_INDEX_FORMAT) + VERSION_SUFFIX
+            self._using_ilm = config.get(CONF_ILM_ENABLED)
+        elif self.index_mode == INDEX_MODE_DATASTREAM:
+            self.datastream_type = config.get(CONF_DATASTREAM_TYPE)
+            self.datastream_name_prefix = config.get(CONF_DATASTREAM_NAME_PREFIX)
+            self.datastream_namespace = config.get(CONF_DATASTREAM_NAMESPACE)
+        else:
+            raise ElasticException("Unexpected index_mode: %s", self.index_mode)
 
     async def async_setup(self):
         """Perform setup for index management."""
         if not self._config.get(CONF_PUBLISH_ENABLED):
             return
-        self._using_ilm = self._config.get(CONF_ILM_ENABLED)
 
-        await self._create_index_template()
+        if self.index_mode == INDEX_MODE_LEGACY:
+            self._using_ilm = self._config.get(CONF_ILM_ENABLED)
 
-        if self._using_ilm:
-            await self._create_ilm_policy(self._config)
+            await self._create_legacy_template()
+
+            if self._using_ilm:
+                await self._create_ilm_policy(self._config)
+        else:
+            await self._create_index_template()
 
         LOGGER.debug("Index Manager initialized")
 
     async def _create_index_template(self):
         """Initialize the Elasticsearch cluster with an index template, initial index, and alias."""
-        from elasticsearch7.exceptions import ElasticsearchException
+        LOGGER.debug("Initializing modern index templates")
+
+        if not self._gateway.es_version.meets_minimum_version(major=8, minor=7):
+            raise ElasticException(
+                "A version of Elasticsearch that is not compatible with TSDS datastreams detected (%s). Use Legacy Index mode.",
+                f"{self._gateway.es_version.major}.{self._gateway.es_version.minor}",
+            )
+
+        client = self._gateway.get_client()
+
+        # Open datastreams/index_template.json and load the ES modern index template
+        with open(
+            os.path.join(
+                os.path.dirname(__file__), "datastreams", "index_template.json"
+            ),
+            encoding="utf-8",
+        ) as json_file:
+            index_template = json.load(json_file)
+
+        # Check if the index template already exists
+        matching_templates = await client.indices.get_index_template(
+            name=DATASTREAM_METRICS_INDEX_TEMPLATE_NAME, ignore=[404]
+        )
+        matching_templates_count = len(matching_templates.get("index_templates", []))
+
+        template_exists = matching_templates and matching_templates_count > 0
+
+        LOGGER.debug("got template response: " + str(template_exists))
+
+        if template_exists:
+            LOGGER.debug("Updating index template")
+        else:
+            LOGGER.debug("Creating index template")
+
+        try:
+            await client.indices.put_index_template(
+                name=DATASTREAM_METRICS_INDEX_TEMPLATE_NAME, body=index_template
+            )
+
+        except ElasticsearchException as err:
+            LOGGER.exception("Error creating/updating index template: %s", err)
+            # We do not want to proceed with indexing if we don't have any index templates as this
+            # will result in the user having to clean-up indices with improper mappings.
+            if not template_exists:
+                raise err
+
+    async def _create_legacy_template(self):
+        """Initialize the Elasticsearch cluster with an index template, initial index, and alias."""
+
+        LOGGER.debug("Initializing legacy index templates")
+
+        if self._gateway.es_version.is_serverless():
+            raise ElasticException(
+                "Serverless environment detected, legacy index usage not allowed in ES Serverless. Switch to datastreams."
+            )
 
         client = self._gateway.get_client()
 
@@ -67,11 +143,14 @@ class IndexManager:
         ) as json_file:
             mapping = json.load(json_file)
 
-        LOGGER.debug('checking if template exists')
+        LOGGER.debug("checking if template exists")
 
-        template = await client.indices.get_template(name=INDEX_TEMPLATE_NAME, ignore=[404])
-        LOGGER.debug('got template response: ' + str(template))
-        template_exists = template and template.get(INDEX_TEMPLATE_NAME)
+        template = await client.indices.get_template(
+            name=LEGACY_TEMPLATE_NAME, ignore=[404]
+        )
+
+        LOGGER.debug("got template response: " + str(template))
+        template_exists = template and LEGACY_TEMPLATE_NAME in template
 
         if not template_exists:
             LOGGER.debug("Creating index template")
@@ -87,19 +166,22 @@ class IndexManager:
                 "aliases": {"all-hass-events": {}},
             }
             if self._using_ilm:
-                index_template["settings"][
-                    "index.lifecycle.name"
-                ] = self._ilm_policy_name
-                index_template["settings"][
-                    "index.lifecycle.rollover_alias"
-                ] = self.index_alias
+                index_template["settings"]["index.lifecycle.name"] = (
+                    self._ilm_policy_name
+                )
+                index_template["settings"]["index.lifecycle.rollover_alias"] = (
+                    self.index_alias
+                )
 
             try:
                 await client.indices.put_template(
-                    name=INDEX_TEMPLATE_NAME, body=index_template
+                    name=LEGACY_TEMPLATE_NAME, body=index_template
                 )
             except ElasticsearchException as err:
                 LOGGER.exception("Error creating index template: %s", err)
+
+                # Our template doesn't exist and we failed to create one, so we should not proceed
+                raise err
 
         alias = await client.indices.get_alias(name=self.index_alias, ignore=[404])
         alias_exists = alias and not alias.get("error")

@@ -4,6 +4,7 @@ import time
 from datetime import datetime
 from queue import Queue
 
+from custom_components.elasticsearch.errors import ElasticException
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EVENT_HOMEASSISTANT_CLOSE, EVENT_STATE_CHANGED
 from homeassistant.core import HomeAssistant, State, callback
@@ -18,10 +19,13 @@ from .const import (
     CONF_EXCLUDED_ENTITIES,
     CONF_INCLUDED_DOMAINS,
     CONF_INCLUDED_ENTITIES,
+    CONF_INDEX_MODE,
     CONF_PUBLISH_ENABLED,
     CONF_PUBLISH_FREQUENCY,
     CONF_PUBLISH_MODE,
     CONF_TAGS,
+    INDEX_MODE_DATASTREAM,
+    INDEX_MODE_LEGACY,
     PUBLISH_MODE_ALL,
     PUBLISH_MODE_STATE_CHANGES,
 )
@@ -47,7 +51,13 @@ class DocumentPublisher:
         self._gateway: ElasticsearchGateway = gateway
         self._hass: HomeAssistant = hass
 
-        self._index_alias: str = index_manager.index_alias
+        self._destination_type: str = config.get(CONF_INDEX_MODE)
+
+        if self._destination_type == INDEX_MODE_LEGACY:
+            self.legacy_index_name: str = index_manager.index_alias
+        elif self._destination_type == INDEX_MODE_DATASTREAM:
+            self.datastream_prefix: str = index_manager.datastream_type + "-" + index_manager.datastream_name_prefix
+            self.datastream_suffix: str = index_manager.datastream_namespace
 
         self._publish_frequency = config.get(CONF_PUBLISH_FREQUENCY)
         self._publish_mode = config.get(CONF_PUBLISH_MODE)
@@ -268,16 +278,39 @@ class DocumentPublisher:
     def _state_to_bulk_action(self, state: State, time: datetime):
         """Create a bulk action from the given state object."""
 
-        document = self._document_creator.state_to_document(state, time)
 
-        return {
-            "_op_type": "index",
-            "_index": self._index_alias,
-            "_source": document,
-            # If we aren't writing to an alias, that means the
-            # Index Template likely wasn't created properly, and we should bail.
-            "require_alias": True,
-        }
+        if self._destination_type == INDEX_MODE_DATASTREAM:
+            document = self._document_creator.state_to_document(state, time, version=2)
+            # <type>-<name>-<namespace>
+            # <datastream_prefix>.<domain>-<suffix>
+            # metrics-homeassistant.device_tracker-default
+            destination_data_stream = self._sanitize_datastream_name(
+                self.datastream_prefix
+                + "."
+                + state.domain
+                + "-"
+                + self.datastream_suffix
+            )
+
+            return {
+                "_op_type": "create",
+                "_index": destination_data_stream,
+                "_source": document,
+            }
+
+        if self._destination_type == INDEX_MODE_LEGACY:
+            document = self._document_creator.state_to_document(state, time, version=1)
+
+            return {
+                "_op_type": "index",
+                "_index": self.legacy_index_name,
+                "_source": document,
+                # If we aren't writing to an alias, that means the
+                # Index Template likely wasn't created properly, and we should bail.
+                "require_alias": True,
+            }
+
+
 
     def _start_publish_timer(self):
         """Initialize the publish timer."""
@@ -295,6 +328,72 @@ class DocumentPublisher:
             return False
 
         return True
+
+    def _sanitize_datastream_name(self, name: str):
+        """Sanitize a datastream name."""
+
+        newname = name
+
+        if self._datastream_has_fatal_name(newname):
+            raise ElasticException("Invalid / unfixable datastream name: %s", newname)
+
+        if self._datastream_has_unsafe_name(newname):
+            LOGGER.debug(
+                "Datastream name %s is unsafe, attempting to sanitize.", newname
+            )
+
+        # Cannot include \, /, *, ?, ", <, >, |, ` ` (space character), comma, #, :
+        invalid_chars = r"\\/*?\":<>|,#+"
+        newname = newname.translate(str.maketrans("", "", invalid_chars))
+        newname = newname.replace(" ", "_")
+
+        # Cannot be . or ..
+        if newname in (".", ".."):
+            raise ElasticException("Invalid datastream name: %s", newname)
+
+        while newname.startswith(("-", "_", "+", ".")):
+            newname = newname[1::]
+
+        newname = newname.lower()
+
+        newname = newname[:255]
+
+        # if the datastream still has an unsafe name after sanitization, throw an error
+        if self._datastream_has_unsafe_name(newname):
+            raise ElasticException("Invalid / unfixable datastream name: %s", newname)
+
+        return newname
+
+    def _datastream_has_unsafe_name(self, name: str):
+        """Check if a datastream name is unsafe."""
+
+        if self._datastream_has_fatal_name(name):
+            return True
+
+        invalid_chars = r"\\/*?\":<>|,#+"
+        if name != name.translate(str.maketrans("", "", invalid_chars)):
+            return True
+
+        if len(name) > 255:
+            return True
+
+        if name.startswith(("-", "_", "+", ".")):
+            return True
+
+        if name != name.lower():
+            return True
+
+        return False
+
+    def _datastream_has_fatal_name(self, name: str):
+        """Check if a datastream name is invalid."""
+        if name in (".", ".."):
+            return True
+
+        if name == "":
+            return True
+
+        return False
 
     async def _publish_queue_timer(self):
         """Publish queue timer."""
