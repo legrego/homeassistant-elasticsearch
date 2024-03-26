@@ -278,6 +278,33 @@ sensor:
       - "active_shards_percent_as_number"
 ```
 
+## Defining your own Index Mappings, Settings, and Ingest Pipeline
+
+When in Datastream mode (Default for Elasticsearch 8.7+) you can customize the mappings, settings and define an ingest pipeline by creating a component template called `metrics-homeassistant@custom`
+
+The following is an example on how to push your HomeAssistant metrics into an ingest pipeline called `metrics-homeassistant-pipeline`:
+```
+PUT _ingest/pipeline/metrics-homeassistant-pipeline
+{
+  "description": "Pipeline for HomeAssistant dataset",
+  "processors": [ ]
+}
+```
+
+```
+PUT _component_template/metrics-homeassistant@custom
+{
+  "template": {
+    "mappings": {}
+    "settings": {
+      "index.default_pipeline": "metrics-homeassistant-pipeline",
+    }
+  }
+}
+```
+
+Component template changes apply when the datastream performs a rollover so the first time you modify the template you may need to manually initiate ILM rollover to start applying the pipeline.
+
 ## Support
 
 This project is not endorsed or supported by either Elastic or Home-Assistant - please open a GitHub issue for any questions, bugs, or feature requests.
