@@ -9,7 +9,7 @@ Publish HASS events to your [Elasticsearch](https://elastic.co) cluster!
 
 - Efficiently publishes Home-Assistant events to Elasticsearch using the Bulk API
 - Automatically sets up Datastreams or maintains Indexes and Index Templates using Index Lifecycle Management ("ILM") depending on your cluster's capabilities
-- Supports [X-Pack Security](https://www.elastic.co/products/x-pack/security) via optional username, password, and API keys
+- Supports Elastic's [stack security features](https://www.elastic.co/elastic-stack/security) via optional username, password, and API keys
 - Exclude specific entities or groups from publishing
 
 ## Compatibility
