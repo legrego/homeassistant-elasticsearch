@@ -112,15 +112,20 @@ class IndexManager:
 
         # For Datastream mode we do not offer configuration wtihin Home Assistant for the ILM policy
         if not self._gateway.es_version.meets_minimum_version(major=8, minor=10):
+            LOGGER.debug("Running pre-8.10, using Index Lifecycle Management")
             await self._create_basic_ilm_policy(
                 ilm_policy_name=DATASTREAM_METRICS_ILM_POLICY_NAME
             )
 
             LOGGER.debug("Inserting ILM Policy into Index Template: ")
 
+            del index_template["template"]["lifecycle"]
+
             index_template["template"]["settings"]["index.lifecycle.name"] = (
                 DATASTREAM_METRICS_ILM_POLICY_NAME
             )
+        else:
+            LOGGER.debug("Running 8.10+, using Datastream Lifecycle Management")
 
         try:
             await client.indices.put_index_template(
@@ -231,7 +236,12 @@ class IndexManager:
                 "phases": {
                     "hot": {
                         "min_age": "0ms",
-                        "actions": {"max_age": "30d", "max_primary_shard_size": "50gb"},
+                        "actions": {
+                            "rollover": {
+                                "max_age": "30d",
+                                "max_primary_shard_size": "50gb",
+                            },
+                        },
                     },
                     "delete": {"min_age": "365d", "actions": {"delete": {}}},
                 }

@@ -82,7 +82,6 @@
                                             "type": "float"
                                         },
                                         "boolean": {
-                                            "ignore_malformed": true,
                                             "type": "boolean"
                                         },
                                         "datetime": {
