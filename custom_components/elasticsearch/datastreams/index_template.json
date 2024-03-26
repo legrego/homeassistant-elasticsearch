@@ -229,6 +229,11 @@
     },
     "priority": 500,
     "data_stream": {},
-    "composed_of": [],
+    "composed_of": [
+        "metrics-homeassistant@custom"
+    ],
+    "ignore_missing_component_templates": [
+        "metrics-homeassistant@custom"
+    ],
     "version": 1
 }
