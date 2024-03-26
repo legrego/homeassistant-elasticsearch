@@ -112,13 +112,13 @@ class IndexManager:
 
         # For Datastream mode we do not offer configuration wtihin Home Assistant for the ILM policy
         if not self._gateway.es_version.meets_minimum_version(major=8, minor=10):
-            self._create_basic_ilm_policy(
+            await self._create_basic_ilm_policy(
                 ilm_policy_name=DATASTREAM_METRICS_ILM_POLICY_NAME
             )
 
             LOGGER.debug("Inserting ILM Policy into Index Template: ")
 
-            index_template["settings"]["index.lifecycle.name"] = (
+            index_template["template"]["settings"]["index.lifecycle.name"] = (
                 DATASTREAM_METRICS_ILM_POLICY_NAME
             )
 

@@ -104,6 +104,23 @@ CLUSTER_INFO_SERVERLESS_RESPONSE_BODY = {
     "tagline": "You Know, for Search",
 }
 
+CLUSTER_INFO_8DOT11_RESPONSE_BODY = {
+    "name": "775d9437a77088",
+    "cluster_name": "home-assistant-cluster",
+    "cluster_uuid": "xtsjNokTQGClXbRibWjxyg",
+    "version": {
+        "number": "8.11.0",
+        "build_type": "docker",
+        "build_hash": "00000000",
+        "build_date": "2023-10-31",
+        "build_snapshot": False,
+        "lucene_version": "9.8.0",
+        "minimum_wire_compatibility_version": "8.11.0",
+        "minimum_index_compatibility_version": "8.11.0",
+    },
+    "tagline": "You Know, for Search",
+}
+
 CLUSTER_INFO_8DOT8_RESPONSE_BODY = {
     "name": "775d9437a77088",
     "cluster_name": "home-assistant-cluster",
