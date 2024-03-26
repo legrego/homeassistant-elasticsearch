@@ -44,15 +44,10 @@ def skip_system_info():
         yield {}
 
 
-async def _convert_mock_config_to_config(
-    hass: HomeAssistant,
-    mock_entry: mock_config_entry,
-):
-    config_entries = hass.config_entries.async_entries(DOMAIN)
-
-    assert len(config_entries) == 0
-
+async def _setup_config_entry(hass: HomeAssistant, mock_entry: mock_config_entry):
     mock_entry.add_to_hass(hass)
+    assert await async_setup_component(hass, DOMAIN, {}) is True
+    await hass.async_block_till_done()
 
     config_entries = hass.config_entries.async_entries(DOMAIN)
     assert len(config_entries) == 1
@@ -285,10 +280,7 @@ async def test_state_to_entity_details(hass: HomeAssistant):
         title="ES Config",
     )
 
-    await _convert_mock_config_to_config(hass, mock_entry)
-    # Actually setup the component
-    assert await async_setup_component(hass, DOMAIN, {}) is True
-    await hass.async_block_till_done()
+    await _setup_config_entry(hass, mock_entry)
 
     entity_area = area_registry.async_get(hass).async_create("entity area")
     area_registry.async_get(hass).async_create("device area")
