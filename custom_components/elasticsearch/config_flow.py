@@ -29,9 +29,7 @@ from .const import (
     CONF_DATASTREAM_TYPE,
     CONF_EXCLUDED_DOMAINS,
     CONF_EXCLUDED_ENTITIES,
-    CONF_ILM_DELETE_AFTER,
     CONF_ILM_ENABLED,
-    CONF_ILM_MAX_SIZE,
     CONF_ILM_POLICY_NAME,
     CONF_INCLUDED_DOMAINS,
     CONF_INCLUDED_ENTITIES,
@@ -75,8 +73,6 @@ DEFAULT_VERIFY_SSL = True
 DEFAULT_TIMEOUT_SECONDS = 30
 DEFAULT_ILM_ENABLED = True
 DEFAULT_ILM_POLICY_NAME = "home-assistant"
-DEFAULT_ILM_MAX_SIZE = "30gb"
-DEFAULT_ILM_DELETE_AFTER = "365d"
 DEFAULT_INDEX_MODE = "datastream"
 
 
@@ -118,10 +114,6 @@ def build_full_config(user_input=None):
         CONF_ILM_ENABLED: user_input.get(CONF_ILM_ENABLED, DEFAULT_ILM_ENABLED),
         CONF_ILM_POLICY_NAME: user_input.get(
             CONF_ILM_POLICY_NAME, DEFAULT_ILM_POLICY_NAME
-        ),
-        CONF_ILM_MAX_SIZE: user_input.get(CONF_ILM_MAX_SIZE, DEFAULT_ILM_MAX_SIZE),
-        CONF_ILM_DELETE_AFTER: user_input.get(
-            CONF_ILM_DELETE_AFTER, DEFAULT_ILM_DELETE_AFTER
         ),
     }
 
@@ -647,16 +639,6 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
                 CONF_ILM_POLICY_NAME,
                 default=self._get_config_value(
                     CONF_ILM_POLICY_NAME, DEFAULT_ILM_POLICY_NAME
-                ),
-            ): str,
-            vol.Required(
-                CONF_ILM_MAX_SIZE,
-                default=self._get_config_value(CONF_ILM_MAX_SIZE, DEFAULT_ILM_MAX_SIZE),
-            ): str,
-            vol.Required(
-                CONF_ILM_DELETE_AFTER,
-                default=self._get_config_value(
-                    CONF_ILM_DELETE_AFTER, DEFAULT_ILM_DELETE_AFTER
                 ),
             ): str,
         }

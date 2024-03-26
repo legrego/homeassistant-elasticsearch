@@ -23,9 +23,7 @@ from .const import (
     CONF_EXCLUDED_DOMAINS,
     CONF_EXCLUDED_ENTITIES,
     CONF_HEALTH_SENSOR_ENABLED,
-    CONF_ILM_DELETE_AFTER,
     CONF_ILM_ENABLED,
-    CONF_ILM_MAX_SIZE,
     CONF_ILM_POLICY_NAME,
     CONF_INDEX_FORMAT,
     CONF_INDEX_MODE,
@@ -66,8 +64,6 @@ CONFIG_SCHEMA = vol.Schema(
                 vol.Optional(CONF_ONLY_PUBLISH_CHANGED, default=False): cv.boolean,
                 vol.Optional(CONF_ILM_ENABLED, default=True): cv.boolean,
                 vol.Optional(CONF_ILM_POLICY_NAME, default="home-assistant"): cv.string,
-                vol.Optional(CONF_ILM_MAX_SIZE, default="30gb"): cv.string,
-                vol.Optional(CONF_ILM_DELETE_AFTER, default="365d"): cv.string,
                 vol.Optional(CONF_VERIFY_SSL, default=True): cv.boolean,
                 vol.Optional(CONF_SSL_CA_PATH): cv.string,
                 vol.Optional(CONF_TAGS, default=["hass"]): vol.All(

@@ -14,9 +14,7 @@ from homeassistant.const import (
 
 from custom_components.elasticsearch.const import (
     CONF_HEALTH_SENSOR_ENABLED,
-    CONF_ILM_DELETE_AFTER,
     CONF_ILM_ENABLED,
-    CONF_ILM_MAX_SIZE,
     CONF_ILM_POLICY_NAME,
     CONF_INDEX_FORMAT,
     CONF_ONLY_PUBLISH_CHANGED,
@@ -36,8 +34,6 @@ MOCK_COMPLEX_LEGACY_CONFIG = {
     CONF_PUBLISH_ENABLED: True,
     CONF_PUBLISH_FREQUENCY: 1,
     CONF_ILM_ENABLED: True,
-    CONF_ILM_DELETE_AFTER: "1d",
-    CONF_ILM_MAX_SIZE: "1b",
     CONF_ILM_POLICY_NAME: "custom-policy-name",
     CONF_INDEX_FORMAT: "custom-index-format",
     CONF_HEALTH_SENSOR_ENABLED: True,

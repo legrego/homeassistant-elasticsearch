@@ -73,8 +73,6 @@ async def test_minimal_setup_component(
         "api_key": None,
         "verify_ssl": True,
         "ssl_ca_path": None,
-        "ilm_delete_after": "365d",
-        "ilm_max_size": "30gb",
         "ilm_policy_name": "home-assistant",
         **MOCK_MINIMAL_LEGACY_CONFIG,
     }

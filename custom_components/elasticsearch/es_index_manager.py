@@ -13,13 +13,12 @@ from .const import (
     CONF_DATASTREAM_NAME_PREFIX,
     CONF_DATASTREAM_NAMESPACE,
     CONF_DATASTREAM_TYPE,
-    CONF_ILM_DELETE_AFTER,
     CONF_ILM_ENABLED,
-    CONF_ILM_MAX_SIZE,
     CONF_ILM_POLICY_NAME,
     CONF_INDEX_FORMAT,
     CONF_INDEX_MODE,
     CONF_PUBLISH_ENABLED,
+    DATASTREAM_METRICS_ILM_POLICY_NAME,
     DATASTREAM_METRICS_INDEX_TEMPLATE_NAME,
     INDEX_MODE_DATASTREAM,
     INDEX_MODE_LEGACY,
@@ -70,8 +69,6 @@ class IndexManager:
 
             await self._create_legacy_template()
 
-            if self._using_ilm:
-                await self._create_ilm_policy(self._config)
         else:
             await self._create_index_template()
 
@@ -113,6 +110,18 @@ class IndexManager:
         else:
             LOGGER.debug("Creating index template")
 
+        # For Datastream mode we do not offer configuration wtihin Home Assistant for the ILM policy
+        if not self._gateway.es_version.meets_minimum_version(major=8, minor=10):
+            self._create_basic_ilm_policy(
+                ilm_policy_name=DATASTREAM_METRICS_ILM_POLICY_NAME
+            )
+
+            LOGGER.debug("Inserting ILM Policy into Index Template: ")
+
+            index_template["settings"]["index.lifecycle.name"] = (
+                DATASTREAM_METRICS_ILM_POLICY_NAME
+            )
+
         try:
             await client.indices.put_index_template(
                 name=DATASTREAM_METRICS_INDEX_TEMPLATE_NAME, body=index_template
@@ -136,6 +145,9 @@ class IndexManager:
             )
 
         client = self._gateway.get_client()
+
+        # For Legacy mode we offer flexible configuration of the ILM policy
+        await self._create_basic_ilm_policy(ilm_policy_name=self._ilm_policy_name)
 
         with open(
             os.path.join(os.path.dirname(__file__), "index_mapping.json"),
@@ -194,28 +206,15 @@ class IndexManager:
                 )
             except ElasticsearchException as err:
                 LOGGER.exception("Error creating initial index/alias: %s", err)
-        elif self._using_ilm:
-            LOGGER.debug("Ensuring ILM Policy is attached to existing index")
-            try:
-                await client.indices.put_settings(
-                    index=self.index_alias,
-                    preserve_existing=True,
-                    body={
-                        "index.lifecycle.name": self._ilm_policy_name,
-                        "index.lifecycle.rollover_alias": self.index_alias,
-                    },
-                )
-            except ElasticsearchException as err:
-                LOGGER.exception("Error updating index ILM settings: %s", err)
 
-    async def _create_ilm_policy(self, config):
+    async def _create_basic_ilm_policy(self, ilm_policy_name):
         """Create the index lifecycle management policy."""
         from elasticsearch7.exceptions import TransportError
 
         client = self._gateway.get_client()
 
         try:
-            existing_policy = await client.ilm.get_lifecycle(self._ilm_policy_name)
+            existing_policy = await client.ilm.get_lifecycle(ilm_policy_name)
         except TransportError as err:
             if err.status_code == 404:
                 existing_policy = None
@@ -223,26 +222,22 @@ class IndexManager:
                 LOGGER.exception("Error checking for existing ILM policy: %s", err)
                 raise err
 
-        ilm_hot_conditions = {"max_size": config.get(CONF_ILM_MAX_SIZE)}
+        if existing_policy:
+            LOGGER.info("Found existing ILM Policy, do nothing '%s'", ilm_policy_name)
+            return
 
         policy = {
             "policy": {
                 "phases": {
                     "hot": {
                         "min_age": "0ms",
-                        "actions": {"rollover": ilm_hot_conditions},
+                        "actions": {"max_age": "30d", "max_primary_shard_size": "50gb"},
                     },
-                    "delete": {
-                        "min_age": config.get(CONF_ILM_DELETE_AFTER),
-                        "actions": {"delete": {}},
-                    },
+                    "delete": {"min_age": "365d", "actions": {"delete": {}}},
                 }
             }
         }
 
-        if existing_policy:
-            LOGGER.info("Updating existing ILM Policy '%s'", self._ilm_policy_name)
-        else:
-            LOGGER.info("Creating ILM Policy '%s'", self._ilm_policy_name)
+        LOGGER.info("Creating ILM Policy '%s'", ilm_policy_name)
 
-        await client.ilm.put_lifecycle(self._ilm_policy_name, policy)
+        await client.ilm.put_lifecycle(ilm_policy_name, policy)
