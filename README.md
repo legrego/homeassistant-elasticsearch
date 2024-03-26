@@ -156,7 +156,8 @@ This component is configured interactively via Home Assistant's integration conf
 
 ## Defining your own Index Mappings, Settings, and Ingest Pipeline
 
-When in Datastream mode (Default for Elasticsearch 8.7+) you can customize the mappings, settings and define an ingest pipeline by creating a component template called `metrics-homeassistant@custom`
+When in Datastream mode (Default for Elasticsearch 8.7+) you can customize the mappings, settings and define an [ingest pipeline](https://www.elastic.co/guide/en/elasticsearch/reference/current/ingest.html) by creating a [component template](https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-component-template.html) called `metrics-homeassistant@custom`
+
 
 The following is an example on how to push your Home Assistant metrics into an ingest pipeline called `metrics-homeassistant-pipeline`:
 
