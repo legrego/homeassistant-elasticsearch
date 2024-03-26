@@ -1,4 +1,5 @@
 """Tests for Elastic init."""
+
 import pytest
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 from homeassistant.config_entries import SOURCE_REAUTH, ConfigEntryState
@@ -30,10 +31,15 @@ async def _setup_config_entry(hass: HomeAssistant, mock_entry: MockConfigEntry):
 
     return entry
 
+
 @pytest.mark.asyncio
-async def test_minimal_setup_component(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker) -> None:
+async def test_minimal_setup_component(
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
+) -> None:
     """Test component setup via legacy yml-based configuration."""
-    mock_es_initialization(es_aioclient_mock, url=MOCK_MINIMAL_LEGACY_CONFIG.get(CONF_URL))
+    mock_es_initialization(
+        es_aioclient_mock, url=MOCK_MINIMAL_LEGACY_CONFIG.get(CONF_URL)
+    )
 
     assert await async_setup_component(
         hass, ELASTIC_DOMAIN, {ELASTIC_DOMAIN: MOCK_MINIMAL_LEGACY_CONFIG}
@@ -55,6 +61,10 @@ async def test_minimal_setup_component(hass: HomeAssistant, es_aioclient_mock: A
         "included_domains": [],
         "included_entities": [],
         "index_format": "hass-events",
+        "index_mode": "index",
+        "datastream_name_prefix": "homeassistant",
+        "datastream_namespace": "default",
+        "datastream_type": "metrics",
         "publish_mode": "Any changes",
         "publish_frequency": 60,
         "timeout": 30,
@@ -73,15 +83,17 @@ async def test_minimal_setup_component(hass: HomeAssistant, es_aioclient_mock: A
 
 
 @pytest.mark.asyncio
-async def test_complex_setup_component(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker) -> None:
+async def test_complex_setup_component(
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
+) -> None:
     """Test component setup via legacy yml-based configuration."""
     mock_es_initialization(
         es_aioclient_mock,
         url=MOCK_COMPLEX_LEGACY_CONFIG.get(CONF_URL),
         alias_name=MOCK_COMPLEX_LEGACY_CONFIG.get(CONF_ALIAS),
         index_format=MOCK_COMPLEX_LEGACY_CONFIG.get(CONF_INDEX_FORMAT),
-        ilm_policy_name=MOCK_COMPLEX_LEGACY_CONFIG.get(CONF_ILM_POLICY_NAME)
-        )
+        ilm_policy_name=MOCK_COMPLEX_LEGACY_CONFIG.get(CONF_ILM_POLICY_NAME),
+    )
 
     assert await async_setup_component(
         hass, ELASTIC_DOMAIN, {ELASTIC_DOMAIN: MOCK_COMPLEX_LEGACY_CONFIG}
@@ -95,6 +107,10 @@ async def test_complex_setup_component(hass: HomeAssistant, es_aioclient_mock: A
     merged_config = get_merged_config(config_entries[0])
 
     expected_config = {
+        "index_mode": "index",
+        "datastream_name_prefix": "homeassistant",
+        "datastream_namespace": "default",
+        "datastream_type": "metrics",
         "excluded_domains": ["sensor", "weather"],
         "excluded_entities": ["switch.my_switch"],
         "included_domains": [],
@@ -113,31 +129,28 @@ async def test_complex_setup_component(hass: HomeAssistant, es_aioclient_mock: A
 
 
 @pytest.mark.asyncio
-async def test_update_entry(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker) -> None:
+async def test_update_entry(
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
+) -> None:
     """Test component entry update."""
 
     es_url = "http://update-entry:9200"
 
-    mock_es_initialization(
-        es_aioclient_mock,
-        url=es_url
-    )
+    mock_es_initialization(es_aioclient_mock, url=es_url)
 
     mock_entry = MockConfigEntry(
         unique_id="test_update_entry",
         domain=ELASTIC_DOMAIN,
         version=3,
-        data={
-            "url": es_url
-        },
+        data={"url": es_url},
         title="ES Config",
     )
 
     entry = await _setup_config_entry(hass, mock_entry)
 
-    assert hass.config_entries.async_update_entry(entry=entry, options={
-        CONF_EXCLUDED_DOMAINS: ["sensor", "weather"]
-    })
+    assert hass.config_entries.async_update_entry(
+        entry=entry, options={CONF_EXCLUDED_DOMAINS: ["sensor", "weather"]}
+    )
 
     await hass.async_block_till_done()
 
@@ -149,13 +162,17 @@ async def test_update_entry(hass: HomeAssistant, es_aioclient_mock: AiohttpClien
 
     expected_config = {
         "url": es_url,
-        "excluded_domains": ["sensor", "weather"]
+        "excluded_domains": ["sensor", "weather"],
+        "index_mode": "index",
     }
 
     assert merged_config == expected_config
 
+
 @pytest.mark.asyncio
-async def test_unsupported_version(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker) -> None:
+async def test_unsupported_version(
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
+) -> None:
     """Test component setup with an unsupported version."""
     es_url = "http://unsupported-version:9200"
 
@@ -165,9 +182,7 @@ async def test_unsupported_version(hass: HomeAssistant, es_aioclient_mock: Aioht
         unique_id="test_unsupported_version",
         domain=ELASTIC_DOMAIN,
         version=3,
-        data={
-            "url": es_url
-        },
+        data={"url": es_url},
         title="ES Config",
     )
 
@@ -176,21 +191,24 @@ async def test_unsupported_version(hass: HomeAssistant, es_aioclient_mock: Aioht
     assert entry.state == ConfigEntryState.SETUP_RETRY
     assert entry.reason == "Unsupported Elasticsearch version detected"
 
+
 @pytest.mark.asyncio
-async def test_reauth_setup_entry(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker) -> None:
+async def test_reauth_setup_entry(
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
+) -> None:
     """Test reauth flow triggered by setup entry."""
 
     es_url = "http://authentication-error:9200"
 
-    mock_es_initialization(es_aioclient_mock, url=es_url, mock_authentication_error=True)
+    mock_es_initialization(
+        es_aioclient_mock, url=es_url, mock_authentication_error=True
+    )
 
     mock_entry = MockConfigEntry(
         unique_id="test_authentication_error",
         domain=ELASTIC_DOMAIN,
         version=3,
-        data={
-            "url": es_url
-        },
+        data={"url": es_url},
         title="ES Config",
     )
 
@@ -210,8 +228,11 @@ async def test_reauth_setup_entry(hass: HomeAssistant, es_aioclient_mock: Aiohtt
     assert flow["context"].get("source") == SOURCE_REAUTH
     assert flow["context"].get("entry_id") == entry.entry_id
 
+
 @pytest.mark.asyncio
-async def test_connection_error(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker) -> None:
+async def test_connection_error(
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
+) -> None:
     """Test component setup with an unsupported version."""
     es_url = "http://connection-error:9200"
 
@@ -221,9 +242,7 @@ async def test_connection_error(hass: HomeAssistant, es_aioclient_mock: AiohttpC
         unique_id="test_connection_error",
         domain=ELASTIC_DOMAIN,
         version=3,
-        data={
-            "url": es_url
-        },
+        data={"url": es_url},
         title="ES Config",
     )
 
@@ -234,24 +253,20 @@ async def test_connection_error(hass: HomeAssistant, es_aioclient_mock: AiohttpC
 
 
 @pytest.mark.asyncio
-async def test_config_migration_v1(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker):
+async def test_config_migration_v1(
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
+):
     """Test config migration from v1."""
     es_url = "http://migration-v1-test:9200"
 
-    mock_es_initialization(
-        es_aioclient_mock,
-        url=es_url
-    )
+    mock_es_initialization(es_aioclient_mock, url=es_url)
 
-     # Create mock entry with version 1
+    # Create mock entry with version 1
     mock_entry = MockConfigEntry(
         unique_id="mock unique id v1",
         domain=ELASTIC_DOMAIN,
         version=1,
-        data={
-            "url": es_url,
-            "only_publish_changed": True
-        },
+        data={"url": es_url, "only_publish_changed": True},
         title="ES Config",
     )
 
@@ -260,37 +275,35 @@ async def test_config_migration_v1(hass: HomeAssistant, es_aioclient_mock: Aioht
     assert await async_setup_component(hass, ELASTIC_DOMAIN, {}) is True
     await hass.async_block_till_done()
 
-    # Verify publish mode has been set correctly
+    # Verify publish mode and index mode have been set correctly
 
     expected_config = {
         "url": es_url,
-        "publish_mode": "Any changes"
+        "publish_mode": "Any changes",
+        "index_mode": "index",
     }
 
     updated_entry = hass.config_entries.async_get_entry(mock_entry.entry_id)
     assert updated_entry
-    assert updated_entry.version == 3
+    assert updated_entry.version == 4
     assert updated_entry.data == expected_config
 
+
 @pytest.mark.asyncio
-async def test_config_migration_v2(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker):
+async def test_config_migration_v2(
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
+):
     """Test config migration from v2."""
     es_url = "http://migration-v2-test:9200"
 
-    mock_es_initialization(
-        es_aioclient_mock,
-        url=es_url
-    )
+    mock_es_initialization(es_aioclient_mock, url=es_url)
 
-     # Create mock entry with version 2
+    # Create mock entry with version 2
     mock_entry = MockConfigEntry(
         unique_id="mock unique id v2",
         domain=ELASTIC_DOMAIN,
         version=2,
-        data={
-            "url": es_url,
-            "health_sensor_enabled": True
-        },
+        data={"url": es_url, "health_sensor_enabled": True},
         title="ES Config",
     )
 
@@ -299,13 +312,11 @@ async def test_config_migration_v2(hass: HomeAssistant, es_aioclient_mock: Aioht
     assert await async_setup_component(hass, ELASTIC_DOMAIN, {}) is True
     await hass.async_block_till_done()
 
-    # Verify health sensor has been removed
+    # Verify health sensor has been removed, and index mode has been configured
 
-    expected_config = {
-        "url": es_url,
-    }
+    expected_config = {"url": es_url, "index_mode": "index"}
 
     updated_entry = hass.config_entries.async_get_entry(mock_entry.entry_id)
     assert updated_entry
-    assert updated_entry.version == 3
+    assert updated_entry.version == 4
     assert updated_entry.data == expected_config
