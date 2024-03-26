@@ -151,20 +151,6 @@ This will be the only supported configuration method in the future.
 4. Once the integration is setup, you may tweak all settings via the "Options" button on the integrations page.
    ![img](assets/publish-options.png)
 
-### Expected file structure
-
-```
-.homeassistant/
-|-- custom_components/
-|   |-- elasticsearch/
-|       |-- __init__.py
-|       |-- const.py
-|       |-- es_doc_publisher.py
-|       |-- ...etc...
-|       |-- index_mapping.json
-|       |-- sensor.py
-
-```
 
 ## Defining your own Index Mappings, Settings, and Ingest Pipeline
 
