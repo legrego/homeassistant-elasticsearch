@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+# This script pulls the specified version of Elasticsearch Docker image from the elastic Docker registry.
+
+# Usage: /bin/bash ./pull_es <version>
+#   <esversion> - The version of Elasticsearch to pull (e.g., 7.10.2)
+esversion=$1
+
+docker pull docker.elastic.co/elasticsearch/elasticsearch:"$esversion"

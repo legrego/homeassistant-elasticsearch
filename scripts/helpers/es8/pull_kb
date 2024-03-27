@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+# This script pulls the specified version of Kibana Docker image from the elastic Docker registry.
+
+# Usage: /bin/bash ./pull_kb <kbversion>
+#   <kbversion> - The version of Elasticsearch to pull (e.g., 7.10.2)
+kbversion="$1"
+
+docker pull docker.elastic.co/kibana/kibana:"$kbversion"

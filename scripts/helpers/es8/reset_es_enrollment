@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+# This script resets the Elasticsearch enrollment token for Kibana.
+
+# Usage: /bin/bash ./reset_es_enrollment <escontainer>
+#   <escontainer> - The container id of the Elasticsearch instance
+
+escontainer=$1
+
+token=$(docker exec -it "$escontainer" /usr/share/elasticsearch/bin/elasticsearch-create-enrollment-token -s kibana)
+
+echo "$token"

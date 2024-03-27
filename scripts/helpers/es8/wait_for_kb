@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 
 # Wait for Kibana to be ready
+
+# Usage: ./wait_for_kb
+
 start=$(date +%s)
 
 while true; do
   statuscode=$(curl -s -k -o /dev/null -w "%{http_code}" http://localhost:5601/internal/interactive_setup/status)
   #echo "Kibana status code: $statuscode"
   echo -n "." # print a dot for each iteration
-  if [ $statuscode -eq 200 ]; then
+  if [ "$statuscode" -eq "200" ]; then
     break
   fi
   sleep 1
@@ -15,6 +18,6 @@ done
 
 end=$(date +%s)
 
-echo -n " (took $((end-start)) seconds)"
+echo -n " (took $((end - start)) seconds)"
 
 echo

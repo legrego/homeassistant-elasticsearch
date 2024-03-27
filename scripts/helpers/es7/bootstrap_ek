@@ -1,3 +1,10 @@
+# This script is used to bootstrap Elasticsearch and Kibana in a Docker environment.
+# It pulls the Docker images for Elasticsearch and Kibana, starts the containers,
+# configures Elasticsearch and Kibana, and provides the necessary setup information.
+
+# Usage: /bin/bash ./bootstrap_ek <version>
+# - version: The version of the Elasticsearch and Kibana stack to use (e.g. 8.0.0)
+
 version=$1
 
 # if version is blank, prompt for a value
@@ -6,37 +13,38 @@ if [ -z "$version" ]; then
   read -r version
 fi
 
-#!/usr/bin/env bash
-
+# Create a Docker network for Elasticsearch and Kibana
 docker network create elastic > /dev/null
 
 echo "Pulling Docker Images for Elasticsearch and Kibana"
+
 echo "- Pulling Elasticsearch image for $version"
-$(/bin/bash ./helpers/pull_es $version)
+/bin/bash ./helpers/es8/pull_es $version
+
 echo "- Pulling Kibana image for $version"
-$(/bin/bash ./helpers/pull_kb $version)
+/bin/bash ./helpers/es8/pull_kb $version
 
 echo "Starting Elasticsearch and Kibana"
-escontainer=$(/bin/bash ./helpers/run_es $version)
-kbcontainer=$(/bin/bash ./helpers/run_kb $version)
+escontainer=$(/bin/bash ./helpers/es8/run_es $version)
+kbcontainer=$(/bin/bash ./helpers/es8/run_kb $version)
 
 echo "Configuring Elasticsearch:"
 echo -n "- Wait for Elasticsearch ($escontainer) to be ready"
-/bin/bash ./helpers/wait_for_es
+/bin/bash ./helpers/es8/wait_for_es
 
 echo "- Resetting elastic user account password"
-espwd=$(/bin/bash ./helpers/reset_es_pwd $escontainer)
+espwd=$(/bin/bash ./helpers/es8/reset_es_pwd $escontainer)
 
 echo "- Generating an Enrollment Token for Kibana"
-enrolltoken=$(/bin/bash ./helpers/reset_es_enrollment $escontainer)
+enrolltoken=$(/bin/bash ./helpers/es8/reset_es_enrollment $escontainer)
 
 echo "Configuring Kibana:"
 echo -n "- Wait for Kibana ($kbcontainer) to be ready"
-/bin/bash ./helpers/wait_for_kb
-kbcode=$(/bin/bash ./helpers/get_kb_code $kbcontainer)
+/bin/bash ./helpers/es8/wait_for_kb
 
 echo "- Enrolling Kibana"
-/bin/bash ./helpers/enroll_kb $enrolltoken $kbcode
+kbcode=$(/bin/bash ./helpers/es8/get_kb_code $kbcontainer)
+/bin/bash ./helpers/es8/enroll_kb $enrolltoken $kbcode
 
 echo
 echo "---Ready to use!---"

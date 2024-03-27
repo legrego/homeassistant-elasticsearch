@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-
-docker run -p 5601:5601 --name kib01 --net elastic -q -d -m 1GB docker.elastic.co/kibana/kibana:$1

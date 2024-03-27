@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+
+# This script is used to enroll a Kibana instance with Elasticsearch using an enrollment token.
+# It takes two arguments: the enrollment token and the Kibana code.
+
+# Usage: /bin/bash ./enroll_kb <enrollment_token> <kibana_code>
+# - enrollment_token: The enrollment token to use for enrolling Kibana
+# - kibana_code: The Kibana code to use for enrolling Kibana
+
+enrollment_token=$1
+kibana_code=$2
+
+# base64 decode the enrollment token
+decoded_token=$(echo "$enrollment_token" | base64 --decode -i)
+
+# Extract the Elasticsearch address from the decoded token
+adr=$(echo "$decoded_token" | jq -r '.adr[0]')
+
+# Extract the fingerprint from the decoded token
+fgr=$(echo "$decoded_token" | jq -r '.fgr')
+
+# Extract the key from the decoded token and base64 encode it
+key=$(echo "$decoded_token" | jq -r '.key')
+key=$(echo -n "$key" | base64)
+
+# Create the JSON payload for Kibana enrollment
+payload=$(echo -n "{\"hosts\":[\"https://$adr\"],\"code\":\"$kibana_code\",\"apiKey\":\"$key\",\"caFingerprint\":\"$fgr\"}")
+
+# Send the payload to Kibana using curl
+curl -k "http://localhost:5601/internal/interactive_setup/enroll" -H "kbn-xsrf: true" -H "Content-Type: application/json" -d "$payload"

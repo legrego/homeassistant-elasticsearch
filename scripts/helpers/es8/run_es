@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+# This script runs an Elasticsearch Docker container with the specified version.
+
+# Usage: run_es <esversion>
+#   <esversion> - The version of Elasticsearch to run (e.g., 7.10.2)
+
+esversion=$1
+
+docker run -p 9200:9200 --net elastic -q -d -m 1GB docker.elastic.co/elasticsearch/elasticsearch:"$esversion"
