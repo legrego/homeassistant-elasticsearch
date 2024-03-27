@@ -2,7 +2,7 @@
 import json
 from dataclasses import dataclass
 
-from homeassistant.const import CONF_ALIAS
+from homeassistant.const import CONF_ALIAS, CONF_USERNAME, CONF_API_KEY
 
 from custom_components.elasticsearch.const import CONF_INDEX_FORMAT
 from custom_components.elasticsearch.errors import (
@@ -33,10 +33,13 @@ class ESPrivilegeCheck:
     async def enforce_privileges(self, config: dict = None):
         """Ensure client is configured with properly authorized credentials."""
         LOGGER.debug("Starting privilege enforcement")
-        result = await self.check_privileges(config if config else self.config)
-        if not result.has_all_requested:
-            LOGGER.debug("Required privileges are missing.")
-            raise InsufficientPrivileges()
+
+        # only enforce privileges on authenticated backends
+        if self.config[CONF_USERNAME] or self.config[CONF_API_KEY]:
+            result = await self.check_privileges(config if config else self.config)
+            if not result.has_all_requested:
+                LOGGER.debug("Required privileges are missing.")
+                raise InsufficientPrivileges()
 
     async def check_privileges(self, config: dict) -> PrivilegeCheckResult:
         """Determine client privileges."""

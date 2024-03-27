@@ -429,8 +429,10 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             gateway = ElasticsearchGateway(raw_config=self.config)
             await gateway.async_init()
 
-            privilege_check = ESPrivilegeCheck(gateway)
-            await privilege_check.enforce_privileges(self.config)
+            # Only perform a privilege check if we are authenticated
+            if self.config[CONF_USERNAME] or self.config[CONF_API_KEY]:
+                privilege_check = ESPrivilegeCheck(gateway)
+                await privilege_check.enforce_privileges(self.config)
 
             version = gateway.es_version
         except UntrustedCertificate:
