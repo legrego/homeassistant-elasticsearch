@@ -4,4 +4,4 @@
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 
 sudo /bin/bash "$DIR/clean_ek"
-sudo /bin/bash "$DIR/helpers/es7/bootstrap_ek" "7.10.0"
+sudo /bin/bash "$DIR/helpers/es7/bootstrap_ek" "7.11.0"
