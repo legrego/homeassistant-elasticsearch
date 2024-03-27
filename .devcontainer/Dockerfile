@@ -16,3 +16,4 @@ RUN mkdir /home/vscode/.config/peek
 COPY ".devcontainer/peek" /home/vscode/.config/peek/
 
 RUN chown -R vscode:vscode /home/vscode/.config/peek
+
