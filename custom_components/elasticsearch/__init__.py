@@ -145,6 +145,14 @@ async def async_migrate_entry(hass: HomeAssistantType, config_entry: ConfigEntry
         if CONF_INDEX_MODE not in new:
             new[CONF_INDEX_MODE] = INDEX_MODE_LEGACY
 
+        CONF_ILM_MAX_SIZE = "ilm_max_size"
+        if CONF_ILM_MAX_SIZE in new:
+            del new[CONF_ILM_MAX_SIZE]
+
+        CONF_ILM_DELETE_AFTER = "ilm_delete_after"
+        if CONF_ILM_DELETE_AFTER in new:
+            del new[CONF_ILM_DELETE_AFTER]
+
         config_entry.data = {**new}
         config_entry.version = 4
 
