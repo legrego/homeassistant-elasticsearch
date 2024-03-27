@@ -8,7 +8,7 @@
             "problemMatcher": []
         },
         {
-            "label": "Run Elasticsearch 7.0.0 (HTTP Port 9200) and Kibana 7.0.0 (HTTP Port 5601)",
+            "label": "Run Unsupported Elasticsearch 7.0.0 (HTTP Port 9200) and Kibana 7.0.0 (HTTP Port 5601)",
             "type": "shell",
             "command": "/bin/bash ./scripts/run_ek_7_0_0"
         },
