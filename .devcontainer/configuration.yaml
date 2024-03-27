@@ -1,7 +1,5 @@
 default_config:
-debugpy:
-  start: true
-  wait: true
+
 logger:
   default: info
   logs:

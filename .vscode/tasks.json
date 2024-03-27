@@ -4,7 +4,6 @@
         {
             "label": "Run Home Assistant on port 8123",
             "type": "shell",
-            "isBackground": true,
             "command": "poetry run scripts/develop",
             "problemMatcher": []
         },
