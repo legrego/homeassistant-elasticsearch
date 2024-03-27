@@ -4,6 +4,7 @@
 	"name": "Elasticsearch integration development",
 	"context": "..",
 	"forwardPorts": [
+		5678,
 		8123,
 		9200
 	],
