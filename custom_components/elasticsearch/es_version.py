@@ -25,6 +25,10 @@ class ElasticsearchVersion:
         """Determine if this version of ES is supported by this component."""
         return self.major == 8 or (self.major == 7 and self.minor >= 11)
 
+    def meets_minimum_version(self, major, minor):
+        """Determine if this version of ES meets the minimum version requirements."""
+        return self.major > major or (self.major == major and self.minor >= minor)
+
     def is_serverless(self):
         """Determine if this is a serverless ES instance."""
         return self.build_flavor == "serverless"

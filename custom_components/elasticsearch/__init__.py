@@ -28,6 +28,7 @@ from .const import (
     CONF_ILM_MAX_SIZE,
     CONF_ILM_POLICY_NAME,
     CONF_INDEX_FORMAT,
+    CONF_INDEX_MODE,
     CONF_ONLY_PUBLISH_CHANGED,
     CONF_PUBLISH_ENABLED,
     CONF_PUBLISH_FREQUENCY,
@@ -35,6 +36,7 @@ from .const import (
     CONF_SSL_CA_PATH,
     CONF_TAGS,
     DOMAIN,
+    INDEX_MODE_LEGACY,
     ONE_MINUTE,
     PUBLISH_MODE_ALL,
     PUBLISH_MODE_ANY_CHANGES,
@@ -112,9 +114,7 @@ async def async_setup(hass: HomeAssistantType, config):
     return True
 
 
-async def async_migrate_entry(
-    hass, config_entry: ConfigEntry
-):  # pylint: disable=unused-argument
+async def async_migrate_entry(hass: HomeAssistantType, config_entry: ConfigEntry):  # pylint: disable=unused-argument
     """Migrate old entry."""
     LOGGER.debug("Migrating config entry from version %s", config_entry.version)
 
@@ -142,6 +142,16 @@ async def async_migrate_entry(
 
         config_entry.version = 3
 
+    if config_entry.version == 3:
+        new = get_merged_config(config_entry)
+
+        # Check the configured options for the index_mode
+        if CONF_INDEX_MODE not in new:
+            new[CONF_INDEX_MODE] = INDEX_MODE_LEGACY
+
+        config_entry.data = {**new}
+        config_entry.version = 4
+
     LOGGER.info("Migration to version %s successful", config_entry.version)
 
     return True
@@ -150,7 +160,7 @@ async def async_migrate_entry(
 async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry):
     """Set up integration via config flow."""
 
-    LOGGER.debug("Setting up integtation")
+    LOGGER.debug("Setting up integration")
     init = await _async_init_integration(hass, config_entry)
     config_entry.add_update_listener(async_config_entry_updated)
     return init
