@@ -1,3 +1,0 @@
-publish_events:
-  name: Publish queued events
-  description: Publishes all queued events to Elasticsearch.
