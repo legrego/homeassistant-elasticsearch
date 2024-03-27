@@ -4,12 +4,12 @@ import time
 from datetime import datetime
 from queue import Queue
 
-from custom_components.elasticsearch.errors import ElasticException
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EVENT_HOMEASSISTANT_CLOSE, EVENT_STATE_CHANGED
 from homeassistant.core import HomeAssistant, State, callback
 from homeassistant.helpers.typing import EventType
 
+from custom_components.elasticsearch.errors import ElasticException
 from custom_components.elasticsearch.es_doc_creator import DocumentCreator
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 from custom_components.elasticsearch.es_index_manager import IndexManager
