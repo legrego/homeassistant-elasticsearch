@@ -64,8 +64,8 @@ echo "  Url: http://localhost:9200"
 echo "  Unauthenticated Access"
 echo
 echo "Kibana"
-echo " Url: http://localhost:5601"
-echo " Unauthenticated Access"
+echo "  Url: http://localhost:5601"
+echo "  Unauthenticated Access"
 echo
 echo "Setup Information"
 echo "  Version: $version"
