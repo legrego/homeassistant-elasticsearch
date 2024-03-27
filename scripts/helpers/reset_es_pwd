@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+# Usage: ./reset_es_pwd.sh <container_id>
+
+# Example:
+# ./reset_es_pwd.sh es01
+
+return=$(docker exec -it $1 /usr/share/elasticsearch/bin/elasticsearch-reset-password -u elastic --silent --batch)
+
+# password is now a multiline return, filter out any lines that begin with WARNING:
+password=$(echo "$return" | grep -v 'WARNING: ')
+
+echo $password

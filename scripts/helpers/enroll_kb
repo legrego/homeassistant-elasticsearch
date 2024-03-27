@@ -1,0 +1,25 @@
+enrollment_token=$1
+kibana_code=$2
+
+# base64 decode the enrollment token
+decoded_token=$(echo "$enrollment_token" | base64 --decode -i)
+
+# Format of the token is:
+# {"ver":"8.11.0","adr":["192.168.176.2:9200"],"fgr":"0e8df12091e579d975973577a930cc6954dca8db35ffdcb876f9408cb9ff176a","key":"SNhcfY4BQ3WD0ECxqdUV:yhmoiS0uQh64ft2L8QE9vQ"}
+
+adr=$(echo "$decoded_token" | jq -r '.adr[0]')
+
+fgr=$(echo "$decoded_token" | jq -r '.fgr')
+
+# Key needs to be base64 encoded
+key=$(echo "$decoded_token" | jq -r '.key')
+key=$(echo -n "$key" | base64)
+
+# Required payload to Kibana is in the format
+# {"hosts":["https://192.168.176.2:9200"],"code": "123123", "apiKey":"U05oY2ZZNEJRM1dEMEVDeHFkVVY6eWhtb2lTMHVRaDY0ZnQyTDhRRTl2UQ==","caFingerprint":"0e8df12091e579d975973577a930cc6954dca8db35ffdcb876f9408cb9ff176a"}
+
+# Create the JSON payload
+payload=$(echo -n "{\"hosts\":[\"https://$adr\"],\"code\":\"$kibana_code\",\"apiKey\":\"$key\",\"caFingerprint\":\"$fgr\"}")
+
+# Send the payload to Kibana
+curl -k "http://localhost:5601/internal/interactive_setup/enroll" -H "kbn-xsrf: true" -H "Content-Type: application/json" -d "$payload"

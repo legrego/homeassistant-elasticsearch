@@ -1,0 +1,56 @@
+version=$1
+
+# if version is blank, prompt for a value
+if [ -z "$version" ]; then
+  echo "Please provide a valid stack version (e.g. 8.0.0)"
+  read -r version
+fi
+
+#!/usr/bin/env bash
+
+docker network create elastic > /dev/null
+
+echo "Pulling Docker Images for Elasticsearch and Kibana"
+echo "- Pulling Elasticsearch image for $version"
+$(/bin/bash ./helpers/pull_es $version)
+echo "- Pulling Kibana image for $version"
+$(/bin/bash ./helpers/pull_kb $version)
+
+echo "Starting Elasticsearch and Kibana"
+escontainer=$(/bin/bash ./helpers/run_es $version)
+kbcontainer=$(/bin/bash ./helpers/run_kb $version)
+
+echo "Configuring Elasticsearch:"
+echo -n "- Wait for Elasticsearch ($escontainer) to be ready"
+/bin/bash ./helpers/wait_for_es
+
+echo "- Resetting elastic user account password"
+espwd=$(/bin/bash ./helpers/reset_es_pwd $escontainer)
+
+echo "- Generating an Enrollment Token for Kibana"
+enrolltoken=$(/bin/bash ./helpers/reset_es_enrollment $escontainer)
+
+echo "Configuring Kibana:"
+echo -n "- Wait for Kibana ($kbcontainer) to be ready"
+/bin/bash ./helpers/wait_for_kb
+kbcode=$(/bin/bash ./helpers/get_kb_code $kbcontainer)
+
+echo "- Enrolling Kibana"
+/bin/bash ./helpers/enroll_kb $enrolltoken $kbcode
+
+echo
+echo "---Ready to use!---"
+echo "Elasticsearch"
+echo "  Url: https://localhost:9200"
+echo "  User: elastic"
+echo "  Password: $espwd"
+echo
+echo "Kibana"
+echo "  Url: http://localhost:5601"
+echo "  User: elastic"
+echo "  Password: $espwd"
+echo
+echo "Setup Information"
+echo "  Setup Code:" "$kbcode"
+echo "  Enrollment Token:" "$enrolltoken"
+echo "  Containers: $escontainer $kbcontainer"

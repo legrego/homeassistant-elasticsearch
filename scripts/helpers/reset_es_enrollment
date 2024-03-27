@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+# Usage: ./reset_es_pwd.sh <container_id>
+
+# Example:
+# ./reset_es_pwd.sh es01
+
+token=$(docker exec -it $1 /usr/share/elasticsearch/bin/elasticsearch-create-enrollment-token -s kibana)
+
+echo $token

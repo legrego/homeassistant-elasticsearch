@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+# Pull out the code from the logs : 'Go to http://0.0.0.0:5601/?code=317916 to get started.''
+
+logs=$(docker logs $1)
+
+code=$(echo $logs | grep -oP 'code=\K[0-9]+')
+
+echo $code

@@ -1,8 +1,8 @@
 FROM mcr.microsoft.com/vscode/devcontainers/python:0-3.11-bullseye
 
-COPY ".devcontainer/install-docker-cli.sh" install-docker-cli.sh
-
 RUN apt-get update && apt-get install -y apt-transport-https gnupg2 procps less curl
+
+COPY ".devcontainer/install-docker-cli.sh" install-docker-cli.sh
 
 RUN /bin/bash install-docker-cli.sh
 
