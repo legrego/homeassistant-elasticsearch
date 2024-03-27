@@ -12,10 +12,10 @@ python = ">=3.11,<3.13"
 elasticsearch7 = "~=7.11.0"
 
 [tool.poetry.group.dev.dependencies]
-colorlog = "==6.7.0"
+colorlog = "==6.8.2"
 homeassistant = "==2024.1.2"
 ruff = ">=0.0.291"
-pip = ">=21.0,<23.4"
+pip = ">=21.0,<24.1"
 
 [tool.poetry.group.test.dependencies]
 pytest = ">=7.3.1"
