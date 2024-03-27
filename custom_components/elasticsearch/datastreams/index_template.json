@@ -30,8 +30,7 @@
                     "type": "object",
                     "properties": {
                         "object_id": {
-                            "type": "keyword",
-                            "time_series_dimension": true
+                            "type": "keyword"
                         },
                         "entity": {
                             "type": "object",
@@ -215,24 +214,14 @@
         },
         "settings": {
             "codec": "best_compression",
-            "index.mode": "time_series",
             "mapping": {
                 "total_fields": {
                     "limit": "10000"
                 }
             }
-        },
-        "lifecycle": {
-            "data_retention": "365d"
         }
     },
     "priority": 500,
     "data_stream": {},
-    "composed_of": [
-        "metrics-homeassistant@custom"
-    ],
-    "ignore_missing_component_templates": [
-        "metrics-homeassistant@custom"
-    ],
     "version": 1
 }

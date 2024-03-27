@@ -78,12 +78,6 @@ class IndexManager:
         """Initialize the Elasticsearch cluster with an index template, initial index, and alias."""
         LOGGER.debug("Initializing modern index templates")
 
-        if not self._gateway.es_version.meets_minimum_version(major=8, minor=7):
-            raise ElasticException(
-                "A version of Elasticsearch that is not compatible with TSDS datastreams detected (%s). Use Legacy Index mode.",
-                f"{self._gateway.es_version.major}.{self._gateway.es_version.minor}",
-            )
-
         client = self._gateway.get_client()
 
         # Open datastreams/index_template.json and load the ES modern index template
@@ -110,22 +104,36 @@ class IndexManager:
         else:
             LOGGER.debug("Creating index template")
 
-        # For Datastream mode we do not offer configuration wtihin Home Assistant for the ILM policy
-        if not self._gateway.es_version.meets_minimum_version(major=8, minor=11):
-            LOGGER.debug("Running pre-8.10, using Index Lifecycle Management")
+        if self._gateway.es_version.supports_timeseries_datastream():
+            LOGGER.debug("Elasticsearch supports timeseries datastreams, including in template.")
+
+            index_template["template"]["settings"]["index.mode"] = "time_series"
+
+            mappings = index_template["template"]["mappings"]
+            object_id = mappings["properties"]["hass"]["properties"]["object_id"]
+
+            object_id["time_series_dimension"] = True
+
+        if self._gateway.es_version.supports_ignore_missing_component_templates():
+            LOGGER.debug("Elasticsearch supports ignore_missing_component_templates, including in template.")
+
+            index_template["composed_of"] = ["metrics-homeassistant@custom"]
+            index_template["ignore_missing_component_templates"] = [
+                "metrics-homeassistant@custom"
+            ]
+
+        if self._gateway.es_version.supports_datastream_lifecycle_management():
+            LOGGER.debug("Elasticsearch supports Datastream Lifecycle Management, including in template.")
+            index_template["template"]["lifecycle"] = {"data_retention": "365d"}
+        else:
+            LOGGER.debug("Elasticsearch does not support Datastream Lifecycle Management, falling back to Index Lifecycle Management.")
             await self._create_basic_ilm_policy(
                 ilm_policy_name=DATASTREAM_METRICS_ILM_POLICY_NAME
             )
 
-            LOGGER.debug("Inserting ILM Policy into Index Template: ")
-
-            del index_template["template"]["lifecycle"]
-
             index_template["template"]["settings"]["index.lifecycle.name"] = (
                 DATASTREAM_METRICS_ILM_POLICY_NAME
             )
-        else:
-            LOGGER.debug("Running 8.10+, using Datastream Lifecycle Management")
 
         try:
             await client.indices.put_index_template(
@@ -239,7 +247,6 @@ class IndexManager:
                         "actions": {
                             "rollover": {
                                 "max_age": "30d",
-                                "max_primary_shard_size": "50gb",
                             },
                         },
                     },
@@ -247,6 +254,12 @@ class IndexManager:
                 }
             }
         }
+
+        if self._gateway.es_version.supports_max_primary_shard_size():
+            LOGGER.debug("Elasticsearch supports max_primary_shard_size, including in ILM template.")
+            policy["policy"]["phases"]["hot"]["actions"]["rollover"][
+                "max_primary_shard_size"
+            ] = "50gb"
 
         LOGGER.info("Creating ILM Policy '%s'", ilm_policy_name)
 
