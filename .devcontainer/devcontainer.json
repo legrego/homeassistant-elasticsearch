@@ -4,6 +4,7 @@
 	"context": "..",
 	"name": "Elasticsearch integration development",
 	"forwardPorts": [
+		5601,
 		8123,
 		9200
 	],
@@ -12,6 +13,11 @@
 	],
 	"initializeCommand": "ls",
 	"portsAttributes": {
+		"5601": {
+			"label": "Kibana",
+			"onAutoForward": "notify",
+			"protocol": "http"
+		},
 		"8123": {
 			"label": "Home Assistant",
 			"onAutoForward": "notify"

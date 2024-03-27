@@ -1,64 +1,73 @@
+#!/usr/bin/env bash
+
 # This script is used to bootstrap Elasticsearch and Kibana in a Docker environment.
 # It pulls the Docker images for Elasticsearch and Kibana, starts the containers,
 # configures Elasticsearch and Kibana, and provides the necessary setup information.
 
 # Usage: /bin/bash ./bootstrap_ek <version>
-# - version: The version of the Elasticsearch and Kibana stack to use (e.g. 8.0.0)
+# - version: The version of the Elasticsearch and Kibana stack to use (e.g. 7.0.0)
 
+dir=$(dirname "$0")
 version=$1
+
+set -e
+
+start=$(date +%s)
 
 # if version is blank, prompt for a value
 if [ -z "$version" ]; then
-  echo "Please provide a valid stack version (e.g. 8.0.0)"
+  echo "Please provide a valid stack version (e.g. 7.0.0)"
   read -r version
 fi
 
+# If the user provided a version that starts with 8 suggest they use the es8 script
+if [[ "$version" =~ ^8\.[0-9]+\.[0-9]+$ ]]; then
+  echo "This script is for Elasticsearch 7. Please use the es7 scripts for Elasticsearch 7."
+  exit 1
+fi
+
+# Ensure that the version provided has two decimals and starts with 7
+if [[ ! "$version" =~ ^7\.[0-9]+\.[0-9]+$ ]]; then
+  echo "Invalid version provided. Please provide a valid stack version (e.g. 7.0.0)"
+  exit 1
+fi
+
 # Create a Docker network for Elasticsearch and Kibana
-docker network create elastic > /dev/null
+docker network create elastic >/dev/null
 
 echo "Pulling Docker Images for Elasticsearch and Kibana"
 
-echo "- Pulling Elasticsearch image for $version"
-/bin/bash ./helpers/es8/pull_es $version
+echo -n "- Pulling Elasticsearch image for $version"
+/bin/bash "$dir/../shared/pull_es" "$version"
 
-echo "- Pulling Kibana image for $version"
-/bin/bash ./helpers/es8/pull_kb $version
+echo -n "- Pulling Kibana image for $version"
+/bin/bash "$dir/../shared/pull_kb" "$version"
 
 echo "Starting Elasticsearch and Kibana"
-escontainer=$(/bin/bash ./helpers/es8/run_es $version)
-kbcontainer=$(/bin/bash ./helpers/es8/run_kb $version)
+escontainer=$(/bin/bash "$dir/run_es" "$version")
+kbcontainer=$(/bin/bash "$dir/run_kb" "$version")
 
 echo "Configuring Elasticsearch:"
 echo -n "- Wait for Elasticsearch ($escontainer) to be ready"
-/bin/bash ./helpers/es8/wait_for_es
-
-echo "- Resetting elastic user account password"
-espwd=$(/bin/bash ./helpers/es8/reset_es_pwd $escontainer)
-
-echo "- Generating an Enrollment Token for Kibana"
-enrolltoken=$(/bin/bash ./helpers/es8/reset_es_enrollment $escontainer)
+/bin/bash "$dir/wait_for_es"
 
 echo "Configuring Kibana:"
 echo -n "- Wait for Kibana ($kbcontainer) to be ready"
-/bin/bash ./helpers/es8/wait_for_kb
+/bin/bash "$dir/wait_for_kb"
 
-echo "- Enrolling Kibana"
-kbcode=$(/bin/bash ./helpers/es8/get_kb_code $kbcontainer)
-/bin/bash ./helpers/es8/enroll_kb $enrolltoken $kbcode
+end=$(date +%s)
 
 echo
 echo "---Ready to use!---"
 echo "Elasticsearch"
-echo "  Url: https://localhost:9200"
-echo "  User: elastic"
-echo "  Password: $espwd"
+echo "  Url: http://localhost:9200"
+echo "  Unauthenticated Access"
 echo
 echo "Kibana"
-echo "  Url: http://localhost:5601"
-echo "  User: elastic"
-echo "  Password: $espwd"
+echo " Url: http://localhost:5601"
+echo " Unauthenticated Access"
 echo
 echo "Setup Information"
-echo "  Setup Code:" "$kbcode"
-echo "  Enrollment Token:" "$enrolltoken"
+echo "  Version: $version"
 echo "  Containers: $escontainer $kbcontainer"
+echo "  Duration: $((end - start)) seconds"

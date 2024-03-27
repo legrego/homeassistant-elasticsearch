@@ -15,4 +15,4 @@ logs=$(docker logs "$kbcontainer")
 code=$(echo "$logs" | grep -oP 'code=\K[0-9]+')
 
 # Print the extracted code
-echo "$code"
+echo -n "$code"

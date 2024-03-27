@@ -10,6 +10,7 @@ escontainer=$1
 return=$(docker exec -it "$escontainer" /usr/share/elasticsearch/bin/elasticsearch-reset-password -u elastic --silent --batch)
 
 # password is now a multiline return, filter out any lines that begin with WARNING:
-password=$(echo "$return" | grep -v 'WARNING: ')
+password=$(echo -n "$return" | grep -v 'WARNING: ')
 
-echo "$password"
+# return password and trim any leading/trailing whitespace
+echo -n "$password" | tr -d '[:space:]'

@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+
+# Create the hass_writer role
+
+# Usage: /bin/bash ./create_hass-writer_role_es <esurl> <esusername> <espassword>
+#   <esurl> - The URL of the Elasticsearch instance (e.g., https://localhost:9200)
+#   <esusername> - The existing admin user used to create the new user (e.g., hass)
+#   <espassword> - The password for the admin user used to create the new user (e.g., hass)
+
+esurl=$1
+esusername=$2
+espassword=$3
+
+set -e
+
+dir=$(dirname "$0")
+/bin/bash "$dir/create_role_es" "$esurl" "$esusername" "$espassword" "hass_writer" '{
+  "cluster": [
+    "manage_index_templates",
+    "manage_ilm",
+    "monitor"
+  ],
+  "indices": [
+    {
+      "names": [
+        "hass-events*",
+        "active-hass-index-*",
+        "all-hass-events",
+        "metrics-homeassistant*"
+      ],
+      "privileges": [
+        "manage",
+        "index",
+        "create_index",
+        "create"
+      ]
+    }
+  ]
+}'

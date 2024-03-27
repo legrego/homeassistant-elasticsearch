@@ -2,20 +2,23 @@
 
 echo "Performing Environment Clean-up"
 
-containers=$(sudo docker ps -a | grep "docker.elastic.co"  | awk '{ print $1 }')
+containers=("kb01" "es01")
 
-# If containers returned a value, kill and remove them
-if [ -n "$containers" ]; then
-  echo "- Stopping and removing containers $(echo $containers | tr -d '\n')"
-  docker kill $containers > /dev/null
-  docker rm $containers > /dev/null
-fi
+for container in "${containers[@]}"; do
+  # Check if the container exists
+  if ! docker ps -a | grep -q "$container"; then
+    continue
+  fi
+
+  echo "- Stopping and removing container $container"
+  docker kill "$container" >/dev/null
+  docker rm "$container" >/dev/null
+done
 
 # If the network exists, remove it
 networks=$(docker network ls | grep -o "elastic")
 
 if [ -n "$networks" ]; then
-  echo "- Removing network $(echo $networks | tr -d '\n')"
-  docker network rm elastic > /dev/null
+  echo "- Removing network $(echo "$networks" | tr -d '\n')"
+  docker network rm elastic >/dev/null
 fi
-

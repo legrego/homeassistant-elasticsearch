@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+# Create an elasticsearch role
+
+# Usage: /bin/bash ./create_hass_user <esurl> <esusername> <espassword> <newrolename> <newroledefinition>
+#   <esurl> - The URL of the Elasticsearch instance (e.g., https://localhost:9200)
+#   <esusername> - The existing admin user used to create the new user (e.g., hass)
+#   <espassword> - The password for the admin user used to create the new user (e.g., hass)
+#   <newrolename> - The name of the new role to create (e.g., hass)
+#   <newroledefinition> - The definition of the new role to create (e.g., '{"cluster":["all"],"indices":[{"names":[".kibana*"],"privileges":["all"]}]}')
+
+esurl=$1
+esusername=$2
+espassword=$3
+newrolename=$4
+newroledefinition=$5
+
+set -e
+
+AUTH=$(echo -ne "$esusername:$espassword" | base64 --wrap 0)
+
+curl -s -X POST -k -H 'Content-Type: application/json' --header "Authorization: Basic $AUTH" -d "$newroledefinition" "$esurl/_security/role/$newrolename" > /dev/null

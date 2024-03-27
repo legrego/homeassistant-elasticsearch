@@ -9,4 +9,4 @@ kbversion=$1
 
 set -e
 
-docker run -p 5601:5601 --net elastic -q -d -m 1GB --name kb01 docker.elastic.co/kibana/kibana:"$kbversion"
+docker run -p 5601:5601 --net elastic -q -d -m 1GB --name kb01 --env ELASTICSEARCH_HOSTS=http://es01:9200 docker.elastic.co/kibana/kibana:"$kbversion"

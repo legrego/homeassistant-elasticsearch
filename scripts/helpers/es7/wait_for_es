@@ -6,12 +6,10 @@
 
 start=$(date +%s)
 while true; do
-  statuscode=$(curl -s -k -o /dev/null -w "%{http_code}" https://localhost:9200)
+  statuscode=$(curl -s -k -o /dev/null -w "%{http_code}" http://localhost:9200)
   #echo "Elasticsearch status code: $statuscode"
   echo -n "." # print a dot for each iteration
-
-  # When Security-Enabled ES is ready, it will return 401 Unauthorized
-  if [ "$statuscode" -eq "401" ]; then
+  if [ "$statuscode" -eq "200" ]; then
     break
   fi
   sleep 1

@@ -6,4 +6,14 @@
 #   <esversion> - The version of Elasticsearch to pull (e.g., 7.10.2)
 esversion=$1
 
-docker pull docker.elastic.co/elasticsearch/elasticsearch:"$esversion"
+set -e
+
+start=$(date +%s)
+
+docker pull docker.elastic.co/elasticsearch/elasticsearch:"$esversion" >/dev/null
+
+end=$(date +%s)
+
+echo -n " took $((end - start)) seconds"
+
+echo
