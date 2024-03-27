@@ -8,7 +8,7 @@ Publish HASS events to your [Elasticsearch](https://elastic.co) cluster!
 ## Features
 
 - Efficiently publishes Home-Assistant events to Elasticsearch using the Bulk API
-- Automatically sets up Datastreams or maintains Indexes and Index Templates using Index Lifecycle Management ("ILM") depending on your cluster's capabilities
+- Automatically sets up Datastreams using Time Series Data Streams ("TSDS"), Datastream Lifecycle Management ("DLM") Index Lifecycle Management ("ILM") depending on your cluster's capabilities
 - Supports Elastic's [stack security features](https://www.elastic.co/elastic-stack/security) via optional username, password, and API keys
 - Exclude specific entities or groups from publishing
 
@@ -18,6 +18,16 @@ Publish HASS events to your [Elasticsearch](https://elastic.co) cluster!
 - [Elastic Common Schema version 1.0.0](https://github.com/elastic/ecs/releases/tag/v1.0.0)
 - [Home Assistant Community Store](https://github.com/custom-components/hacs)
 - Home Assistant 2024.1
+
+| Elasticsearch Version | Datastreams | Time Series Datastreams | Datastream Lifecycle Management | Index Lifecycle Management |
+|-----------------------|-------------|-------------------------|---------------------------------|----------------------------|
+| 7.11.0 - 7.12.0       | Supported   |                         |                                 | Partially Supported [See Note]      |
+| 7.13.0 - 7.17.0       | Supported   |                         |                                 | Supported                  |
+| 8.0.0 - 8.6.0         | Supported   |                         |                                 | Supported                  |
+| 8.7.0 - 8.12.0        |             | Supported               |                                 | Supported                  |
+| 8.13.0+               |             | Supported               | Supported                       |                            |
+
+Note: Index Lifecycle Management is partially supported in versions 7.11.0 - 7.12.0. The integration will create an ILM policy that performs time-based rollover but does not support shard-size-based rollover.
 
 ## What for?
 
@@ -149,7 +159,6 @@ This component is configured interactively via Home Assistant's integration conf
 2. From the `Integrations` configuration menu, add a new `Elasticsearch` integration. ![img](assets/add-integration.png)
 3. Select the appropriate authentication method
 4. Provide connection information and optionally credentials to begin setup. ![img](assets/configure-integration.png)
-5. Depending on the version of your Elasticsearch cluster you may be offered to choose between Datastreams (Preferred) and legacy indexing.
 5. Once the integration is setup, you may tweak all settings via the "Options" button on the integrations page.
    ![img](assets/publish-options.png)
 

@@ -37,7 +37,7 @@ class ElasticsearchVersion:
         """Determine if this version of ES supports timeseries datastreams."""
         # https://www.elastic.co/guide/en/elasticsearch/reference/current/tsds.html
         return self.meets_minimum_version(major=8, minor=7)
-    
+
     def supports_ignore_missing_component_templates(self):
         """Determine if this version of ES supports the ignore_missing_component_templates feature."""
         # https://www.elastic.co/guide/en/elasticsearch/reference/current/ignore_missing_component_templates.html
@@ -49,7 +49,7 @@ class ElasticsearchVersion:
         return self.meets_minimum_version(major=8, minor=11)
 
     def supports_max_primary_shard_size(self):
-        """Determine if this version of ES supports datastream lifecycle management."""
+        """Determine if this version of ES supports max_primary_shard_size in ILM policies."""
         # https://www.elastic.co/guide/en/elasticsearch/reference/current/data-stream-lifecycle.html
         return self.meets_minimum_version(major=7, minor=13)
 
