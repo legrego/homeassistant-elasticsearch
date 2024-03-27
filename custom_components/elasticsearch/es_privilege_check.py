@@ -34,9 +34,12 @@ class ESPrivilegeCheck:
         """Ensure client is configured with properly authorized credentials."""
         LOGGER.debug("Starting privilege enforcement")
 
+        # TODO: Figure out why this is needed
+        resultantConfig = config or self.config
+
         # only enforce privileges on authenticated backends if username or api_key is set
-        if CONF_USERNAME in self.config or CONF_API_KEY in self.config:
-            result = await self.check_privileges(config if config else self.config)
+        if CONF_USERNAME in resultantConfig or CONF_API_KEY in resultantConfig:
+            result = await self.check_privileges(resultantConfig)
             if not result.has_all_requested:
                 LOGGER.debug("Required privileges are missing.")
                 raise InsufficientPrivileges()
