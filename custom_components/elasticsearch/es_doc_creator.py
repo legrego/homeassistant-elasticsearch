@@ -115,8 +115,6 @@ class DocumentCreator:
                 )
                 continue
 
-            # so we replace them with an "_" instead.
-            # https://github.com/legrego/homeassistant-elasticsearch/issues/92
             key = self.normalize_attribute_name(orig_key)
             value = orig_value
 
@@ -142,6 +140,13 @@ class DocumentCreator:
             else:
                 should_serialize = isinstance(value, dict)
 
+            if key in attributes:
+                LOGGER.warning(
+                    "Attribute [%s] shares a key [%s] with another attribute for entity [%s]. Discarding previous attribute value.",
+                    orig_key,
+                    key,
+                    state.entity_id,
+                )
             attributes[key] = (
                 self._serializer.dumps(value) if should_serialize else value
             )
@@ -365,6 +370,8 @@ class DocumentCreator:
 
         # Replace all non-word characters with an underscore
         replaced_string = re.sub(r"[\W]+", "_", normalized_string)
+        # Remove leading and trailing underscores
+        replaced_string = re.sub(r"^_+|_+$", "", replaced_string)
 
         return replaced_string.lower()
 
