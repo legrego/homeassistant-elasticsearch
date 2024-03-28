@@ -52,6 +52,7 @@ from .const import DOMAIN as ELASTIC_DOMAIN
 from .errors import (
     AuthenticationRequired,
     CannotConnect,
+    ClientError,
     InsufficientPrivileges,
     UnsupportedVersion,
     UntrustedCertificate,
@@ -441,6 +442,24 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             await privilege_check.enforce_privileges(self.config)
 
             version = gateway.es_version
+        except ClientError:
+            # For a Client Error, try to initialize without SSL verification, if this works then there is a self-signed certificate being used
+            tempGateway = ElasticsearchGateway(raw_config=self.config)
+            tempGateway._verify_certs = False
+            try:
+                await tempGateway.async_init()
+
+                privilege_check = ESPrivilegeCheck(tempGateway, config=self.config)
+                await privilege_check.enforce_privileges(self.config)
+
+                version = tempGateway.es_version
+
+                errors["base"] = "untrusted_connection"
+            except Exception:
+                errors["base"] = "client_error"
+            finally:
+                if tempGateway:
+                    await tempGateway.async_stop_gateway()
         except UntrustedCertificate:
             errors["base"] = "untrusted_connection"
         except AuthenticationRequired:
