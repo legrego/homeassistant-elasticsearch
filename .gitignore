@@ -13,6 +13,7 @@ pytestdebug.log
 .ruff_cache
 .venv
 .vscode/*
+!.vscode/launch.json
 !.vscode/tasks.json
 coverage.xml
 test_results/*

@@ -10,3 +10,11 @@ poetry config virtualenvs.in-project true
 
 # Now install all dependencies
 poetry install
+
+if [[ ! -d "${PWD}/config" ]]; then
+    mkdir -p "${PWD}/config"
+    cp "${PWD}/.devcontainer/configuration.yaml" "${PWD}/config/configuration.yaml"
+    ${PWD}/.venv/bin/hass --config "${PWD}/config" --script ensure_config
+fi
+
+export PYTHONPATH="${PYTHONPATH}:${PWD}/custom_components"
