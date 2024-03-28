@@ -100,9 +100,7 @@ async def test_enforce_auth_failure(hass: HomeAssistantType, es_aioclient_mock: 
         mock_index_authorization_error=True
     )
 
-    config = build_full_config({
-        "url": es_url
-    })
+    config = build_full_config({"url": es_url, "username": "test"})
 
     gateway = ElasticsearchGateway(config)
     await gateway.async_init()
@@ -123,9 +121,7 @@ async def test_enforce_auth_success(hass: HomeAssistantType, es_aioclient_mock: 
         es_url
     )
 
-    config = build_full_config({
-        "url": es_url
-    })
+    config = build_full_config({"url": es_url, "username": "test"})
 
     gateway = ElasticsearchGateway(config)
     await gateway.async_init()
