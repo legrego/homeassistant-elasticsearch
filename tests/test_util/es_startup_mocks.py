@@ -10,7 +10,11 @@ from custom_components.elasticsearch.config_flow import (
 )
 from tests.const import (
     CLUSTER_HEALTH_RESPONSE_BODY,
+    CLUSTER_INFO_7DOT11_RESPONSE_BODY,
+    CLUSTER_INFO_7DOT17_RESPONSE_BODY,
+    CLUSTER_INFO_8DOT0_RESPONSE_BODY,
     CLUSTER_INFO_8DOT8_RESPONSE_BODY,
+    CLUSTER_INFO_8DOT11_RESPONSE_BODY,
     CLUSTER_INFO_RESPONSE_BODY,
     CLUSTER_INFO_SERVERLESS_RESPONSE_BODY,
     CLUSTER_INFO_UNSUPPORTED_RESPONSE_BODY,
@@ -38,6 +42,10 @@ def mock_es_initialization(
     mock_index_authorization_error=False,
     mock_connection_error=False,
     mock_v88_cluster=False,
+    mock_v80_cluster=False,
+    mock_v711_cluster=False,
+    mock_v717_cluster=False,
+    mock_v811_cluster=False,
     alias_name=DEFAULT_ALIAS,
     index_format=DEFAULT_INDEX_FORMAT,
     ilm_policy_name=DEFAULT_ILM_POLICY_NAME,
@@ -52,8 +60,16 @@ def mock_es_initialization(
         aioclient_mock.get(url, status=401, json={"error": "unauthorized"})
     elif mock_connection_error:
         aioclient_mock.get(url, status=500, json={"error": "idk"})
+    elif mock_v811_cluster:
+        aioclient_mock.get(url, status=200, json=CLUSTER_INFO_8DOT11_RESPONSE_BODY)
     elif mock_v88_cluster:
         aioclient_mock.get(url, status=200, json=CLUSTER_INFO_8DOT8_RESPONSE_BODY)
+    elif mock_v80_cluster:
+        aioclient_mock.get(url, status=200, json=CLUSTER_INFO_8DOT0_RESPONSE_BODY)
+    elif mock_v711_cluster:
+        aioclient_mock.get(url, status=200, json=CLUSTER_INFO_7DOT11_RESPONSE_BODY)
+    elif mock_v717_cluster:
+        aioclient_mock.get(url, status=200, json=CLUSTER_INFO_7DOT17_RESPONSE_BODY)
     else:
         aioclient_mock.get(url, status=200, json=CLUSTER_INFO_RESPONSE_BODY)
 

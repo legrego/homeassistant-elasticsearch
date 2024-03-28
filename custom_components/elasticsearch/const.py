@@ -20,8 +20,6 @@ CONF_DATASTREAM_NAMESPACE = "datastream_namespace"
 
 CONF_ILM_ENABLED = "ilm_enabled"
 CONF_ILM_POLICY_NAME = "ilm_policy_name"
-CONF_ILM_MAX_SIZE = "ilm_max_size"
-CONF_ILM_DELETE_AFTER = "ilm_delete_after"
 CONF_SSL_CA_PATH = "ssl_ca_path"
 
 # BEGIN DEPRECATED CONFIG
@@ -37,6 +35,7 @@ ONE_HOUR = 60 * 60
 VERSION_SUFFIX = "-v4_2"
 
 DATASTREAM_METRICS_INDEX_TEMPLATE_NAME = "metrics-homeassistant"
+DATASTREAM_METRICS_ILM_POLICY_NAME = "metrics-homeassistant"
 LEGACY_TEMPLATE_NAME = "hass-index-template" + VERSION_SUFFIX
 
 PUBLISH_MODE_ALL = "All"

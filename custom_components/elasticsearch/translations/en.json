@@ -87,9 +87,7 @@
                 "description": "Configure ILM options",
                 "data": {
                     "ilm_enabled": "Enable ILM",
-                    "ilm_policy_name": "ILM policy name",
-                    "ilm_max_size": "Max index size",
-                    "ilm_delete_after": "Delete indices after"
+                    "ilm_policy_name": "ILM policy name"
                 }
             },
             "health_options": {

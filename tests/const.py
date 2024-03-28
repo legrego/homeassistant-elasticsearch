@@ -14,9 +14,7 @@ from homeassistant.const import (
 
 from custom_components.elasticsearch.const import (
     CONF_HEALTH_SENSOR_ENABLED,
-    CONF_ILM_DELETE_AFTER,
     CONF_ILM_ENABLED,
-    CONF_ILM_MAX_SIZE,
     CONF_ILM_POLICY_NAME,
     CONF_INDEX_FORMAT,
     CONF_ONLY_PUBLISH_CHANGED,
@@ -36,8 +34,6 @@ MOCK_COMPLEX_LEGACY_CONFIG = {
     CONF_PUBLISH_ENABLED: True,
     CONF_PUBLISH_FREQUENCY: 1,
     CONF_ILM_ENABLED: True,
-    CONF_ILM_DELETE_AFTER: "1d",
-    CONF_ILM_MAX_SIZE: "1b",
     CONF_ILM_POLICY_NAME: "custom-policy-name",
     CONF_INDEX_FORMAT: "custom-index-format",
     CONF_HEALTH_SENSOR_ENABLED: True,
@@ -90,6 +86,58 @@ CLUSTER_INFO_MISSING_CREDENTIALS_RESPONSE_BODY = {
     "status": 401,
 }
 
+CLUSTER_INFO_8DOT0_RESPONSE_BODY = {
+    "name": "775d9437a77088",
+    "cluster_name": "home-assistant-cluster",
+    "cluster_uuid": "xtsjNokTQGClXbRibWjxyg",
+    "version": {
+        "number": "8.0.0",
+        "build_type": "docker",
+        "build_hash": "00000000",
+        "build_date": "2023-10-31",
+        "build_snapshot": False,
+        "lucene_version": "9.7.0",
+        "minimum_wire_compatibility_version": "8.0.0",
+        "minimum_index_compatibility_version": "8.0.0",
+    },
+    "tagline": "You Know, for Search",
+}
+
+
+CLUSTER_INFO_7DOT11_RESPONSE_BODY = {
+    "name": "775d9437a77088",
+    "cluster_name": "home-assistant-cluster",
+    "cluster_uuid": "xtsjNokTQGClXbRibWjxyg",
+    "version": {
+        "number": "7.11.0",
+        "build_type": "docker",
+        "build_hash": "00000000",
+        "build_date": "2023-10-31",
+        "build_snapshot": False,
+        "lucene_version": "9.7.0",
+        "minimum_wire_compatibility_version": "8.0.0",
+        "minimum_index_compatibility_version": "8.0.0",
+    },
+    "tagline": "You Know, for Search",
+}
+
+CLUSTER_INFO_7DOT17_RESPONSE_BODY = {
+    "name": "775d9437a77088",
+    "cluster_name": "home-assistant-cluster",
+    "cluster_uuid": "xtsjNokTQGClXbRibWjxyg",
+    "version": {
+        "number": "7.17.0",
+        "build_type": "docker",
+        "build_hash": "00000000",
+        "build_date": "2023-10-31",
+        "build_snapshot": False,
+        "lucene_version": "9.7.0",
+        "minimum_wire_compatibility_version": "8.0.0",
+        "minimum_index_compatibility_version": "8.0.0",
+    },
+    "tagline": "You Know, for Search",
+}
+
 CLUSTER_INFO_SERVERLESS_RESPONSE_BODY = {
     "name": "serverless",
     "cluster_name": "home-assistant-cluster",
@@ -102,6 +150,23 @@ CLUSTER_INFO_SERVERLESS_RESPONSE_BODY = {
         "build_date": "2023-10-31",
         "build_snapshot": False,
         "lucene_version": "9.7.0",
+        "minimum_wire_compatibility_version": "8.11.0",
+        "minimum_index_compatibility_version": "8.11.0",
+    },
+    "tagline": "You Know, for Search",
+}
+
+CLUSTER_INFO_8DOT11_RESPONSE_BODY = {
+    "name": "775d9437a77088",
+    "cluster_name": "home-assistant-cluster",
+    "cluster_uuid": "xtsjNokTQGClXbRibWjxyg",
+    "version": {
+        "number": "8.11.0",
+        "build_type": "docker",
+        "build_hash": "00000000",
+        "build_date": "2023-10-31",
+        "build_snapshot": False,
+        "lucene_version": "9.8.0",
         "minimum_wire_compatibility_version": "8.11.0",
         "minimum_index_compatibility_version": "8.11.0",
     },

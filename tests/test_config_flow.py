@@ -6,13 +6,26 @@ import aiohttp
 import pytest
 from homeassistant import data_entry_flow
 from homeassistant.config_entries import SOURCE_REAUTH, SOURCE_USER
-from homeassistant.const import CONF_API_KEY, CONF_PASSWORD, CONF_URL, CONF_USERNAME
+from homeassistant.const import (
+    CONF_ALIAS,
+    CONF_API_KEY,
+    CONF_PASSWORD,
+    CONF_URL,
+    CONF_USERNAME,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
-from custom_components.elasticsearch.const import CONF_INDEX_MODE, DOMAIN
+from custom_components.elasticsearch.const import (
+    CONF_INDEX_FORMAT,
+    CONF_INDEX_MODE,
+    CONF_PUBLISH_MODE,
+    DOMAIN,
+    INDEX_MODE_LEGACY,
+    PUBLISH_MODE_ALL,
+)
 from tests.conftest import mock_config_entry
 from tests.test_util.es_startup_mocks import mock_es_initialization
 
@@ -551,148 +564,6 @@ async def test_step_import_update_existing(
 
 
 @pytest.mark.asyncio
-async def test_legacy_index_mode_flow_choice(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
-):
-    """Test user config flow with explicit choice of legacy index mode."""
-
-    es_url = "http://legacy_index_mode-flow:9200"
-    mock_es_initialization(es_aioclient_mock, url=es_url, mock_v88_cluster=True)
-
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": SOURCE_USER}
-    )
-    assert result["type"] == data_entry_flow.RESULT_TYPE_MENU
-    assert result["step_id"] == "user"
-
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], user_input={"next_step_id": "api_key"}
-    )
-
-    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
-    assert result["step_id"] == "api_key"
-
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], user_input={"url": es_url, "api_key": "ABC123=="}
-    )
-
-    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
-    assert result["step_id"] == "index_mode"
-
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], user_input={"index_mode": "index"}
-    )
-
-    assert result["type"] == data_entry_flow.RESULT_TYPE_CREATE_ENTRY
-    assert result["title"] == es_url
-    assert result["data"]["url"] == es_url
-    assert result["data"]["index_mode"] == "index"
-
-
-@pytest.mark.asyncio
-async def test_modern_index_mode_flow_choice(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
-):
-    """Test user config flow with explicit choice of modern datastream index mode."""
-
-    es_url = "http://modern_index_mode-flow:9200"
-    mock_es_initialization(es_aioclient_mock, url=es_url, mock_v88_cluster=True)
-
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": SOURCE_USER}
-    )
-    assert result["type"] == data_entry_flow.RESULT_TYPE_MENU
-    assert result["step_id"] == "user"
-
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], user_input={"next_step_id": "api_key"}
-    )
-
-    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
-    assert result["step_id"] == "api_key"
-
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], user_input={"url": es_url, "api_key": "ABC123=="}
-    )
-
-    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
-    assert result["step_id"] == "index_mode"
-
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], user_input={"index_mode": "datastream"}
-    )
-
-    assert result["type"] == data_entry_flow.RESULT_TYPE_CREATE_ENTRY
-    assert result["title"] == es_url
-    assert result["data"]["url"] == es_url
-    assert result["data"]["index_mode"] == "datastream"
-
-
-@pytest.mark.asyncio
-async def test_old_legacy_index_mode_flow(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
-):
-    """Test user config flow with explicit choice of legacy index mode."""
-
-    es_url = "http://old_legacy_index_mode-flow:9200"
-    mock_es_initialization(es_aioclient_mock, url=es_url)
-
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": SOURCE_USER}
-    )
-    assert result["type"] == data_entry_flow.RESULT_TYPE_MENU
-    assert result["step_id"] == "user"
-
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], user_input={"next_step_id": "api_key"}
-    )
-
-    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
-    assert result["step_id"] == "api_key"
-
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], user_input={"url": es_url, "api_key": "ABC123=="}
-    )
-
-    assert result["type"] == data_entry_flow.RESULT_TYPE_CREATE_ENTRY
-    assert result["title"] == es_url
-    assert result["data"]["url"] == es_url
-    assert result["data"]["index_mode"] == "index"
-
-
-@pytest.mark.asyncio
-async def test_serverless_modern_index_mode_flow(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
-):
-    """Test user config flow with explicit choice of legacy index mode."""
-
-    es_url = "http://serverless_modern_index_mode-flow:9200"
-    mock_es_initialization(es_aioclient_mock, url=es_url, mock_serverless_version=True)
-
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": SOURCE_USER}
-    )
-    assert result["type"] == data_entry_flow.RESULT_TYPE_MENU
-    assert result["step_id"] == "user"
-
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], user_input={"next_step_id": "api_key"}
-    )
-
-    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
-    assert result["step_id"] == "api_key"
-
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], user_input={"url": es_url, "api_key": "ABC123=="}
-    )
-
-    assert result["type"] == data_entry_flow.RESULT_TYPE_CREATE_ENTRY
-    assert result["title"] == es_url
-    assert result["data"]["url"] == es_url
-    assert result["data"]["index_mode"] == "datastream"
-
-
-@pytest.mark.asyncio
 async def test_api_key_flow(
     hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
 ):
@@ -764,7 +635,7 @@ async def test_api_key_flow_fails_unauthorized(
 
 
 @pytest.mark.asyncio
-async def test_options_flow(hass: HomeAssistant, es_aioclient_mock) -> None:
+async def test_modern_options_flow(hass: HomeAssistant, es_aioclient_mock) -> None:
     """Test options config flow."""
 
     es_url = "http://localhost:9200"
@@ -794,6 +665,48 @@ async def test_options_flow(hass: HomeAssistant, es_aioclient_mock) -> None:
 
     options_result = await hass.config_entries.options.async_init(
         entry.entry_id, data=None
+    )
+
+    assert options_result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert options_result["step_id"] == "publish_options"
+
+    # this last step *might* attempt to use a real connection instead of our mock...
+
+    options_result = await hass.config_entries.options.async_configure(
+        options_result["flow_id"], user_input={}
+    )
+
+    assert options_result["type"] == data_entry_flow.RESULT_TYPE_CREATE_ENTRY
+
+
+@pytest.mark.asyncio
+async def test_legacy_options_flow(hass: HomeAssistant, es_aioclient_mock) -> None:
+    """Test options config flow."""
+
+    es_url = "http://localhost:9200"
+
+    mock_es_initialization(es_aioclient_mock, url=es_url)
+
+    mock_entry = MockConfigEntry(
+        unique_id="test_legacy_options",
+        domain=DOMAIN,
+        version=3,
+        data={
+            "url": es_url,
+            "username": "original_user",
+            "password": "abc123",
+            CONF_PUBLISH_MODE: PUBLISH_MODE_ALL,
+            CONF_ALIAS: "hass-events",
+            CONF_INDEX_MODE: INDEX_MODE_LEGACY,
+            CONF_INDEX_FORMAT: "hass-events",
+        },
+        title="ES Config",
+    )
+
+    entry = await _setup_config_entry(hass, mock_entry)
+
+    options_result = await hass.config_entries.options.async_init(
+        entry.entry_id, data={}
     )
 
     assert options_result["type"] == data_entry_flow.RESULT_TYPE_FORM
