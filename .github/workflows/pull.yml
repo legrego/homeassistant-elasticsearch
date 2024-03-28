@@ -44,7 +44,7 @@ jobs:
         run: python3 -m pip install poetry~=1.7 && poetry install
       - name: Run tests
         run: |
-          poetry run pytest
+          poetry run pytest --cov=./custom_components --cov-report=xml --cov-report=html
       - name: Save PR number and coverage results
         run: |
           mkdir -p ./pr
