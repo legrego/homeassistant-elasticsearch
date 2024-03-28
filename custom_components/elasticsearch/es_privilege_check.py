@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from homeassistant.const import CONF_ALIAS, CONF_USERNAME, CONF_API_KEY
 
-from custom_components.elasticsearch.const import CONF_INDEX_FORMAT
+from custom_components.elasticsearch.const import CONF_INDEX_FORMAT, CONF_INDEX_MODE
 from custom_components.elasticsearch.errors import (
     InsufficientPrivileges,
     convert_es_error,
@@ -59,19 +59,27 @@ class ESPrivilegeCheck:
             "monitor",
         ]
 
-        required_index_privileges = [{
-            "names": [
-                f"{config.get(CONF_INDEX_FORMAT)}*",
-                f"{config.get(CONF_ALIAS)}-*",
-                "all-hass-events"
-            ],
-            "privileges": [
-                "manage",
-                "index",
-                "create_index",
-                "create"
+        # if index_mode is datastream, we only need to check for datastream privileges
+        if config.get(CONF_INDEX_MODE) == "datastream":
+            required_index_privileges = [
+                {
+                    "names": [
+                        "metrics-homeassistant*",
+                    ],
+                    "privileges": ["manage", "index", "create_index", "create"],
+                }
             ]
-        }]
+        else:
+            required_index_privileges = [
+                {
+                    "names": [
+                        f"{config.get(CONF_INDEX_FORMAT)}*",
+                        f"{config.get(CONF_ALIAS)}-*",
+                        "all-hass-events",
+                    ],
+                    "privileges": ["manage", "index", "create_index", "create"],
+                }
+            ]
 
         try:
             LOGGER.debug("Privilege check starting")

@@ -140,6 +140,12 @@ def mock_es_initialization(
                         "create_index": True,
                         "create": True,
                     },
+                    "metrics-homeassistant*": {
+                        "manage": True,
+                        "index": True,
+                        "create_index": True,
+                        "create": True,
+                    },
                 },
             },
         )
