@@ -369,10 +369,8 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             gateway = ElasticsearchGateway(raw_config=self.config)
             await gateway.async_init()
 
-            # Only perform a privilege check if we are authenticated
-            if CONF_USERNAME in self.config or CONF_API_KEY in self.config:
-                privilege_check = ESPrivilegeCheck(gateway)
-                await privilege_check.enforce_privileges(self.config)
+            privilege_check = ESPrivilegeCheck(gateway)
+            await privilege_check.enforce_privileges(self.config)
 
             version = gateway.es_version
         except ClientError:

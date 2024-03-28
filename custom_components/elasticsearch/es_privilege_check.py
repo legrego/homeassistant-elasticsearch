@@ -37,8 +37,13 @@ class ESPrivilegeCheck:
         # TODO: Figure out why this is needed
         resultantConfig = config or self.config
 
-        # only enforce privileges on authenticated backends if username or api_key is set
-        if CONF_USERNAME in resultantConfig or CONF_API_KEY in resultantConfig:
+        if (  # is_authenticated
+            CONF_USERNAME in resultantConfig
+            and resultantConfig.get(CONF_USERNAME) is not None
+            or CONF_API_KEY in resultantConfig
+            and resultantConfig.get(CONF_API_KEY) is not None
+        ):
+            LOGGER.debug("Checking privileges.")
             result = await self.check_privileges(resultantConfig)
             if not result.has_all_requested:
                 LOGGER.debug("Required privileges are missing.")
