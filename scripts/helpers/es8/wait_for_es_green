@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+
+# Use GET /_cluster/health?wait_for_status=green&timeout=50s to wait for the cluster to be in a green state.
+
+# Usage: ./wait_for_es_green <esurl> <esusername> <espassword>
+#  <esurl> - The URL of the Elasticsearch instance (e.g., https://localhost:9200)
+#  <esusername> - The existing admin user used to test cluster status (e.g., elastic)
+#  <espassword> - The password for the admin user used to test cluster status
+
+esurl=$1
+esusername=$2
+espassword=$3
+
+start=$(date +%s)
+
+# body will contain timed_out = true if there was a timeout and if there is we should fail
+# https://www.elastic.co/guide/en/elasticsearch/reference/current/cluster-health.html
+
+timed_out=$(curl -s -k -u "$esusername:$espassword" -X GET "$esurl/_cluster/health?wait_for_status=green&timeout=60s" | jq -r '.timed_out')
+
+if [ "$timed_out" == "true" ]; then
+  echo "Timed out waiting for Elasticsearch to be ready"
+  exit 1
+fi
+
+end=$(date +%s)
+
+echo -n " (took $((end - start)) seconds)"
+
+echo

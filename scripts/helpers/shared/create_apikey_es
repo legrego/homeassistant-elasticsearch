@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+
+# Create an elasticsearch api key
+
+# Usage: /bin/bash ./create_apikey_es <esurl> <esusername> <espassword> <newapikeyname> <newapiroledescriptor>
+#   <esurl> - The URL of the Elasticsearch instance (e.g., https: //localhost:9200)
+#   <esusername> - The existing admin user used to create the new user (e.g., hass)
+#   <espassword> - The password for the admin user used to create the new user (e.g., hass)
+#   <newapikeyname> - The name of the new api key to create (e.g., hass)
+#   <newapiroledescriptor> - The definition of the new api key to create
+
+esurl=$1
+esusername=$2
+espassword=$3
+newapikeyname=$4
+newapiroledescriptor=$5
+
+set -e
+
+AUTH=$(echo -ne "$esusername:$espassword" | base64 --wrap 0)
+
+BODY="{
+  \"name\": \"$newapikeyname\",
+  \"role_descriptors\": $newapiroledescriptor
+}"
+
+Response=$(curl -s -X POST -k -H 'Content-Type: application/json' --header "Authorization: Basic $AUTH" -d "$BODY" "$esurl/_security/api_key")
+
+# Response Format is
+# {
+#   "id": "VuaCfGcBCdbkQm-e5aOx",
+#   "name": "my-api-key",
+#   "expiration": 1544068612110,
+#   "api_key": "ui2lp2axTNmsyakw9tvNnw",
+#   "encoded": "VnVhQ2ZHY0JDZGJrUW0tZTVhT3g6dWkybHAyYXhUTm1zeWFrdzl0dk5udw=="
+# }
+
+# Return just the api_key and strip any new lines
+echo $Response | jq -r '.api_key' | tr -d '\n'

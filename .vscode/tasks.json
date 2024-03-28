@@ -8,9 +8,39 @@
             "problemMatcher": []
         },
         {
-            "label": "Run Elasticsearch on port 9200",
+            "label": "Run Unsupported Elasticsearch 7.0.0 (HTTP Port 9200) and Kibana 7.0.0 (HTTP Port 5601)",
             "type": "shell",
-            "command": "poetry run scripts/run_es"
+            "command": "/bin/bash ./scripts/run_ek_7_0_0"
+        },
+        {
+            "label": "Run Elasticsearch 7.11.0 (HTTP Port 9200) and Kibana 7.11.0 (HTTP Port 5601)",
+            "type": "shell",
+            "command": "/bin/bash ./scripts/run_ek_7_11_0"
+        },
+        {
+            "label": "Run Elasticsearch 7.17.0 (HTTP Port 9200) and Kibana 7.17.0 (HTTP Port 5601)",
+            "type": "shell",
+            "command": "/bin/bash ./scripts/run_ek_7_17_0"
+        },
+        {
+            "label": "Run Elasticsearch 8.0.0 (HTTPS Port 9200) and Kibana 8.0.0 (HTTP Port 5601)",
+            "type": "shell",
+            "command": "/bin/bash ./scripts/run_ek_8_0_0"
+        },
+        {
+            "label": "Run Elasticsearch 8.7.0 (HTTPS Port 9200) and Kibana 8.7.0 (HTTP Port 5601)",
+            "type": "shell",
+            "command": "/bin/bash ./scripts/run_ek_8_7_0"
+        },
+        {
+            "label": "Run Elasticsearch 8.11.0 (HTTPS Port 9200) and Kibana 8.11.0 (HTTP Port 5601)",
+            "type": "shell",
+            "command": "/bin/bash ./scripts/run_ek_8_11_0"
+        },
+        {
+            "label": "Run Elasticsearch 8.13.0 (HTTPS Port 9200) and Kibana 8.13.0 (HTTP Port 5601)",
+            "type": "shell",
+            "command": "/bin/bash ./scripts/run_ek_8_13_0"
         }
     ]
 }

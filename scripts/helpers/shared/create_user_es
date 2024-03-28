@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+# Create an elasticsearch user account named hass with a password of changeme.
+
+# Usage: /bin/bash ./create_user_es <esurl> <esusername> <espassword> <newusername> <newuserfullname> <newuserpassword> <newuserroles>
+#   <esurl> - The URL of the Elasticsearch instance (e.g., https://localhost:9200)
+#   <esusername> - The existing admin user used to create the new user (e.g., hass)
+#   <espassword> - The password for the admin user used to create the new user (e.g., hass)
+#   <newusername> - The new user to create (e.g., hass)
+#   <newuserpassword> - The password for the new user (e.g., changeme)
+#   <newuserfullname> - The full name of the new user (e.g., Home Assistant)
+#   <newuserroles> - The roles to assign to the new user (e.g., superuser)
+
+esurl=$1
+esusername=$2
+espassword=$3
+newusername=$4
+newuserfullname=$5
+newuserpassword=$6
+newuserroles=$7
+
+set -e
+
+AUTH=$(echo -ne "$esusername:$espassword" | base64 --wrap 0)
+
+# Create a new user account
+curl -s -X POST -k -H "Content-Type: application/json" --header "Authorization: Basic $AUTH" -k "$esurl/_security/user/$newusername" -d '{
+  "password" : "'"$newuserpassword"'",
+  "full_name" : "'"$newuserfullname"'",
+  "roles" : [ "'"$newuserroles"'" ]
+}' >/dev/null

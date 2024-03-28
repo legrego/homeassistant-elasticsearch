@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+# Wait for Elasticsearch to be ready
+
+# Usage: ./wait_for_es
+
+start=$(date +%s)
+while true; do
+  statuscode=$(curl -s -k -o /dev/null -w "%{http_code}" http://host.docker.internal:9200)
+  #echo "Elasticsearch status code: $statuscode"
+  echo -n "." # print a dot for each iteration
+  if [ "$statuscode" -eq "200" ]; then
+    break
+  fi
+  sleep 1
+done
+end=$(date +%s)
+
+echo -n " (took $((end - start)) seconds)"
+
+echo

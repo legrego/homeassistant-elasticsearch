@@ -22,6 +22,10 @@ class CannotConnect(ElasticException):
     """Unable to connect to the cluster."""
 
 
+class ClientError(ElasticException):
+    """Connected with a Client Error."""
+
+
 class UntrustedCertificate(ElasticException):
     """Connected with untrusted certificate."""
 
@@ -51,6 +55,9 @@ def convert_es_error(msg, err):
             err.info, aiohttp.client_exceptions.ClientConnectorCertificateError
         ):
             return UntrustedCertificate(msg, err)
+
+        if isinstance(err.info, aiohttp.client_exceptions.ClientConnectorError):
+            return ClientError(msg, err)
         return CannotConnect(msg, err)
 
     if isinstance(err, AuthenticationException):
