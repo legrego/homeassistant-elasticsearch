@@ -50,10 +50,10 @@ addopts = [
   "-v",
   "-l",
   "--asyncio-mode=auto",
-  "--junitxml=test_results/pytest.xml"
+  "--junitxml=test_results/pytest.xml",
   "--cov=./custom_components",
   "--cov-report=xml",
-  "--cov-report=html",
+  "--cov-report=html"
 ]
 filterwarnings = ["ignore:ssl.PROTOCOL_TLS is deprecated:DeprecationWarning"]
 testpaths = ["tests"]
