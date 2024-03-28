@@ -19,6 +19,8 @@ Publish HASS events to your [Elasticsearch](https://elastic.co) cluster!
 - [Home Assistant Community Store](https://github.com/custom-components/hacs)
 - Home Assistant 2024.1
 
+The following table covers the Elasticsearch functionality used by the integration when configured against various versions of Elasticsearch:
+
 | Elasticsearch Version | Datastreams | Time Series Datastreams | Datastream Lifecycle Management | Index Lifecycle Management |
 |-----------------------|-------------|-------------------------|---------------------------------|----------------------------|
 | 7.11.0 - 7.12.0       | Supported   |                         |                                 | Partially Supported [See Note]      |
