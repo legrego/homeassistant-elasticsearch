@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+
+# This script is used to bootstrap Elasticsearch and Kibana in a Docker environment.
+# It pulls the Docker images for Elasticsearch and Kibana, starts the containers,
+# configures Elasticsearch and Kibana, and provides the necessary setup information.
+
+# Usage: /bin/bash "$dir/bootstrap_ek <version>
+# - version: The version of the Elasticsearch and Kibana stack to use (e.g. 8.0.0)
+
+dir=$(dirname "$0")
+version=$1
+
+set -e
+
+start=$(date +%s)
+
+# if version is blank, prompt for a value
+if [ -z "$version" ]; then
+  echo "Please provide a valid stack version (e.g. 8.0.0)"
+  read -r version
+fi
+
+# If the user provided a version that starts with 7 suggest they use the es7 script
+if [[ "$version" =~ ^7\.[0-9]+\.[0-9]+$ ]]; then
+  echo "This script is for Elasticsearch 8. Please use the es7 scripts for Elasticsearch 7."
+  exit 1
+fi
+
+# Ensure that the version provided has two decimals and starts with 8
+if [[ ! "$version" =~ ^8\.[0-9]+\.[0-9]+$ ]]; then
+  echo "Invalid version provided. Please provide a valid stack version (e.g. 8.0.0)"
+  exit 1
+fi
+
+# Create a Docker network for Elasticsearch and Kibana
+docker network create elastic >/dev/null
+
+echo "Pulling Docker Images for Elasticsearch and Kibana"
+
+echo -n "- Pulling Elasticsearch image for $version"
+/bin/bash "$dir/../shared/pull_es" "$version"
+
+echo -n "- Pulling Kibana image for $version"
+/bin/bash "$dir/../shared/pull_kb" "$version"
+
+echo "Starting Elasticsearch and Kibana"
+escontainer=$(/bin/bash "$dir/run_es" "$version")
+kbcontainer=$(/bin/bash "$dir/run_kb" "$version")
+echo -n "- Wait for Elasticsearch ($escontainer) to be ready"
+/bin/bash "$dir/wait_for_es"
+
+echo "Configuring Elasticsearch:"
+
+echo "- Resetting elastic user account password"
+espwd=$(/bin/bash "$dir/reset_es_pwd" "$escontainer")
+
+echo "- Generating an Enrollment Token for Kibana"
+enrolltoken=$(/bin/bash "$dir/reset_es_enrollment" "$escontainer")
+
+echo "Configuring Kibana:"
+echo -n "- Wait for Kibana ($kbcontainer) to be ready"
+/bin/bash "$dir/wait_for_kb"
+
+echo "- Enrolling Kibana"
+kbcode=$(/bin/bash "$dir/get_kb_code" "$kbcontainer")
+/bin/bash "$dir/enroll_kb" "$enrolltoken" "$kbcode"
+
+echo "Configuring HASS Access:"
+echo -n "- Wait for Elasticsearch ($escontainer) cluster to be green"
+/bin/bash "$dir/wait_for_es_green" "https://host.docker.internal:9200" "elastic" "$espwd"
+echo "- Creating a role for Home Assistant"
+/bin/bash "$dir/../shared/create_hass_writer_role_es" "https://host.docker.internal:9200" "elastic" "$espwd"
+echo "- Creating a user for Home Assistant"
+/bin/bash "$dir/../shared/create_hass_writer_user_es" "https://host.docker.internal:9200" "elastic" "$espwd"
+echo "- Creating an API Key for Home Assistant"
+apikey=$(/bin/bash "$dir/../shared/create_hass_writer_apikey_es" "https://host.docker.internal:9200" "elastic" "$espwd")
+
+end=$(date +%s)
+
+echo
+echo "---Ready to use!---"
+echo "Elasticsearch"
+echo "  Url: https://host.docker.internal:9200"
+echo "  User: elastic"
+echo "  Password: $espwd"
+echo
+echo "  User: hass_writer"
+echo "  Password: changeme"
+echo "  API Key: $apikey"
+echo
+echo "Kibana"
+echo "  Host Url: http://host.docker.internal:5601"
+echo "  User: elastic"
+echo "  Password: $espwd"
+echo
+echo "Setup Information"
+echo "  Version: $version"
+echo "  Setup Code:" "$kbcode"
+echo "  Enrollment Token:" "$enrolltoken"
+echo "  Containers: $escontainer $kbcontainer"
+echo "  Duration: $((end - start)) seconds"

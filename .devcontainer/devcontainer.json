@@ -1,19 +1,18 @@
 // See https://aka.ms/vscode-remote/devcontainer.json for format details.
 {
 	"dockerFile": "Dockerfile",
-	"name": "Elasticsearch integration development",
 	"context": "..",
+	"name": "Elasticsearch integration development",
 	"forwardPorts": [
-		8123,
-		9200
+		8123
 	],
+	"mounts": [
+		"source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+	],
+	"initializeCommand": "ls",
 	"portsAttributes": {
 		"8123": {
 			"label": "Home Assistant",
-			"onAutoForward": "notify"
-		},
-		"9200": {
-			"label": "Elasticsearch",
 			"onAutoForward": "notify"
 		}
 	},

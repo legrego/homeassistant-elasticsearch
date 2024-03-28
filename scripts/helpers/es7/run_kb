@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+# This script runs an Kibana Docker container with the specified version.
+
+# Usage: run_kb <kbversion>
+#   <kbversion> - The version of Kibana to run (e.g., 7.10.2)
+
+kbversion=$1
+
+set -e
+
+docker run -p 5601:5601 --net elastic -q -d -m 1GB --name kb01 --env ELASTICSEARCH_HOSTS=http://es01:9200 docker.elastic.co/kibana/kibana:"$kbversion"
