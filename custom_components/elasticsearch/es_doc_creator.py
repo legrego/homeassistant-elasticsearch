@@ -1,5 +1,7 @@
 """Create Elasticsearch documents from Home Assistant events."""
 
+import re
+import unicodedata
 from datetime import datetime
 from math import isinf
 
@@ -115,7 +117,7 @@ class DocumentCreator:
 
             # so we replace them with an "_" instead.
             # https://github.com/legrego/homeassistant-elasticsearch/issues/92
-            key = str.replace(orig_key, ".", "_")
+            key = self.normalize_attribute_name(orig_key)
             value = orig_value
 
             # coerce set to list. ES does not handle sets natively
@@ -351,6 +353,20 @@ class DocumentCreator:
                 document_body.update(self._static_v2doc_properties)
 
         return document_body
+
+    def normalize_attribute_name(self, attribute_name: str) -> str:
+        """Create an ECS-compliant version of the provided attribute name."""
+        # Normalize to closest ASCII equivalent where possible
+        normalized_string = (
+            unicodedata.normalize("NFKD", attribute_name)
+            .encode("ascii", "ignore")
+            .decode()
+        )
+
+        # Replace all non-word characters with an underscore
+        replaced_string = re.sub(r"[\W]+", "_", normalized_string)
+
+        return replaced_string.lower()
 
     def is_valid_number(self, number) -> bool:
         """Determine if the passed number is valid for Elasticsearch."""

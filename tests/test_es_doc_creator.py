@@ -346,6 +346,7 @@ async def test_state_to_attributes(
         "list": [1, 2, 3, 4],
         "set": {5, 5},
         "none": None,
+        "Non ECS-Compliant    Attribute.ñame! 😀": True,
         # Keyless entry should be excluded from output
         "": "Key is empty, and should be excluded",
         # Custom classes should be excluded from output
@@ -366,6 +367,7 @@ async def test_state_to_attributes(
         "int": 123,
         "list": [1, 2, 3, 4],
         "none": None,
+        "non_ecs_compliant_attribute_name_": True,
         "set": [5],
         "string": "abc123",
     }
