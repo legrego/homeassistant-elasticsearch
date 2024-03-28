@@ -67,26 +67,29 @@ kbcode=$(/bin/bash "$dir/get_kb_code" "$kbcontainer")
 
 echo "Configuring HASS Access:"
 echo -n "- Wait for Elasticsearch ($escontainer) cluster to be green"
-/bin/bash "$dir/wait_for_es_green" "https://localhost:9200" "elastic" "$espwd"
+/bin/bash "$dir/wait_for_es_green" "https://host.docker.internal:9200" "elastic" "$espwd"
 echo "- Creating a role for Home Assistant"
-/bin/bash "$dir/../shared/create_hass_writer_role_es" "https://localhost:9200" "elastic" "$espwd"
+/bin/bash "$dir/../shared/create_hass_writer_role_es" "https://host.docker.internal:9200" "elastic" "$espwd"
 echo "- Creating a user for Home Assistant"
-/bin/bash "$dir/../shared/create_hass_writer_user_es" "https://localhost:9200" "elastic" "$espwd"
+/bin/bash "$dir/../shared/create_hass_writer_user_es" "https://host.docker.internal:9200" "elastic" "$espwd"
+echo "- Creating an API Key for Home Assistant"
+apikey=$(/bin/bash "$dir/../shared/create_hass_writer_apikey_es" "https://host.docker.internal:9200" "elastic" "$espwd")
 
 end=$(date +%s)
 
 echo
 echo "---Ready to use!---"
 echo "Elasticsearch"
-echo "  Url: https://localhost:9200"
+echo "  Url: https://host.docker.internal:9200"
 echo "  User: elastic"
 echo "  Password: $espwd"
 echo
 echo "  User: hass_writer"
 echo "  Password: changeme"
+echo "  API Key: $apikey"
 echo
 echo "Kibana"
-echo "  Url: http://localhost:5601"
+echo "  Host Url: http://host.docker.internal:5601"
 echo "  User: elastic"
 echo "  Password: $espwd"
 echo

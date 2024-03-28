@@ -7,7 +7,7 @@
 start=$(date +%s)
 
 while true; do
-  statuscode=$(curl -s -k -o /dev/null -w "%{http_code}" http://localhost:5601/app/home)
+  statuscode=$(curl -s -k -o /dev/null -w "%{http_code}" http://host.docker.internal:5601/app/home)
   #echo "Kibana status code: $statuscode"
   echo -n "." # print a dot for each iteration
   if [ "$statuscode" -eq "200" ]; then

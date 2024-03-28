@@ -2,7 +2,7 @@
 
 # Create an elasticsearch role
 
-# Usage: /bin/bash ./create_hass_user <esurl> <esusername> <espassword> <newrolename> <newroledefinition>
+# Usage: /bin/bash ./create_role_es <esurl> <esusername> <espassword> <newrolename> <newroledefinition>
 #   <esurl> - The URL of the Elasticsearch instance (e.g., https://localhost:9200)
 #   <esusername> - The existing admin user used to create the new user (e.g., hass)
 #   <espassword> - The password for the admin user used to create the new user (e.g., hass)

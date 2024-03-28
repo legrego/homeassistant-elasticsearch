@@ -6,7 +6,7 @@
 
 start=$(date +%s)
 while true; do
-  statuscode=$(curl -s -k -o /dev/null -w "%{http_code}" https://localhost:9200)
+  statuscode=$(curl -s -k -o /dev/null -w "%{http_code}" https://host.docker.internal:9200)
   #echo "Elasticsearch status code: $statuscode"
   echo -n "." # print a dot for each iteration
 

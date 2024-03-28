@@ -27,4 +27,4 @@ key=$(echo -n "$key" | base64)
 payload=$(echo -n "{\"hosts\":[\"https://$adr\"],\"code\":\"$kibana_code\",\"apiKey\":\"$key\",\"caFingerprint\":\"$fgr\"}")
 
 # Send the payload to Kibana using curl
-curl -k "http://localhost:5601/internal/interactive_setup/enroll" -H "kbn-xsrf: true" -H "Content-Type: application/json" -d "$payload"
+curl -k "http://host.docker.internal:5601/internal/interactive_setup/enroll" -H "kbn-xsrf: true" -H "Content-Type: application/json" -d "$payload"

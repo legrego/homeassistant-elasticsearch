@@ -2,7 +2,7 @@
 
 # Create an elasticsearch user account named hass with a password of changeme.
 
-# Usage: /bin/bash ./create_hass_user <esurl> <esusername> <espassword> <newusername> <newuserfullname> <newuserpassword> <newuserroles>
+# Usage: /bin/bash ./create_user_es <esurl> <esusername> <espassword> <newusername> <newuserfullname> <newuserpassword> <newuserroles>
 #   <esurl> - The URL of the Elasticsearch instance (e.g., https://localhost:9200)
 #   <esusername> - The existing admin user used to create the new user (e.g., hass)
 #   <espassword> - The password for the admin user used to create the new user (e.g., hass)

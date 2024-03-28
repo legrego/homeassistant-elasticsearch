@@ -60,11 +60,11 @@ end=$(date +%s)
 echo
 echo "---Ready to use!---"
 echo "Elasticsearch"
-echo "  Url: http://localhost:9200"
+echo "  Url: http://host.docker.internal:9200"
 echo "  Unauthenticated Access"
 echo
 echo "Kibana"
-echo "  Url: http://localhost:5601"
+echo "  Url: http://host.docker.internal:5601"
 echo "  Unauthenticated Access"
 echo
 echo "Setup Information"

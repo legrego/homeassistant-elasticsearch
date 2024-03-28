@@ -40,6 +40,7 @@ Task | Description
 Run Home Assistant on port 8123 | Launch Home Assistant with your custom component code and the configuration defined in `.devcontainer/configuration.yaml`.
 Run Unsupported Elasticsearch 7.0.0 (HTTP Port 9200) and Kibana 7.0.0 (HTTP Port 5601) | Launch Unsupported Elasticsearch 7.0.0 and Kibana 7.0.0.
 Run Elasticsearch 7.10.0 (HTTP Port 9200) and Kibana 7.10.0 (HTTP Port 5601) | Launch Elasticsearch 7.10.0 and Kibana 7.10.0.
+Run Elasticsearch 7.17.0 (HTTP Port 9200) and Kibana 7.17.0 (HTTP Port 5601) | Launch Elasticsearch 7.17.0 and Kibana 7.17.0.
 Run Elasticsearch 8.0.0 (HTTPS Port 9200) and Kibana 8.0.0 (HTTP Port 5601) | Launch Elasticsearch 8.0.0 and Kibana 8.0.0.
 Run Elasticsearch 8.7.0 (HTTPS Port 9200) and Kibana 8.7.0 (HTTP Port 5601) | Launch Elasticsearch 8.7.0 and Kibana 8.7.0.
 Run Elasticsearch 8.11.0 (HTTPS Port 9200) and Kibana 8.11.0 (HTTP Port 5601) | Launch Elasticsearch 8.11.0 and Kibana 8.11.0.
