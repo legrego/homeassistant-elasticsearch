@@ -36,4 +36,4 @@ Response=$(curl -s -X POST -k -H 'Content-Type: application/json' --header "Auth
 # }
 
 # Return just the api_key and strip any new lines
-echo $Response | jq -r '.api_key' | tr -d '\n'
+echo $Response | jq -r '.encoded' | tr -d '\n'
