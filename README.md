@@ -26,8 +26,8 @@ The following table covers the Elasticsearch functionality used by the integrati
 | 7.11.0 - 7.12.0       | Supported   |                         |                                 | Partially Supported [See Note]      |
 | 7.13.0 - 7.17.0       | Supported   |                         |                                 | Supported                  |
 | 8.0.0 - 8.6.0         | Supported   |                         |                                 | Supported                  |
-| 8.7.0 - 8.12.0        |             | Supported               |                                 | Supported                  |
-| 8.13.0+               |             | Supported               | Supported                       |                            |
+| 8.7.0 - 8.10.0        |             | Supported               |                                 | Supported                  |
+| 8.11.0+               |             | Supported               | Supported                       |                            |
 
 Note: Index Lifecycle Management is partially supported in versions 7.11.0 - 7.12.0. The integration will create an ILM policy that performs time-based rollover but does not support shard-size-based rollover.
 
