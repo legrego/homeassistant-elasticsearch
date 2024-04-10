@@ -87,7 +87,7 @@ async def test_successful_modern_privilege_check_missing_index_privilege(
     assert result.has_all_requested is False
     assert result.missing_cluster_privileges == []
     assert result.missing_index_privileges == {
-        "metrics-homeassistant*": ["create"],
+        "metrics-homeassistant.*": ["create"],
     }
 
     with pytest.raises(InsufficientPrivileges):

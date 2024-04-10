@@ -93,9 +93,6 @@ POST /_security/api_key
       "indices": [
         {
           "names": [
-            "hass-events*",
-            "active-hass-index-*",
-            "all-hass-events",
             "metrics-homeassistant*"
           ],
           "privileges": [
@@ -127,9 +124,6 @@ POST /_security/role/hass_writer
   "indices": [
     {
       "names": [
-        "hass-events*",
-        "active-hass-index-*",
-        "all-hass-events",
         "metrics-homeassistant*"
       ],
       "privileges": [

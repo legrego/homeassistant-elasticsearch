@@ -27,7 +27,7 @@ dir=$(dirname "$0")
                     "hass-events*",
                     "active-hass-index-*",
                     "all-hass-events",
-                    "metrics-homeassistant*"
+                    "metrics-homeassistant.*"
                 ],
                     "privileges": [
                     "manage",

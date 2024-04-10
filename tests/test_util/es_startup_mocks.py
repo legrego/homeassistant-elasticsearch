@@ -123,7 +123,7 @@ def mock_es_initialization(
                     "monitor": True,
                 },
                 "index": {
-                    "metrics-homeassistant*": {
+                    "metrics-homeassistant.*": {
                         "manage": True,
                         "index": True,
                         "create_index": True,
@@ -163,7 +163,7 @@ def mock_es_initialization(
                         "create_index": True,
                         "create": True,
                     },
-                    "metrics-homeassistant*": {
+                    "metrics-homeassistant.*": {
                         "manage": True,
                         "index": True,
                         "create_index": True,

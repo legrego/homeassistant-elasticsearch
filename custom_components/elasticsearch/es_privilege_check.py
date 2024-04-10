@@ -68,7 +68,7 @@ class ESPrivilegeCheck:
             required_index_privileges = [
                 {
                     "names": [
-                        "metrics-homeassistant*",
+                        "metrics-homeassistant.*",
                     ],
                     "privileges": ["manage", "index", "create_index", "create"],
                 }
