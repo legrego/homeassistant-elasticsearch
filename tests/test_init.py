@@ -318,3 +318,40 @@ async def test_config_migration_v2(
     assert updated_entry
     assert updated_entry.version == 4
     assert updated_entry.data == expected_config
+
+
+@pytest.mark.asyncio
+async def test_config_migration_v3(
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
+):
+    """Test config migration from v2."""
+    es_url = "http://migration-v2-test:9200"
+
+    mock_es_initialization(es_aioclient_mock, url=es_url)
+
+    # Create mock entry with version 3
+    mock_entry = MockConfigEntry(
+        unique_id="mock unique id v3",
+        domain=ELASTIC_DOMAIN,
+        version=3,
+        data={
+            "url": es_url,
+            "ilm_max_size": "10gb",
+            "ilm_delete_after": "30d",
+        },
+        title="ES Config",
+    )
+
+    # Set it up
+    mock_entry.add_to_hass(hass)
+    assert await async_setup_component(hass, ELASTIC_DOMAIN, {}) is True
+    await hass.async_block_till_done()
+
+    # ilm_max_size and ilm_delete_after have been removed, and index mode has been configured
+
+    expected_config = {"url": es_url, "index_mode": "index"}
+
+    updated_entry = hass.config_entries.async_get_entry(mock_entry.entry_id)
+    assert updated_entry
+    assert updated_entry.version == 4
+    assert updated_entry.data == expected_config

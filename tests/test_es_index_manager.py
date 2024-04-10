@@ -699,7 +699,7 @@ async def test_legacy_index_mode_error(
 
     assert len(extract_es_legacy_index_template_requests(es_aioclient_mock)) == 0
 
-    with pytest.raises(ElasticsearchException):
+    with pytest.raises(ElasticException):
         await legacy_index_manager.async_setup()
 
     assert len(extract_es_legacy_index_template_requests(es_aioclient_mock)) == 1

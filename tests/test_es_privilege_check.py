@@ -72,7 +72,7 @@ async def test_successful_modern_privilege_check_missing_index_privilege(
 
     es_url = "http://test_successful_modern_privilege_check:9200"
     mock_es_initialization(
-        es_aioclient_mock, es_url, mock_index_authorization_error=True
+        es_aioclient_mock, es_url, mock_modern_datastream_authorization_error=True
     )
 
     config = build_full_config(
@@ -86,7 +86,9 @@ async def test_successful_modern_privilege_check_missing_index_privilege(
     result = await instance.check_privileges(config)
     assert result.has_all_requested is False
     assert result.missing_cluster_privileges == []
-    assert result.missing_index_privileges == {"hass-events*": ["index"]}
+    assert result.missing_index_privileges == {
+        "metrics-homeassistant*": ["create"],
+    }
 
     with pytest.raises(InsufficientPrivileges):
         await instance.enforce_privileges(config)
@@ -123,7 +125,7 @@ async def test_successful_legacy_privilege_check_missing_index_privilege(
 
     es_url = "http://test_successful_privilege_check:9200"
     mock_es_initialization(
-        es_aioclient_mock, es_url, mock_index_authorization_error=True
+        es_aioclient_mock, es_url, mock_legacy_index_authorization_error=True
     )
 
     config = build_full_config({"url": es_url, CONF_USERNAME: "test"})
@@ -151,7 +153,7 @@ async def test_enforce_auth_failure(
 
     es_url = "http://test_enforce_auth_failure:9200"
     mock_es_initialization(
-        es_aioclient_mock, es_url, mock_index_authorization_error=True
+        es_aioclient_mock, es_url, mock_legacy_index_authorization_error=True
     )
 
     config = build_full_config({"url": es_url, CONF_USERNAME: "test"})

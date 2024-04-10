@@ -39,7 +39,8 @@ def mock_es_initialization(
     mock_serverless_version=False,
     mock_unsupported_version=False,
     mock_authentication_error=False,
-    mock_index_authorization_error=False,
+    mock_legacy_index_authorization_error=False,
+    mock_modern_datastream_authorization_error=False,
     mock_connection_error=False,
     mock_v88_cluster=False,
     mock_v80_cluster=False,
@@ -75,7 +76,7 @@ def mock_es_initialization(
 
     aioclient_mock.post(url + "/_bulk", status=200, json={"items": []})
 
-    if mock_index_authorization_error:
+    if mock_legacy_index_authorization_error:
         aioclient_mock.post(
             url + "/_security/user/_has_privileges",
             status=200,
@@ -105,6 +106,28 @@ def mock_es_initialization(
                         "index": True,
                         "create_index": True,
                         "create": True,
+                    },
+                },
+            },
+        )
+    elif mock_modern_datastream_authorization_error:
+        aioclient_mock.post(
+            url + "/_security/user/_has_privileges",
+            status=200,
+            json={
+                "username": "test_user",
+                "has_all_requested": False,
+                "cluster": {
+                    "manage_index_templates": True,
+                    "manage_ilm": True,
+                    "monitor": True,
+                },
+                "index": {
+                    "metrics-homeassistant*": {
+                        "manage": True,
+                        "index": True,
+                        "create_index": True,
+                        "create": False,
                     },
                 },
             },

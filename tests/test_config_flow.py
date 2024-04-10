@@ -316,7 +316,7 @@ async def test_basic_auth_flow_missing_index_privilege(
     es_url = "http://basic-auth-flow:9200"
 
     mock_es_initialization(
-        es_aioclient_mock, url=es_url, mock_index_authorization_error=True
+        es_aioclient_mock, url=es_url, mock_legacy_index_authorization_error=True
     )
 
     result = await hass.config_entries.flow.async_configure(
@@ -352,7 +352,7 @@ async def test_reauth_flow_basic(
     # Simulate authorization error (403)
     es_aioclient_mock.clear_requests()
     mock_es_initialization(
-        es_aioclient_mock, url=es_url, mock_index_authorization_error=True
+        es_aioclient_mock, url=es_url, mock_legacy_index_authorization_error=True
     )
 
     # Start reauth flow
@@ -441,7 +441,7 @@ async def test_reauth_flow_api_key(
     # Simulate authorization error (403)
     es_aioclient_mock.clear_requests()
     mock_es_initialization(
-        es_aioclient_mock, url=es_url, mock_index_authorization_error=True
+        es_aioclient_mock, url=es_url, mock_legacy_index_authorization_error=True
     )
 
     # Start reauth flow

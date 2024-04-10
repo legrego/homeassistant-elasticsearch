@@ -6,7 +6,7 @@ import os
 from elasticsearch7 import ElasticsearchException
 from homeassistant.const import CONF_ALIAS
 
-from custom_components.elasticsearch.errors import ElasticException
+from custom_components.elasticsearch.errors import ElasticException, convert_es_error
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 
 from .const import (
@@ -105,7 +105,9 @@ class IndexManager:
             LOGGER.debug("Creating index template")
 
         if self._gateway.es_version.supports_timeseries_datastream():
-            LOGGER.debug("Elasticsearch supports timeseries datastreams, including in template.")
+            LOGGER.debug(
+                "Elasticsearch supports timeseries datastreams, including in template."
+            )
 
             index_template["template"]["settings"]["index.mode"] = "time_series"
 
@@ -115,7 +117,9 @@ class IndexManager:
             object_id["time_series_dimension"] = True
 
         if self._gateway.es_version.supports_ignore_missing_component_templates():
-            LOGGER.debug("Elasticsearch supports ignore_missing_component_templates, including in template.")
+            LOGGER.debug(
+                "Elasticsearch supports ignore_missing_component_templates, including in template."
+            )
 
             index_template["composed_of"] = ["metrics-homeassistant@custom"]
             index_template["ignore_missing_component_templates"] = [
@@ -123,10 +127,14 @@ class IndexManager:
             ]
 
         if self._gateway.es_version.supports_datastream_lifecycle_management():
-            LOGGER.debug("Elasticsearch supports Datastream Lifecycle Management, including in template.")
+            LOGGER.debug(
+                "Elasticsearch supports Datastream Lifecycle Management, including in template."
+            )
             index_template["template"]["lifecycle"] = {"data_retention": "365d"}
         else:
-            LOGGER.debug("Elasticsearch does not support Datastream Lifecycle Management, falling back to Index Lifecycle Management.")
+            LOGGER.debug(
+                "Elasticsearch does not support Datastream Lifecycle Management, falling back to Index Lifecycle Management."
+            )
             await self._create_basic_ilm_policy(
                 ilm_policy_name=DATASTREAM_METRICS_ILM_POLICY_NAME
             )
@@ -203,10 +211,10 @@ class IndexManager:
                     name=LEGACY_TEMPLATE_NAME, body=index_template
                 )
             except ElasticsearchException as err:
-                LOGGER.exception("Error creating index template: %s", err)
-
-                # Our template doesn't exist and we failed to create one, so we should not proceed
-                raise err
+                raise convert_es_error(
+                    "No index template present in Elasticsearch and failed to create one",
+                    err,
+                ) from err
 
         alias = await client.indices.get_alias(name=self.index_alias, ignore=[404])
         alias_exists = alias and not alias.get("error")
@@ -232,8 +240,13 @@ class IndexManager:
             if err.status_code == 404:
                 existing_policy = None
             else:
-                LOGGER.exception("Error checking for existing ILM policy: %s", err)
-                raise err
+                raise convert_es_error(
+                    "Unexpected return code when checking for existing ILM policy", err
+                ) from err
+        except ElasticsearchException as err:
+            raise convert_es_error(
+                "Error checking for existing ILM policy", err
+            ) from err
 
         if existing_policy:
             LOGGER.info("Found existing ILM Policy, do nothing '%s'", ilm_policy_name)
@@ -256,11 +269,15 @@ class IndexManager:
         }
 
         if self._gateway.es_version.supports_max_primary_shard_size():
-            LOGGER.debug("Elasticsearch supports max_primary_shard_size, including in ILM template.")
+            LOGGER.debug(
+                "Elasticsearch supports max_primary_shard_size, including in ILM template."
+            )
             policy["policy"]["phases"]["hot"]["actions"]["rollover"][
                 "max_primary_shard_size"
             ] = "50gb"
 
         LOGGER.info("Creating ILM Policy '%s'", ilm_policy_name)
-
-        await client.ilm.put_lifecycle(ilm_policy_name, policy)
+        try:
+            await client.ilm.put_lifecycle(ilm_policy_name, policy)
+        except ElasticsearchException as err:
+            raise convert_es_error("Error creating initial ILM policy", err) from err

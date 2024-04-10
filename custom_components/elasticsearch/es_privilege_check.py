@@ -1,10 +1,15 @@
 """Perform privilege checks to ensure credentials have all necessery permissions."""
+
 import json
 from dataclasses import dataclass
 
-from homeassistant.const import CONF_ALIAS, CONF_USERNAME, CONF_API_KEY
+from homeassistant.const import CONF_ALIAS, CONF_API_KEY, CONF_USERNAME
 
-from custom_components.elasticsearch.const import CONF_INDEX_FORMAT, CONF_INDEX_MODE
+from custom_components.elasticsearch.const import (
+    CONF_INDEX_FORMAT,
+    CONF_INDEX_MODE,
+    INDEX_MODE_DATASTREAM,
+)
 from custom_components.elasticsearch.errors import (
     InsufficientPrivileges,
     convert_es_error,
@@ -22,6 +27,7 @@ class PrivilegeCheckResult:
     missing_cluster_privileges: list[str]
     missing_index_privileges: [str, list[bool]]
 
+
 class ESPrivilegeCheck:
     """Privilege check encapsulation."""
 
@@ -38,10 +44,8 @@ class ESPrivilegeCheck:
         resultantConfig = config or self.config
 
         if (  # is_authenticated
-            CONF_USERNAME in resultantConfig
-            and resultantConfig.get(CONF_USERNAME) is not None
-            or CONF_API_KEY in resultantConfig
-            and resultantConfig.get(CONF_API_KEY) is not None
+            resultantConfig.get(CONF_USERNAME, None) is not None
+            or resultantConfig.get(CONF_API_KEY, None) is not None
         ):
             LOGGER.debug("Checking privileges.")
             result = await self.check_privileges(resultantConfig)
@@ -60,7 +64,7 @@ class ESPrivilegeCheck:
         ]
 
         # if index_mode is datastream, we only need to check for datastream privileges
-        if config.get(CONF_INDEX_MODE) == "datastream":
+        if config.get(CONF_INDEX_MODE) == INDEX_MODE_DATASTREAM:
             required_index_privileges = [
                 {
                     "names": [
@@ -84,11 +88,15 @@ class ESPrivilegeCheck:
         try:
             LOGGER.debug("Privilege check starting")
             es_client = self.es_gateway.get_client()
-            privilege_response =  await es_client.security.has_privileges(body={
-                "cluster": required_cluster_privileges,
-                "index": required_index_privileges
-            })
-            LOGGER.debug("Received privilege check response: %s", json.dumps(privilege_response))
+            privilege_response = await es_client.security.has_privileges(
+                body={
+                    "cluster": required_cluster_privileges,
+                    "index": required_index_privileges,
+                }
+            )
+            LOGGER.debug(
+                "Received privilege check response: %s", json.dumps(privilege_response)
+            )
             return self._create_result(privilege_response)
         except ElasticsearchException as err:
             LOGGER.exception("Error performing privilege check: %s", err)
@@ -97,20 +105,29 @@ class ESPrivilegeCheck:
     def _create_result(self, privilege_response) -> PrivilegeCheckResult:
         """Create privilege check result from raw ES response."""
 
-        username = privilege_response['username']
-        has_all_requested = privilege_response['has_all_requested']
+        username = privilege_response["username"]
+        has_all_requested = privilege_response["has_all_requested"]
 
         missing_cluster_privileges = []
         missing_index_privileges = []
 
-        cluster_privileges = privilege_response['cluster']
-        missing_cluster_privileges =[cp for cp in cluster_privileges if not cluster_privileges[cp]]
+        cluster_privileges = privilege_response["cluster"]
+        missing_cluster_privileges = [
+            cp for cp in cluster_privileges if not cluster_privileges[cp]
+        ]
 
-        index_privileges = privilege_response['index']
+        index_privileges = privilege_response["index"]
         missing_index_privileges = {}
         for index in index_privileges:
-             missing = [ip for ip in index_privileges[index] if not index_privileges[index][ip]]
-             if len(missing) > 0:
-                  missing_index_privileges[index] = missing
+            missing = [
+                ip for ip in index_privileges[index] if not index_privileges[index][ip]
+            ]
+            if len(missing) > 0:
+                missing_index_privileges[index] = missing
 
-        return PrivilegeCheckResult(username, has_all_requested, missing_cluster_privileges, missing_index_privileges)
+        return PrivilegeCheckResult(
+            username,
+            has_all_requested,
+            missing_cluster_privileges,
+            missing_index_privileges,
+        )

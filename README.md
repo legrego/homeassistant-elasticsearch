@@ -8,7 +8,7 @@ Publish HASS events to your [Elasticsearch](https://elastic.co) cluster!
 ## Features
 
 - Efficiently publishes Home-Assistant events to Elasticsearch using the Bulk API
-- Automatically sets up Datastreams using Time Series Data Streams ("TSDS"), Datastream Lifecycle Management ("DLM") Index Lifecycle Management ("ILM") depending on your cluster's capabilities
+- Automatically sets up Datastreams using Time Series Data Streams ("TSDS"), Datastream Lifecycle Management ("DLM"), or Index Lifecycle Management ("ILM") depending on your cluster's capabilities
 - Supports Elastic's [stack security features](https://www.elastic.co/elastic-stack/security) via optional username, password, and API keys
 - Exclude specific entities or groups from publishing
 
@@ -167,7 +167,7 @@ This component is configured interactively via Home Assistant's integration conf
 
 ## Defining your own Index Mappings, Settings, and Ingest Pipeline
 
-When in Datastream mode (Default for Elasticsearch 8.7+) you can customize the mappings, settings and define an [ingest pipeline](https://www.elastic.co/guide/en/elasticsearch/reference/current/ingest.html) by creating a [component template](https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-component-template.html) called `metrics-homeassistant@custom`
+You can customize the mappings, settings and define an [ingest pipeline](https://www.elastic.co/guide/en/elasticsearch/reference/current/ingest.html) by creating a [component template](https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-component-template.html) called `metrics-homeassistant@custom`
 
 
 The following is an example on how to push your Home Assistant metrics into an ingest pipeline called `metrics-homeassistant-pipeline`:
