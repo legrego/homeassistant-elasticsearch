@@ -10,7 +10,11 @@ from custom_components.elasticsearch.config_flow import (
 )
 from tests.const import (
     CLUSTER_HEALTH_RESPONSE_BODY,
+    CLUSTER_INFO_7DOT11_RESPONSE_BODY,
+    CLUSTER_INFO_7DOT17_RESPONSE_BODY,
+    CLUSTER_INFO_8DOT0_RESPONSE_BODY,
     CLUSTER_INFO_8DOT8_RESPONSE_BODY,
+    CLUSTER_INFO_8DOT11_RESPONSE_BODY,
     CLUSTER_INFO_RESPONSE_BODY,
     CLUSTER_INFO_SERVERLESS_RESPONSE_BODY,
     CLUSTER_INFO_UNSUPPORTED_RESPONSE_BODY,
@@ -35,9 +39,14 @@ def mock_es_initialization(
     mock_serverless_version=False,
     mock_unsupported_version=False,
     mock_authentication_error=False,
-    mock_index_authorization_error=False,
+    mock_legacy_index_authorization_error=False,
+    mock_modern_datastream_authorization_error=False,
     mock_connection_error=False,
     mock_v88_cluster=False,
+    mock_v80_cluster=False,
+    mock_v711_cluster=False,
+    mock_v717_cluster=False,
+    mock_v811_cluster=False,
     alias_name=DEFAULT_ALIAS,
     index_format=DEFAULT_INDEX_FORMAT,
     ilm_policy_name=DEFAULT_ILM_POLICY_NAME,
@@ -52,14 +61,22 @@ def mock_es_initialization(
         aioclient_mock.get(url, status=401, json={"error": "unauthorized"})
     elif mock_connection_error:
         aioclient_mock.get(url, status=500, json={"error": "idk"})
+    elif mock_v811_cluster:
+        aioclient_mock.get(url, status=200, json=CLUSTER_INFO_8DOT11_RESPONSE_BODY)
     elif mock_v88_cluster:
         aioclient_mock.get(url, status=200, json=CLUSTER_INFO_8DOT8_RESPONSE_BODY)
+    elif mock_v80_cluster:
+        aioclient_mock.get(url, status=200, json=CLUSTER_INFO_8DOT0_RESPONSE_BODY)
+    elif mock_v711_cluster:
+        aioclient_mock.get(url, status=200, json=CLUSTER_INFO_7DOT11_RESPONSE_BODY)
+    elif mock_v717_cluster:
+        aioclient_mock.get(url, status=200, json=CLUSTER_INFO_7DOT17_RESPONSE_BODY)
     else:
         aioclient_mock.get(url, status=200, json=CLUSTER_INFO_RESPONSE_BODY)
 
     aioclient_mock.post(url + "/_bulk", status=200, json={"items": []})
 
-    if mock_index_authorization_error:
+    if mock_legacy_index_authorization_error:
         aioclient_mock.post(
             url + "/_security/user/_has_privileges",
             status=200,
@@ -93,6 +110,28 @@ def mock_es_initialization(
                 },
             },
         )
+    elif mock_modern_datastream_authorization_error:
+        aioclient_mock.post(
+            url + "/_security/user/_has_privileges",
+            status=200,
+            json={
+                "username": "test_user",
+                "has_all_requested": False,
+                "cluster": {
+                    "manage_index_templates": True,
+                    "manage_ilm": True,
+                    "monitor": True,
+                },
+                "index": {
+                    "metrics-homeassistant.*": {
+                        "manage": True,
+                        "index": True,
+                        "create_index": True,
+                        "create": False,
+                    },
+                },
+            },
+        )
     else:
         aioclient_mock.post(
             url + "/_security/user/_has_privileges",
@@ -119,6 +158,12 @@ def mock_es_initialization(
                         "create": True,
                     },
                     "all-hass-events": {
+                        "manage": True,
+                        "index": True,
+                        "create_index": True,
+                        "create": True,
+                    },
+                    "metrics-homeassistant.*": {
                         "manage": True,
                         "index": True,
                         "create_index": True,
