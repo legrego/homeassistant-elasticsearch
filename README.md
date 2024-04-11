@@ -3,14 +3,37 @@ Elasticsearch Component for Home-Assistant
 [![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg)](https://github.com/hacs/integration)
 =====
 
-Publish HASS events to your [Elasticsearch](https://elastic.co) cluster!
+Publish Home Assistant events to your [Elasticsearch](https://elastic.co) cluster!
 
 ## Features
 
 - Efficiently publishes Home-Assistant events to Elasticsearch using the Bulk API
 - Automatically sets up Datastreams using Time Series Data Streams ("TSDS"), Datastream Lifecycle Management ("DLM"), or Index Lifecycle Management ("ILM") depending on your cluster's capabilities
 - Supports Elastic's [stack security features](https://www.elastic.co/elastic-stack/security) via optional username, password, and API keys
-- Exclude specific entities or groups from publishing
+- Selectively publish events based on domains or entities
+
+## Inspiration
+
+### HVAC Usage
+Graph your home's climate and HVAC Usage:
+
+![img](assets/hvac-history.png)
+
+### Weather Station
+Visualize and alert on data from your weather station:
+
+![img](assets/weather-station.png)
+
+![img](assets/weather-station-wind-pressure.png)
+
+### Additional examples
+
+Some usage examples inspired by [real users](https://github.com/legrego/homeassistant-elasticsearch/issues/203):
+
+- Utilizing a Raspberry Pi in [kiosk mode](https://www.raspberrypi.com/tutorials/how-to-use-a-raspberry-pi-in-kiosk-mode/) with a 15" display, the homeassistant-elasticsearch integration enables the creation of rotating fullscreen [Elasticsearch Canvas](https://www.elastic.co/kibana/canvas). Those canvas displays metrics collected from various Home Assistant integrations, offering visually dynamic and informative dashboards for monitoring smart home data.
+- To address temperature maintenance issues in refrigerators and freezers, temperature sensors in each appliance report data to Home Assistant, which is then published to Elasticsearch. Kibana's [alerting framework](https://www.elastic.co/kibana/alerting) is employed to set up rules that notify the user if temperatures deviate unfavorably for an extended period. The Elastic rule engine and aggregations simplify the monitoring process for this specific use case.
+- Monitoring the humidity and temperature in a snake enclosure/habitat for a user's daughter, the integration facilitates the use of Elastic's Alerting framework. This choice is motivated by the framework's suitability for the monitoring requirements, providing a more intuitive solution compared to Home Assistant automations.
+- The integration allows users to maintain a smaller subset of data, focusing on individual stats of interest, for an extended period. This capability contrasts with the limited retention achievable with Home Assistant and databases like MariaDB/MySQL. This extended data retention facilitates very long-term trend analysis, such as for weather data, enabling users to glean insights over an extended timeframe.
 
 ## Compatibility
 
@@ -39,29 +62,6 @@ Elasticsearch is open source and free to use: just bring your own hardware!
 Elastic has a [great setup guide](https://www.elastic.co/start) if you need help getting your first cluster up and running.
 
 If you don't want to maintain your own cluster, then give the [Elastic Cloud](https://www.elastic.co/cloud) a try! There is a free trial available to get you started.
-
-## Inspiration
-
-### HVAC Usage
-Graph your home's climate and HVAC Usage:
-
-![img](assets/hvac-history.png)
-
-### Weather Station
-Visualize and alert on data from your weather station:
-
-![img](assets/weather-station.png)
-
-![img](assets/weather-station-wind-pressure.png)
-
-### Additional examples
-
-Some usage examples inspired by [real users](https://github.com/legrego/homeassistant-elasticsearch/issues/203):
-
-- Utilizing a Raspberry Pi in [kiosk mode](https://www.raspberrypi.com/tutorials/how-to-use-a-raspberry-pi-in-kiosk-mode/) with a 15" display, the homeassistant-elasticsearch integration enables the creation of rotating fullscreen [Elasticsearch Canvas](https://www.elastic.co/kibana/canvas). Those canvas displays metrics collected from various Home Assistant integrations, offering visually dynamic and informative dashboards for monitoring smart home data.
-- To address temperature maintenance issues in refrigerators and freezers, temperature sensors in each appliance report data to Home Assistant, which is then published to Elasticsearch. Kibana's [alerting framework](https://www.elastic.co/kibana/alerting) is employed to set up rules that notify the user if temperatures deviate unfavorably for an extended period. The Elastic rule engine and aggregations simplify the monitoring process for this specific use case.
-- Monitoring the humidity and temperature in a snake enclosure/habitat for a user's daughter, the integration facilitates the use of Elastic's Alerting framework. This choice is motivated by the framework's suitability for the monitoring requirements, providing a more intuitive solution compared to Home Assistant automations.
-- The integration allows users to maintain a smaller subset of data, focusing on individual stats of interest, for an extended period. This capability contrasts with the limited retention achievable with Home Assistant and databases like MariaDB/MySQL. This extended data retention facilitates very long-term trend analysis, such as for weather data, enabling users to glean insights over an extended timeframe.
 
 ## Installation
 
@@ -157,6 +157,37 @@ This component is configured interactively via Home Assistant's integration conf
 4. Provide connection information and optionally credentials to begin setup. ![img](assets/configure-integration.png)
 5. Once the integration is setup, you may tweak all settings via the "Options" button on the integrations page.
    ![img](assets/publish-options.png)
+
+## Configuration options
+
+### Entity selection
+You can choose to include/exclude entities based on their domain or entity id. This allows you to publish only the entities you are interested in to Elasticsearch.
+By default, all entities and domains are included.
+You can combine inclusion and exclusion filters to fine-tune the entities you want to publish. The following flowchart describes the logic used to determine if an entity is published:
+
+```mermaid
+flowchart LR
+    A[Entity] --> B{Is entity excluded?}
+    B -->|Yes| Z{Do not publish}
+    B -->|No| C{Is entity or domain included?}
+    C -->|Yes| Y{Publish}
+    C -->|No| D{Is domain excluded?}
+    D -->|Yes| Z
+    D -->|No| Y
+```
+
+### Publish Mode
+There are three modes to publish data to Elasticsearch:
+- `All` - Publish configured entities to Elasticsearch, including those which did not undergo a state or attribute change.
+- `State changes` - Publish configured entities to Elasticsearch only when their state changes.
+- `Any changes` - Publish configured entities to Elasticsearch when their state or attributes change.
+
+| Publish Mode | State Change | Attribute Change | No Change |
+| ---- | ---- | ---- | ---- |
+| All | ✅  Publishes | ✅ Publishes | ✅ Publishes |
+| Any Changes | ✅  Publishes | ✅  Publishes | 🚫 Does not publish |
+| State Changes | ✅  Publishes | 🚫 Does not publish | 🚫 Does not publish |
+
 
 ## Using Homeassistant data in Kibana
 
