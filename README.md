@@ -5,6 +5,29 @@ Elasticsearch Component for Home-Assistant
 
 Publish Home Assistant events to your [Elasticsearch](https://elastic.co) cluster!
 
+## Table of Contents
+
+- [Features](#features)
+- [Inspiration](#inspiration)
+  - [HVAC Usage](#hvac-usage)
+  - [Weather Station](#weather-station)
+  - [Additional examples](#additional-examples)
+- [Compatibility](#compatibility)
+- [Getting Started](#getting-started)
+- [Installation](#installation)
+- [Create Elasticsearch Credentials](#create-elasticsearch-credentials)
+  - [Authenticating via API Key](#authenticating-via-api-key)
+  - [Authenticating via username/password](#authenticating-via-usernamepassword)
+- [Setup](#setup)
+- [Configuration options](#configuration-options)
+  - [Entity selection](#entity-selection)
+  - [Publish mode](#publish-mode)
+- [Using Home Assistant data in Kibana](#using-homeassistant-data-in-kibana)
+- [Defining your own Index Mappings, Settings, and Ingest Pipeline](#defining-your-own-index-mappings-settings-and-ingest-pipeline)
+- [Create your own cluster health sensor](#create-your-own-cluster-health-sensor)
+- [Support](#support)
+- [Contributing](#contributing)
+
 ## Features
 
 - Efficiently publishes Home-Assistant events to Elasticsearch using the Bulk API
@@ -176,7 +199,7 @@ flowchart LR
     D -->|No| Y
 ```
 
-### Publish Mode
+### Publish mode
 There are three modes to publish data to Elasticsearch:
 - `All` - Publish configured entities to Elasticsearch, including those which did not undergo a state or attribute change.
 - `State changes` - Publish configured entities to Elasticsearch only when their state changes.
