@@ -6,20 +6,19 @@ import os
 from elasticsearch7 import ElasticsearchException
 from homeassistant.const import CONF_ALIAS
 
-from custom_components.elasticsearch.errors import ElasticException
+from custom_components.elasticsearch.errors import ElasticException, convert_es_error
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 
 from .const import (
     CONF_DATASTREAM_NAME_PREFIX,
     CONF_DATASTREAM_NAMESPACE,
     CONF_DATASTREAM_TYPE,
-    CONF_ILM_DELETE_AFTER,
     CONF_ILM_ENABLED,
-    CONF_ILM_MAX_SIZE,
     CONF_ILM_POLICY_NAME,
     CONF_INDEX_FORMAT,
     CONF_INDEX_MODE,
     CONF_PUBLISH_ENABLED,
+    DATASTREAM_METRICS_ILM_POLICY_NAME,
     DATASTREAM_METRICS_INDEX_TEMPLATE_NAME,
     INDEX_MODE_DATASTREAM,
     INDEX_MODE_LEGACY,
@@ -70,8 +69,6 @@ class IndexManager:
 
             await self._create_legacy_template()
 
-            if self._using_ilm:
-                await self._create_ilm_policy(self._config)
         else:
             await self._create_index_template()
 
@@ -80,12 +77,6 @@ class IndexManager:
     async def _create_index_template(self):
         """Initialize the Elasticsearch cluster with an index template, initial index, and alias."""
         LOGGER.debug("Initializing modern index templates")
-
-        if not self._gateway.es_version.meets_minimum_version(major=8, minor=7):
-            raise ElasticException(
-                "A version of Elasticsearch that is not compatible with TSDS datastreams detected (%s). Use Legacy Index mode.",
-                f"{self._gateway.es_version.major}.{self._gateway.es_version.minor}",
-            )
 
         client = self._gateway.get_client()
 
@@ -113,6 +104,45 @@ class IndexManager:
         else:
             LOGGER.debug("Creating index template")
 
+        if self._gateway.es_version.supports_timeseries_datastream():
+            LOGGER.debug(
+                "Elasticsearch supports timeseries datastreams, including in template."
+            )
+
+            index_template["template"]["settings"]["index.mode"] = "time_series"
+
+            mappings = index_template["template"]["mappings"]
+            object_id = mappings["properties"]["hass"]["properties"]["object_id"]
+
+            object_id["time_series_dimension"] = True
+
+        if self._gateway.es_version.supports_ignore_missing_component_templates():
+            LOGGER.debug(
+                "Elasticsearch supports ignore_missing_component_templates, including in template."
+            )
+
+            index_template["composed_of"] = ["metrics-homeassistant@custom"]
+            index_template["ignore_missing_component_templates"] = [
+                "metrics-homeassistant@custom"
+            ]
+
+        if self._gateway.es_version.supports_datastream_lifecycle_management():
+            LOGGER.debug(
+                "Elasticsearch supports Datastream Lifecycle Management, including in template."
+            )
+            index_template["template"]["lifecycle"] = {"data_retention": "365d"}
+        else:
+            LOGGER.debug(
+                "Elasticsearch does not support Datastream Lifecycle Management, falling back to Index Lifecycle Management."
+            )
+            await self._create_basic_ilm_policy(
+                ilm_policy_name=DATASTREAM_METRICS_ILM_POLICY_NAME
+            )
+
+            index_template["template"]["settings"]["index.lifecycle.name"] = (
+                DATASTREAM_METRICS_ILM_POLICY_NAME
+            )
+
         try:
             await client.indices.put_index_template(
                 name=DATASTREAM_METRICS_INDEX_TEMPLATE_NAME, body=index_template
@@ -136,6 +166,9 @@ class IndexManager:
             )
 
         client = self._gateway.get_client()
+
+        # For Legacy mode we offer flexible configuration of the ILM policy
+        await self._create_basic_ilm_policy(ilm_policy_name=self._ilm_policy_name)
 
         with open(
             os.path.join(os.path.dirname(__file__), "index_mapping.json"),
@@ -178,10 +211,10 @@ class IndexManager:
                     name=LEGACY_TEMPLATE_NAME, body=index_template
                 )
             except ElasticsearchException as err:
-                LOGGER.exception("Error creating index template: %s", err)
-
-                # Our template doesn't exist and we failed to create one, so we should not proceed
-                raise err
+                raise convert_es_error(
+                    "No index template present in Elasticsearch and failed to create one",
+                    err,
+                ) from err
 
         alias = await client.indices.get_alias(name=self.index_alias, ignore=[404])
         alias_exists = alias and not alias.get("error")
@@ -194,55 +227,57 @@ class IndexManager:
                 )
             except ElasticsearchException as err:
                 LOGGER.exception("Error creating initial index/alias: %s", err)
-        elif self._using_ilm:
-            LOGGER.debug("Ensuring ILM Policy is attached to existing index")
-            try:
-                await client.indices.put_settings(
-                    index=self.index_alias,
-                    preserve_existing=True,
-                    body={
-                        "index.lifecycle.name": self._ilm_policy_name,
-                        "index.lifecycle.rollover_alias": self.index_alias,
-                    },
-                )
-            except ElasticsearchException as err:
-                LOGGER.exception("Error updating index ILM settings: %s", err)
 
-    async def _create_ilm_policy(self, config):
+    async def _create_basic_ilm_policy(self, ilm_policy_name):
         """Create the index lifecycle management policy."""
         from elasticsearch7.exceptions import TransportError
 
         client = self._gateway.get_client()
 
         try:
-            existing_policy = await client.ilm.get_lifecycle(self._ilm_policy_name)
+            existing_policy = await client.ilm.get_lifecycle(ilm_policy_name)
         except TransportError as err:
             if err.status_code == 404:
                 existing_policy = None
             else:
-                LOGGER.exception("Error checking for existing ILM policy: %s", err)
-                raise err
+                raise convert_es_error(
+                    "Unexpected return code when checking for existing ILM policy", err
+                ) from err
+        except ElasticsearchException as err:
+            raise convert_es_error(
+                "Error checking for existing ILM policy", err
+            ) from err
 
-        ilm_hot_conditions = {"max_size": config.get(CONF_ILM_MAX_SIZE)}
+        if existing_policy:
+            LOGGER.info("Found existing ILM Policy, do nothing '%s'", ilm_policy_name)
+            return
 
         policy = {
             "policy": {
                 "phases": {
                     "hot": {
                         "min_age": "0ms",
-                        "actions": {"rollover": ilm_hot_conditions},
+                        "actions": {
+                            "rollover": {
+                                "max_age": "30d",
+                            },
+                        },
                     },
-                    "delete": {
-                        "min_age": config.get(CONF_ILM_DELETE_AFTER),
-                        "actions": {"delete": {}},
-                    },
+                    "delete": {"min_age": "365d", "actions": {"delete": {}}},
                 }
             }
         }
 
-        if existing_policy:
-            LOGGER.info("Updating existing ILM Policy '%s'", self._ilm_policy_name)
-        else:
-            LOGGER.info("Creating ILM Policy '%s'", self._ilm_policy_name)
+        if self._gateway.es_version.supports_max_primary_shard_size():
+            LOGGER.debug(
+                "Elasticsearch supports max_primary_shard_size, including in ILM template."
+            )
+            policy["policy"]["phases"]["hot"]["actions"]["rollover"][
+                "max_primary_shard_size"
+            ] = "50gb"
 
-        await client.ilm.put_lifecycle(self._ilm_policy_name, policy)
+        LOGGER.info("Creating ILM Policy '%s'", ilm_policy_name)
+        try:
+            await client.ilm.put_lifecycle(ilm_policy_name, policy)
+        except ElasticsearchException as err:
+            raise convert_es_error("Error creating initial ILM policy", err) from err

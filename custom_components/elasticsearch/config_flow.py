@@ -29,9 +29,7 @@ from .const import (
     CONF_DATASTREAM_TYPE,
     CONF_EXCLUDED_DOMAINS,
     CONF_EXCLUDED_ENTITIES,
-    CONF_ILM_DELETE_AFTER,
     CONF_ILM_ENABLED,
-    CONF_ILM_MAX_SIZE,
     CONF_ILM_POLICY_NAME,
     CONF_INCLUDED_DOMAINS,
     CONF_INCLUDED_ENTITIES,
@@ -76,8 +74,6 @@ DEFAULT_VERIFY_SSL = True
 DEFAULT_TIMEOUT_SECONDS = 30
 DEFAULT_ILM_ENABLED = True
 DEFAULT_ILM_POLICY_NAME = "home-assistant"
-DEFAULT_ILM_MAX_SIZE = "30gb"
-DEFAULT_ILM_DELETE_AFTER = "365d"
 DEFAULT_INDEX_MODE = "datastream"
 
 
@@ -119,10 +115,6 @@ def build_full_config(user_input=None):
         CONF_ILM_ENABLED: user_input.get(CONF_ILM_ENABLED, DEFAULT_ILM_ENABLED),
         CONF_ILM_POLICY_NAME: user_input.get(
             CONF_ILM_POLICY_NAME, DEFAULT_ILM_POLICY_NAME
-        ),
-        CONF_ILM_MAX_SIZE: user_input.get(CONF_ILM_MAX_SIZE, DEFAULT_ILM_MAX_SIZE),
-        CONF_ILM_DELETE_AFTER: user_input.get(
-            CONF_ILM_DELETE_AFTER, DEFAULT_ILM_DELETE_AFTER
         ),
     }
 
@@ -249,7 +241,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         self.config = build_full_config(user_input)
         result = await self._async_elasticsearch_login()
         if result.success:
-            return await self.async_step_index_mode()
+            return await self._async_create_entry()
 
         return self.async_show_form(
             step_id="no_auth",
@@ -269,7 +261,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         result = await self._async_elasticsearch_login()
 
         if result.success:
-            return await self.async_step_index_mode()
+            return await self._async_create_entry()
 
         return self.async_show_form(
             step_id="basic_auth",
@@ -289,7 +281,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         result = await self._async_elasticsearch_login()
 
         if result.success:
-            return await self.async_step_index_mode()
+            return await self._async_create_entry()
 
         return self.async_show_form(
             step_id="api_key",
@@ -336,67 +328,6 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         assert entry is not None
         self._reauth_entry = entry
         return await self.async_step_reauth_confirm(user_input)
-
-    def build_index_mode_schema(self):
-        """Build the index mode schema."""
-        return vol.Schema(
-            {
-                vol.Required(
-                    CONF_INDEX_MODE,
-                    default=self.config.get(CONF_INDEX_MODE, DEFAULT_INDEX_MODE),
-                ): selector(
-                    {
-                        "select": {
-                            "options": [
-                                {
-                                    "label": "Time-series Datastream (ES 8.7+)",
-                                    "value": INDEX_MODE_DATASTREAM,
-                                },
-                                {"label": "Legacy Indices", "value": INDEX_MODE_LEGACY},
-                            ]
-                        }
-                    }
-                )
-            }
-        )
-
-    async def async_step_index_mode(self, user_input: dict | None = None) -> FlowResult:
-        """Handle the selection of index mode."""
-        if (
-            self._cluster_check_result is None
-            or self._cluster_check_result.version is None
-        ):
-            return self.async_abort("invalid_flow")
-
-        if user_input is None:
-            # Default to datastreams on serverless
-            if self._cluster_check_result.version.is_serverless():
-                self.config[CONF_INDEX_MODE] = INDEX_MODE_DATASTREAM
-                self.config[CONF_ILM_ENABLED] = False
-
-                return await self._async_create_entry()
-
-            # Default to Indices on pre-8.7 Elasticsearch
-            elif not self._cluster_check_result.version.meets_minimum_version(
-                major=8, minor=7
-            ):
-                self.config[CONF_INDEX_MODE] = INDEX_MODE_LEGACY
-                self.config[CONF_ILM_ENABLED] = True
-
-                return await self._async_create_entry()
-
-            # Allow users to choose mode if not on serverless and post-8.7
-            else:
-                return self.async_show_form(
-                    step_id="index_mode", data_schema=self.build_index_mode_schema()
-                )
-
-        self.config[CONF_INDEX_MODE] = user_input[CONF_INDEX_MODE]
-        # If the user picked datastreams we need to disable the ILM options
-        if user_input[CONF_INDEX_MODE] == INDEX_MODE_DATASTREAM:
-            self.config[CONF_ILM_ENABLED] = False
-
-        return await self._async_create_entry()
 
     async def async_step_reauth_confirm(
         self, user_input: dict | None = None
@@ -666,16 +597,6 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
                 CONF_ILM_POLICY_NAME,
                 default=self._get_config_value(
                     CONF_ILM_POLICY_NAME, DEFAULT_ILM_POLICY_NAME
-                ),
-            ): str,
-            vol.Required(
-                CONF_ILM_MAX_SIZE,
-                default=self._get_config_value(CONF_ILM_MAX_SIZE, DEFAULT_ILM_MAX_SIZE),
-            ): str,
-            vol.Required(
-                CONF_ILM_DELETE_AFTER,
-                default=self._get_config_value(
-                    CONF_ILM_DELETE_AFTER, DEFAULT_ILM_DELETE_AFTER
                 ),
             ): str,
         }
