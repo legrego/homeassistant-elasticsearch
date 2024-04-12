@@ -299,7 +299,9 @@ class DocumentCreator:
 
         return additions
 
-    def state_to_document(self, state: State, time: datetime, version: int = 2) -> dict:
+    def state_to_document(
+        self, state: State, time: datetime, reason: str, version: int = 2
+    ) -> dict:
         """Convert entity state to ES document."""
 
         if time.tzinfo is None:
@@ -332,6 +334,7 @@ class DocumentCreator:
         document_body = {
             "@timestamp": time_tz,
             "hass.object_id": state.object_id,
+            "event.action": reason,
         }
 
         if (

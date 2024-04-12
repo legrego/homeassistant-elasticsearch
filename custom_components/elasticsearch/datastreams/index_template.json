@@ -147,6 +147,14 @@
                     "ignore_above": 1024,
                     "type": "keyword"
                 },
+                "event": {
+                    "properties": {
+                        "action": {
+                            "type": "keyword",
+                            "ignore_above": 1024
+                        }
+                    }
+                },
                 "agent": {
                     "properties": {
                         "ephemeral_id": {
