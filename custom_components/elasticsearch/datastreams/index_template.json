@@ -141,7 +141,8 @@
                     }
                 },
                 "@timestamp": {
-                    "type": "date"
+                    "type": "date_nanos",
+                    "format": "strict_date_optional_time_nanos"
                 },
                 "tags": {
                     "ignore_above": 1024,

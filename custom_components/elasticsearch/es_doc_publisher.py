@@ -458,7 +458,7 @@ class DocumentPublisher:
 
         for action in actions:
             key = (
-                action["_source"]["@timestamp"].isoformat()
+                action["_source"]["@timestamp"]
                 + "_"
                 + action["_source"]["hass.entity"]["domain"]
                 + action["_source"]["hass.object_id"]
