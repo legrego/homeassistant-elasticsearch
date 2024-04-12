@@ -467,20 +467,18 @@ class DocumentPublisher:
             if key in duplicate_entries:
                 old_action = duplicate_entries[key]
 
-                try:
-                    LOGGER.warning(
-                        "Duplicate entry #1 found: %s, event source %s: %s",
-                        key,
-                        old_action["_source"]["event"]["action"],
-                        old_action["_source"],
-                    )
-                    LOGGER.warning(
-                        "Duplicate entry #2 found: %s, event source %s: %s",
-                        key,
-                        action["_source"]["event"]["action"],
-                        action["_source"],
-                    )
-                except Exception as err:
-                    LOGGER.exception("Error checking for duplicate entries: %s", err)
+                LOGGER.warning(
+                    "Duplicate entry #1 found: %s, event source %s: %s",
+                    key,
+                    old_action["_source"]["event"]["action"],
+                    old_action["_source"],
+                )
+                LOGGER.warning(
+                    "Duplicate entry #2 found: %s, event source %s: %s",
+                    key,
+                    action["_source"]["event"]["action"],
+                    action["_source"],
+                )
+
             else:
                 duplicate_entries[key] = action
