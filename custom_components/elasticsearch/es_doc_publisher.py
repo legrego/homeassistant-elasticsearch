@@ -184,6 +184,11 @@ class DocumentPublisher:
         if self._should_publish_entity_state(domain, entity_id):
             self.publish_queue.put((state, event, reason))
 
+    def empty_queue(self):
+        """Empty the publish queue."""
+        while not self.publish_queue.empty():
+            self.publish_queue.get()
+
     async def async_do_publish(self):
         """Publish all queued documents to the Elasticsearch cluster."""
         from elasticsearch7.exceptions import ElasticsearchException
@@ -455,9 +460,10 @@ class DocumentPublisher:
             key = (
                 action["_source"]["@timestamp"].isoformat()
                 + "_"
-                + action["_source"]["hass.domain"]
+                + action["_source"]["hass.entity"]["domain"]
                 + action["_source"]["hass.object_id"]
             )
+
             if key in duplicate_entries:
                 old_action = duplicate_entries[key]
 

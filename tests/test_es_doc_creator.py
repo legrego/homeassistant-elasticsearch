@@ -100,7 +100,7 @@ async def create_and_return_document(
     )
 
     return document_creator.state_to_document(
-        state, dt_util.parse_datetime(timestamp), version
+        state, dt_util.parse_datetime(timestamp), "testing", version
     )
 
 
@@ -484,6 +484,7 @@ async def test_v1_doc_creation_geolocation(
         "agent.type": "hass",
         "agent.version": "UNKNOWN",
         "ecs.version": "1.0.0",
+        "event.action": "testing",
         "hass.attributes": {},
         "hass.domain": "sensor",
         "hass.entity": {
@@ -539,6 +540,7 @@ async def test_v1_doc_creation_geolocation_from_attributes(
         "agent.type": "hass",
         "agent.version": "UNKNOWN",
         "ecs.version": "1.0.0",
+        "event.action": "testing",
         "hass.attributes": {
             "latitude": MOCK_LOCATION_DEVICE["lat"],
             "longitude": MOCK_LOCATION_DEVICE["lon"],
@@ -605,6 +607,7 @@ async def test_v1_doc_creation_attributes(
         "hass.object_id": "test_1",
         "hass.object_id_lower": "test_1",
         "hass.value": 2.0,
+        "event.action": "testing",
     }
 
     assert diff(document, expected) == {}
@@ -640,6 +643,7 @@ async def test_v1_doc_creation_on_off_float(
         "hass.object_id": "test_1",
         "hass.object_id_lower": "test_1",
         "hass.value": 0,
+        "event.action": "testing",
     }
 
     assert diff(document, expected) == {}
@@ -676,6 +680,7 @@ async def test_v1_doc_creation_infinity(
         "hass.object_id": "test_1",
         "hass.object_id_lower": "test_1",
         "hass.value": "inf",
+        "event.action": "testing",
     }
 
     assert diff(document, expected) == {}
@@ -712,6 +717,7 @@ async def test_v1_doc_creation_string_to_float(
         "hass.object_id": "test_1",
         "hass.object_id_lower": "test_1",
         "hass.value": 2.0,
+        "event.action": "testing",
     }
 
     assert diff(document, expected) == {}
@@ -746,6 +752,7 @@ async def test_v1_doc_creation_leave_datetime_alone(
         "hass.object_id": "test_1",
         "hass.object_id_lower": "test_1",
         "hass.value": MOCK_NOON_APRIL_12TH_2023,
+        "event.action": "testing",
     }
     assert diff(document, expected) == {}
 
@@ -775,6 +782,7 @@ async def test_v2_doc_creation_geolocation(
         "agent.name": "My Home Assistant",
         "agent.type": "hass",
         "ecs.version": "1.0.0",
+        "event.action": "testing",
         "hass.entity": {
             "attributes": {},
             "domain": "sensor",
@@ -825,6 +833,7 @@ async def test_v2_doc_creation_geolocation_from_attributes(
         "agent.name": "My Home Assistant",
         "agent.type": "hass",
         "ecs.version": "1.0.0",
+        "event.action": "testing",
         "hass.entity": {
             "attributes": {
                 "latitude": MOCK_LOCATION_DEVICE["lat"],
@@ -878,6 +887,7 @@ async def test_v2_doc_creation_attributes(
             "valueas": {"string": "tomato"},
         },
         "hass.object_id": "test_1",
+        "event.action": "testing",
     }
 
     assert diff(document, expected) == {}
@@ -912,6 +922,7 @@ async def test_v2_doc_creation_float_as_string(
             "valueas": {"float": 2.0},
         },
         "hass.object_id": "test_1",
+        "event.action": "testing",
     }
 
     assert diff(document, expected) == {}
@@ -947,6 +958,7 @@ async def test_v2_doc_creation_float_infinity(
             "valueas": {"string": "inf"},
         },
         "hass.object_id": "test_1",
+        "event.action": "testing",
     }
 
     assert diff(document, expected) == {}
@@ -981,6 +993,7 @@ async def test_v2_doc_creation_float(
             "valueas": {"float": 2.0},
         },
         "hass.object_id": "test_1",
+        "event.action": "testing",
     }
 
     assert diff(document, expected) == {}
@@ -1021,6 +1034,7 @@ async def test_v2_doc_creation_datetime(
             },
         },
         "hass.object_id": "test_1",
+        "event.action": "testing",
     }
 
     assert diff(document, expected) == {}
@@ -1055,6 +1069,7 @@ async def test_v2_doc_creation_boolean_truefalse(
             "valueas": {"boolean": True},
         },
         "hass.object_id": "test_1",
+        "event.action": "testing",
     }
 
     assert diff(document, expected) == {}
@@ -1089,6 +1104,7 @@ async def test_v2_doc_creation_boolean_onoff(
             "valueas": {"boolean": False},
         },
         "hass.object_id": "test_1",
+        "event.action": "testing",
     }
 
     assert diff(document, expected) == {}
