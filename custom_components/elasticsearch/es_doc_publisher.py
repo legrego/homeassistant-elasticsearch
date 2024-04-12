@@ -462,13 +462,13 @@ class DocumentPublisher:
                 LOGGER.warning(
                     "Duplicate entry #1 found: %s, event source %s: %s",
                     key,
-                    duplicate_entries[key]["event"]["action"],
+                    duplicate_entries[key]["event.action"],
                     duplicate_entries[key].ToString(),
                 )
                 LOGGER.warning(
                     "Duplicate entry #2 found: %s, event source %s: %s",
                     key,
-                    action["_source"]["event"]["action"],
+                    action["_source"]["event.action"],
                     action["_source"].ToString(),
                 )
             else:
