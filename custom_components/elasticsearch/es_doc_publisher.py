@@ -455,21 +455,26 @@ class DocumentPublisher:
             key = (
                 action["_source"]["@timestamp"].isoformat()
                 + "_"
+                + action["_source"]["hass.domain"]
                 + action["_source"]["hass.object_id"]
             )
             if key in duplicate_entries:
-                duplicate_entries[key] += 1
-                LOGGER.warning(
-                    "Duplicate entry #1 found: %s, event source %s: %s",
-                    key,
-                    duplicate_entries[key]["event.action"],
-                    duplicate_entries[key].ToString(),
-                )
-                LOGGER.warning(
-                    "Duplicate entry #2 found: %s, event source %s: %s",
-                    key,
-                    action["_source"]["event.action"],
-                    action["_source"].ToString(),
-                )
+                old_action = duplicate_entries[key]
+
+                try:
+                    LOGGER.warning(
+                        "Duplicate entry #1 found: %s, event source %s: %s",
+                        key,
+                        old_action["_source"]["event.action"],
+                        old_action["_source"],
+                    )
+                    LOGGER.warning(
+                        "Duplicate entry #2 found: %s, event source %s: %s",
+                        key,
+                        action["_source"]["event.action"],
+                        action["_source"],
+                    )
+                except Exception as err:
+                    LOGGER.exception("Error checking for duplicate entries: %s", err)
             else:
-                duplicate_entries[key] = 1
+                duplicate_entries[key] = action
