@@ -99,9 +99,7 @@ class DocumentPublisher:
 
             if state is None:
                 return
-            if (
-                old_state is not None
-            ):
+            elif old_state is None:
                 reason = PUBLISH_REASON_STATE_CHANGE
             else:  # state and old_state are both available
                 state_value_changed = old_state.state != state.state
@@ -449,13 +447,13 @@ class DocumentPublisher:
                 if self.publish_active:
                     await asyncio.sleep(1)
 
-    def check_duplicate_entries(actions):
+    def check_duplicate_entries(self, actions):
         """Check for duplicate entries in the actions list."""
         duplicate_entries = {}
 
         for action in actions:
             key = (
-                action["_source"]["@timestamp"]
+                action["_source"]["@timestamp"].isoformat()
                 + "_"
                 + action["_source"]["hass.object_id"]
             )
