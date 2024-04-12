@@ -479,12 +479,16 @@ async def test_v1_doc_creation_geolocation(
     )
 
     expected = {
-        "@timestamp": dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023),
+        "@timestamp": MOCK_NOON_APRIL_12TH_2023,
         "agent.name": "My Home Assistant",
         "agent.type": "hass",
         "agent.version": "UNKNOWN",
         "ecs.version": "1.0.0",
-        "event.action": "testing",
+        "event": {
+            "action": "testing",
+            "kind": "event",
+            "type": "change",
+        },
         "hass.attributes": {},
         "hass.domain": "sensor",
         "hass.entity": {
@@ -535,12 +539,16 @@ async def test_v1_doc_creation_geolocation_from_attributes(
     )
 
     expected = {
-        "@timestamp": dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023),
+        "@timestamp": MOCK_NOON_APRIL_12TH_2023,
         "agent.name": "My Home Assistant",
         "agent.type": "hass",
         "agent.version": "UNKNOWN",
         "ecs.version": "1.0.0",
-        "event.action": "testing",
+        "event": {
+            "action": "testing",
+            "kind": "event",
+            "type": "change",
+        },
         "hass.attributes": {
             "latitude": MOCK_LOCATION_DEVICE["lat"],
             "longitude": MOCK_LOCATION_DEVICE["lon"],
@@ -593,7 +601,7 @@ async def test_v1_doc_creation_attributes(
     )
 
     expected = {
-        "@timestamp": dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023),
+        "@timestamp": MOCK_NOON_APRIL_12TH_2023,
         "hass.attributes": {"unit_of_measurement": "kg"},
         "hass.domain": "sensor",
         "hass.entity": {
@@ -607,7 +615,11 @@ async def test_v1_doc_creation_attributes(
         "hass.object_id": "test_1",
         "hass.object_id_lower": "test_1",
         "hass.value": 2.0,
-        "event.action": "testing",
+        "event": {
+            "action": "testing",
+            "kind": "event",
+            "type": "change",
+        },
     }
 
     assert diff(document, expected) == {}
@@ -629,7 +641,7 @@ async def test_v1_doc_creation_on_off_float(
     )
 
     expected = {
-        "@timestamp": dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023),
+        "@timestamp": MOCK_NOON_APRIL_12TH_2023,
         "hass.attributes": {},
         "hass.domain": "sensor",
         "hass.entity": {
@@ -643,7 +655,11 @@ async def test_v1_doc_creation_on_off_float(
         "hass.object_id": "test_1",
         "hass.object_id_lower": "test_1",
         "hass.value": 0,
-        "event.action": "testing",
+        "event": {
+            "action": "testing",
+            "kind": "event",
+            "type": "change",
+        },
     }
 
     assert diff(document, expected) == {}
@@ -666,7 +682,7 @@ async def test_v1_doc_creation_infinity(
     )
 
     expected = {
-        "@timestamp": dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023),
+        "@timestamp": MOCK_NOON_APRIL_12TH_2023,
         "hass.attributes": {},
         "hass.domain": "sensor",
         "hass.entity": {
@@ -680,7 +696,11 @@ async def test_v1_doc_creation_infinity(
         "hass.object_id": "test_1",
         "hass.object_id_lower": "test_1",
         "hass.value": "inf",
-        "event.action": "testing",
+        "event": {
+            "action": "testing",
+            "kind": "event",
+            "type": "change",
+        },
     }
 
     assert diff(document, expected) == {}
@@ -703,7 +723,7 @@ async def test_v1_doc_creation_string_to_float(
     )
 
     expected = {
-        "@timestamp": dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023),
+        "@timestamp": MOCK_NOON_APRIL_12TH_2023,
         "hass.attributes": {},
         "hass.domain": "sensor",
         "hass.entity": {
@@ -717,7 +737,11 @@ async def test_v1_doc_creation_string_to_float(
         "hass.object_id": "test_1",
         "hass.object_id_lower": "test_1",
         "hass.value": 2.0,
-        "event.action": "testing",
+        "event": {
+            "action": "testing",
+            "kind": "event",
+            "type": "change",
+        },
     }
 
     assert diff(document, expected) == {}
@@ -738,7 +762,7 @@ async def test_v1_doc_creation_leave_datetime_alone(
     )
 
     expected = {
-        "@timestamp": dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023),
+        "@timestamp": MOCK_NOON_APRIL_12TH_2023,
         "hass.attributes": {},
         "hass.domain": "sensor",
         "hass.entity": {
@@ -752,7 +776,11 @@ async def test_v1_doc_creation_leave_datetime_alone(
         "hass.object_id": "test_1",
         "hass.object_id_lower": "test_1",
         "hass.value": MOCK_NOON_APRIL_12TH_2023,
-        "event.action": "testing",
+        "event": {
+            "action": "testing",
+            "kind": "event",
+            "type": "change",
+        },
     }
     assert diff(document, expected) == {}
 
@@ -778,11 +806,15 @@ async def test_v2_doc_creation_geolocation(
     )
 
     expected = {
-        "@timestamp": dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023),
+        "@timestamp": MOCK_NOON_APRIL_12TH_2023,
         "agent.name": "My Home Assistant",
         "agent.type": "hass",
         "ecs.version": "1.0.0",
-        "event.action": "testing",
+        "event": {
+            "action": "testing",
+            "kind": "event",
+            "type": "change",
+        },
         "hass.entity": {
             "attributes": {},
             "domain": "sensor",
@@ -829,11 +861,15 @@ async def test_v2_doc_creation_geolocation_from_attributes(
     )
 
     expected = {
-        "@timestamp": dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023),
+        "@timestamp": MOCK_NOON_APRIL_12TH_2023,
         "agent.name": "My Home Assistant",
         "agent.type": "hass",
         "ecs.version": "1.0.0",
-        "event.action": "testing",
+        "event": {
+            "action": "testing",
+            "kind": "event",
+            "type": "change",
+        },
         "hass.entity": {
             "attributes": {
                 "latitude": MOCK_LOCATION_DEVICE["lat"],
@@ -874,7 +910,7 @@ async def test_v2_doc_creation_attributes(
     )
 
     expected = {
-        "@timestamp": dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023),
+        "@timestamp": MOCK_NOON_APRIL_12TH_2023,
         "hass.entity": {
             "attributes": {"unit_of_measurement": "kg"},
             "domain": "sensor",
@@ -887,7 +923,11 @@ async def test_v2_doc_creation_attributes(
             "valueas": {"string": "tomato"},
         },
         "hass.object_id": "test_1",
-        "event.action": "testing",
+        "event": {
+            "action": "testing",
+            "kind": "event",
+            "type": "change",
+        },
     }
 
     assert diff(document, expected) == {}
@@ -909,7 +949,7 @@ async def test_v2_doc_creation_float_as_string(
     )
 
     expected = {
-        "@timestamp": dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023),
+        "@timestamp": MOCK_NOON_APRIL_12TH_2023,
         "hass.entity": {
             "attributes": {},
             "domain": "sensor",
@@ -922,7 +962,11 @@ async def test_v2_doc_creation_float_as_string(
             "valueas": {"float": 2.0},
         },
         "hass.object_id": "test_1",
-        "event.action": "testing",
+        "event": {
+            "action": "testing",
+            "kind": "event",
+            "type": "change",
+        },
     }
 
     assert diff(document, expected) == {}
@@ -945,7 +989,7 @@ async def test_v2_doc_creation_float_infinity(
     )
 
     expected = {
-        "@timestamp": dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023),
+        "@timestamp": MOCK_NOON_APRIL_12TH_2023,
         "hass.entity": {
             "attributes": {},
             "domain": "sensor",
@@ -958,7 +1002,11 @@ async def test_v2_doc_creation_float_infinity(
             "valueas": {"string": "inf"},
         },
         "hass.object_id": "test_1",
-        "event.action": "testing",
+        "event": {
+            "action": "testing",
+            "kind": "event",
+            "type": "change",
+        },
     }
 
     assert diff(document, expected) == {}
@@ -980,7 +1028,7 @@ async def test_v2_doc_creation_float(
     )
 
     expected = {
-        "@timestamp": dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023),
+        "@timestamp": MOCK_NOON_APRIL_12TH_2023,
         "hass.entity": {
             "attributes": {},
             "domain": "sensor",
@@ -993,7 +1041,11 @@ async def test_v2_doc_creation_float(
             "valueas": {"float": 2.0},
         },
         "hass.object_id": "test_1",
-        "event.action": "testing",
+        "event": {
+            "action": "testing",
+            "kind": "event",
+            "type": "change",
+        },
     }
 
     assert diff(document, expected) == {}
@@ -1017,7 +1069,7 @@ async def test_v2_doc_creation_datetime(
     )
 
     expected = {
-        "@timestamp": dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023),
+        "@timestamp": MOCK_NOON_APRIL_12TH_2023,
         "hass.entity": {
             "attributes": {},
             "domain": "sensor",
@@ -1034,7 +1086,11 @@ async def test_v2_doc_creation_datetime(
             },
         },
         "hass.object_id": "test_1",
-        "event.action": "testing",
+        "event": {
+            "action": "testing",
+            "kind": "event",
+            "type": "change",
+        },
     }
 
     assert diff(document, expected) == {}
@@ -1056,7 +1112,7 @@ async def test_v2_doc_creation_boolean_truefalse(
     )
 
     expected = {
-        "@timestamp": dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023),
+        "@timestamp": MOCK_NOON_APRIL_12TH_2023,
         "hass.entity": {
             "attributes": {},
             "domain": "sensor",
@@ -1069,7 +1125,11 @@ async def test_v2_doc_creation_boolean_truefalse(
             "valueas": {"boolean": True},
         },
         "hass.object_id": "test_1",
-        "event.action": "testing",
+        "event": {
+            "action": "testing",
+            "kind": "event",
+            "type": "change",
+        },
     }
 
     assert diff(document, expected) == {}
@@ -1091,7 +1151,7 @@ async def test_v2_doc_creation_boolean_onoff(
     )
 
     expected = {
-        "@timestamp": dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023),
+        "@timestamp": MOCK_NOON_APRIL_12TH_2023,
         "hass.entity": {
             "attributes": {},
             "domain": "sensor",
@@ -1104,7 +1164,11 @@ async def test_v2_doc_creation_boolean_onoff(
             "valueas": {"boolean": False},
         },
         "hass.object_id": "test_1",
-        "event.action": "testing",
+        "event": {
+            "action": "testing",
+            "kind": "event",
+            "type": "change",
+        },
     }
 
     assert diff(document, expected) == {}

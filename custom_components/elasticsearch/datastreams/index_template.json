@@ -153,6 +153,14 @@
                         "action": {
                             "type": "keyword",
                             "ignore_above": 1024
+                        },
+                        "type": {
+                            "ignore_above": 1024,
+                            "type": "keyword"
+                        },
+                        "kind": {
+                            "ignore_above": 1024,
+                            "type": "keyword"
                         }
                     }
                 },

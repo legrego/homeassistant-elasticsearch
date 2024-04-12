@@ -471,13 +471,13 @@ class DocumentPublisher:
                     LOGGER.warning(
                         "Duplicate entry #1 found: %s, event source %s: %s",
                         key,
-                        old_action["_source"]["event.action"],
+                        old_action["_source"]["event"]["action"],
                         old_action["_source"],
                     )
                     LOGGER.warning(
                         "Duplicate entry #2 found: %s, event source %s: %s",
                         key,
-                        action["_source"]["event.action"],
+                        action["_source"]["event"]["action"],
                         action["_source"],
                     )
                 except Exception as err:

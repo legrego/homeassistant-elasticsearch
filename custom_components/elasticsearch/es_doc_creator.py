@@ -334,7 +334,11 @@ class DocumentCreator:
         document_body = {
             "@timestamp": time_tz.isoformat(),
             "hass.object_id": state.object_id,
-            "event.action": reason,
+            "event": {
+                "action": reason,
+                "type": "change",
+                "kind": "event",
+            },
         }
 
         if (

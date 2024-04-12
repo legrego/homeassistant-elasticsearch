@@ -282,7 +282,11 @@ async def test_publish_state_change(
             "value": 2.0,
             "platform": "counter",
             "attributes": {},
-            "event.action": "State change",
+            "event": {
+                "action": "State change",
+                "kind": "event",
+                "type": "change",
+            },
         }
     ]
 
@@ -479,7 +483,11 @@ async def test_datastream_attribute_publishing(
             "agent.name": "My Home Assistant",
             "agent.type": "hass",
             "ecs.version": "1.0.0",
-            "event.action": "Attribute change",
+            "event": {
+                "action": "Attribute change",
+                "kind": "event",
+                "type": "change",
+            },
             "hass.entity": {
                 "attributes": {
                     "dict": '{"string":"abc123","int":123,"float":123.456}',
@@ -571,7 +579,11 @@ async def test_datastream_invalid_but_fixable_domain(
             "agent.name": "My Home Assistant",
             "agent.type": "hass",
             "ecs.version": "1.0.0",
-            "event.action": "State change",
+            "event": {
+                "action": "State change",
+                "kind": "event",
+                "type": "change",
+            },
             "hass.entity": {
                 "attributes": {},
                 "domain": "tom_ato",
@@ -1054,7 +1066,11 @@ async def test_publish_mode_state_changes(
             "value": 3.0,
             "platform": "counter",
             "attributes": {},
-            "event.action": "State change",
+            "event": {
+                "action": "State change",
+                "kind": "event",
+                "type": "change",
+            },
         }
     ]
 
@@ -1379,6 +1395,11 @@ def _build_expected_payload(
             "hass.entity_id_lower": entity_id,
             "hass.attributes": event["attributes"],
             "hass.value": event["value"],
+            "event": {
+                "action": change_type,
+                "kind": "event",
+                "type": "change",
+            },
             "@timestamp": "2023-04-12T12:00:00+00:00",
             "hass.entity": {
                 "id": entity_id,
@@ -1392,7 +1413,6 @@ def _build_expected_payload(
             "agent.type": "hass",
             "agent.version": "UNKNOWN",
             "ecs.version": "1.0.0",
-            "event.action": change_type,
             "host.geo.location": {
                 "lat": MOCK_LOCATION_SERVER["lat"],
                 "lon": MOCK_LOCATION_SERVER["lon"],
