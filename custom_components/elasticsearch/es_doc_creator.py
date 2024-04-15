@@ -22,7 +22,7 @@ from homeassistant.helpers import state as state_helper
 from homeassistant.util import dt as dt_util
 from pytz import utc
 
-from custom_components.elasticsearch.const import CONF_TAGS
+from custom_components.elasticsearch.const import CONF_TAGS, PUBLISH_REASON_POLLING
 from custom_components.elasticsearch.entity_details import EntityDetails
 from custom_components.elasticsearch.es_serializer import get_serializer
 from custom_components.elasticsearch.logger import LOGGER
@@ -331,12 +331,16 @@ class DocumentCreator:
         )
         """
 
+        updateType = "change"
+        if reason == PUBLISH_REASON_POLLING:
+            updateType = "info"
+
         document_body = {
             "@timestamp": time_tz.isoformat(),
             "hass.object_id": state.object_id,
             "event": {
                 "action": reason,
-                "type": "change",
+                "type": updateType,
                 "kind": "event",
             },
         }

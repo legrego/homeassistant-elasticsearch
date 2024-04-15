@@ -136,7 +136,9 @@ class DocumentPublisher:
 
         self._document_creator = DocumentCreator(hass, config)
 
-        self.publish_queue = Queue[tuple[State, EventType, str]]()
+        # Initialize an empty queue
+        self.empty_queue()
+
         self._last_publish_time = None
 
     async def async_init(self):
@@ -186,8 +188,9 @@ class DocumentPublisher:
 
     def empty_queue(self):
         """Empty the publish queue."""
-        while not self.publish_queue.empty():
-            self.publish_queue.get()
+        self.publish_queue = Queue[
+            tuple[State, EventType, str]
+        ]()  # Initialize a new queue and let the runtime perform garbage collection.
 
     async def async_do_publish(self):
         """Publish all queued documents to the Elasticsearch cluster."""
@@ -452,7 +455,7 @@ class DocumentPublisher:
                 if self.publish_active:
                     await asyncio.sleep(1)
 
-    def check_duplicate_entries(self, actions):
+    def check_duplicate_entries(self, actions: list):
         """Check for duplicate entries in the actions list."""
         duplicate_entries = {}
 
