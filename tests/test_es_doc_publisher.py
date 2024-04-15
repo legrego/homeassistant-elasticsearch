@@ -1423,6 +1423,9 @@ def _build_expected_payload(
             "tags": None,
         }
 
+        if change_type == PUBLISH_REASON_POLLING:
+            entry["event"]["type"] = "info"
+
         if include_entity_details:
             entry["hass.entity"].update(
                 {
