@@ -1,11 +1,29 @@
 site_name: Elasticsearch Component for Home Assistant
+nav:
+  - 'index.md'
+  - 'install.md'
+  - 'configure.md'
+  - 'using_kibana.md'
+  - 'ingest_advanced.md'
 theme:
   name: material
   features:
+    - content.code.annotate
     - content.code.copy
     - content.tabs.link
+    - navigation.path
+    - toc.follow
 markdown_extensions:
-  - pymdownx.superfences
+  - admonition
+  - pymdownx.details
+  - toc:
+      permalink: '#'
+  - attr_list
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.tabbed:
       alternate_style: true
   - pymdownx.emoji:
