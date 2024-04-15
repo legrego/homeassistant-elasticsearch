@@ -7,7 +7,8 @@
 		8123
 	],
 	"mounts": [
-		"source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+		"source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind",
+		"source=${localEnv:HOME}/.ssh,target=/root/.ssh,readonly,type=bind"
 	],
 	"initializeCommand": "ls",
 	"portsAttributes": {
