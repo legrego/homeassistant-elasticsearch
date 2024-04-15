@@ -18,7 +18,7 @@ ruff = ">=0.0.291"
 pip = ">=21.0,<24.1"
 
 [tool.poetry.group.docs.dependencies]
-mkdocs-material = "*"
+mkdocs-material = ">=9.5.17"
 
 [tool.poetry.group.test.dependencies]
 pytest = ">=7.3.1"
