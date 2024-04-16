@@ -131,6 +131,20 @@ POST /_security/api_key
 }
 ```
 
+The API key response looks like this:
+
+```json
+{
+  "id": "895G5o4BPC086HrYG5VS",
+  "name": "home_assistant_component",
+  "api_key": "nwac3lCdSfSovgWOUTJ9YA",
+  "encoded": "ODk1RzVvNEJQQzABAkhyyUc3VlM6bndYYjdsQ2RTZlNvdmdXT1VUSjlZQQ=="
+}
+```
+
+We need to use the `encoded`.
+
+
 ### Authenticating via username/password
 
 If you choose not to authenticate via an API Key, you need to create a user and role with appropriate privileges.
