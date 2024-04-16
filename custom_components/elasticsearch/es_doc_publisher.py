@@ -59,8 +59,9 @@ class DocumentPublisher:
         if self._destination_type == INDEX_MODE_LEGACY:
             self.legacy_index_name: str = index_manager.index_alias
         elif self._destination_type == INDEX_MODE_DATASTREAM:
-            self.datastream_prefix: str = index_manager.datastream_type + "-" + index_manager.datastream_name_prefix
-            self.datastream_suffix: str = index_manager.datastream_namespace
+            self.datastream_type: str = index_manager.datastream_type
+            self.datastream_dataset_prefix: str = index_manager.datastream_name_prefix
+            self.datastream_namespace: str = index_manager.datastream_namespace
 
         self._publish_frequency = config.get(CONF_PUBLISH_FREQUENCY)
         self._publish_mode = config.get(CONF_PUBLISH_MODE)
@@ -312,16 +313,27 @@ class DocumentPublisher:
             document = self._document_creator.state_to_document(
                 state, time, reason, version=2
             )
+
+            # dataset = homeassistant.device_tracker
+            dataset = self.datastream_dataset_prefix + "." + state.domain
+
             # <type>-<name>-<namespace>
-            # <datastream_prefix>.<domain>-<suffix>
-            # metrics-homeassistant.device_tracker-default
             destination_data_stream = self._sanitize_datastream_name(
-                self.datastream_prefix
-                + "."
-                + state.domain
-                + "-"
-                + self.datastream_suffix
+                self.datastream_type + "-" + dataset + "-" + self.datastream_namespace
             )
+
+            # Split destination_data_stream on hyphers to get type, name, and namespace from sanitized datastream
+            destination_data_stream_parts = destination_data_stream.split("-")
+            destination_data_stream_type = destination_data_stream_parts[0]
+            destination_data_stream_dataset = destination_data_stream_parts[1]
+            destination_data_stream_namespace = destination_data_stream_parts[2]
+
+            # Populate data stream fields on the document
+            document["data_stream"] = {
+                "dataset": destination_data_stream_dataset,
+                "namespace": destination_data_stream_namespace,
+                "type": destination_data_stream_type,
+            }
 
             return {
                 "_op_type": "create",

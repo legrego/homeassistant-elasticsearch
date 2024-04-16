@@ -483,6 +483,11 @@ async def test_datastream_attribute_publishing(
             "agent.name": "My Home Assistant",
             "agent.type": "hass",
             "ecs.version": "1.0.0",
+            "data_stream": {
+                "dataset": "homeassistant.counter",
+                "namespace": "default",
+                "type": "metrics",
+            },
             "event": {
                 "action": "Attribute change",
                 "kind": "event",
@@ -579,6 +584,11 @@ async def test_datastream_invalid_but_fixable_domain(
             "agent.name": "My Home Assistant",
             "agent.type": "hass",
             "ecs.version": "1.0.0",
+            "data_stream": {
+                "dataset": "homeassistant.tom_ato",
+                "namespace": "default",
+                "type": "metrics",
+            },
             "event": {
                 "action": "State change",
                 "kind": "event",
