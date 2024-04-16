@@ -33,6 +33,9 @@ from custom_components.elasticsearch.const import (
     PUBLISH_MODE_ALL,
     PUBLISH_MODE_ANY_CHANGES,
     PUBLISH_MODE_STATE_CHANGES,
+    PUBLISH_REASON_ATTR_CHANGE,
+    PUBLISH_REASON_POLLING,
+    PUBLISH_REASON_STATE_CHANGE,
 )
 from custom_components.elasticsearch.errors import ElasticException
 from custom_components.elasticsearch.es_doc_publisher import DocumentPublisher
@@ -279,6 +282,11 @@ async def test_publish_state_change(
             "value": 2.0,
             "platform": "counter",
             "attributes": {},
+            "event": {
+                "action": "State change",
+                "kind": "event",
+                "type": "change",
+            },
         }
     ]
 
@@ -424,6 +432,14 @@ async def test_datastream_attribute_publishing(
             self.field = "This class should be skipped, as it cannot be serialized."
             pass
 
+    hass.states.async_set("counter.test_1", "3")
+
+    await hass.async_block_till_done()
+
+    assert publisher.queue_size() == 1
+
+    publisher.empty_queue()
+
     hass.states.async_set(
         "counter.test_1",
         "3",
@@ -467,6 +483,11 @@ async def test_datastream_attribute_publishing(
             "agent.name": "My Home Assistant",
             "agent.type": "hass",
             "ecs.version": "1.0.0",
+            "event": {
+                "action": "Attribute change",
+                "kind": "event",
+                "type": "change",
+            },
             "hass.entity": {
                 "attributes": {
                     "dict": '{"string":"abc123","int":123,"float":123.456}',
@@ -558,6 +579,11 @@ async def test_datastream_invalid_but_fixable_domain(
             "agent.name": "My Home Assistant",
             "agent.type": "hass",
             "ecs.version": "1.0.0",
+            "event": {
+                "action": "State change",
+                "kind": "event",
+                "type": "change",
+            },
             "hass.entity": {
                 "attributes": {},
                 "domain": "tom_ato",
@@ -622,6 +648,14 @@ async def test_attribute_publishing(hass, es_aioclient_mock: AiohttpClientMocker
             self.field = "This class should be skipped, as it cannot be serialized."
             pass
 
+    hass.states.async_set("counter.test_1", "3")
+
+    await hass.async_block_till_done()
+
+    assert publisher.queue_size() == 1
+
+    publisher.empty_queue()
+
     hass.states.async_set(
         "counter.test_1",
         "3",
@@ -684,7 +718,13 @@ async def test_attribute_publishing(hass, es_aioclient_mock: AiohttpClientMocker
         }
     ]
 
-    assert diff(request.data, _build_expected_payload(events)) == {}
+    assert (
+        diff(
+            request.data,
+            _build_expected_payload(events, change_type=PUBLISH_REASON_ATTR_CHANGE),
+        )
+        == {}
+    )
     await gateway.async_stop_gateway()
 
 
@@ -824,7 +864,13 @@ async def test_include_exclude_publishing_mode_all(
         },
     ]
 
-    assert diff(request.data, _build_expected_payload(events)) == {}
+    assert (
+        diff(
+            request.data,
+            _build_expected_payload(events, change_type=PUBLISH_REASON_POLLING),
+        )
+        == {}
+    )
     await gateway.async_stop_gateway()
 
 
@@ -945,19 +991,21 @@ async def test_include_exclude_publishing_mode_any(
         },
     ]
 
-    assert diff(request.data, _build_expected_payload(events)) == {}
+    assert (
+        diff(
+            request.data,
+            _build_expected_payload(events, change_type=PUBLISH_REASON_STATE_CHANGE),
+        )
+        == {}
+    )
     await gateway.async_stop_gateway()
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "publish_mode",
-    [PUBLISH_MODE_STATE_CHANGES, PUBLISH_MODE_ANY_CHANGES, PUBLISH_MODE_ALL],
-)
-async def test_publish_modes(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, publish_mode
+async def test_publish_mode_state_changes(
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
 ):
-    """Test publish modes behave correctly."""
+    """Test publish mode PUBLISH_MODE_STATE_CHANGES."""
 
     counter_config = {counter.DOMAIN: {"test_1": {}, "test_2": {}}}
     assert await async_setup_component(hass, counter.DOMAIN, counter_config)
@@ -974,7 +1022,7 @@ async def test_publish_modes(
     config = build_full_config(
         {
             "url": es_url,
-            CONF_PUBLISH_MODE: publish_mode,
+            CONF_PUBLISH_MODE: PUBLISH_MODE_STATE_CHANGES,
             CONF_INDEX_MODE: INDEX_MODE_LEGACY,
         }
     )
@@ -1004,17 +1052,110 @@ async def test_publish_modes(
     hass.states.async_set("counter.test_1", "3", force_update=True)
     await hass.async_block_till_done()
 
+    assert publisher.queue_size() == 1
+
+    await publisher.async_do_publish()
+
+    bulk_requests = extract_es_bulk_requests(es_aioclient_mock)
+    assert len(bulk_requests) == 1
+
+    events = [
+        {
+            "domain": "counter",
+            "object_id": "test_1",
+            "value": 3.0,
+            "platform": "counter",
+            "attributes": {},
+            "event": {
+                "action": "State change",
+                "kind": "event",
+                "type": "change",
+            },
+        }
+    ]
+
+    payload = bulk_requests[0].data
+
+    assert (
+        diff(
+            _build_expected_payload(events, change_type=PUBLISH_REASON_STATE_CHANGE),
+            payload,
+        )
+        == {}
+    )
+
+    assert publisher.queue_size() == 0
+
+    es_aioclient_mock.mock_calls.clear()
+
     # Attribute change
     hass.states.async_set(
         "counter.test_1", "3", {"new_attr": "attr_value"}, force_update=True
     )
-
     await hass.async_block_till_done()
 
-    if publish_mode == PUBLISH_MODE_ALL or publish_mode == PUBLISH_MODE_ANY_CHANGES:
-        assert publisher.queue_size() == 2
-    if publish_mode == PUBLISH_MODE_STATE_CHANGES:
-        assert publisher.queue_size() == 1
+    assert publisher.queue_size() == 0
+
+    await publisher.async_do_publish()
+
+    bulk_requests = extract_es_bulk_requests(es_aioclient_mock)
+    assert len(bulk_requests) == 0
+
+    await gateway.async_stop_gateway()
+
+
+@pytest.mark.asyncio
+async def test_publish_mode_any_changes(
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
+):
+    """Test publish mode PUBLISH_MODE_ANY_CHANGES."""
+
+    counter_config = {counter.DOMAIN: {"test_1": {}, "test_2": {}}}
+    assert await async_setup_component(hass, counter.DOMAIN, counter_config)
+    await hass.async_block_till_done()
+
+    hass.states.async_set("counter.test_1", "2")
+    hass.states.async_set("counter.test_2", "2")
+    await hass.async_block_till_done()
+
+    es_url = "http://localhost:9200"
+
+    mock_es_initialization(es_aioclient_mock, es_url)
+
+    config = build_full_config(
+        {
+            "url": es_url,
+            CONF_PUBLISH_MODE: PUBLISH_MODE_ANY_CHANGES,
+            CONF_INDEX_MODE: INDEX_MODE_LEGACY,
+        }
+    )
+
+    mock_entry = MockConfigEntry(
+        unique_id="test_entity_detail_publishing",
+        domain=DOMAIN,
+        version=3,
+        data=config,
+        title="ES Config",
+    )
+
+    entry = await _setup_config_entry(hass, mock_entry)
+
+    gateway = ElasticsearchGateway(config)
+    index_manager = IndexManager(hass, config, gateway)
+    publisher = DocumentPublisher(
+        config, gateway, index_manager, hass, config_entry=entry
+    )
+
+    await gateway.async_init()
+    await publisher.async_init()
+
+    assert publisher.queue_size() == 0
+
+    # State change
+    hass.states.async_set("counter.test_1", "3", force_update=True)
+    await hass.async_block_till_done()
+
+    assert publisher.queue_size() == 1
 
     await publisher.async_do_publish()
 
@@ -1031,19 +1172,129 @@ async def test_publish_modes(
         }
     ]
 
-    if publish_mode != PUBLISH_MODE_STATE_CHANGES:
-        events.append(
+    payload = bulk_requests[0].data
+
+    assert (
+        diff(
+            _build_expected_payload(events, change_type=PUBLISH_REASON_STATE_CHANGE),
+            payload,
+        )
+        == {}
+    )
+
+    assert publisher.queue_size() == 0
+
+    es_aioclient_mock.mock_calls.clear()
+
+    # Attribute change
+    hass.states.async_set(
+        "counter.test_1", "3", {"new_attr": "attr_value"}, force_update=True
+    )
+    await hass.async_block_till_done()
+
+    assert publisher.queue_size() == 1
+
+    await publisher.async_do_publish()
+
+    bulk_requests = extract_es_bulk_requests(es_aioclient_mock)
+    assert len(bulk_requests) == 1
+
+    events = [
+        {
+            "domain": "counter",
+            "object_id": "test_1",
+            "value": 3.0,
+            "platform": "counter",
+            "attributes": {"new_attr": "attr_value"},
+        }
+    ]
+
+    payload = bulk_requests[0].data
+
+    assert (
+        diff(
+            _build_expected_payload(events, change_type=PUBLISH_REASON_ATTR_CHANGE),
+            payload,
+        )
+        == {}
+    )
+
+    await gateway.async_stop_gateway()
+
+
+@pytest.mark.asyncio
+async def test_publish_mode_all(
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
+):
+    """Test publish mode PUBLISH_MODE_ALL."""
+
+    counter_config = {counter.DOMAIN: {"test_1": {}, "test_2": {}}}
+    assert await async_setup_component(hass, counter.DOMAIN, counter_config)
+    await hass.async_block_till_done()
+
+    hass.states.async_set("counter.test_1", "2")
+    hass.states.async_set("counter.test_2", "2")
+    await hass.async_block_till_done()
+
+    es_url = "http://localhost:9200"
+
+    mock_es_initialization(es_aioclient_mock, es_url)
+
+    config = build_full_config(
+        {
+            "url": es_url,
+            CONF_PUBLISH_MODE: PUBLISH_MODE_ALL,
+            CONF_INDEX_MODE: INDEX_MODE_LEGACY,
+        }
+    )
+
+    mock_entry = MockConfigEntry(
+        unique_id="test_entity_detail_publishing",
+        domain=DOMAIN,
+        version=3,
+        data=config,
+        title="ES Config",
+    )
+
+    entry = await _setup_config_entry(hass, mock_entry)
+
+    gateway = ElasticsearchGateway(config)
+    index_manager = IndexManager(hass, config, gateway)
+    publisher = DocumentPublisher(
+        config, gateway, index_manager, hass, config_entry=entry
+    )
+
+    await gateway.async_init()
+    await publisher.async_init()
+
+    assert publisher.queue_size() == 0
+
+    # State change
+    hass.states.async_set("counter.test_1", "3", force_update=True)
+    await hass.async_block_till_done()
+
+    assert publisher.queue_size() == 1
+
+    await publisher.async_do_publish()
+
+    bulk_requests = extract_es_bulk_requests(es_aioclient_mock)
+    assert len(bulk_requests) == 1
+
+    payload = bulk_requests[0].data
+    events = _build_expected_payload(
+        [
             {
                 "domain": "counter",
                 "object_id": "test_1",
                 "value": 3.0,
                 "platform": "counter",
-                "attributes": {"new_attr": "attr_value"},
+                "attributes": {},
             }
-        )
-
-    if publish_mode == PUBLISH_MODE_ALL:
-        events.append(
+        ],
+        change_type=PUBLISH_REASON_STATE_CHANGE,
+    )
+    events += _build_expected_payload(
+        [
             {
                 "domain": "counter",
                 "object_id": "test_2",
@@ -1051,11 +1302,70 @@ async def test_publish_modes(
                 "platform": "counter",
                 "attributes": {},
             }
+        ],
+        change_type=PUBLISH_REASON_POLLING,
+    )
+
+    assert (
+        diff(
+            events,
+            payload,
         )
+        == {}
+    )
+
+    assert publisher.queue_size() == 0
+
+    es_aioclient_mock.mock_calls.clear()
+
+    # Attribute change
+    hass.states.async_set(
+        "counter.test_1", "3", {"new_attr": "attr_value"}, force_update=True
+    )
+    await hass.async_block_till_done()
+
+    assert publisher.queue_size() == 1
+
+    await publisher.async_do_publish()
+
+    bulk_requests = extract_es_bulk_requests(es_aioclient_mock)
+    assert len(bulk_requests) == 1
 
     payload = bulk_requests[0].data
+    events = _build_expected_payload(
+        [
+            {
+                "domain": "counter",
+                "object_id": "test_1",
+                "value": 3.0,
+                "platform": "counter",
+                "attributes": {"new_attr": "attr_value"},
+            }
+        ],
+        change_type=PUBLISH_REASON_ATTR_CHANGE,
+    )
 
-    assert diff(_build_expected_payload(events), payload) == {}
+    events += _build_expected_payload(
+        [
+            {
+                "domain": "counter",
+                "object_id": "test_2",
+                "value": 2.0,
+                "platform": "counter",
+                "attributes": {},
+            }
+        ],
+        change_type=PUBLISH_REASON_POLLING,
+    )
+
+    assert (
+        diff(
+            events,
+            payload,
+        )
+        == {}
+    )
+
     await gateway.async_stop_gateway()
 
 
@@ -1065,6 +1375,7 @@ def _build_expected_payload(
     device_id=None,
     entity_name=None,
     version=1,
+    change_type=PUBLISH_REASON_STATE_CHANGE,
 ):
     def event_to_payload(event, version=version):
         if version == 1:
@@ -1084,6 +1395,11 @@ def _build_expected_payload(
             "hass.entity_id_lower": entity_id,
             "hass.attributes": event["attributes"],
             "hass.value": event["value"],
+            "event": {
+                "action": change_type,
+                "kind": "event",
+                "type": "change",
+            },
             "@timestamp": "2023-04-12T12:00:00+00:00",
             "hass.entity": {
                 "id": entity_id,
@@ -1106,6 +1422,9 @@ def _build_expected_payload(
             "host.hostname": "UNKNOWN",
             "tags": None,
         }
+
+        if change_type == PUBLISH_REASON_POLLING:
+            entry["event"]["type"] = "info"
 
         if include_entity_details:
             entry["hass.entity"].update(

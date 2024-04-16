@@ -28,6 +28,9 @@ from .const import (
     INDEX_MODE_LEGACY,
     PUBLISH_MODE_ALL,
     PUBLISH_MODE_STATE_CHANGES,
+    PUBLISH_REASON_ATTR_CHANGE,
+    PUBLISH_REASON_POLLING,
+    PUBLISH_REASON_STATE_CHANGE,
 )
 from .logger import LOGGER
 
@@ -93,22 +96,30 @@ class DocumentPublisher:
             """Listen for new messages on the bus and queue them for send."""
             state: State = event.data.get("new_state")
             old_state: State = event.data.get("old_state")
+
             if state is None:
                 return
-
-            if (
-                old_state is not None
-                and self._publish_mode == PUBLISH_MODE_STATE_CHANGES
-            ):
+            elif old_state is None:
+                reason = PUBLISH_REASON_STATE_CHANGE
+            else:  # state and old_state are both available
                 state_value_changed = old_state.state != state.state
-                if not state_value_changed:
+
+                if (
+                    not state_value_changed
+                    and self._publish_mode == PUBLISH_MODE_STATE_CHANGES
+                ):
                     LOGGER.debug(
-                        "Excluding event state change for %s because the value did not change",
+                        "Excluding event state change for %s because the value did not change and publish mode is set to state changes only.",
                         state.entity_id,
                     )
                     return
 
-            self.enqueue_state(state, event)
+                if state_value_changed:
+                    reason = PUBLISH_REASON_STATE_CHANGE
+                else:
+                    reason = PUBLISH_REASON_ATTR_CHANGE
+
+            self.enqueue_state(state, event, reason)
 
         self.remove_state_change_listener = hass.bus.async_listen(
             EVENT_STATE_CHANGED, elastic_event_listener
@@ -125,7 +136,9 @@ class DocumentPublisher:
 
         self._document_creator = DocumentCreator(hass, config)
 
-        self.publish_queue = Queue[tuple[State, EventType]]()
+        # Initialize an empty queue
+        self.empty_queue()
+
         self._last_publish_time = None
 
     async def async_init(self):
@@ -164,14 +177,20 @@ class DocumentPublisher:
         """Return the approximate queue size."""
         return self.publish_queue.qsize()
 
-    def enqueue_state(self, state: State, event: EventType):
+    def enqueue_state(self, state: State, event: EventType, reason: str):
         """Queue up the provided state change."""
 
         domain = state.domain
         entity_id = state.entity_id
 
         if self._should_publish_entity_state(domain, entity_id):
-            self.publish_queue.put((state, event))
+            self.publish_queue.put((state, event, reason))
+
+    def empty_queue(self):
+        """Empty the publish queue."""
+        self.publish_queue = Queue[
+            tuple[State, EventType, str]
+        ]()  # Initialize a new queue and let the runtime perform garbage collection.
 
     async def async_do_publish(self):
         """Publish all queued documents to the Elasticsearch cluster."""
@@ -189,22 +208,33 @@ class DocumentPublisher:
         self._last_publish_time = datetime.now()
 
         while self.publish_active and not self.publish_queue.empty():
-            (state, event) = self.publish_queue.get()
+            (state, event, reason) = self.publish_queue.get()
 
             key = state.entity_id
 
             entity_counts[key] = (
                 1 if key not in entity_counts else entity_counts[key] + 1
             )
-            actions.append(self._state_to_bulk_action(state, event.time_fired))
+            actions.append(self._state_to_bulk_action(state, event.time_fired, reason))
 
         if publish_all_states:
             all_states = self._hass.states.async_all()
+            reason = PUBLISH_REASON_POLLING
             for state in all_states:
-                if state.entity_id not in entity_counts and self._should_publish_entity_state(state.domain, state.entity_id):
+                if (
+                    state.entity_id not in entity_counts
+                    and self._should_publish_entity_state(state.domain, state.entity_id)
+                ):
                     actions.append(
-                        self._state_to_bulk_action(state, self._last_publish_time)
+                        self._state_to_bulk_action(
+                            state, self._last_publish_time, reason
+                        )
                     )
+
+        # Check for duplicate entries
+        # The timestamp and object_id field are combined to generate the Elasticsearch document ID
+        # so we check and log warnings for duplicates
+        self.check_duplicate_entries(actions)
 
         LOGGER.info("Publishing %i documents to Elasticsearch", len(actions))
 
@@ -275,12 +305,13 @@ class DocumentPublisher:
         # At this point, neither the domain nor entity belong to an explicit include/exclude list.
         return True
 
-    def _state_to_bulk_action(self, state: State, time: datetime):
+    def _state_to_bulk_action(self, state: State, time: datetime, reason: str):
         """Create a bulk action from the given state object."""
 
-
         if self._destination_type == INDEX_MODE_DATASTREAM:
-            document = self._document_creator.state_to_document(state, time, version=2)
+            document = self._document_creator.state_to_document(
+                state, time, reason, version=2
+            )
             # <type>-<name>-<namespace>
             # <datastream_prefix>.<domain>-<suffix>
             # metrics-homeassistant.device_tracker-default
@@ -299,7 +330,9 @@ class DocumentPublisher:
             }
 
         if self._destination_type == INDEX_MODE_LEGACY:
-            document = self._document_creator.state_to_document(state, time, version=1)
+            document = self._document_creator.state_to_document(
+                state, time, reason, version=1
+            )
 
             return {
                 "_op_type": "index",
@@ -421,3 +454,35 @@ class DocumentPublisher:
             finally:
                 if self.publish_active:
                     await asyncio.sleep(1)
+
+    def check_duplicate_entries(self, actions: list):
+        """Check for duplicate entries in the actions list."""
+        duplicate_entries = {}
+
+        for action in actions:
+            key = (
+                action["_source"]["@timestamp"]
+                + "_"
+                + action["_source"]["hass.entity"]["domain"]
+                + "."
+                + action["_source"]["hass.object_id"]
+            )
+
+            if key in duplicate_entries:
+                old_action = duplicate_entries[key]
+
+                LOGGER.warning(
+                    "Duplicate entry #1 found: %s, event source %s: %s",
+                    key,
+                    old_action["_source"]["event"]["action"],
+                    old_action["_source"],
+                )
+                LOGGER.warning(
+                    "Duplicate entry #2 found: %s, event source %s: %s",
+                    key,
+                    action["_source"]["event"]["action"],
+                    action["_source"],
+                )
+
+            else:
+                duplicate_entries[key] = action

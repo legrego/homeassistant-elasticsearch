@@ -22,7 +22,7 @@ from homeassistant.helpers import state as state_helper
 from homeassistant.util import dt as dt_util
 from pytz import utc
 
-from custom_components.elasticsearch.const import CONF_TAGS
+from custom_components.elasticsearch.const import CONF_TAGS, PUBLISH_REASON_POLLING
 from custom_components.elasticsearch.entity_details import EntityDetails
 from custom_components.elasticsearch.es_serializer import get_serializer
 from custom_components.elasticsearch.logger import LOGGER
@@ -299,7 +299,9 @@ class DocumentCreator:
 
         return additions
 
-    def state_to_document(self, state: State, time: datetime, version: int = 2) -> dict:
+    def state_to_document(
+        self, state: State, time: datetime, reason: str, version: int = 2
+    ) -> dict:
         """Convert entity state to ES document."""
 
         if time.tzinfo is None:
@@ -329,9 +331,18 @@ class DocumentCreator:
         )
         """
 
+        updateType = "change"
+        if reason == PUBLISH_REASON_POLLING:
+            updateType = "info"
+
         document_body = {
-            "@timestamp": time_tz,
+            "@timestamp": time_tz.isoformat(),
             "hass.object_id": state.object_id,
+            "event": {
+                "action": reason,
+                "type": updateType,
+                "kind": "event",
+            },
         }
 
         if (
