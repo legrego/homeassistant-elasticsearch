@@ -1,7 +1,7 @@
 """Tests for Elastic init."""
 
 import pytest
-from elasticsearch import migrate_config_entry_to_version
+from elasticsearch import migrate_data_and_options_to_version
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 from homeassistant.config_entries import SOURCE_REAUTH, ConfigEntryState
 from homeassistant.const import CONF_ALIAS, CONF_URL
@@ -33,7 +33,7 @@ async def _setup_config_entry(hass: HomeAssistant, mock_entry: MockConfigEntry):
     return entry
 
 
-def _test_config_migration_to_version(
+def _test_config_data_options_migration_to_version(
     Before_Version, Before_Data, After_Version, After_Data
 ):
     mock_entry = MockConfigEntry(
@@ -44,7 +44,7 @@ def _test_config_migration_to_version(
         title="ES Config",
     )
 
-    migrate_config_entry_to_version(mock_entry, desired_version=After_Version)
+    migrate_data_and_options_to_version(mock_entry, desired_version=After_Version)
 
     assert mock_entry
     assert mock_entry.data == After_Data
@@ -283,7 +283,7 @@ async def test_config_migration_v1tov2(
     After_Version = 2
     After_Data = {"url": "http://migration-test:9200", "publish_mode": "Any changes"}
 
-    assert _test_config_migration_to_version(
+    assert _test_config_data_options_migration_to_version(
         Before_Version, Before_Data, After_Version, After_Data
     )
 
@@ -299,7 +299,7 @@ async def test_config_migration_v2tov3(
     After_Version = 3
     After_Data = {"url": "http://migration-test:9200"}
 
-    assert _test_config_migration_to_version(
+    assert _test_config_data_options_migration_to_version(
         Before_Version, Before_Data, After_Version, After_Data
     )
 
@@ -322,13 +322,39 @@ async def test_config_migration_v3tov4(
     }
     After_Version = 4
 
-    assert _test_config_migration_to_version(
+    assert _test_config_data_options_migration_to_version(
         Before_Version, Before_Data, After_Version, After_Data
     )
 
 
 @pytest.mark.asyncio
-async def test_config_migration_v1tov4(
+async def test_config_migration_v4tov5(
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
+):
+    """Test config migration from v4."""
+
+    Before_Version = 4
+    Before_Data = {
+        "url": "http://migration-test:9200",
+        "publish_enabled": True,
+        "publish_frequency": 60,
+        "publish_mode": "Any changes",
+        "excluded_domains": [],
+        "excluded_entities": [],
+        "included_domains": [],
+        "included_entities": [],
+    }
+    After_Data = {"url": "http://migration-test:9200"}
+
+    After_Version = 5
+
+    assert _test_config_data_options_migration_to_version(
+        Before_Version, Before_Data, After_Version, After_Data
+    )
+
+
+@pytest.mark.asyncio
+async def test_config_migration_v1tov5(
     hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
 ):
     """Test config migration from v1."""
@@ -340,6 +366,12 @@ async def test_config_migration_v1tov4(
         "ilm_delete_after": "30d",
         "health_sensor_enabled": True,
         "only_publish_changed": True,
+        "publish_enabled": True,
+        "publish_frequency": 60,
+        "excluded_domains": [],
+        "excluded_entities": [],
+        "included_domains": [],
+        "included_entities": [],
     }
 
     After_Version = 4

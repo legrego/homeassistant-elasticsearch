@@ -19,13 +19,18 @@ from jsondiff import diff
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
-from custom_components.elasticsearch.config_flow import build_full_config
+from custom_components.elasticsearch.config_flow import (
+    build_data,
+    build_full_config,
+    build_options,
+)
 from custom_components.elasticsearch.const import (
     CONF_EXCLUDED_DOMAINS,
     CONF_EXCLUDED_ENTITIES,
     CONF_INCLUDED_DOMAINS,
     CONF_INCLUDED_ENTITIES,
     CONF_INDEX_MODE,
+    CONF_PUBLISH_ENABLED,
     CONF_PUBLISH_MODE,
     DOMAIN,
     INDEX_MODE_DATASTREAM,
@@ -192,7 +197,13 @@ async def test_queue_functions(
         unique_id="test_queue_functions",
         domain=DOMAIN,
         version=3,
-        data=build_full_config({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_LEGACY}),
+        data=build_data({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_LEGACY}),
+        options=build_options(
+            {
+                CONF_PUBLISH_ENABLED: True,
+                CONF_PUBLISH_MODE: PUBLISH_MODE_STATE_CHANGES,
+            }
+        ),
         title="ES Config",
     )
 

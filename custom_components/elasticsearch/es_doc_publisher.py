@@ -1,4 +1,5 @@
 """Publishes documents to Elasticsearch."""
+
 import asyncio
 import time
 from datetime import datetime
@@ -38,10 +39,19 @@ from .logger import LOGGER
 class DocumentPublisher:
     """Publishes documents to Elasticsearch."""
 
-    def __init__(self, config, gateway: ElasticsearchGateway, index_manager: IndexManager, hass: HomeAssistant, config_entry: ConfigEntry):
+    def __init__(
+        self,
+        config,
+        gateway: ElasticsearchGateway,
+        index_manager: IndexManager,
+        hass: HomeAssistant,
+        config_entry: ConfigEntry,
+    ):
         """Initialize the publisher."""
 
-        self.publish_enabled = config.get(CONF_PUBLISH_ENABLED)
+        self._config_entry = config_entry
+
+        self.publish_enabled = config_entry.options.get(CONF_PUBLISH_ENABLED)
         self.publish_active = False
         self.remove_state_change_listener = None
 
@@ -54,7 +64,7 @@ class DocumentPublisher:
         self._gateway: ElasticsearchGateway = gateway
         self._hass: HomeAssistant = hass
 
-        self._destination_type: str = config.get(CONF_INDEX_MODE)
+        self._destination_type: str = config_entry.data.get(CONF_INDEX_MODE)
 
         if self._destination_type == INDEX_MODE_LEGACY:
             self.legacy_index_name: str = index_manager.index_alias
@@ -63,15 +73,15 @@ class DocumentPublisher:
             self.datastream_dataset_prefix: str = index_manager.datastream_name_prefix
             self.datastream_namespace: str = index_manager.datastream_namespace
 
-        self._publish_frequency = config.get(CONF_PUBLISH_FREQUENCY)
-        self._publish_mode = config.get(CONF_PUBLISH_MODE)
+        self._publish_frequency = config_entry.options.get(CONF_PUBLISH_FREQUENCY)
+        self._publish_mode = config_entry.options.get(CONF_PUBLISH_MODE)
         self._publish_timer_ref = None
-        self._tags = config.get(CONF_TAGS)
+        self._tags = config_entry.options.get(CONF_TAGS)
 
-        self._excluded_domains = config.get(CONF_EXCLUDED_DOMAINS)
-        self._excluded_entities = config.get(CONF_EXCLUDED_ENTITIES)
-        self._included_domains = config.get(CONF_INCLUDED_DOMAINS)
-        self._included_entities = config.get(CONF_INCLUDED_ENTITIES)
+        self._excluded_domains = config_entry.options.get(CONF_EXCLUDED_DOMAINS)
+        self._excluded_entities = config_entry.options.get(CONF_EXCLUDED_ENTITIES)
+        self._included_domains = config_entry.options.get(CONF_INCLUDED_DOMAINS)
+        self._included_entities = config_entry.options.get(CONF_INCLUDED_ENTITIES)
 
         if self._excluded_domains:
             LOGGER.debug(
@@ -137,9 +147,6 @@ class DocumentPublisher:
 
         self._document_creator = DocumentCreator(hass, config)
 
-        # Initialize an empty queue
-        self.empty_queue()
-
         self._last_publish_time = None
 
     async def async_init(self):
@@ -147,6 +154,8 @@ class DocumentPublisher:
         if not self.publish_enabled:
             LOGGER.debug("Aborting async_init: publish is not enabled")
             return
+
+        self.empty_queue()
 
         await self._document_creator.async_init()
 
@@ -274,27 +283,43 @@ class DocumentPublisher:
         is_domain_included = self._included_domains and domain in self._included_domains
         is_domain_excluded = self._excluded_domains and domain in self._excluded_domains
 
-        is_entity_included = self._included_entities and entity_id in self._included_entities
-        is_entity_excluded = self._excluded_entities and entity_id in self._excluded_entities
+        is_entity_included = (
+            self._included_entities and entity_id in self._included_entities
+        )
+        is_entity_excluded = (
+            self._excluded_entities and entity_id in self._excluded_entities
+        )
 
         if is_entity_excluded:
-            message_suffix = ''
+            message_suffix = ""
             if is_domain_included:
-                message_suffix += ', which supersedes the configured domain inclusion.'
+                message_suffix += ", which supersedes the configured domain inclusion."
 
-            LOGGER.debug("Skipping %s: this entity is explicitly excluded%s", entity_id, message_suffix)
+            LOGGER.debug(
+                "Skipping %s: this entity is explicitly excluded%s",
+                entity_id,
+                message_suffix,
+            )
             return False
 
         if is_entity_included:
-            message_suffix = ''
+            message_suffix = ""
             if is_domain_excluded:
-                message_suffix += ', which supersedes the configured domain exclusion.'
+                message_suffix += ", which supersedes the configured domain exclusion."
 
-            LOGGER.debug("Including %s: this entity is explicitly included%s", entity_id, message_suffix)
+            LOGGER.debug(
+                "Including %s: this entity is explicitly included%s",
+                entity_id,
+                message_suffix,
+            )
             return True
 
         if is_domain_included:
-            LOGGER.debug("Including %s: this entity belongs to an included domain (%s)", entity_id, domain)
+            LOGGER.debug(
+                "Including %s: this entity belongs to an included domain (%s)",
+                entity_id,
+                domain,
+            )
             return True
 
         if is_domain_excluded:
@@ -355,16 +380,15 @@ class DocumentPublisher:
                 "require_alias": True,
             }
 
-
-
     def _start_publish_timer(self):
         """Initialize the publish timer."""
         if self._config_entry:
-            self._publish_timer_ref = self._config_entry.async_create_background_task(self._hass, self._publish_queue_timer(), 'publish_queue_timer')
+            self._publish_timer_ref = self._config_entry.async_create_background_task(
+                self._hass, self._publish_queue_timer(), "publish_queue_timer"
+            )
         else:
             self._publish_timer_ref = asyncio.ensure_future(self._publish_queue_timer())
         self.publish_active = True
-
 
     def _has_entries_to_publish(self):
         """Determine if now is a good time to publish documents."""
@@ -443,6 +467,7 @@ class DocumentPublisher:
     async def _publish_queue_timer(self):
         """Publish queue timer."""
         from elasticsearch7 import TransportError
+
         LOGGER.debug(
             "Starting publish timer: executes every %i seconds.",
             self._publish_frequency,
@@ -451,7 +476,11 @@ class DocumentPublisher:
         while self.publish_active:
             try:
                 can_publish = next_publish <= time.monotonic()
-                if can_publish and not self._gateway.active_connection_error and self._has_entries_to_publish():
+                if (
+                    can_publish
+                    and not self._gateway.active_connection_error
+                    and self._has_entries_to_publish()
+                ):
                     try:
                         await self.async_do_publish()
                     finally:
@@ -459,7 +488,10 @@ class DocumentPublisher:
             except TransportError as transport_error:
                 # Do not spam the logs with connection errors if we already know there is a problem.
                 if not self._gateway.active_connection_error:
-                    LOGGER.exception("Connection error during publish queue handling. Publishing will be paused until connection is fixed. %s", transport_error)
+                    LOGGER.exception(
+                        "Connection error during publish queue handling. Publishing will be paused until connection is fixed. %s",
+                        transport_error,
+                    )
                     self._gateway.notify_of_connection_error()
             except Exception as err:
                 LOGGER.exception("Error during publish queue handling %s", err)
