@@ -2,6 +2,7 @@
 
 from copy import deepcopy
 
+from elasticsearch.config_flow import ElasticFlowHandler
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
@@ -112,53 +113,10 @@ async def async_setup(hass: HomeAssistantType, config):
 
 async def async_migrate_entry(hass: HomeAssistantType, config_entry: ConfigEntry):  # pylint: disable=unused-argument
     """Migrate old entry."""
-    LOGGER.debug("Migrating config entry from version %s", config_entry.version)
 
-    if config_entry.version == 1:
-        new = get_merged_config(config_entry)
+    latest_version = ElasticFlowHandler.VERSION
 
-        only_publish_changed = new.get(CONF_ONLY_PUBLISH_CHANGED, False)
-        new[CONF_PUBLISH_MODE] = (
-            PUBLISH_MODE_ALL if not only_publish_changed else PUBLISH_MODE_ANY_CHANGES
-        )
-
-        if CONF_ONLY_PUBLISH_CHANGED in new:
-            del new[CONF_ONLY_PUBLISH_CHANGED]
-
-        config_entry.data = {**new}
-
-        config_entry.version = 2
-
-    if config_entry.version == 2:
-        new = get_merged_config(config_entry)
-        if CONF_HEALTH_SENSOR_ENABLED in new:
-            del new[CONF_HEALTH_SENSOR_ENABLED]
-
-        config_entry.data = {**new}
-
-        config_entry.version = 3
-
-    if config_entry.version == 3:
-        new = get_merged_config(config_entry)
-
-        # Check the configured options for the index_mode
-        if CONF_INDEX_MODE not in new:
-            new[CONF_INDEX_MODE] = INDEX_MODE_LEGACY
-
-        CONF_ILM_MAX_SIZE = "ilm_max_size"
-        if CONF_ILM_MAX_SIZE in new:
-            del new[CONF_ILM_MAX_SIZE]
-
-        CONF_ILM_DELETE_AFTER = "ilm_delete_after"
-        if CONF_ILM_DELETE_AFTER in new:
-            del new[CONF_ILM_DELETE_AFTER]
-
-        config_entry.data = {**new}
-        config_entry.version = 4
-
-    LOGGER.info("Migration to version %s successful", config_entry.version)
-
-    return True
+    return migrate_config_entry_to_version(config_entry, latest_version)
 
 
 async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry):
@@ -215,3 +173,58 @@ async def _async_init_integration(hass: HomeAssistantType, config_entry: ConfigE
     hass.data[DOMAIN] = integration
 
     return True
+
+
+def migrate_config_entry_to_version(config_entry, desired_version):
+    """Migrate a config entry from its current version to a desired version."""
+    LOGGER.debug(
+        "Migrating config entry from version %s to %s",
+        config_entry.version,
+        desired_version,
+    )
+
+    if config_entry.version == 1 and desired_version >= 2:
+        new = get_merged_config(config_entry)
+
+        only_publish_changed = new.get(CONF_ONLY_PUBLISH_CHANGED, False)
+        new[CONF_PUBLISH_MODE] = (
+            PUBLISH_MODE_ALL if not only_publish_changed else PUBLISH_MODE_ANY_CHANGES
+        )
+
+        if CONF_ONLY_PUBLISH_CHANGED in new:
+            del new[CONF_ONLY_PUBLISH_CHANGED]
+
+        config_entry.data = {**new}
+
+        config_entry.version = 2
+
+    if config_entry.version == 2 and desired_version >= 3:
+        new = get_merged_config(config_entry)
+        if CONF_HEALTH_SENSOR_ENABLED in new:
+            del new[CONF_HEALTH_SENSOR_ENABLED]
+
+        config_entry.data = {**new}
+
+        config_entry.version = 3
+
+    if config_entry.version == 3 and desired_version >= 4:
+        new = get_merged_config(config_entry)
+
+        # Check the configured options for the index_mode
+        if CONF_INDEX_MODE not in new:
+            new[CONF_INDEX_MODE] = INDEX_MODE_LEGACY
+
+        CONF_ILM_MAX_SIZE = "ilm_max_size"
+        if CONF_ILM_MAX_SIZE in new:
+            del new[CONF_ILM_MAX_SIZE]
+
+        CONF_ILM_DELETE_AFTER = "ilm_delete_after"
+        if CONF_ILM_DELETE_AFTER in new:
+            del new[CONF_ILM_DELETE_AFTER]
+
+        config_entry.data = {**new}
+        config_entry.version = 4
+
+    LOGGER.info("Migration to version %s successful", config_entry.version)
+
+    return config_entry.version == desired_version

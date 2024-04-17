@@ -1,6 +1,7 @@
 """Tests for Elastic init."""
 
 import pytest
+from elasticsearch import migrate_config_entry_to_version
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 from homeassistant.config_entries import SOURCE_REAUTH, ConfigEntryState
 from homeassistant.const import CONF_ALIAS, CONF_URL
@@ -30,6 +31,26 @@ async def _setup_config_entry(hass: HomeAssistant, mock_entry: MockConfigEntry):
     entry = config_entries[0]
 
     return entry
+
+
+def _test_config_migration_to_version(
+    Before_Version, Before_Data, After_Version, After_Data
+):
+    mock_entry = MockConfigEntry(
+        unique_id="mock migration",
+        domain=ELASTIC_DOMAIN,
+        version=Before_Version,
+        data=Before_Data,
+        title="ES Config",
+    )
+
+    migrate_config_entry_to_version(mock_entry, desired_version=After_Version)
+
+    assert mock_entry
+    assert mock_entry.data == After_Data
+    assert mock_entry.version == After_Version
+
+    return True
 
 
 @pytest.mark.asyncio
@@ -251,107 +272,97 @@ async def test_connection_error(
 
 
 @pytest.mark.asyncio
-async def test_config_migration_v1(
+async def test_config_migration_v1tov2(
     hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
 ):
     """Test config migration from v1."""
-    es_url = "http://migration-v1-test:9200"
 
-    mock_es_initialization(es_aioclient_mock, url=es_url)
+    Before_Version = 1
+    Before_Data = {"url": "http://migration-test:9200", "only_publish_changed": True}
 
-    # Create mock entry with version 1
-    mock_entry = MockConfigEntry(
-        unique_id="mock unique id v1",
-        domain=ELASTIC_DOMAIN,
-        version=1,
-        data={"url": es_url, "only_publish_changed": True},
-        title="ES Config",
+    After_Version = 2
+    After_Data = {"url": "http://migration-test:9200", "publish_mode": "Any changes"}
+
+    assert _test_config_migration_to_version(
+        Before_Version, Before_Data, After_Version, After_Data
     )
 
-    # Set it up
-    mock_entry.add_to_hass(hass)
-    assert await async_setup_component(hass, ELASTIC_DOMAIN, {}) is True
-    await hass.async_block_till_done()
 
-    # Verify publish mode and index mode have been set correctly
+@pytest.mark.asyncio
+async def test_config_migration_v2tov3(
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
+):
+    """Test config migration from v2."""
 
-    expected_config = {
-        "url": es_url,
-        "publish_mode": "Any changes",
+    Before_Version = 2
+    Before_Data = {"url": "http://migration-test:9200", "health_sensor_enabled": True}
+    After_Version = 3
+    After_Data = {"url": "http://migration-test:9200"}
+
+    assert _test_config_migration_to_version(
+        Before_Version, Before_Data, After_Version, After_Data
+    )
+
+
+@pytest.mark.asyncio
+async def test_config_migration_v3tov4(
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
+):
+    """Test config migration from v3."""
+
+    Before_Version = 3
+    Before_Data = {
+        "url": "http://migration-test:9200",
+        "ilm_max_size": "10gb",
+        "ilm_delete_after": "30d",
+    }
+    After_Data = {
+        "url": "http://migration-test:9200",
         "index_mode": "index",
     }
+    After_Version = 4
 
-    updated_entry = hass.config_entries.async_get_entry(mock_entry.entry_id)
-    assert updated_entry
-    assert updated_entry.version == 4
-    assert updated_entry.data == expected_config
+    assert _test_config_migration_to_version(
+        Before_Version, Before_Data, After_Version, After_Data
+    )
 
 
 @pytest.mark.asyncio
-async def test_config_migration_v2(
+async def test_config_migration_v1tov4(
     hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
 ):
-    """Test config migration from v2."""
-    es_url = "http://migration-v2-test:9200"
+    """Test config migration from v1."""
 
-    mock_es_initialization(es_aioclient_mock, url=es_url)
+    Before_Version = 1
+    Before_Data = {
+        "url": "http://migration-test:9200",
+        "ilm_max_size": "10gb",
+        "ilm_delete_after": "30d",
+        "health_sensor_enabled": True,
+        "only_publish_changed": True,
+    }
 
-    # Create mock entry with version 2
+    After_Version = 4
+    After_Data = {
+        "url": "http://migration-test:9200",
+        "index_mode": "index",
+        "publish_mode": "Any changes",
+    }
+
     mock_entry = MockConfigEntry(
-        unique_id="mock unique id v2",
+        unique_id="mock migration",
         domain=ELASTIC_DOMAIN,
-        version=2,
-        data={"url": es_url, "health_sensor_enabled": True},
+        version=Before_Version,
+        data=Before_Data,
         title="ES Config",
     )
 
-    # Set it up
     mock_entry.add_to_hass(hass)
     assert await async_setup_component(hass, ELASTIC_DOMAIN, {}) is True
     await hass.async_block_till_done()
 
-    # Verify health sensor has been removed, and index mode has been configured
-
-    expected_config = {"url": es_url, "index_mode": "index"}
-
     updated_entry = hass.config_entries.async_get_entry(mock_entry.entry_id)
+
     assert updated_entry
-    assert updated_entry.version == 4
-    assert updated_entry.data == expected_config
-
-
-@pytest.mark.asyncio
-async def test_config_migration_v3(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
-):
-    """Test config migration from v2."""
-    es_url = "http://migration-v2-test:9200"
-
-    mock_es_initialization(es_aioclient_mock, url=es_url)
-
-    # Create mock entry with version 3
-    mock_entry = MockConfigEntry(
-        unique_id="mock unique id v3",
-        domain=ELASTIC_DOMAIN,
-        version=3,
-        data={
-            "url": es_url,
-            "ilm_max_size": "10gb",
-            "ilm_delete_after": "30d",
-        },
-        title="ES Config",
-    )
-
-    # Set it up
-    mock_entry.add_to_hass(hass)
-    assert await async_setup_component(hass, ELASTIC_DOMAIN, {}) is True
-    await hass.async_block_till_done()
-
-    # ilm_max_size and ilm_delete_after have been removed, and index mode has been configured
-
-    expected_config = {"url": es_url, "index_mode": "index"}
-
-    updated_entry = hass.config_entries.async_get_entry(mock_entry.entry_id)
-    assert updated_entry
-    assert updated_entry.version == 4
-    assert updated_entry.data == expected_config
+    assert updated_entry.version == After_Version
+    assert updated_entry.data == After_Data
