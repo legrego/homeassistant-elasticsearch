@@ -142,7 +142,7 @@ The API key response looks like this:
 }
 ```
 
-We need to use the `encoded`.
+You will need to provide the value from the `encoded` property to this component.
 
 
 ### Authenticating via username/password
