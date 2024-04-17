@@ -1,6 +1,8 @@
 """Retrieve system information."""
+
 import socket
 
+from homeassistant.components.hassio import get_host_info
 from homeassistant.core import HomeAssistant
 
 from .logger import LOGGER
@@ -19,8 +21,8 @@ class SystemInfo:
             system_info = await self._hass.helpers.system_info.async_get_system_info()
 
             # see homeassistant/helpers/system_info.py in main home-assistant repo
-            if self._hass.components.hassio.is_hassio():
-                hostname = self._hass.components.hassio.get_host_info().get("hostname", "UNKNOWN")
+            if system_info.get("hassio"):
+                hostname = get_host_info(self._hass).get("hostname", "UNKNOWN")
             else:
                 hostname = socket.gethostname()
 
