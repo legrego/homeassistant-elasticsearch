@@ -3,12 +3,18 @@
 import json
 from dataclasses import dataclass
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_ALIAS, CONF_API_KEY, CONF_USERNAME
 
 from custom_components.elasticsearch.const import (
+    CONF_AUTH_API_KEY_AUTH,
+    CONF_AUTH_BASIC_AUTH,
+    CONF_AUTH_METHOD,
+    CONF_AUTH_NO_AUTH,
     CONF_INDEX_FORMAT,
     CONF_INDEX_MODE,
     INDEX_MODE_DATASTREAM,
+    VERSION_SUFFIX,
 )
 from custom_components.elasticsearch.errors import (
     InsufficientPrivileges,
@@ -31,29 +37,34 @@ class PrivilegeCheckResult:
 class ESPrivilegeCheck:
     """Privilege check encapsulation."""
 
-    def __init__(self, es_gateway: ElasticsearchGateway, config: dict = {}):
+    def __init__(self, es_gateway: ElasticsearchGateway, config_entry: ConfigEntry):
         """Initialize Privilege Checker."""
         self.es_gateway = es_gateway
-        self.config = config
 
-    async def enforce_privileges(self, config: dict = None):
+        self.username = config_entry.data.get(CONF_USERNAME)
+        self.api_key = config_entry.data.get(CONF_API_KEY)
+        self.index_mode = config_entry.data.get(CONF_INDEX_MODE)
+        self.index_format = config_entry.data.get(CONF_INDEX_FORMAT)
+        self.index_alias = config_entry.data.get(CONF_ALIAS) + VERSION_SUFFIX
+
+        self.auth_mode = config_entry.data.get(CONF_AUTH_METHOD)
+
+    async def enforce_privileges(self, config_entry):
         """Ensure client is configured with properly authorized credentials."""
         LOGGER.debug("Starting privilege enforcement")
 
-        # TODO: Figure out why this is needed
-        resultantConfig = config or self.config
+        if self.auth_mode is CONF_AUTH_NO_AUTH:
+            return
 
-        if (  # is_authenticated
-            resultantConfig.get(CONF_USERNAME, None) is not None
-            or resultantConfig.get(CONF_API_KEY, None) is not None
-        ):
-            LOGGER.debug("Checking privileges.")
-            result = await self.check_privileges(resultantConfig)
-            if not result.has_all_requested:
-                LOGGER.debug("Required privileges are missing.")
-                raise InsufficientPrivileges()
+        LOGGER.debug("Checking privileges of %s", self.username or "API key")
 
-    async def check_privileges(self, config: dict) -> PrivilegeCheckResult:
+        result = await self.check_privileges()
+
+        if not result.has_all_requested:
+            LOGGER.debug("Required privileges are missing.")
+            raise InsufficientPrivileges()
+
+    async def check_privileges(self) -> PrivilegeCheckResult:
         """Determine client privileges."""
         from elasticsearch7 import ElasticsearchException
 
@@ -64,7 +75,7 @@ class ESPrivilegeCheck:
         ]
 
         # if index_mode is datastream, we only need to check for datastream privileges
-        if config.get(CONF_INDEX_MODE) == INDEX_MODE_DATASTREAM:
+        if self.index_mode == INDEX_MODE_DATASTREAM:
             required_index_privileges = [
                 {
                     "names": [
@@ -77,8 +88,8 @@ class ESPrivilegeCheck:
             required_index_privileges = [
                 {
                     "names": [
-                        f"{config.get(CONF_INDEX_FORMAT)}*",
-                        f"{config.get(CONF_ALIAS)}-*",
+                        f"{self.index_format}*",
+                        f"{self.index_alias}-*",
                         "all-hass-events",
                     ],
                     "privileges": ["manage", "index", "create_index", "create"],

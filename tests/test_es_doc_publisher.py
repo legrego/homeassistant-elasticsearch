@@ -46,7 +46,7 @@ from custom_components.elasticsearch.es_doc_publisher import DocumentPublisher
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 from custom_components.elasticsearch.es_index_manager import IndexManager
 from custom_components.elasticsearch.es_serializer import get_serializer
-from tests.conftest import mock_config_entry
+from tests.conftest import MockEntityState, mock_config_entry
 from tests.const import MOCK_LOCATION_SERVER
 from tests.test_util.aioclient_mock_utils import extract_es_bulk_requests
 from tests.test_util.es_startup_mocks import mock_es_initialization
@@ -97,85 +97,41 @@ async def test_sanitize_datastream_name(
     hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
 ):
     """Test datastream names are sanitized correctly."""
-    es_url = "http://localhost:9200"
 
-    mock_es_initialization(es_aioclient_mock, es_url)
+    valid_cases = {
+        "test_name": "test_name",
+        "test-name": "test-name",
+        "test_name_1": "test_name_1",
+        "-test_name": "test_name",
+        "test/name": "testname",
+        "test? name": "test_name",
+        ("a" * 256): ("a" * 239),
+        "Test_Name": "test_name",
+        "test..name": "test..name",
+    }
 
-    config = build_new_data({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_DATASTREAM})
+    invalid_cases = [
+        ".,?/:*<>|#+",
+        ".",
+        "",
+        "......",
+    ]
 
-    mock_entry = MockConfigEntry(
-        unique_id="test_entity_detail_publishing",
-        domain=DOMAIN,
-        version=3,
-        data=config,
-        title="ES Config",
-    )
+    for name, expected in valid_cases.items():
+        type, dataset, namespace, full_name = (
+            DocumentPublisher._sanitize_datastream_name(
+                type="metrics", dataset=name, namespace="default"
+            )
+        )
+        assert dataset == expected
 
-    entry = await _setup_config_entry(hass, mock_entry)
-
-    gateway = ElasticsearchGateway(config)
-    index_manager = IndexManager(hass, config, gateway)
-    publisher = DocumentPublisher(
-        config, gateway, index_manager, hass, config_entry=entry
-    )
-
-    await gateway.async_init()
-    await publisher.async_init()
-
-    # Test case: name starts with invalid characters
-    name = "-test_name"
-    expected = "test_name"
-    assert publisher._sanitize_datastream_name(name) == expected
-
-    # Test case: name contains invalid characters
-    name = "test/name"
-    expected = "testname"
-    assert publisher._sanitize_datastream_name(name) == expected
-
-    # Test case: name contains invalid characters and spaces
-    name = "test? name"
-    expected = "test_name"
-    assert publisher._sanitize_datastream_name(name) == expected
-
-    # Test case: name exceeds 255 bytes
-    name = "a" * 256
-    expected = "a" * 255
-    assert publisher._sanitize_datastream_name(name) == expected
-
-    # Test case: name contains uppercase characters
-    name = "Test_Name"
-    expected = "test_name"
-    assert publisher._sanitize_datastream_name(name) == expected
-
-    # Test case: name contains multiple consecutive invalid characters
-    name = "test..name"
-    expected = "test..name"
-    assert publisher._sanitize_datastream_name(name) == expected
-
-    # Test case: name contains only invalid characters
-    name = ".,?/:*<>|#+"
-    with pytest.raises(ElasticException):
-        publisher._sanitize_datastream_name(name)
-
-    # Test case: name contains one period
-    name = "."
-    with pytest.raises(ElasticException):
-        publisher._sanitize_datastream_name(name)
-
-    # Test case: name is blank
-    name = ""
-    with pytest.raises(ElasticException):
-        publisher._sanitize_datastream_name(name)
-
-    # Test case: name contains only periods
-    name = "......"
-    with pytest.raises(ElasticException):
-        publisher._sanitize_datastream_name(name)
-
-    # Test case: name contains valid characters
-    name = "test_name"
-    expected = "test_name"
-    assert publisher._sanitize_datastream_name(name) == expected
+    for name in invalid_cases:
+        with pytest.raises(ElasticException):
+            type, dataset, namespace, full_name = (
+                DocumentPublisher._sanitize_datastream_name(
+                    type="metrics", dataset=name, namespace="default"
+                )
+            )
 
 
 @pytest.mark.asyncio
@@ -184,57 +140,47 @@ async def test_queue_functions(
 ):
     """Test entity change is published."""
 
-    counter_config = {counter.DOMAIN: {"test_1": {}}}
-    assert await async_setup_component(hass, counter.DOMAIN, counter_config)
-    await hass.async_block_till_done()
-
     es_url = "http://localhost:9200"
 
     mock_es_initialization(es_aioclient_mock, es_url)
 
     mock_entry = MockConfigEntry(
-        unique_id="test_queue_functions",
+        unique_id="test_entity_detail_publishing",
         domain=DOMAIN,
         version=3,
-        data=build_new_data({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_LEGACY}),
-        options=build_new_options(
-            {
-                CONF_PUBLISH_ENABLED: True,
-                CONF_PUBLISH_MODE: PUBLISH_MODE_STATE_CHANGES,
-            }
-        ),
+        data=build_new_data({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}),
+        options=build_new_options(),
         title="ES Config",
     )
 
-    entry = await _setup_config_entry(hass, mock_entry)
+    mock_entry.add_to_hass(hass)
 
-    config = entry.data
-    gateway = ElasticsearchGateway(config)
-    index_manager = IndexManager(hass, config, gateway)
+    gateway = ElasticsearchGateway(config_entry=mock_entry)
+    index_manager = IndexManager(hass=hass, config_entry=mock_entry, gateway=gateway)
     publisher = DocumentPublisher(
-        config, gateway, index_manager, hass, config_entry=entry
+        gateway=gateway, index_manager=index_manager, hass=hass, config_entry=mock_entry
     )
 
-    await gateway.async_init()
-    await publisher.async_init()
+    assert publisher.publish_queue is None
+
+    publisher.empty_queue()
 
     assert publisher.queue_size() == 0
     assert not publisher._has_entries_to_publish()
 
-    hass.states.async_set("counter.test_1", "2")
-    await hass.async_block_till_done()
+    publisher.enqueue_state(
+        MockEntityState(entity_id="test.test_1", state="1"),
+        "test",
+        "test",
+    )
 
     assert publisher._has_entries_to_publish()
     assert publisher.queue_size() == 1
-    assert publisher._should_publish_entity_state(domain="counter", entity_id="test_1")
 
-    publisher.publish_enabled = False
-    assert not publisher._should_publish_entity_state(
-        domain="counter", entity_id="test_1"
-    )
-    publisher.publish_enabled = True
+    publisher.empty_queue()
 
-    await gateway.async_stop_gateway()
+    assert not publisher._has_entries_to_publish()
+    assert publisher.queue_size() == 0
 
 
 @pytest.mark.asyncio

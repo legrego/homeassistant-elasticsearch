@@ -6,6 +6,7 @@ from datetime import datetime
 from math import isinf
 
 from homeassistant.components.sun import STATE_ABOVE_HORIZON, STATE_BELOW_HORIZON
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     STATE_CLOSED,
     STATE_HOME,
@@ -34,7 +35,7 @@ ALLOWED_ATTRIBUTE_TYPES = tuple | dict | set | list | int | float | bool | str |
 class DocumentCreator:
     """Create ES documents from Home Assistant state change events."""
 
-    def __init__(self, hass: HomeAssistant, config: dict) -> None:
+    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry) -> None:
         """Initialize."""
         self._entity_details = EntityDetails(hass)
         self._static_v1doc_properties: dict | None = None
@@ -42,7 +43,8 @@ class DocumentCreator:
         self._serializer = get_serializer()
         self._system_info: SystemInfo = SystemInfo(hass)
         self._hass = hass
-        self._config = config
+
+        self.append_tags = config_entry.options.get(CONF_TAGS, None)
 
     async def async_init(self) -> None:
         """Async initialization."""
@@ -64,7 +66,7 @@ class DocumentCreator:
             },
         }
 
-        shared_properties["tags"] = self._config.get(CONF_TAGS, None)
+        shared_properties["tags"] = self.append_tags
 
         system_info = await self._system_info.async_get_system_info()
 

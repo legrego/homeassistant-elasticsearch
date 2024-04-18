@@ -61,11 +61,6 @@ DEFAULT_ALIAS = "active-hass-index"
 DEFAULT_INDEX_FORMAT = "hass-events"
 DEFAULT_AUTH_METHOD = "no_auth"
 
-# <type>-<name_prefix>.domain.events-<namespace>
-DEFAULT_DATASTREAM_TYPE = "metrics"
-DEFAULT_DATASTREAM_NAME_PREFIX = "homeassistant"
-DEFAULT_DATASTREAM_NAMESPACE = "default"
-
 DEFAULT_PUBLISH_ENABLED = True
 DEFAULT_PUBLISH_FREQUENCY = ONE_MINUTE
 DEFAULT_PUBLISH_MODE = PUBLISH_MODE_ANY_CHANGES
@@ -188,16 +183,9 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         """Get the options flow for this handler."""
         return ElasticOptionsFlowHandler(config_entry)
 
-    def update_data(self, new_data: map):
-        """Update the data dictionary."""
-        self.data = build_new_data(self.data, new_data)
-
     def __init__(self):
         """Initialize the Elastic flow."""
-        self.config = {}
-
         self._cluster_check_result: ClusterCheckResult | None = None
-        self._reauth_entry = None
 
     # Build the first step of the flow
     async def async_step_user(self, user_input=None):

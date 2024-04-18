@@ -6,7 +6,11 @@ from datetime import datetime
 from queue import Queue
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EVENT_HOMEASSISTANT_CLOSE, EVENT_STATE_CHANGED
+from homeassistant.const import (
+    CONF_ALIAS,
+    EVENT_HOMEASSISTANT_CLOSE,
+    EVENT_STATE_CHANGED,
+)
 from homeassistant.core import HomeAssistant, State, callback
 from homeassistant.helpers.typing import EventType
 
@@ -25,6 +29,9 @@ from .const import (
     CONF_PUBLISH_FREQUENCY,
     CONF_PUBLISH_MODE,
     CONF_TAGS,
+    DATASTREAM_DATASET_PREFIX,
+    DATASTREAM_NAMESPACE,
+    DATASTREAM_TYPE,
     INDEX_MODE_DATASTREAM,
     INDEX_MODE_LEGACY,
     PUBLISH_MODE_ALL,
@@ -32,6 +39,7 @@ from .const import (
     PUBLISH_REASON_ATTR_CHANGE,
     PUBLISH_REASON_POLLING,
     PUBLISH_REASON_STATE_CHANGE,
+    VERSION_SUFFIX,
 )
 from .logger import LOGGER
 
@@ -41,7 +49,6 @@ class DocumentPublisher:
 
     def __init__(
         self,
-        config,
         gateway: ElasticsearchGateway,
         index_manager: IndexManager,
         hass: HomeAssistant,
@@ -55,6 +62,8 @@ class DocumentPublisher:
         self.publish_active = False
         self.remove_state_change_listener = None
 
+        self.publish_queue = None
+
         if not self.publish_enabled:
             LOGGER.debug("Not initializing document publisher")
             return
@@ -66,12 +75,7 @@ class DocumentPublisher:
 
         self._destination_type: str = config_entry.data.get(CONF_INDEX_MODE)
 
-        if self._destination_type == INDEX_MODE_LEGACY:
-            self.legacy_index_name: str = index_manager.index_alias
-        elif self._destination_type == INDEX_MODE_DATASTREAM:
-            self.datastream_type: str = index_manager.datastream_type
-            self.datastream_dataset_prefix: str = index_manager.datastream_name_prefix
-            self.datastream_namespace: str = index_manager.datastream_namespace
+        self.legacy_index_name = config_entry.options.get(CONF_ALIAS) + VERSION_SUFFIX
 
         self._publish_frequency = config_entry.options.get(CONF_PUBLISH_FREQUENCY)
         self._publish_mode = config_entry.options.get(CONF_PUBLISH_MODE)
@@ -145,7 +149,7 @@ class DocumentPublisher:
             EVENT_HOMEASSISTANT_CLOSE, hass_close_event_listener
         )
 
-        self._document_creator = DocumentCreator(hass, config)
+        self._document_creator = DocumentCreator(hass=hass, config_entry=config_entry)
 
         self._last_publish_time = None
 
@@ -339,30 +343,27 @@ class DocumentPublisher:
                 state, time, reason, version=2
             )
 
-            # dataset = homeassistant.device_tracker
-            dataset = self.datastream_dataset_prefix + "." + state.domain
-
-            # <type>-<name>-<namespace>
-            destination_data_stream = self._sanitize_datastream_name(
-                self.datastream_type + "-" + dataset + "-" + self.datastream_namespace
+            (
+                datastream_type,
+                datastream_dataset,
+                datastream_namespace,
+                datastream_fullname,
+            ) = self._sanitize_datastream_name(
+                type=DATASTREAM_TYPE,
+                dataset=DATASTREAM_DATASET_PREFIX + "." + state.domain,
+                namespace=DATASTREAM_NAMESPACE,
             )
-
-            # Split destination_data_stream on hyphers to get type, name, and namespace from sanitized datastream
-            destination_data_stream_parts = destination_data_stream.split("-")
-            destination_data_stream_type = destination_data_stream_parts[0]
-            destination_data_stream_dataset = destination_data_stream_parts[1]
-            destination_data_stream_namespace = destination_data_stream_parts[2]
 
             # Populate data stream fields on the document
             document["data_stream"] = {
-                "dataset": destination_data_stream_dataset,
-                "namespace": destination_data_stream_namespace,
-                "type": destination_data_stream_type,
+                "type": datastream_type,
+                "dataset": datastream_dataset,
+                "namespace": datastream_namespace,
             }
 
             return {
                 "_op_type": "create",
-                "_index": destination_data_stream,
+                "_index": datastream_fullname,
                 "_source": document,
             }
 
@@ -398,41 +399,53 @@ class DocumentPublisher:
 
         return True
 
-    def _sanitize_datastream_name(self, name: str):
+    @classmethod
+    def _sanitize_datastream_name(
+        self, dataset: str, type: str = "metrics", namespace: str = "default"
+    ):
         """Sanitize a datastream name."""
 
-        newname = name
+        full_datastream_name = f"{type}-{dataset}-{namespace}"
 
-        if self._datastream_has_fatal_name(newname):
-            raise ElasticException("Invalid / unfixable datastream name: %s", newname)
-
-        if self._datastream_has_unsafe_name(newname):
-            LOGGER.debug(
-                "Datastream name %s is unsafe, attempting to sanitize.", newname
+        if self._datastream_has_fatal_name(full_datastream_name):
+            raise ElasticException(
+                "Invalid / unfixable datastream name: %s", full_datastream_name
             )
+
+        if self._datastream_has_unsafe_name(full_datastream_name):
+            LOGGER.debug(
+                "Datastream name %s is unsafe, attempting to sanitize.",
+                full_datastream_name,
+            )
+
+        sanitized_dataset = dataset
 
         # Cannot include \, /, *, ?, ", <, >, |, ` ` (space character), comma, #, :
         invalid_chars = r"\\/*?\":<>|,#+"
-        newname = newname.translate(str.maketrans("", "", invalid_chars))
-        newname = newname.replace(" ", "_")
+        sanitized_dataset = sanitized_dataset.translate(
+            str.maketrans("", "", invalid_chars)
+        )
+        sanitized_dataset = sanitized_dataset.replace(" ", "_")
 
-        # Cannot be . or ..
-        if newname in (".", ".."):
-            raise ElasticException("Invalid datastream name: %s", newname)
+        while sanitized_dataset.startswith(("-", "_", "+", ".")):
+            sanitized_dataset = sanitized_dataset[1::]
 
-        while newname.startswith(("-", "_", "+", ".")):
-            newname = newname[1::]
+        sanitized_dataset = sanitized_dataset.lower()
 
-        newname = newname.lower()
+        max_dataset_name_length = 255 - len(type) - len(namespace) - 2
+        sanitized_dataset = sanitized_dataset[:max_dataset_name_length]
 
-        newname = newname[:255]
-
+        full_sanitized_datastream_name = f"{type}-{sanitized_dataset}-{namespace}"
         # if the datastream still has an unsafe name after sanitization, throw an error
-        if self._datastream_has_unsafe_name(newname):
-            raise ElasticException("Invalid / unfixable datastream name: %s", newname)
+        if self._datastream_has_unsafe_name(full_sanitized_datastream_name):
+            raise ElasticException(
+                "Invalid / unfixable datastream name: %s",
+                full_sanitized_datastream_name,
+            )
 
-        return newname
+        return (type, sanitized_dataset, namespace, full_sanitized_datastream_name)
 
+    @classmethod
     def _datastream_has_unsafe_name(self, name: str):
         """Check if a datastream name is unsafe."""
 
@@ -446,6 +459,10 @@ class DocumentPublisher:
         if len(name) > 255:
             return True
 
+        # This happens when dataset is empty
+        if "--" in name:
+            return True
+
         if name.startswith(("-", "_", "+", ".")):
             return True
 
@@ -454,6 +471,7 @@ class DocumentPublisher:
 
         return False
 
+    @classmethod
     def _datastream_has_fatal_name(self, name: str):
         """Check if a datastream name is invalid."""
         if name in (".", ".."):

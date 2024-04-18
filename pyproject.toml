@@ -46,8 +46,7 @@ output = "test_results/cov_xml/coverage.xml"
 [tool.pytest.ini_options]
 addopts = [
   "-rxf",
-  "-x",
-  "-v",
+  "-vv",
   "-l",
   "--asyncio-mode=auto",
   "--junitxml=test_results/pytest.xml"

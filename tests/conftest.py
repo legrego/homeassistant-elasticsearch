@@ -17,15 +17,18 @@
 
 from asyncio import get_running_loop
 from contextlib import contextmanager
+from datetime import datetime
 from unittest import mock
 from unittest.mock import patch
 
 import pytest
+from homeassistant.core import HomeAssistant, State
 from homeassistant.helpers.typing import HomeAssistantType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
 pytest_plugins = "pytest_homeassistant_custom_component"
+
 
 @contextmanager
 def mock_es_aiohttp_client():
@@ -38,14 +41,19 @@ def mock_es_aiohttp_client():
 
         return session
 
-    with mock.patch("elasticsearch7._async.http_aiohttp.aiohttp.ClientSession", side_effect=create_session):
+    with mock.patch(
+        "elasticsearch7._async.http_aiohttp.aiohttp.ClientSession",
+        side_effect=create_session,
+    ):
         yield mocker
+
 
 @pytest.fixture
 def es_aioclient_mock():
     """Fixture to mock aioclient calls."""
     with mock_es_aiohttp_client() as mock_session:
         yield mock_session
+
 
 # This fixture enables loading custom integrations in all tests.
 # Remove to enable selective use of this fixture
@@ -61,10 +69,12 @@ def auto_enable_custom_integrations(enable_custom_integrations):
 @pytest.fixture(name="skip_notifications", autouse=True)
 def skip_notifications_fixture():
     """Skip notification calls."""
-    with patch("homeassistant.components.persistent_notification.async_create"), patch(
-        "homeassistant.components.persistent_notification.async_dismiss"
+    with (
+        patch("homeassistant.components.persistent_notification.async_create"),
+        patch("homeassistant.components.persistent_notification.async_dismiss"),
     ):
         yield
+
 
 @pytest.fixture()
 def mock_config_entry(hass: HomeAssistantType) -> MockConfigEntry:
@@ -72,3 +82,40 @@ def mock_config_entry(hass: HomeAssistantType) -> MockConfigEntry:
     entry = MockConfigEntry(title=None)
     entry.add_to_hass(hass)
     return entry
+
+
+class MockEntityState(State):
+    """Mock entity state."""
+
+    def __init__(
+        self,
+        entity_id: str,
+        state: str,
+        attributes: map | None = None,
+        last_changed: datetime | None = None,
+        last_updated: datetime | None = None,
+        validate_entity_id: bool | None = False,
+    ):
+        """Initialize the mock entity state."""
+
+        if last_changed is None:
+            last_changed = datetime.now()
+
+        if last_updated is None:
+            last_updated = datetime.now()
+
+        super().__init__(
+            entity_id=entity_id,
+            state=state,
+            attributes=attributes,
+            last_changed=last_changed,
+            last_updated=last_updated,
+            validate_entity_id=validate_entity_id,
+        )
+
+
+def mock_entity_state(hass: HomeAssistantType) -> MockEntityState:
+    """Mock an entity state in the state machine."""
+
+    state = MockEntityState()
+    return state

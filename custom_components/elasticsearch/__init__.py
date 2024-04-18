@@ -239,6 +239,16 @@ def migrate_data_and_options_to_version(config_entry, desired_version):
 
     if current_version == 4 and desired_version >= 5:
         keys_to_remove = [
+            "datastream_type",
+            "datastream_name_prefix",
+            "datastream_namespace",
+        ]
+
+        for key in keys_to_remove:
+            if key in data:
+                del data[key]
+
+        keys_to_migrate = [
             "publish_enabled",
             "publish_frequency",
             "publish_mode",
@@ -248,11 +258,13 @@ def migrate_data_and_options_to_version(config_entry, desired_version):
             "included_entities",
         ]
 
-        for key in keys_to_remove:
+        for key in keys_to_migrate:
+            if key not in options and key in data:
+                options[key] = data[key]
             if key in data:
                 del data[key]
 
-        # Check for the auth parameters and set the auth_type config based on which values are populated
+        # Check for the auth parameters and set the auth_method config based on which values are populated
         if CONF_USERNAME in data and CONF_PASSWORD in data:
             data[CONF_AUTH_METHOD] = CONF_AUTH_BASIC_AUTH
         elif CONF_API_KEY in data:

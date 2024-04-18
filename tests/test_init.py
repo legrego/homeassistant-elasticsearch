@@ -34,21 +34,32 @@ async def _setup_config_entry(hass: HomeAssistant, mock_entry: MockConfigEntry):
 
 
 def _test_config_data_options_migration_to_version(
-    Before_Version, Before_Data, After_Version, After_Data
+    before_version,
+    before_data,
+    before_options,
+    after_version,
+    after_data,
+    after_options,
 ):
     mock_entry = MockConfigEntry(
         unique_id="mock migration",
         domain=ELASTIC_DOMAIN,
-        version=Before_Version,
-        data=Before_Data,
+        version=before_version,
+        data=before_data,
+        options=before_options,
         title="ES Config",
     )
 
-    migrate_data_and_options_to_version(mock_entry, desired_version=After_Version)
+    migrated_data, migrated_options, end_version = migrate_data_and_options_to_version(
+        mock_entry, desired_version=after_version
+    )
 
     assert mock_entry
-    assert mock_entry.data == After_Data
-    assert mock_entry.version == After_Version
+
+    assert migrated_data == after_data
+    assert migrated_options == after_options
+
+    assert end_version == after_version
 
     return True
 
@@ -277,14 +288,19 @@ async def test_config_migration_v1tov2(
 ):
     """Test config migration from v1."""
 
-    Before_Version = 1
-    Before_Data = {"url": "http://migration-test:9200", "only_publish_changed": True}
-
-    After_Version = 2
-    After_Data = {"url": "http://migration-test:9200", "publish_mode": "Any changes"}
-
     assert _test_config_data_options_migration_to_version(
-        Before_Version, Before_Data, After_Version, After_Data
+        before_version=1,
+        before_options={},
+        before_data={
+            "url": "http://migration-test:9200",
+            "only_publish_changed": True,
+        },
+        after_version=2,
+        after_options={},
+        after_data={
+            "url": "http://migration-test:9200",
+            "publish_mode": "Any changes",
+        },
     )
 
 
@@ -294,13 +310,16 @@ async def test_config_migration_v2tov3(
 ):
     """Test config migration from v2."""
 
-    Before_Version = 2
-    Before_Data = {"url": "http://migration-test:9200", "health_sensor_enabled": True}
-    After_Version = 3
-    After_Data = {"url": "http://migration-test:9200"}
-
     assert _test_config_data_options_migration_to_version(
-        Before_Version, Before_Data, After_Version, After_Data
+        before_version=2,
+        before_options={},
+        before_data={
+            "url": "http://migration-test:9200",
+            "health_sensor_enabled": True,
+        },
+        after_version=3,
+        after_options={},
+        after_data={"url": "http://migration-test:9200"},
     )
 
 
@@ -310,20 +329,20 @@ async def test_config_migration_v3tov4(
 ):
     """Test config migration from v3."""
 
-    Before_Version = 3
-    Before_Data = {
-        "url": "http://migration-test:9200",
-        "ilm_max_size": "10gb",
-        "ilm_delete_after": "30d",
-    }
-    After_Data = {
-        "url": "http://migration-test:9200",
-        "index_mode": "index",
-    }
-    After_Version = 4
-
     assert _test_config_data_options_migration_to_version(
-        Before_Version, Before_Data, After_Version, After_Data
+        before_version=3,
+        before_options={},
+        before_data={
+            "url": "http://migration-test:9200",
+            "ilm_max_size": "10gb",
+            "ilm_delete_after": "30d",
+        },
+        after_options={},
+        after_data={
+            "url": "http://migration-test:9200",
+            "index_mode": "index",
+        },
+        after_version=4,
     )
 
 
@@ -333,26 +352,36 @@ async def test_config_migration_v4tov5(
 ):
     """Test config migration from v4."""
 
-    Before_Version = 4
-    Before_Data = {
-        "url": "http://migration-test:9200",
-        "publish_enabled": True,
-        "publish_frequency": 60,
-        "publish_mode": "Any changes",
-        "excluded_domains": [],
-        "excluded_entities": [],
-        "included_domains": [],
-        "included_entities": [],
-    }
-    After_Data = {
-        "url": "http://migration-test:9200",
-        "auth_type": "no_auth",
-    }
-
-    After_Version = 5
-
     assert _test_config_data_options_migration_to_version(
-        Before_Version, Before_Data, After_Version, After_Data
+        before_version=4,
+        before_options={},
+        before_data={
+            "url": "http://migration-test:9200",
+            "publish_enabled": True,
+            "publish_frequency": 60,
+            "publish_mode": "Any changes",
+            "excluded_domains": [],
+            "excluded_entities": [],
+            "included_domains": [],
+            "included_entities": [],
+            "datastream_name_prefix": "homeassistant",
+            "datastream_namespace": "default",
+            "datastream_type": "metrics",
+        },
+        after_options={
+            "publish_mode": "Any changes",
+            "excluded_domains": [],
+            "excluded_entities": [],
+            "included_domains": [],
+            "included_entities": [],
+            "publish_enabled": True,
+            "publish_frequency": 60,
+        },
+        after_data={
+            "url": "http://migration-test:9200",
+            "auth_method": "no_auth",
+        },
+        after_version=5,
     )
 
 
@@ -362,8 +391,9 @@ async def test_config_migration_v1tov5(
 ):
     """Test config migration from v1."""
 
-    Before_Version = 1
-    Before_Data = {
+    before_version = 1
+    before_options = {}
+    before_data = {
         "url": "http://migration-test:9200",
         "ilm_max_size": "10gb",
         "ilm_delete_after": "30d",
@@ -375,21 +405,30 @@ async def test_config_migration_v1tov5(
         "excluded_entities": [],
         "included_domains": [],
         "included_entities": [],
+        "publish_mode": "Any changes",
     }
 
-    After_Version = 4
-    After_Data = {
+    after_version = 5
+    after_options = {
+        "publish_enabled": True,
+        "publish_frequency": 60,
+        "publish_mode": "Any changes",
+        "excluded_domains": [],
+        "excluded_entities": [],
+        "included_domains": [],
+        "included_entities": [],
+    }
+    after_data = {
         "url": "http://migration-test:9200",
         "index_mode": "index",
-        "publish_mode": "Any changes",
-        "auth_type": "no_auth",
+        "auth_method": "no_auth",
     }
 
     mock_entry = MockConfigEntry(
         unique_id="mock migration",
         domain=ELASTIC_DOMAIN,
-        version=Before_Version,
-        data=Before_Data,
+        version=before_version,
+        data=before_data,
         title="ES Config",
     )
 
@@ -400,5 +439,5 @@ async def test_config_migration_v1tov5(
     updated_entry = hass.config_entries.async_get_entry(mock_entry.entry_id)
 
     assert updated_entry
-    assert updated_entry.version == After_Version
-    assert updated_entry.data == After_Data
+    assert updated_entry.version == after_version
+    assert updated_entry.data == after_data
