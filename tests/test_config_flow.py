@@ -83,7 +83,7 @@ async def test_no_auth_flow_isolate(
     assert result["data"]["password"] is None
     assert result["data"]["ssl_ca_path"] is None
     assert result["data"]["verify_ssl"] is True
-    assert result["data"]["publish_enabled"] is True
+    assert result["options"]["publish_enabled"] is True
     assert "health_sensor_enabled" not in result["data"]
 
 
@@ -256,7 +256,7 @@ async def test_basic_auth_flow(
     assert result["data"]["api_key"] is None
     assert result["data"]["ssl_ca_path"] is None
     assert result["data"]["verify_ssl"] is True
-    assert result["data"]["publish_enabled"] is True
+    assert result["options"]["publish_enabled"] is True
     assert "health_sensor_enabled" not in result["data"]
 
 
@@ -598,7 +598,7 @@ async def test_api_key_flow(
     assert result["data"]["api_key"] == "ABC123=="
     assert result["data"]["ssl_ca_path"] is None
     assert result["data"]["verify_ssl"] is True
-    assert result["data"]["publish_enabled"] is True
+    assert result["options"]["publish_enabled"] is True
     assert "health_sensor_enabled" not in result["data"]
 
 

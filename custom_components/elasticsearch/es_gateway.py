@@ -1,4 +1,5 @@
 """Encapsulates Elasticsearch operations."""
+
 import asyncio
 import time
 
@@ -13,10 +14,9 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant
 
-from custom_components.elasticsearch.utils import get_merged_config
-
 from .const import CONF_SSL_CA_PATH
 from .errors import (
+    InsufficientPrivileges,
     UnsupportedVersion,
     convert_es_error,
 )
@@ -28,18 +28,22 @@ from .logger import LOGGER
 class ElasticsearchGateway:
     """Encapsulates Elasticsearch operations."""
 
-    def __init__(self, raw_config = None, config_entry: ConfigEntry = None, hass: HomeAssistant = None):
+    def __init__(
+        self,
+        config_entry: ConfigEntry = None,
+        hass: HomeAssistant = None,
+    ):
         """Initialize the gateway."""
-        config = raw_config if raw_config else get_merged_config(config_entry)
         self._hass = hass
         self._config_entry = config_entry
-        self._url = config.get(CONF_URL)
-        self._timeout = config.get(CONF_TIMEOUT)
-        self._username = config.get(CONF_USERNAME)
-        self._password = config.get(CONF_PASSWORD)
-        self._api_key = config.get(CONF_API_KEY)
-        self._verify_certs = config.get(CONF_VERIFY_SSL, True)
-        self._ca_certs = config.get(CONF_SSL_CA_PATH)
+
+        self._url = self._config_entry.data.get(CONF_URL)
+        self._timeout = self._config_entry.data.get(CONF_TIMEOUT)
+        self._username = self._config_entry.data.get(CONF_USERNAME)
+        self._password = self._config_entry.data.get(CONF_PASSWORD)
+        self._api_key = self._config_entry.data.get(CONF_API_KEY)
+        self._verify_certs = self._config_entry.data.get(CONF_VERIFY_SSL, True)
+        self._ca_certs = self._config_entry.data.get(CONF_SSL_CA_PATH)
 
         self.client = None
         self.es_version = None
@@ -48,12 +52,64 @@ class ElasticsearchGateway:
         self._active_connection_error = False
         self._connection_monitor_active = False
 
+    @classmethod
+    def test_connection(
+        self,
+        url: str,
+        username: str = None,
+        password: str = None,
+        api_key: str = None,
+        verify_certs: bool = True,
+        ca_certs: str = None,
+        timeout: int = 30,
+        verify_permissions=None,
+    ):
+        """Test the connection to the Elasticsearch server."""
+        from elasticsearch7 import TransportError
+
+        try:
+            es_client = self._create_es_client(
+                url=url,
+                username=username,
+                password=password,
+                api_key=api_key,
+                verify_certs=verify_certs,
+                ca_certs=ca_certs,
+                timeout=timeout,
+            )
+
+            es_client_info = es_client.info()
+
+            if verify_permissions is not None:
+                self._enforce_privileges(es_client, verify_permissions)
+
+            return es_client_info
+        except InsufficientPrivileges as insuff_err:
+            raise insuff_err
+        except TransportError as transport_err:
+            raise convert_es_error(
+                "Connection test failed", transport_err
+            ) from transport_err
+        except Exception as err:
+            raise convert_es_error("Connection test failed", err) from err
+        finally:
+            if es_client is not None:
+                es_client.close()
+
     async def async_init(self):
         """I/O bound init."""
 
         LOGGER.debug("Creating Elasticsearch client for %s", self._url)
         try:
-            self.client = self._create_es_client()
+            self.client = self._create_es_client(
+                self._url,
+                self._username,
+                self._password,
+                self._api_key,
+                self._verify_certs,
+                self._ca_certs,
+                self._timeout,
+            )
 
             self.es_version = ElasticsearchVersion(self.client)
             await self.es_version.async_init()
@@ -104,12 +160,15 @@ class ElasticsearchGateway:
     def _start_connection_monitor_task(self):
         """Initialize connection monitor task."""
         LOGGER.debug("Starting connection monitor")
-        self._config_entry.async_create_background_task(self._hass, self._connection_monitor_task(), 'connection_monitor')
+        self._config_entry.async_create_background_task(
+            self._hass, self._connection_monitor_task(), "connection_monitor"
+        )
         # self._connection_monitor_ref = asyncio.ensure_future(self._connection_monitor_task())
         self._connection_monitor_active = True
 
     async def _connection_monitor_task(self):
         from elasticsearch7 import TransportError
+
         next_test = time.monotonic() + 30
         while self._connection_monitor_active:
             try:
@@ -125,13 +184,21 @@ class ElasticsearchGateway:
                     LOGGER.debug("Finished connection test.")
 
                     if had_error:
-                        LOGGER.info("Connection to [%s] has been reestablished. Operations will resume.")
+                        LOGGER.info(
+                            "Connection to [%s] has been reestablished. Operations will resume."
+                        )
             except TransportError as transport_err:
                 LOGGER.debug("Finished connection test with TransportError")
-                ignorable_error = isinstance(transport_err.status_code, int) and transport_err.status_code <= 403
+                ignorable_error = (
+                    isinstance(transport_err.status_code, int)
+                    and transport_err.status_code <= 403
+                )
                 # Do not spam the logs with connection errors if we already know there is a problem.
                 if not ignorable_error and not self.active_connection_error:
-                    LOGGER.exception("Connection error. Operations will be paused until connection is reestablished. %s", transport_err)
+                    LOGGER.exception(
+                        "Connection error. Operations will be paused until connection is reestablished. %s",
+                        transport_err,
+                    )
                     self._active_connection_error = True
             except Exception as err:
                 LOGGER.exception("Error during connection monitoring task %s", err)
@@ -139,43 +206,64 @@ class ElasticsearchGateway:
                 if self._connection_monitor_active:
                     await asyncio.sleep(1)
 
-    def _create_es_client(self):
+    @classmethod
+    def _enforce_privileges(self, es_client, required_privileges):
+        """Enforce the required privileges."""
+        from elasticsearch7 import TransportError
+
+        try:
+            privilege_response = es_client.security.has_privileges(
+                body=required_privileges
+            )
+            return privilege_response
+        except TransportError as transport_err:
+            raise convert_es_error(
+                "Error enforcing privileges", transport_err
+            ) from transport_err
+        except Exception as err:
+            raise convert_es_error("Error enforcing privileges", err) from err
+
+    @classmethod
+    def _create_es_client(
+        self, url, username, password, api_key, verify_certs, ca_certs, timeout
+    ):
         """Construct an instance of the Elasticsearch client."""
         from elasticsearch7._async.client import AsyncElasticsearch
 
-        use_basic_auth = self._username is not None and self._password is not None
-        use_api_key = self._api_key is not None
+        es_client_args = self._create_es_client_args(
+            url, username, password, api_key, verify_certs, ca_certs
+        )
 
-        serializer = get_serializer()
+        return AsyncElasticsearch(**es_client_args)
+
+    @classmethod
+    def _create_es_client_args(
+        self,
+        url: str,
+        username: str = None,
+        password: str = None,
+        api_key: str = None,
+        verify_certs: bool = True,
+        ca_certs: str = None,
+        timeout: int = 30,
+    ):
+        """Construct the arguments for the Elasticsearch client."""
+        use_basic_auth = username is not None and password is not None
+        use_api_key = api_key is not None
+
+        args = {
+            "hosts": [url],
+            "serializer": get_serializer(),
+            "verify_certs": verify_certs,
+            "ssl_show_warn": verify_certs,
+            "ca_certs": ca_certs,
+            "timeout": timeout,
+        }
 
         if use_basic_auth:
-            auth = (self._username, self._password)
-            return AsyncElasticsearch(
-                [self._url],
-                http_auth=auth,
-                serializer=serializer,
-                verify_certs=self._verify_certs,
-                ssl_show_warn=self._verify_certs,
-                ca_certs=self._ca_certs,
-                timeout=self._timeout,
-            )
+            args["http_auth"] = (username, password)
 
         if use_api_key:
-            return AsyncElasticsearch(
-                [self._url],
-                headers={"Authorization": f"ApiKey {self._api_key}"},
-                serializer=serializer,
-                verify_certs=self._verify_certs,
-                ssl_show_warn=self._verify_certs,
-                ca_certs=self._ca_certs,
-                timeout=self._timeout,
-            )
+            args["headers"] = {"Authorization": f"ApiKey {api_key}"}
 
-        return AsyncElasticsearch(
-            [self._url],
-            serializer=serializer,
-            verify_certs=self._verify_certs,
-            ssl_show_warn=self._verify_certs,
-            ca_certs=self._ca_certs,
-            timeout=self._timeout,
-        )
+        return args

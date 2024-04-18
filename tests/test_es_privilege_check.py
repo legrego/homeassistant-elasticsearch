@@ -6,7 +6,9 @@ from homeassistant.const import CONF_USERNAME
 from homeassistant.helpers.typing import HomeAssistantType
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
-from custom_components.elasticsearch.config_flow import build_full_config
+from custom_components.elasticsearch.config_flow import (
+    build_full_config,
+)
 from custom_components.elasticsearch.errors import CannotConnect, InsufficientPrivileges
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 from custom_components.elasticsearch.es_privilege_check import ESPrivilegeCheck

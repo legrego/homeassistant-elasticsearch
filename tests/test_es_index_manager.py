@@ -7,7 +7,9 @@ from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
-from custom_components.elasticsearch.config_flow import build_full_config
+from custom_components.elasticsearch.config_flow import (
+    build_new_data,
+)
 from custom_components.elasticsearch.const import (
     CONF_INDEX_MODE,
     DATASTREAM_METRICS_ILM_POLICY_NAME,
@@ -34,13 +36,12 @@ async def get_index_manager(
     index_mode: str,
 ):
     """Return a configured IndexManager."""
-    config = build_full_config({"url": es_url, CONF_INDEX_MODE: index_mode})
 
     mock_entry = MockConfigEntry(
         unique_id="test_index_manager",
         domain=DOMAIN,
         version=4,
-        data=config,
+        data=build_new_data({"url": es_url, CONF_INDEX_MODE: index_mode}),
         title="ES Config",
     )
 

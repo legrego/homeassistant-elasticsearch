@@ -20,9 +20,8 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
 from custom_components.elasticsearch.config_flow import (
-    build_data,
-    build_full_config,
-    build_options,
+    build_new_data,
+    build_new_options,
 )
 from custom_components.elasticsearch.const import (
     CONF_EXCLUDED_DOMAINS,
@@ -102,7 +101,7 @@ async def test_sanitize_datastream_name(
 
     mock_es_initialization(es_aioclient_mock, es_url)
 
-    config = build_full_config({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_DATASTREAM})
+    config = build_new_data({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_DATASTREAM})
 
     mock_entry = MockConfigEntry(
         unique_id="test_entity_detail_publishing",
@@ -197,8 +196,8 @@ async def test_queue_functions(
         unique_id="test_queue_functions",
         domain=DOMAIN,
         version=3,
-        data=build_data({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_LEGACY}),
-        options=build_options(
+        data=build_new_data({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_LEGACY}),
+        options=build_new_options(
             {
                 CONF_PUBLISH_ENABLED: True,
                 CONF_PUBLISH_MODE: PUBLISH_MODE_STATE_CHANGES,
@@ -256,7 +255,7 @@ async def test_publish_state_change(
         unique_id="test_publish_state_change",
         domain=DOMAIN,
         version=3,
-        data=build_full_config({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_LEGACY}),
+        data=build_new_data({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_LEGACY}),
         title="ES Config",
     )
 
@@ -343,7 +342,7 @@ async def test_entity_detail_publishing(
 
     mock_es_initialization(es_aioclient_mock, es_url)
 
-    config = build_full_config({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_LEGACY})
+    config = build_new_data({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_LEGACY})
 
     mock_entry = MockConfigEntry(
         unique_id="test_entity_detail_publishing",
@@ -415,7 +414,7 @@ async def test_datastream_attribute_publishing(
 
     mock_es_initialization(es_aioclient_mock, es_url)
 
-    config = build_full_config({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_DATASTREAM})
+    config = build_new_data({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_DATASTREAM})
 
     mock_entry = MockConfigEntry(
         unique_id="test_entity_detail_publishing",
@@ -552,7 +551,7 @@ async def test_datastream_invalid_but_fixable_domain(
 
     mock_es_initialization(es_aioclient_mock, es_url)
 
-    config = build_full_config({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_DATASTREAM})
+    config = build_new_data({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_DATASTREAM})
 
     mock_entry = MockConfigEntry(
         unique_id="test_entity_detail_publishing",
@@ -641,7 +640,7 @@ async def test_attribute_publishing(hass, es_aioclient_mock: AiohttpClientMocker
 
     mock_es_initialization(es_aioclient_mock, es_url)
 
-    config = build_full_config({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_LEGACY})
+    config = build_new_data({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_LEGACY})
 
     mock_entry = MockConfigEntry(
         unique_id="test_entity_detail_publishing",
@@ -782,7 +781,7 @@ async def test_include_exclude_publishing_mode_all(
 
     mock_es_initialization(es_aioclient_mock, es_url)
 
-    config = build_full_config(
+    config = build_new_data(
         {
             "url": es_url,
             CONF_INDEX_MODE: INDEX_MODE_LEGACY,
@@ -798,7 +797,16 @@ async def test_include_exclude_publishing_mode_all(
         unique_id="test_entity_detail_publishing",
         domain=DOMAIN,
         version=3,
-        data=config,
+        data=build_new_data({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_LEGACY}),
+        options=build_new_options(
+            {
+                CONF_PUBLISH_MODE: PUBLISH_MODE_ALL,
+                CONF_INCLUDED_ENTITIES: ["counter.test_1"],
+                CONF_INCLUDED_DOMAINS: [input_boolean.DOMAIN, input_button.DOMAIN],
+                CONF_EXCLUDED_ENTITIES: ["input_boolean.test_2"],
+                CONF_EXCLUDED_DOMAINS: [counter.DOMAIN],
+            }
+        ),
         title="ES Config",
     )
 
@@ -928,7 +936,7 @@ async def test_include_exclude_publishing_mode_any(
 
     mock_es_initialization(es_aioclient_mock, es_url)
 
-    config = build_full_config(
+    config = build_new_data(
         {
             "url": es_url,
             CONF_PUBLISH_MODE: PUBLISH_MODE_ANY_CHANGES,
@@ -944,7 +952,19 @@ async def test_include_exclude_publishing_mode_any(
         unique_id="test_entity_detail_publishing",
         domain=DOMAIN,
         version=3,
-        data=config,
+        data=build_new_data(
+            {"url": es_url, CONF_PUBLISH_MODE: PUBLISH_MODE_ANY_CHANGES}
+        ),
+        options=build_new_options(
+            {
+                CONF_PUBLISH_MODE: PUBLISH_MODE_ANY_CHANGES,
+                CONF_INDEX_MODE: INDEX_MODE_LEGACY,
+                CONF_INCLUDED_ENTITIES: ["counter.test_1"],
+                CONF_INCLUDED_DOMAINS: [input_boolean.DOMAIN, input_button.DOMAIN],
+                CONF_EXCLUDED_ENTITIES: ["input_boolean.test_2"],
+                CONF_EXCLUDED_DOMAINS: [counter.DOMAIN],
+            }
+        ),
         title="ES Config",
     )
 
@@ -1040,7 +1060,7 @@ async def test_publish_mode_state_changes(
 
     mock_es_initialization(es_aioclient_mock, es_url)
 
-    config = build_full_config(
+    config = build_new_data(
         {
             "url": es_url,
             CONF_PUBLISH_MODE: PUBLISH_MODE_STATE_CHANGES,
@@ -1143,7 +1163,7 @@ async def test_publish_mode_any_changes(
 
     mock_es_initialization(es_aioclient_mock, es_url)
 
-    config = build_full_config(
+    config = build_new_data(
         {
             "url": es_url,
             CONF_PUBLISH_MODE: PUBLISH_MODE_ANY_CHANGES,
@@ -1261,7 +1281,7 @@ async def test_publish_mode_all(
 
     mock_es_initialization(es_aioclient_mock, es_url)
 
-    config = build_full_config(
+    config = build_new_data(
         {
             "url": es_url,
             CONF_PUBLISH_MODE: PUBLISH_MODE_ALL,

@@ -15,7 +15,9 @@ from homeassistant.util import dt as dt_util
 from jsondiff import diff
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.elasticsearch.config_flow import build_full_config
+from custom_components.elasticsearch.config_flow import (
+    build_new_data,
+)
 from custom_components.elasticsearch.const import (
     CONF_INDEX_MODE,
     DOMAIN,
@@ -69,7 +71,7 @@ async def document_creator(hass: HomeAssistant):
         unique_id="test_doc_creator",
         domain=DOMAIN,
         version=3,
-        data=build_full_config({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_LEGACY}),
+        data=build_new_data({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_LEGACY}),
         title="ES Config",
     )
 
@@ -276,7 +278,7 @@ async def test_state_to_entity_details(hass: HomeAssistant):
         unique_id="test_entity_details",
         domain=DOMAIN,
         version=3,
-        data=build_full_config({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_LEGACY}),
+        data=build_new_data({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_LEGACY}),
         title="ES Config",
     )
 
