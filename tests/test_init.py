@@ -344,7 +344,10 @@ async def test_config_migration_v4tov5(
         "included_domains": [],
         "included_entities": [],
     }
-    After_Data = {"url": "http://migration-test:9200"}
+    After_Data = {
+        "url": "http://migration-test:9200",
+        "auth_type": "no_auth",
+    }
 
     After_Version = 5
 
@@ -379,6 +382,7 @@ async def test_config_migration_v1tov5(
         "url": "http://migration-test:9200",
         "index_mode": "index",
         "publish_mode": "Any changes",
+        "auth_type": "no_auth",
     }
 
     mock_entry = MockConfigEntry(

@@ -7,7 +7,7 @@ from homeassistant.helpers.typing import HomeAssistantType
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
 from custom_components.elasticsearch.config_flow import (
-    build_full_config,
+    build_new_data,
 )
 from custom_components.elasticsearch.errors import CannotConnect, InsufficientPrivileges
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
@@ -24,7 +24,7 @@ async def test_bad_connection(
     es_url = "http://test-bad-connection:9200"
     mock_es_initialization(es_aioclient_mock, es_url)
 
-    config = build_full_config({"url": es_url})
+    config = build_new_data({"url": es_url})
 
     gateway = ElasticsearchGateway(config)
     await gateway.async_init()
@@ -49,7 +49,7 @@ async def test_successful_modern_privilege_check(
     es_url = "http://test_successful_modern_privilege_check:9200"
     mock_es_initialization(es_aioclient_mock, es_url)
 
-    config = build_full_config(
+    config = build_new_data(
         {"url": es_url, CONF_INDEX_MODE: "datastream", CONF_USERNAME: "test"}
     )
 
@@ -77,7 +77,7 @@ async def test_successful_modern_privilege_check_missing_index_privilege(
         es_aioclient_mock, es_url, mock_modern_datastream_authorization_error=True
     )
 
-    config = build_full_config(
+    config = build_new_data(
         {"url": es_url, CONF_INDEX_MODE: "datastream", CONF_USERNAME: "test"}
     )
 
@@ -107,7 +107,7 @@ async def test_successful_legacy_privilege_check(
     es_url = "http://test_successful_privilege_check:9200"
     mock_es_initialization(es_aioclient_mock, es_url)
 
-    config = build_full_config({"url": es_url, CONF_USERNAME: "test"})
+    config = build_new_data({"url": es_url, CONF_USERNAME: "test"})
 
     gateway = ElasticsearchGateway(config)
     await gateway.async_init()
@@ -130,7 +130,7 @@ async def test_successful_legacy_privilege_check_missing_index_privilege(
         es_aioclient_mock, es_url, mock_legacy_index_authorization_error=True
     )
 
-    config = build_full_config({"url": es_url, CONF_USERNAME: "test"})
+    config = build_new_data({"url": es_url, CONF_USERNAME: "test"})
 
     gateway = ElasticsearchGateway(config)
     await gateway.async_init()
@@ -158,7 +158,7 @@ async def test_enforce_auth_failure(
         es_aioclient_mock, es_url, mock_legacy_index_authorization_error=True
     )
 
-    config = build_full_config({"url": es_url, CONF_USERNAME: "test"})
+    config = build_new_data({"url": es_url, CONF_USERNAME: "test"})
 
     gateway = ElasticsearchGateway(config)
     await gateway.async_init()
@@ -179,7 +179,7 @@ async def test_enforce_auth_success(
     es_url = "http://test_enforce_auth_success:9200"
     mock_es_initialization(es_aioclient_mock, es_url)
 
-    config = build_full_config({"url": es_url, CONF_USERNAME: "test"})
+    config = build_new_data({"url": es_url, CONF_USERNAME: "test"})
 
     gateway = ElasticsearchGateway(config)
     await gateway.async_init()

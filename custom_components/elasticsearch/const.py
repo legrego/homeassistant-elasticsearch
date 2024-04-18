@@ -19,6 +19,9 @@ CONF_DATASTREAM_NAME_PREFIX = "datastream_name_prefix"
 CONF_DATASTREAM_NAMESPACE = "datastream_namespace"
 
 CONF_AUTH_METHOD = "auth_method"
+CONF_AUTH_BASIC_AUTH = "basic_auth"
+CONF_AUTH_API_KEY_AUTH = "api_key"
+CONF_AUTH_NO_AUTH = "no_auth"
 
 CONF_ILM_ENABLED = "ilm_enabled"
 CONF_ILM_POLICY_NAME = "ilm_policy_name"

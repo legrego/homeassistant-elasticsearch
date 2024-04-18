@@ -52,50 +52,6 @@ class ElasticsearchGateway:
         self._active_connection_error = False
         self._connection_monitor_active = False
 
-    @classmethod
-    def test_connection(
-        self,
-        url: str,
-        username: str = None,
-        password: str = None,
-        api_key: str = None,
-        verify_certs: bool = True,
-        ca_certs: str = None,
-        timeout: int = 30,
-        verify_permissions=None,
-    ):
-        """Test the connection to the Elasticsearch server."""
-        from elasticsearch7 import TransportError
-
-        try:
-            es_client = self._create_es_client(
-                url=url,
-                username=username,
-                password=password,
-                api_key=api_key,
-                verify_certs=verify_certs,
-                ca_certs=ca_certs,
-                timeout=timeout,
-            )
-
-            es_client_info = es_client.info()
-
-            if verify_permissions is not None:
-                self._enforce_privileges(es_client, verify_permissions)
-
-            return es_client_info
-        except InsufficientPrivileges as insuff_err:
-            raise insuff_err
-        except TransportError as transport_err:
-            raise convert_es_error(
-                "Connection test failed", transport_err
-            ) from transport_err
-        except Exception as err:
-            raise convert_es_error("Connection test failed", err) from err
-        finally:
-            if es_client is not None:
-                es_client.close()
-
     async def async_init(self):
         """I/O bound init."""
 
@@ -207,14 +163,90 @@ class ElasticsearchGateway:
                     await asyncio.sleep(1)
 
     @classmethod
-    def _enforce_privileges(self, es_client, required_privileges):
+    async def test_connection(
+        self,
+        url: str,
+        username: str = None,
+        password: str = None,
+        api_key: str = None,
+        verify_certs: bool = True,
+        ca_certs: str = None,
+        timeout: int = 30,
+        verify_permissions=None,
+    ):
+        """Test the connection to the Elasticsearch server."""
+        from elasticsearch7 import TransportError
+
+        es_client = self._create_es_client(
+            url=url,
+            username=username,
+            password=password,
+            api_key=api_key,
+            verify_certs=verify_certs,
+            ca_certs=ca_certs,
+            timeout=timeout,
+        )
+
+        result = await self._test_connection_with_es_client(
+            es_client, verify_permissions
+        )
+
+        es_client.close()
+
+        return result
+
+    @classmethod
+    async def _test_connection_with_es_client(
+        self,
+        es_client,
+        verify_permissions=None,
+    ):
+        """Test the connection to the Elasticsearch server."""
+        from elasticsearch7 import TransportError
+
+        try:
+            es_client_info = await es_client.info()
+
+            if verify_permissions is not None:
+                await self._enforce_privileges(es_client, verify_permissions)
+
+            es_version = ElasticsearchVersion(es_client)
+            await es_version.async_init()
+
+            if not es_version.is_supported_version():
+                LOGGER.fatal(
+                    "UNSUPPORTED VERSION OF ELASTICSEARCH DETECTED: %s.",
+                    es_version.to_string(),
+                )
+                raise UnsupportedVersion()
+
+            return es_client_info
+        except InsufficientPrivileges as insuff_err:
+            raise insuff_err
+        except TransportError as transport_err:
+            raise convert_es_error(
+                "Connection test failed", transport_err
+            ) from transport_err
+        except Exception as err:
+            raise convert_es_error("Connection test failed", err) from err
+        finally:
+            if es_client is not None:
+                es_client.close()
+
+    @classmethod
+    async def _enforce_privileges(self, es_client, required_privileges):
         """Enforce the required privileges."""
         from elasticsearch7 import TransportError
 
         try:
-            privilege_response = es_client.security.has_privileges(
+            privilege_response = await es_client.security.has_privileges(
                 body=required_privileges
             )
+
+            if not privilege_response.get("has_all_requested"):
+                LOGGER.debug("Required privileges are missing.")
+                raise InsufficientPrivileges()
+
             return privilege_response
         except TransportError as transport_err:
             raise convert_es_error(

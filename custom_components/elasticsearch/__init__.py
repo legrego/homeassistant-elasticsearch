@@ -8,6 +8,7 @@ from elasticsearch.config_flow import ElasticFlowHandler
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.const import (
     CONF_ALIAS,
+    CONF_API_KEY,
     CONF_DOMAINS,
     CONF_ENTITIES,
     CONF_EXCLUDE,
@@ -21,6 +22,10 @@ from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers.typing import HomeAssistantType
 
 from .const import (
+    CONF_AUTH_API_KEY_AUTH,
+    CONF_AUTH_BASIC_AUTH,
+    CONF_AUTH_METHOD,
+    CONF_AUTH_NO_AUTH,
     CONF_EXCLUDED_DOMAINS,
     CONF_EXCLUDED_ENTITIES,
     CONF_HEALTH_SENSOR_ENABLED,
@@ -246,6 +251,14 @@ def migrate_data_and_options_to_version(config_entry, desired_version):
         for key in keys_to_remove:
             if key in data:
                 del data[key]
+
+        # Check for the auth parameters and set the auth_type config based on which values are populated
+        if CONF_USERNAME in data and CONF_PASSWORD in data:
+            data[CONF_AUTH_METHOD] = CONF_AUTH_BASIC_AUTH
+        elif CONF_API_KEY in data:
+            data[CONF_AUTH_METHOD] = CONF_AUTH_API_KEY_AUTH
+        else:
+            data[CONF_AUTH_METHOD] = CONF_AUTH_NO_AUTH
 
         current_version = 5
 
