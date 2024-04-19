@@ -69,29 +69,18 @@ class DocumentCreator:
         shared_properties["tags"] = self.append_tags
 
         system_info = await self._system_info.async_get_system_info()
+        if system_info:
+            if system_info.version:
+                shared_properties["agent.version"] = system_info.version
+            if system_info.arch:
+                shared_properties["host.architecture"] = system_info.arch
+            if system_info.os_name:
+                shared_properties["host.os.name"] = system_info.os_name
+            if system_info.hostname:
+                shared_properties["host.hostname"] = system_info.hostname
 
         self._static_v1doc_properties = shared_properties.copy()
-
-        self._static_v1doc_properties["agent.version"] = system_info.get(
-            "version", "UNKNOWN"
-        )
-        self._static_v1doc_properties["host.architecture"] = system_info.get(
-            "arch", "UNKNOWN"
-        )
-        self._static_v1doc_properties["host.os.name"] = system_info.get(
-            "os_name", "UNKNOWN"
-        )
-        self._static_v1doc_properties["host.hostname"] = system_info.get(
-            "hostname", "UNKNOWN"
-        )
-
         self._static_v2doc_properties = shared_properties.copy()
-
-        if system_info:
-            self._static_v2doc_properties["agent.version"] = system_info.get("version")
-            self._static_v2doc_properties["host.architecture"] = system_info.get("arch")
-            self._static_v2doc_properties["host.os.name"] = system_info.get("os_name")
-            self._static_v2doc_properties["host.hostname"] = system_info.get("hostname")
 
     def _state_to_attributes(self, state: State) -> dict:
         """Convert the attributes of a State object into a dictionary compatible with Elasticsearch mappings.

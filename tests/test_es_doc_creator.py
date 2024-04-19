@@ -1,4 +1,4 @@
-"""Tests for the DocumentPublisher class."""
+"""Tests for the DocumentCreator class."""
 
 from datetime import datetime
 from unittest import mock
@@ -24,8 +24,8 @@ from custom_components.elasticsearch.const import (
     INDEX_MODE_LEGACY,
 )
 from custom_components.elasticsearch.es_doc_creator import DocumentCreator
+from custom_components.elasticsearch.system_info import SystemInfoResult
 from tests.conftest import MockEntityState, mock_config_entry
-from homeassistant.core import State
 from tests.const import (
     MOCK_LOCATION_DEVICE,
     MOCK_LOCATION_SERVER,
@@ -34,17 +34,23 @@ from tests.const import (
 
 
 @pytest.fixture(autouse=True)
-def skip_system_info():
+def mock_system_info():
     """Fixture to skip returning system info."""
 
     async def get_system_info():
-        return {}
+        return SystemInfoResult(
+            version="2099.1.2",
+            arch="Test Arch",
+            hostname="Test Host",
+            os_name="Test OS",
+            os_version="v9.8.7",
+        )
 
     with mock.patch(
         "custom_components.elasticsearch.system_info.SystemInfo.async_get_system_info",
         side_effect=get_system_info,
     ):
-        yield {}
+        yield None
 
 
 async def _setup_config_entry(hass: HomeAssistant, mock_entry: mock_config_entry):
@@ -460,6 +466,10 @@ async def test_v1_doc_creation_geolocation(
 
     expected = {
         "@timestamp": MOCK_NOON_APRIL_12TH_2023,
+        "agent.name": "My Home Assistant",
+        "agent.type": "hass",
+        "agent.version": "2099.1.2",
+        "ecs.version": "1.0.0",
         "event": {
             "action": "testing",
             "kind": "event",
@@ -478,14 +488,9 @@ async def test_v1_doc_creation_geolocation(
         "hass.object_id": "test_1",
         "hass.object_id_lower": "test_1",
         "hass.value": 2.0,
-        "agent.name": "My Home Assistant",
-        "agent.type": "hass",
-        "agent.version": "UNKNOWN",
-        "ecs.version": "1.0.0",
-        "host.architecture": "UNKNOWN",
-        "host.geo.location": {"lat": 99.0, "lon": 99.0},
-        "host.hostname": "UNKNOWN",
-        "host.os.name": "UNKNOWN",
+        "host.architecture": "Test Arch",
+        "host.hostname": "Test Host",
+        "host.os.name": "Test OS",
         "tags": None,
     }
 
@@ -519,7 +524,7 @@ async def test_v1_doc_creation_geolocation_from_attributes(
         "@timestamp": MOCK_NOON_APRIL_12TH_2023,
         "agent.name": "My Home Assistant",
         "agent.type": "hass",
-        "agent.version": "UNKNOWN",
+        "agent.version": "2099.1.2",
         "ecs.version": "1.0.0",
         "event": {
             "action": "testing",
@@ -545,9 +550,9 @@ async def test_v1_doc_creation_geolocation_from_attributes(
         "hass.object_id": "test_1",
         "hass.object_id_lower": "test_1",
         "hass.value": 2.0,
-        "host.architecture": "UNKNOWN",
-        "host.hostname": "UNKNOWN",
-        "host.os.name": "UNKNOWN",
+        "host.architecture": "Test Arch",
+        "host.hostname": "Test Host",
+        "host.os.name": "Test OS",
         "tags": None,
         "host.geo.location": {
             "lat": MOCK_LOCATION_SERVER["lat"],
@@ -783,6 +788,7 @@ async def test_v2_doc_creation_geolocation(
         "@timestamp": MOCK_NOON_APRIL_12TH_2023,
         "agent.name": "My Home Assistant",
         "agent.type": "hass",
+        "agent.version": "2099.1.2",
         "ecs.version": "1.0.0",
         "event": {
             "action": "testing",
@@ -805,6 +811,9 @@ async def test_v2_doc_creation_geolocation(
             "lat": MOCK_LOCATION_SERVER["lat"],
             "lon": MOCK_LOCATION_SERVER["lon"],
         },
+        "host.architecture": "Test Arch",
+        "host.hostname": "Test Host",
+        "host.os.name": "Test OS",
         "tags": None,
     }
 
@@ -838,6 +847,7 @@ async def test_v2_doc_creation_geolocation_from_attributes(
         "@timestamp": MOCK_NOON_APRIL_12TH_2023,
         "agent.name": "My Home Assistant",
         "agent.type": "hass",
+        "agent.version": "2099.1.2",
         "ecs.version": "1.0.0",
         "event": {
             "action": "testing",
@@ -863,6 +873,9 @@ async def test_v2_doc_creation_geolocation_from_attributes(
             "lat": MOCK_LOCATION_SERVER["lat"],
             "lon": MOCK_LOCATION_SERVER["lon"],
         },
+        "host.architecture": "Test Arch",
+        "host.hostname": "Test Host",
+        "host.os.name": "Test OS",
         "tags": None,
     }
 

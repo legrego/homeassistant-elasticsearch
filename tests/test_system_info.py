@@ -1,6 +1,5 @@
 """Test Entity Details."""
 
-import json
 from unittest import mock
 
 import pytest
@@ -8,7 +7,7 @@ from homeassistant.const import __version__ as current_version
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.typing import HomeAssistantType
 
-from custom_components.elasticsearch.system_info import SystemInfo
+from custom_components.elasticsearch.system_info import SystemInfo, SystemInfoResult
 
 
 @pytest.mark.asyncio
@@ -19,10 +18,13 @@ async def test_success(hass: HomeAssistantType):
 
     sys_info = SystemInfo(hass)
     result = await sys_info.async_get_system_info()
-    assert isinstance(result, dict)
-    assert result["version"] == current_version
-    assert result["user"] is not None
-    assert json.dumps(result) is not None
+    assert isinstance(result, SystemInfoResult)
+    assert result.version == current_version
+    assert result.arch is not None
+    assert result.os_name is not None
+    assert result.os_version is not None
+    assert result.hostname is not None
+
 
 @pytest.mark.asyncio
 async def test_error_handling(hass: HomeAssistantType):
@@ -31,6 +33,9 @@ async def test_error_handling(hass: HomeAssistantType):
     def mock_get_system_info():
         raise HomeAssistantError("Something bad happened")
 
-    with mock.patch('homeassistant.helpers.system_info.async_get_system_info', side_effect=mock_get_system_info):
+    with mock.patch(
+        "homeassistant.helpers.system_info.async_get_system_info",
+        side_effect=mock_get_system_info,
+    ):
         sys_info = SystemInfo(hass)
-        assert await sys_info.async_get_system_info() == {}
+        assert await sys_info.async_get_system_info() is None
