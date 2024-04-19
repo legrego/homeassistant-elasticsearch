@@ -17,7 +17,6 @@ from homeassistant.helpers.typing import EventType
 from custom_components.elasticsearch.errors import ElasticException
 from custom_components.elasticsearch.es_doc_creator import DocumentCreator
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
-from custom_components.elasticsearch.es_index_manager import IndexManager
 
 from .const import (
     CONF_EXCLUDED_DOMAINS,
@@ -51,7 +50,6 @@ class DocumentPublisher:
     def __init__(
         self,
         gateway: ElasticsearchGateway,
-        index_manager: IndexManager,
         hass: HomeAssistant,
         config_entry: ConfigEntry,
     ):

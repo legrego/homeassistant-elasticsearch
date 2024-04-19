@@ -53,7 +53,6 @@ from tests.test_util.aioclient_mock_utils import extract_es_bulk_requests
 from tests.test_util.es_startup_mocks import mock_es_initialization
 
 
-
 @pytest.fixture(autouse=True)
 def freeze_location(hass: HomeAssistant):
     """Freeze location so we can properly assert on payload contents."""
