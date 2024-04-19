@@ -388,21 +388,35 @@ class DocumentCreator:
 
         return replaced_string.lower()
 
+    @classmethod
     def is_valid_number(self, number) -> bool:
         """Determine if the passed number is valid for Elasticsearch."""
         is_infinity = isinf(number)
         is_nan = number != number  # pylint: disable=comparison-with-itself
         return not is_infinity and not is_nan
 
+    @classmethod
     def try_state_as_number(self, state: State) -> bool:
         """Try to coerce our state to a number and return true if we can, false if we can't."""
 
         try:
-            state_helper.state_as_number(state)
+            self.state_as_number(state)
             return True
         except ValueError:
             return False
 
+    @classmethod
+    def state_as_number(self, state: State) -> bool:
+        """Try to coerce our state to a number"""
+
+        number = state_helper.state_as_number(state)
+
+        if not self.is_valid_number(number):
+            raise ValueError("Could not coerce state to a number.")
+
+        return number
+
+    @classmethod
     def try_state_as_boolean(self, state: State) -> bool:
         """Try to coerce our state to a boolean and return true if we can, false if we can't."""
 
@@ -412,6 +426,7 @@ class DocumentCreator:
         except ValueError:
             return False
 
+    @classmethod
     def state_as_boolean(self, state: State) -> bool:
         """Try to coerce our state to a boolean."""
         # copied from helper state_as_number function
@@ -437,6 +452,7 @@ class DocumentCreator:
 
         raise ValueError("Could not coerce state to a boolean.")
 
+    @classmethod
     def try_state_as_datetime(self, state: State) -> datetime:
         """Try to coerce our state to a datetime and return True if we can, false if we can't."""
 
@@ -446,6 +462,7 @@ class DocumentCreator:
         except ValueError:
             return False
 
+    @classmethod
     def state_as_datetime(self, state: State) -> datetime:
         """Try to coerce our state to a datetime."""
 

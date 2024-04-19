@@ -24,7 +24,8 @@ from custom_components.elasticsearch.const import (
     INDEX_MODE_LEGACY,
 )
 from custom_components.elasticsearch.es_doc_creator import DocumentCreator
-from tests.conftest import mock_config_entry
+from tests.conftest import MockEntityState, mock_config_entry
+from homeassistant.core import State
 from tests.const import (
     MOCK_LOCATION_DEVICE,
     MOCK_LOCATION_SERVER,
@@ -75,9 +76,7 @@ async def document_creator(hass: HomeAssistant):
         title="ES Config",
     )
 
-    config = get_merged_config(mock_entry)
-
-    creator = DocumentCreator(hass, config)
+    creator = DocumentCreator(hass, mock_entry)
 
     # TODO: Consider initializing the document creator before returning it, requires rewriting tests and initializing the whole integration
     # await creator.async_init()
@@ -90,15 +89,18 @@ async def create_and_return_document(
     document_creator: DocumentCreator,
     value: str | float,
     attributes: dict,
-    domain="sensor",
-    entity_id="test_1",
+    entity_id="sensor.test_1",
     timestamp=MOCK_NOON_APRIL_12TH_2023,
     version=2,
 ):
     """Create and return a test document."""
 
-    state = await create_and_return_state(
-        hass, domain=domain, entity_id=entity_id, value=value, attributes=attributes
+    state = MockEntityState(
+        entity_id=entity_id,
+        state=value,
+        attributes=attributes,
+        last_changed=timestamp,
+        last_updated=timestamp,
     )
 
     return document_creator.state_to_document(
@@ -124,150 +126,125 @@ async def create_and_return_state(
 
 
 # Unit tests for state conversions
+
+
 @pytest.mark.asyncio
-async def test_try_state_as_number(
-    hass: HomeAssistant, document_creator: DocumentCreator
+@pytest.mark.parametrize(
+    "input,result,success",
+    [
+        (1, 1, True),
+        (0, 0, True),
+        ("on", 1, True),
+        ("off", 0, True),
+        ("1", 1, True),
+        ("0", 0, True),
+        ("1.0", 1.0, True),
+        ("0.0", 0.0, True),
+        ("2.0", 2.0, True),
+        ("2", 2, True),
+        ("tomato", None, False),
+        (MOCK_NOON_APRIL_12TH_2023, None, False),
+    ],
+)
+async def test_state_as_number(
+    input: str | float,
+    result: float | None,
+    success: bool,
 ):
     """Test trying state to float conversion."""
 
-    assert document_creator.try_state_as_number(State("domain.entity_id", "1")) is True
-    assert document_creator.try_state_as_number(State("domain.entity_id", "0")) is True
+    # Test Try First
     assert (
-        document_creator.try_state_as_number(State("domain.entity_id", "1.0")) is True
-    )
-    assert (
-        document_creator.try_state_as_number(State("domain.entity_id", "0.0")) is True
-    )
-    assert (
-        document_creator.try_state_as_number(State("domain.entity_id", "2.0")) is True
-    )
-    assert document_creator.try_state_as_number(State("domain.entity_id", "2")) is True
-    assert (
-        document_creator.try_state_as_number(State("domain.entity_id", "tomato"))
-        is False
+        DocumentCreator.try_state_as_number(State("domain.entity_id", input)) == success
     )
 
-    assert (
-        document_creator.try_state_as_number(
-            State("domain.entity_id", MOCK_NOON_APRIL_12TH_2023)
-        )
-        is False
-    )
-
-
-@pytest.mark.asyncio
-async def test_state_as_boolean(hass: HomeAssistant, document_creator: DocumentCreator):
-    """Test state to boolean conversion."""
-
-    assert document_creator.state_as_boolean(State("domain.entity_id", "true")) is True
-    assert (
-        document_creator.state_as_boolean(State("domain.entity_id", "false")) is False
-    )
-    assert document_creator.state_as_boolean(State("domain.entity_id", "on")) is True
-    assert document_creator.state_as_boolean(State("domain.entity_id", "off")) is False
-
-    with pytest.raises(ValueError):
-        assert document_creator.state_as_boolean(State("domain.entity_id", "1"))
-    with pytest.raises(ValueError):
-        assert document_creator.state_as_boolean(State("domain.entity_id", "0"))
-    with pytest.raises(ValueError):
-        assert document_creator.state_as_boolean(State("domain.entity_id", "1.0"))
-    with pytest.raises(ValueError):
-        assert document_creator.state_as_boolean(
-            State("domain.entity_id", MOCK_NOON_APRIL_12TH_2023)
+    # Test conversion which should throw an exception when success is False
+    if not success:
+        with pytest.raises(ValueError):
+            DocumentCreator.state_as_number(State("domain.entity_id", input))
+    else:
+        assert (
+            DocumentCreator.state_as_number(State("domain.entity_id", input)) == result
         )
 
 
 @pytest.mark.asyncio
-async def test_try_state_as_boolean(
-    hass: HomeAssistant, document_creator: DocumentCreator
+@pytest.mark.parametrize(
+    "input,result,success",
+    [
+        ("true", True, True),
+        ("false", False, True),
+        ("on", True, True),
+        ("off", False, True),
+        ("tomato", False, False),
+        ("1", False, False),
+        ("0", False, False),
+        ("1.0", False, False),
+        ("MOCK_NOON_APRIL_12TH_2023", False, False),
+    ],
+)
+async def test_state_as_boolean(
+    input: str | float,
+    result: float | None,
+    success: bool,
 ):
     """Test trying state to boolean conversion."""
+
+    # Test Try First
     assert (
-        document_creator.try_state_as_boolean(State("domain.entity_id", "true")) is True
-    )
-    assert (
-        document_creator.try_state_as_boolean(State("domain.entity_id", "false"))
-        is True
-    )
-    assert (
-        document_creator.try_state_as_boolean(State("domain.entity_id", "on")) is True
-    )
-    assert (
-        document_creator.try_state_as_boolean(State("domain.entity_id", "off")) is True
-    )
-    assert (
-        document_creator.try_state_as_boolean(State("domain.entity_id", "1")) is False
-    )
-    assert (
-        document_creator.try_state_as_boolean(State("domain.entity_id", "0")) is False
-    )
-    assert (
-        document_creator.try_state_as_boolean(State("domain.entity_id", "1.0")) is False
+        DocumentCreator.try_state_as_boolean(State("domain.entity_id", input))
+        == success
     )
 
-    assert (
-        document_creator.try_state_as_boolean(
-            State("domain.entity_id", MOCK_NOON_APRIL_12TH_2023)
+    # Test conversion which should throw an exception when success is False
+    if not success:
+        with pytest.raises(ValueError):
+            DocumentCreator.state_as_boolean(State("domain.entity_id", input))
+    else:
+        assert (
+            DocumentCreator.state_as_boolean(State("domain.entity_id", input)) == result
         )
-        is False
-    )
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "input,result,success",
+    [
+        (
+            MOCK_NOON_APRIL_12TH_2023,
+            dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023),
+            True,
+        ),
+        ("tomato", None, False),
+        ("1", None, False),
+        ("0", None, False),
+        ("1.0", None, False),
+        ("on", None, False),
+        ("off", None, False),
+    ],
+)
 async def test_state_as_datetime(
-    hass: HomeAssistant, document_creator: DocumentCreator
+    input: str | float,
+    result,
+    success: bool,
 ):
-    """Test state to datetime conversion."""
+    """Test trying state to datetime conversion."""
 
-    assert document_creator.state_as_datetime(
-        State("domain.entity_id", MOCK_NOON_APRIL_12TH_2023)
-    ) == dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023)
-
-    with pytest.raises(ValueError):
-        document_creator.state_as_datetime(State("domain.entity_id", "tomato"))
-
-    with pytest.raises(ValueError):
-        document_creator.state_as_datetime(State("domain.entity_id", "1"))
-
-    with pytest.raises(ValueError):
-        document_creator.state_as_datetime(State("domain.entity_id", "0"))
-
-    with pytest.raises(ValueError):
-        document_creator.state_as_datetime(State("domain.entity_id", "on"))
-
-    with pytest.raises(ValueError):
-        document_creator.state_as_datetime(State("domain.entity_id", "off"))
-
-
-async def test_try_state_as_datetime(
-    hass: HomeAssistant, document_creator: DocumentCreator
-):
-    """Test state to datetime conversion."""
-
+    # Test Try First
     assert (
-        document_creator.try_state_as_datetime(State("domain.entity_id", "tomato"))
-        is False
+        DocumentCreator.try_state_as_datetime(State("domain.entity_id", input))
+        == success
     )
-    assert (
-        document_creator.try_state_as_datetime(State("domain.entity_id", "1")) is False
-    )
-    assert (
-        document_creator.try_state_as_datetime(State("domain.entity_id", "0")) is False
-    )
-    assert (
-        document_creator.try_state_as_datetime(State("domain.entity_id", "on")) is False
-    )
-    assert (
-        document_creator.try_state_as_datetime(State("domain.entity_id", "off"))
-        is False
-    )
-    assert (
-        document_creator.try_state_as_datetime(
-            State("domain.entity_id", "2023-04-12T12:00:00Z")
+
+    # Test conversion which should throw an exception when success is False
+    if not success:
+        with pytest.raises(ValueError):
+            DocumentCreator.state_as_datetime(State("domain.entity_id", input))
+    else:
+        assert (
+            DocumentCreator.state_as_datetime(State("domain.entity_id", input))
+            == result
         )
-        is True
-    )
 
 
 async def test_state_to_entity_details(hass: HomeAssistant):
@@ -322,7 +299,7 @@ async def test_state_to_entity_details(hass: HomeAssistant):
         "platform": "counter",
     }
 
-    assert diff(document, expected) == {}
+    assert document == expected
 
 
 @pytest.mark.asyncio
@@ -469,6 +446,7 @@ async def test_v1_doc_creation_geolocation(
     hass.config.latitude = MOCK_LOCATION_SERVER["lat"]
     hass.config.longitude = MOCK_LOCATION_SERVER["lon"]
 
+    # Initialize the document creator so we can check our static fields
     await document_creator.async_init()
 
     # Mock a state object with attributes
@@ -482,10 +460,6 @@ async def test_v1_doc_creation_geolocation(
 
     expected = {
         "@timestamp": MOCK_NOON_APRIL_12TH_2023,
-        "agent.name": "My Home Assistant",
-        "agent.type": "hass",
-        "agent.version": "UNKNOWN",
-        "ecs.version": "1.0.0",
         "event": {
             "action": "testing",
             "kind": "event",
@@ -504,17 +478,18 @@ async def test_v1_doc_creation_geolocation(
         "hass.object_id": "test_1",
         "hass.object_id_lower": "test_1",
         "hass.value": 2.0,
+        "agent.name": "My Home Assistant",
+        "agent.type": "hass",
+        "agent.version": "UNKNOWN",
+        "ecs.version": "1.0.0",
         "host.architecture": "UNKNOWN",
+        "host.geo.location": {"lat": 99.0, "lon": 99.0},
         "host.hostname": "UNKNOWN",
         "host.os.name": "UNKNOWN",
         "tags": None,
-        "host.geo.location": {
-            "lat": MOCK_LOCATION_SERVER["lat"],
-            "lon": MOCK_LOCATION_SERVER["lon"],
-        },
     }
 
-    assert diff(document, expected) == {}
+    assert document == expected
 
 
 @pytest.mark.asyncio
@@ -584,7 +559,7 @@ async def test_v1_doc_creation_geolocation_from_attributes(
         },
     }
 
-    assert diff(document, expected) == {}
+    assert document == expected
 
 
 @pytest.mark.asyncio
@@ -624,7 +599,7 @@ async def test_v1_doc_creation_attributes(
         },
     }
 
-    assert diff(document, expected) == {}
+    assert document == expected
 
 
 @pytest.mark.asyncio
@@ -634,8 +609,7 @@ async def test_v1_doc_creation_on_off_float(
     """Test v1 document creation with attributes."""
     document = await create_and_return_document(
         hass,
-        domain="sensor",
-        entity_id="test_1",
+        entity_id="sensor.test_1",
         value="off",
         attributes={},
         document_creator=document_creator,
@@ -664,7 +638,7 @@ async def test_v1_doc_creation_on_off_float(
         },
     }
 
-    assert diff(document, expected) == {}
+    assert document == expected
 
 
 @pytest.mark.asyncio
@@ -675,8 +649,7 @@ async def test_v1_doc_creation_infinity(
     # Test infinityfloat coercion to Float
     document = await create_and_return_document(
         hass,
-        domain="sensor",
-        entity_id="test_1",
+        entity_id="sensor.test_1",
         value=float("inf"),
         attributes={},
         document_creator=document_creator,
@@ -705,7 +678,7 @@ async def test_v1_doc_creation_infinity(
         },
     }
 
-    assert diff(document, expected) == {}
+    assert document == expected
 
 
 @pytest.mark.asyncio
@@ -716,8 +689,7 @@ async def test_v1_doc_creation_string_to_float(
     # Test float coercion to Float
     document = await create_and_return_document(
         hass,
-        domain="sensor",
-        entity_id="test_1",
+        entity_id="sensor.test_1",
         value="2.0",
         attributes={},
         document_creator=document_creator,
@@ -746,7 +718,7 @@ async def test_v1_doc_creation_string_to_float(
         },
     }
 
-    assert diff(document, expected) == {}
+    assert document == expected
 
 
 @pytest.mark.asyncio
@@ -784,7 +756,7 @@ async def test_v1_doc_creation_leave_datetime_alone(
             "type": "change",
         },
     }
-    assert diff(document, expected) == {}
+    assert document == expected
 
 
 @pytest.mark.asyncio
@@ -836,7 +808,7 @@ async def test_v2_doc_creation_geolocation(
         "tags": None,
     }
 
-    assert diff(document, expected) == {}
+    assert document == expected
 
 
 @pytest.mark.asyncio
@@ -894,7 +866,7 @@ async def test_v2_doc_creation_geolocation_from_attributes(
         "tags": None,
     }
 
-    assert diff(document, expected) == {}
+    assert document == expected
 
 
 @pytest.mark.asyncio
@@ -932,7 +904,7 @@ async def test_v2_doc_creation_attributes(
         },
     }
 
-    assert diff(document, expected) == {}
+    assert document == expected
 
 
 @pytest.mark.asyncio
@@ -942,8 +914,7 @@ async def test_v2_doc_creation_float_as_string(
     """Test v2 document creation with stringified float value."""
     document = await create_and_return_document(
         hass,
-        domain="sensor",
-        entity_id="test_1",
+        entity_id="sensor.test_1",
         value="2.0",
         attributes={},
         document_creator=document_creator,
@@ -971,7 +942,7 @@ async def test_v2_doc_creation_float_as_string(
         },
     }
 
-    assert diff(document, expected) == {}
+    assert document == expected
 
 
 @pytest.mark.asyncio
@@ -982,8 +953,7 @@ async def test_v2_doc_creation_float_infinity(
     # Test v2 Document Creation with invalid number Value
     document = await create_and_return_document(
         hass,
-        domain="sensor",
-        entity_id="test_1",
+        entity_id="sensor.test_1",
         value=float("inf"),
         attributes={},
         document_creator=document_creator,
@@ -1011,7 +981,7 @@ async def test_v2_doc_creation_float_infinity(
         },
     }
 
-    assert diff(document, expected) == {}
+    assert document == expected
 
 
 @pytest.mark.asyncio
@@ -1021,8 +991,7 @@ async def test_v2_doc_creation_float(
     """Test v2 document creation with Float."""
     document = await create_and_return_document(
         hass,
-        domain="sensor",
-        entity_id="test_1",
+        entity_id="sensor.test_1",
         value=2.0,
         attributes={},
         document_creator=document_creator,
@@ -1050,7 +1019,7 @@ async def test_v2_doc_creation_float(
         },
     }
 
-    assert diff(document, expected) == {}
+    assert document == expected
 
 
 @pytest.mark.asyncio
@@ -1095,7 +1064,7 @@ async def test_v2_doc_creation_datetime(
         },
     }
 
-    assert diff(document, expected) == {}
+    assert document == expected
 
 
 @pytest.mark.asyncio
@@ -1105,8 +1074,7 @@ async def test_v2_doc_creation_boolean_truefalse(
     """Test v2 document creation with true/false coerced Boolean value."""
     document = await create_and_return_document(
         hass,
-        domain="sensor",
-        entity_id="test_1",
+        entity_id="sensor.test_1",
         value="true",
         attributes={},
         document_creator=document_creator,
@@ -1134,7 +1102,7 @@ async def test_v2_doc_creation_boolean_truefalse(
         },
     }
 
-    assert diff(document, expected) == {}
+    assert document == expected
 
 
 @pytest.mark.asyncio
@@ -1144,8 +1112,7 @@ async def test_v2_doc_creation_boolean_onoff(
     """Test v2 document creation with on/off coerced to Boolean value."""
     document = await create_and_return_document(
         hass,
-        domain="sensor",
-        entity_id="test_1",
+        entity_id="sensor.test_1",
         value="off",
         attributes={},
         document_creator=document_creator,
@@ -1173,4 +1140,4 @@ async def test_v2_doc_creation_boolean_onoff(
         },
     }
 
-    assert diff(document, expected) == {}
+    assert document == expected

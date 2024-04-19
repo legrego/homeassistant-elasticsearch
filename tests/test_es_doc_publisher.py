@@ -80,6 +80,28 @@ def skip_system_info():
         yield
 
 
+async def _create_gateway_and_publisher(
+    hass: HomeAssistant, mock_entry: mock_config_entry, initialize: bool = True
+):
+    """Create a gateway and publisher instance."""
+    gateway = ElasticsearchGateway(config_entry=mock_entry)
+
+    index_manager = IndexManager(hass=hass, config_entry=mock_entry, gateway=gateway)
+
+    publisher = DocumentPublisher(
+        gateway=gateway, index_manager=index_manager, hass=hass, config_entry=mock_entry
+    )
+
+    if initialize:
+        await gateway.async_init()
+
+        await publisher.async_init()
+
+        publisher.queue_size() == 0
+
+    return gateway, index_manager, publisher
+
+
 async def _setup_config_entry(hass: HomeAssistant, mock_entry: mock_config_entry):
     mock_entry.add_to_hass(hass)
     assert await async_setup_component(hass, DOMAIN, {}) is True
@@ -153,12 +175,8 @@ async def test_queue_functions(
         title="ES Config",
     )
 
-    mock_entry.add_to_hass(hass)
-
-    gateway = ElasticsearchGateway(config_entry=mock_entry)
-    index_manager = IndexManager(hass=hass, config_entry=mock_entry, gateway=gateway)
-    publisher = DocumentPublisher(
-        gateway=gateway, index_manager=index_manager, hass=hass, config_entry=mock_entry
+    gateway, index_manager, publisher = await _create_gateway_and_publisher(
+        hass=hass, mock_entry=mock_entry, initialize=False
     )
 
     assert publisher.publish_queue is None
@@ -184,6 +202,135 @@ async def test_queue_functions(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "order, INCLUDED_DOMAINS,INCLUDED_ENTITIES,EXCLUDED_DOMAINS,EXCLUDED_ENTITIES,entity_id, expected",  # filter_type is include exclude with domain or entity
+    [
+        (0, ["test"], None, None, None, "test.test_1", True),
+        (1, ["test"], None, None, None, "test.test_2", True),
+        (2, None, ["test.test_1"], None, None, "test.test_1", True),
+        (3, None, ["test.test_1"], None, None, "test.test_2", False),
+        (4, None, None, ["test"], None, "test.test_1", False),
+        (5, None, None, ["test"], None, "test.test_2", False),
+        (6, None, None, None, ["test.test_1"], "test.test_1", False),
+        (7, None, None, None, ["test.test_1"], "test.test_2", True),
+        # Test with different combinations of include and exclude
+        (8, ["test"], None, None, ["test.test_1"], "test.test_1", False),
+        (9, ["test"], None, None, ["test.test_1"], "test.test_2", True),
+        # Inclusion takes precedence over exclusion
+        (10, ["test"], None, ["test"], None, "test.test_1", False),
+        (11, ["test"], None, ["test"], None, "test.test_2", False),
+        # Inclusion takes precedence over exclusion
+        (12, None, ["test.test_1"], None, ["test.test_1"], "test.test_1", False),
+        (13, None, ["test.test_1"], None, ["test.test_1"], "test.test_2", False),
+        (14, None, ["test.test_1"], ["test"], None, "test.test_1", True),
+        (15, None, ["test.test_1"], ["test"], None, "test.test_2", False),
+    ],
+)
+async def test_publishing_entity_domain_filters(
+    hass: HomeAssistant,
+    order: int,
+    INCLUDED_DOMAINS: str,
+    INCLUDED_ENTITIES: str,
+    EXCLUDED_DOMAINS: str,
+    EXCLUDED_ENTITIES: str,
+    entity_id: str,
+    expected: bool,
+):
+    mock_entry = MockConfigEntry(
+        unique_id="test_publish_state_change",
+        domain=DOMAIN,
+        version=3,
+        data=build_new_data({"url": "http://es:9200"}),
+        options=build_new_options(
+            {
+                CONF_INCLUDED_DOMAINS: INCLUDED_DOMAINS,
+                CONF_INCLUDED_ENTITIES: INCLUDED_ENTITIES,
+                CONF_EXCLUDED_DOMAINS: EXCLUDED_DOMAINS,
+                CONF_EXCLUDED_ENTITIES: EXCLUDED_ENTITIES,
+            }
+        ),
+        title="ES Config",
+    )
+
+    gateway, index_manager, publisher = await _create_gateway_and_publisher(
+        hass=hass, mock_entry=mock_entry, initialize=False
+    )
+
+    assert publisher.publish_queue is None
+
+    publisher.empty_queue()
+
+    publisher.enqueue_state(
+        MockEntityState(entity_id=entity_id, state="1", attributes={"attr": "test"}),
+        "test",
+        PUBLISH_REASON_STATE_CHANGE,
+    )
+
+    if expected:
+        assert publisher.queue_size() == 1
+    else:
+        assert publisher.queue_size() == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "mode", [PUBLISH_MODE_ALL, PUBLISH_MODE_ANY_CHANGES, PUBLISH_MODE_STATE_CHANGES]
+)
+async def test_publishing_mode_filters(
+    hass: HomeAssistant,
+    mode: str,
+):
+    """Test different publishing modes."""
+    mock_entry = MockConfigEntry(
+        unique_id="test_publish_state_change",
+        domain=DOMAIN,
+        version=3,
+        data=build_new_data(
+            {"url": "http://es:9200", CONF_INDEX_MODE: INDEX_MODE_LEGACY}
+        ),
+        options=build_new_options({CONF_PUBLISH_MODE: mode}),
+        title="ES Config",
+    )
+
+    gateway, index_manager, publisher = await _create_gateway_and_publisher(
+        hass=hass, mock_entry=mock_entry, initialize=False
+    )
+
+    assert publisher.publish_queue is None
+
+    publisher.empty_queue()
+
+    publisher.enqueue_state(
+        MockEntityState(
+            entity_id="test.test_1", state="1", attributes={"attr": "test"}
+        ),
+        "test",
+        PUBLISH_REASON_STATE_CHANGE,
+    )
+
+    assert publisher._has_entries_to_publish()
+
+    assert publisher.queue_size() == 1
+
+    publisher.enqueue_state(
+        MockEntityState(
+            entity_id="test.test_1", state="1", attributes={"attr": "test2"}
+        ),
+        "test",
+        PUBLISH_REASON_ATTR_CHANGE,
+    )
+
+    assert publisher._has_entries_to_publish()
+
+    if mode == PUBLISH_MODE_ALL:
+        assert publisher.queue_size() == 2
+    if mode == PUBLISH_MODE_ANY_CHANGES:
+        assert publisher.queue_size() == 2
+    if mode == PUBLISH_MODE_STATE_CHANGES:
+        assert publisher.queue_size() == 1
+
+
+@pytest.mark.asyncio
 async def test_publish_state_change(
     hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
 ):
@@ -202,22 +349,13 @@ async def test_publish_state_change(
         domain=DOMAIN,
         version=3,
         data=build_new_data({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_LEGACY}),
+        options=build_new_options({CONF_PUBLISH_MODE: PUBLISH_MODE_STATE_CHANGES}),
         title="ES Config",
     )
 
-    entry = await _setup_config_entry(hass, mock_entry)
-
-    config = entry.data
-    gateway = ElasticsearchGateway(config)
-    index_manager = IndexManager(hass, config, gateway)
-    publisher = DocumentPublisher(
-        config, gateway, index_manager, hass, config_entry=entry
+    gateway, index_manager, publisher = await _create_gateway_and_publisher(
+        hass=hass, mock_entry=mock_entry, initialize=True
     )
-
-    await gateway.async_init()
-    await publisher.async_init()
-
-    assert publisher.queue_size() == 0
 
     hass.states.async_set("counter.test_1", "2")
     await hass.async_block_till_done()

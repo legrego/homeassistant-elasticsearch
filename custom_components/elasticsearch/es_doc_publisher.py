@@ -35,6 +35,7 @@ from .const import (
     INDEX_MODE_DATASTREAM,
     INDEX_MODE_LEGACY,
     PUBLISH_MODE_ALL,
+    PUBLISH_MODE_ANY_CHANGES,
     PUBLISH_MODE_STATE_CHANGES,
     PUBLISH_REASON_ATTR_CHANGE,
     PUBLISH_REASON_POLLING,
@@ -112,27 +113,7 @@ class DocumentPublisher:
             state: State = event.data.get("new_state")
             old_state: State = event.data.get("old_state")
 
-            if state is None:
-                return
-            elif old_state is None:
-                reason = PUBLISH_REASON_STATE_CHANGE
-            else:  # state and old_state are both available
-                state_value_changed = old_state.state != state.state
-
-                if (
-                    not state_value_changed
-                    and self._publish_mode == PUBLISH_MODE_STATE_CHANGES
-                ):
-                    LOGGER.debug(
-                        "Excluding event state change for %s because the value did not change and publish mode is set to state changes only.",
-                        state.entity_id,
-                    )
-                    return
-
-                if state_value_changed:
-                    reason = PUBLISH_REASON_STATE_CHANGE
-                else:
-                    reason = PUBLISH_REASON_ATTR_CHANGE
+            reason = self._determine_change_type(state, old_state)
 
             self.enqueue_state(state, event, reason)
 
@@ -197,8 +178,13 @@ class DocumentPublisher:
         domain = state.domain
         entity_id = state.entity_id
 
-        if self._should_publish_entity_state(domain, entity_id):
-            self.publish_queue.put((state, event, reason))
+        if not self._should_publish_entity_passes_filter(domain, entity_id):
+            return
+
+        if not self._should_publish_state_change_matches_mode(reason, state.entity_id):
+            return
+
+        self.publish_queue.put((state, event, reason))
 
     def empty_queue(self):
         """Empty the publish queue."""
@@ -237,7 +223,9 @@ class DocumentPublisher:
             for state in all_states:
                 if (
                     state.entity_id not in entity_counts
-                    and self._should_publish_entity_state(state.domain, state.entity_id)
+                    and self._should_publish_entity_passes_filter(
+                        state.domain, state.entity_id
+                    )
                 ):
                     actions.append(
                         self._state_to_bulk_action(
@@ -274,7 +262,42 @@ class DocumentPublisher:
         except ElasticsearchException as err:
             LOGGER.exception("Error publishing documents to Elasticsearch: %s", err)
 
-    def _should_publish_entity_state(self, domain: str, entity_id: str):
+    def _determine_change_type(self, new_state: State, old_state: State = None):
+        if new_state is None:
+            return
+
+        elif old_state is None:
+            reason = PUBLISH_REASON_STATE_CHANGE
+        else:  # state and old_state are both available
+            state_value_changed = old_state.state != new_state.state
+
+            if state_value_changed:
+                reason = PUBLISH_REASON_STATE_CHANGE
+            else:
+                reason = PUBLISH_REASON_ATTR_CHANGE
+
+        return reason
+
+    def _should_publish_state_change_matches_mode(self, change_type, entity_id):
+        """Determine if a state change should be published."""
+
+        # Publish mode is All or Any Changes, so publish everything!
+        if self._publish_mode != PUBLISH_MODE_STATE_CHANGES:
+            return True
+
+        if (
+            change_type == PUBLISH_REASON_ATTR_CHANGE
+            and self._publish_mode == PUBLISH_MODE_STATE_CHANGES
+        ):
+            LOGGER.debug(
+                "Excluding event state change for %s because the value did not change and publish mode is set to state changes only.",
+                entity_id,
+            )
+            return False
+
+        return True
+
+    def _should_publish_entity_passes_filter(self, domain: str, entity_id: str):
         """Determine if a state change should be published."""
         if not self.publish_enabled:
             LOGGER.warning(
@@ -318,6 +341,12 @@ class DocumentPublisher:
             )
             return True
 
+        if is_domain_excluded:
+            LOGGER.debug(
+                "Skipping %s: it belongs to an excluded domain (%s)", entity_id, domain
+            )
+            return False
+
         if is_domain_included:
             LOGGER.debug(
                 "Including %s: this entity belongs to an included domain (%s)",
@@ -326,13 +355,11 @@ class DocumentPublisher:
             )
             return True
 
-        if is_domain_excluded:
-            LOGGER.debug(
-                "Skipping %s: it belongs to an excluded domain (%s)", entity_id, domain
-            )
+        # If we've made it this far, the domain and entity are not explicitly included, so if we have an inclusion list
+        # we should skip this entity as we have inclusion criteria and it didn't match it.
+        if self._included_domains or self._included_entities:
             return False
 
-        # At this point, neither the domain nor entity belong to an explicit include/exclude list.
         return True
 
     def _state_to_bulk_action(self, state: State, time: datetime, reason: str):
