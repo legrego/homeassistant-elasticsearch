@@ -42,6 +42,7 @@ from custom_components.elasticsearch.es_doc_publisher import DocumentPublisher
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 from custom_components.elasticsearch.es_index_manager import IndexManager
 from custom_components.elasticsearch.es_serializer import get_serializer
+from custom_components.elasticsearch.system_info import SystemInfoResult
 from tests.conftest import mock_config_entry
 from tests.const import MOCK_LOCATION_SERVER
 from tests.test_util.aioclient_mock_utils import extract_es_bulk_requests
@@ -63,17 +64,23 @@ def freeze_time(freezer: FrozenDateTimeFactory):
 
 
 @pytest.fixture(autouse=True)
-def skip_system_info():
+def mock_system_info():
     """Fixture to skip returning system info."""
 
     async def get_system_info():
-        return {}
+        return SystemInfoResult(
+            version="2099.1.2",
+            arch="Test Arch",
+            hostname="Test Host",
+            os_name="Test OS",
+            os_version="v9.8.7",
+        )
 
     with mock.patch(
         "custom_components.elasticsearch.system_info.SystemInfo.async_get_system_info",
         side_effect=get_system_info,
     ):
-        yield
+        yield None
 
 
 async def _setup_config_entry(hass: HomeAssistant, mock_entry: mock_config_entry):
@@ -482,6 +489,7 @@ async def test_datastream_attribute_publishing(
             "@timestamp": "2023-04-12T12:00:00+00:00",
             "agent.name": "My Home Assistant",
             "agent.type": "hass",
+            "agent.version": "2099.1.2",
             "ecs.version": "1.0.0",
             "data_stream": {
                 "dataset": "homeassistant.counter",
@@ -519,6 +527,9 @@ async def test_datastream_attribute_publishing(
                 "lat": MOCK_LOCATION_SERVER["lat"],
                 "lon": MOCK_LOCATION_SERVER["lon"],
             },
+            "host.architecture": "Test Arch",
+            "host.hostname": "Test Host",
+            "host.os.name": "Test OS",
             "tags": None,
         },
     ]
@@ -583,6 +594,7 @@ async def test_datastream_invalid_but_fixable_domain(
             "@timestamp": "2023-04-12T12:00:00+00:00",
             "agent.name": "My Home Assistant",
             "agent.type": "hass",
+            "agent.version": "2099.1.2",
             "ecs.version": "1.0.0",
             "data_stream": {
                 "dataset": "homeassistant.tom_ato",
@@ -610,6 +622,9 @@ async def test_datastream_invalid_but_fixable_domain(
                 "lat": MOCK_LOCATION_SERVER["lat"],
                 "lon": MOCK_LOCATION_SERVER["lon"],
             },
+            "host.architecture": "Test Arch",
+            "host.hostname": "Test Host",
+            "host.os.name": "Test OS",
             "tags": None,
         },
     ]
@@ -1421,15 +1436,15 @@ def _build_expected_payload(
             },
             "agent.name": "My Home Assistant",
             "agent.type": "hass",
-            "agent.version": "UNKNOWN",
+            "agent.version": "2099.1.2",
             "ecs.version": "1.0.0",
             "host.geo.location": {
                 "lat": MOCK_LOCATION_SERVER["lat"],
                 "lon": MOCK_LOCATION_SERVER["lon"],
             },
-            "host.architecture": "UNKNOWN",
-            "host.os.name": "UNKNOWN",
-            "host.hostname": "UNKNOWN",
+            "host.architecture": "Test Arch",
+            "host.os.name": "Test OS",
+            "host.hostname": "Test Host",
             "tags": None,
         }
 
