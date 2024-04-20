@@ -44,7 +44,6 @@ from custom_components.elasticsearch.const import (
 from custom_components.elasticsearch.errors import ElasticException
 from custom_components.elasticsearch.es_doc_publisher import DocumentPublisher
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
-from custom_components.elasticsearch.es_index_manager import IndexManager
 from custom_components.elasticsearch.es_serializer import get_serializer
 from custom_components.elasticsearch.system_info import SystemInfoResult
 from tests.conftest import MockEntityState, mock_config_entry
@@ -87,26 +86,61 @@ def mock_system_info():
         yield None
 
 
+async def _new_entity_state(
+    hass: HomeAssistant,
+    entity_id: str,
+    state: str,
+    attributes: dict | None = None,
+    publisher: DocumentPublisher = None,
+    should_enqueue: bool = True,
+):
+    """Publish a new entity to HASS and optionally verify that it is in our publisher queue."""
+
+    if publisher is not None:
+        current_queue_size = publisher.queue_size()
+
+    hass.states.async_set(entity_id, state, attributes)
+    await hass.async_block_till_done()
+
+    if publisher is not None:
+        if should_enqueue:
+            assert publisher.queue_size() == current_queue_size + 1
+        else:  # Publishing should be rejected per our parameters
+            assert publisher.queue_size() == current_queue_size
+
+        await publisher.async_do_publish()
+
+
+async def _retrieve_request_data(
+    es_aioclient_mock: AiohttpClientMocker, count: int = 1
+):
+    bulk_requests = extract_es_bulk_requests(es_aioclient_mock)
+    assert len(bulk_requests) == count
+
+    for request in bulk_requests:
+        yield request.data
+
+
 async def _create_gateway_and_publisher(
     hass: HomeAssistant, mock_entry: mock_config_entry, initialize: bool = True
 ):
     """Create a gateway and publisher instance."""
     gateway = ElasticsearchGateway(config_entry=mock_entry)
 
-    index_manager = IndexManager(hass=hass, config_entry=mock_entry, gateway=gateway)
-
-    publisher = DocumentPublisher(
-        gateway=gateway, index_manager=index_manager, hass=hass, config_entry=mock_entry
-    )
+    publisher = DocumentPublisher(gateway=gateway, hass=hass, config_entry=mock_entry)
 
     if initialize:
         await gateway.async_init()
 
         await publisher.async_init()
 
-        publisher.queue_size() == 0
+        assert publisher.publish_queue is not None
 
-    return gateway, index_manager, publisher
+        assert publisher.queue_size() == 0
+    else:
+        assert publisher.publish_queue is None
+
+    return gateway, publisher
 
 
 async def _setup_config_entry(hass: HomeAssistant, mock_entry: mock_config_entry):
@@ -182,7 +216,7 @@ async def test_queue_functions(
         title="ES Config",
     )
 
-    gateway, index_manager, publisher = await _create_gateway_and_publisher(
+    gateway, publisher = await _create_gateway_and_publisher(
         hass=hass, mock_entry=mock_entry, initialize=False
     )
 
@@ -259,7 +293,7 @@ async def test_publishing_entity_domain_filters(
         title="ES Config",
     )
 
-    gateway, index_manager, publisher = await _create_gateway_and_publisher(
+    gateway, publisher = await _create_gateway_and_publisher(
         hass=hass, mock_entry=mock_entry, initialize=False
     )
 
@@ -299,7 +333,7 @@ async def test_publishing_mode_filters(
         title="ES Config",
     )
 
-    gateway, index_manager, publisher = await _create_gateway_and_publisher(
+    gateway, publisher = await _create_gateway_and_publisher(
         hass=hass, mock_entry=mock_entry, initialize=False
     )
 
@@ -338,14 +372,21 @@ async def test_publishing_mode_filters(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("index_mode", [INDEX_MODE_LEGACY, INDEX_MODE_DATASTREAM])
 async def test_publish_state_change(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, index_mode
 ):
     """Test entity change is published."""
 
-    counter_config = {counter.DOMAIN: {"test_1": {}}}
-    assert await async_setup_component(hass, counter.DOMAIN, counter_config)
-    await hass.async_block_till_done()
+    await _new_entity_state(
+        hass=hass,
+        entity_id="counter.test_1",
+        state="1",
+    )
+
+    # counter_config = {counter.DOMAIN: {"test_1": {}}}
+    # assert await async_setup_component(hass, counter.DOMAIN, counter_config)
+    # await hass.async_block_till_done()
 
     es_url = "http://localhost:9200"
 
@@ -355,27 +396,30 @@ async def test_publish_state_change(
         unique_id="test_publish_state_change",
         domain=DOMAIN,
         version=3,
-        data=build_new_data({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_LEGACY}),
+        data=build_new_data({"url": es_url, CONF_INDEX_MODE: index_mode}),
         options=build_new_options({CONF_PUBLISH_MODE: PUBLISH_MODE_STATE_CHANGES}),
         title="ES Config",
     )
 
-    gateway, index_manager, publisher = await _create_gateway_and_publisher(
+    gateway, publisher = await _create_gateway_and_publisher(
         hass=hass, mock_entry=mock_entry, initialize=True
     )
 
-    hass.states.async_set("counter.test_1", "2")
-    await hass.async_block_till_done()
+    await _new_entity_state(
+        hass=hass,
+        publisher=publisher,
+        entity_id="counter.test_1",
+        state="2",
+        should_enqueue=True,
+    )
 
-    assert publisher.queue_size() == 1
+    bulk_request = _retrieve_request_data(es_aioclient_mock)
 
-    await publisher.async_do_publish()
-
-    bulk_requests = extract_es_bulk_requests(es_aioclient_mock)
-
-    assert len(bulk_requests) == 1
-    request = bulk_requests[0]
-
+    _validate_standard_document(payload=bulk_request, index_mode=index_mode)
+    if index_mode == INDEX_MODE_DATASTREAM:
+        _validate_v1_standard_document()
+    else:
+        _validate_datastream_document()
     events = [
         {
             "domain": "counter",
@@ -443,17 +487,12 @@ async def test_entity_detail_publishing(
         title="ES Config",
     )
 
-    entry = await _setup_config_entry(hass, mock_entry)
+    mock_entry.add_to_hass()
+    # entry = await _setup_config_entry(hass, mock_entry)
 
-    gateway = ElasticsearchGateway(config)
-    index_manager = IndexManager(hass, config, gateway)
-    publisher = DocumentPublisher(
-        config, gateway, index_manager, hass, config_entry=entry
+    gateway, publisher = await _create_gateway_and_publisher(
+        hass=hass, mock_entry=mock_entry, initialize=True
     )
-
-    await gateway.async_init()
-    await publisher.async_init()
-    assert publisher.queue_size() == 0
 
     # State change
     hass.states.async_set("counter.test_1", "3", force_update=True)
@@ -518,10 +557,7 @@ async def test_datastream_attribute_publishing(
     entry = await _setup_config_entry(hass, mock_entry)
 
     gateway = ElasticsearchGateway(config)
-    index_manager = IndexManager(hass, config, gateway)
-    publisher = DocumentPublisher(
-        config, gateway, index_manager, hass, config_entry=entry
-    )
+    publisher = DocumentPublisher(config, gateway, hass, config_entry=entry)
 
     await gateway.async_init()
     await publisher.async_init()
@@ -659,10 +695,7 @@ async def test_datastream_invalid_but_fixable_domain(
     entry = await _setup_config_entry(hass, mock_entry)
 
     gateway = ElasticsearchGateway(config)
-    index_manager = IndexManager(hass, config, gateway)
-    publisher = DocumentPublisher(
-        config, gateway, index_manager, hass, config_entry=entry
-    )
+    publisher = DocumentPublisher(config, gateway, hass, config_entry=entry)
 
     await gateway.async_init()
     await publisher.async_init()
@@ -752,10 +785,7 @@ async def test_attribute_publishing(hass, es_aioclient_mock: AiohttpClientMocker
     entry = await _setup_config_entry(hass, mock_entry)
 
     gateway = ElasticsearchGateway(config)
-    index_manager = IndexManager(hass, config, gateway)
-    publisher = DocumentPublisher(
-        config, gateway, index_manager, hass, config_entry=entry
-    )
+    publisher = DocumentPublisher(config, gateway, hass, config_entry=entry)
 
     await gateway.async_init()
     await publisher.async_init()
@@ -915,10 +945,7 @@ async def test_include_exclude_publishing_mode_all(
     # It should still be included when publish_mode == PUBLISH_MODE_ALL
 
     gateway = ElasticsearchGateway(config)
-    index_manager = IndexManager(hass, config, gateway)
-    publisher = DocumentPublisher(
-        config, gateway, index_manager, hass, config_entry=entry
-    )
+    publisher = DocumentPublisher(config, gateway, hass, config_entry=entry)
 
     await gateway.async_init()
     await publisher.async_init()
@@ -1073,10 +1100,7 @@ async def test_include_exclude_publishing_mode_any(
     # It should still be included when publish_mode == PUBLISH_MODE_ALL
 
     gateway = ElasticsearchGateway(config)
-    index_manager = IndexManager(hass, config, gateway)
-    publisher = DocumentPublisher(
-        config, gateway, index_manager, hass, config_entry=entry
-    )
+    publisher = DocumentPublisher(config, gateway, hass, config_entry=entry)
 
     await gateway.async_init()
     await publisher.async_init()
@@ -1178,10 +1202,7 @@ async def test_publish_mode_state_changes(
     entry = await _setup_config_entry(hass, mock_entry)
 
     gateway = ElasticsearchGateway(config)
-    index_manager = IndexManager(hass, config, gateway)
-    publisher = DocumentPublisher(
-        config, gateway, index_manager, hass, config_entry=entry
-    )
+    publisher = DocumentPublisher(config, gateway, hass, config_entry=entry)
 
     await gateway.async_init()
     await publisher.async_init()
@@ -1281,10 +1302,7 @@ async def test_publish_mode_any_changes(
     entry = await _setup_config_entry(hass, mock_entry)
 
     gateway = ElasticsearchGateway(config)
-    index_manager = IndexManager(hass, config, gateway)
-    publisher = DocumentPublisher(
-        config, gateway, index_manager, hass, config_entry=entry
-    )
+    publisher = DocumentPublisher(config, gateway, hass, config_entry=entry)
 
     await gateway.async_init()
     await publisher.async_init()
@@ -1399,10 +1417,7 @@ async def test_publish_mode_all(
     entry = await _setup_config_entry(hass, mock_entry)
 
     gateway = ElasticsearchGateway(config)
-    index_manager = IndexManager(hass, config, gateway)
-    publisher = DocumentPublisher(
-        config, gateway, index_manager, hass, config_entry=entry
-    )
+    publisher = DocumentPublisher(config, gateway, hass, config_entry=entry)
 
     await gateway.async_init()
     await publisher.async_init()
@@ -1507,6 +1522,87 @@ async def test_publish_mode_all(
     )
 
     await gateway.async_stop_gateway()
+
+
+def _validate_standard_document(
+    payload,
+    initialized_publisher=True,
+    extra_validations=dict,
+    skip_keys: list = [],
+    index_mode: str = INDEX_MODE_DATASTREAM,
+):
+    if index_mode == INDEX_MODE_LEGACY:
+        _validate_v1_standard_document(
+            payload,
+            initialized_publisher=initialized_publisher,
+            extra_validations=extra_validations,
+            skip_keys=skip_keys,
+        )
+    else:
+        _validate_v2_standard_document(
+            payload,
+            initialized_publisher=initialized_publisher,
+            extra_validations=extra_validations,
+            skip_keys=skip_keys,
+        )
+
+
+def _validate_v2_standard_document(
+    payload,
+    initialized_publisher=True,
+    extra_validations=dict,
+    skip_keys: list = [],
+):
+    return True
+
+
+def _validate_v1_standard_document(
+    payload,
+    initialized_publisher=True,
+    extra_validations=dict,
+    skip_keys: list = [],
+):
+    # payload will be a list of dicts, each validation consumes two dicts. If there are more than two dicts, it will be a list of dicts and we recursively call ourselves for each pair
+    if len(payload) > 2:
+        for i in range(0, len(payload), 2):
+            assert _validate_v1_standard_document(payload[i : i + 2], skip_keys)
+        return
+
+    destination = payload[0]
+    body = payload[1]
+
+    # Validate the destination index
+    if "_index" not in skip_keys:
+        assert "_index" in destination, f"Key _index not in destination"
+        assert isinstance(destination["_index"], str), f"Key _index is not a string"
+        assert (
+            destination.get("_index") == "active-hass-index-v4_2"
+        ), f"Key _index is not active-hass-index-v4_2"
+
+    # if payload is a dict, validate the keys
+    STANDARD_BODY_KEYS = {
+        "@timestamp": "2023-04-12T12:00:00+00:00",
+        "agent.name": "My Home Assistant",
+        "agent.type": "hass",
+        "agent.version": "2099.1.2",
+        "ecs.version": "1.0.0",
+        "hass.entity_id": "counter.test_1",
+        "hass.entity_id_lower": "counter.test_1",
+        "hass.object_id": "test_1",
+        "hass.object_id_lower": "test_1",
+        "hass.value": 2.0,
+        "tags": None,
+    }
+
+    for key, value in STANDARD_BODY_KEYS.items():
+        if key not in skip_keys:
+            assert key in body, f"Standard ey {key} not in body"
+            assert body.get(key) == value, f"Standard key {key} is not {value}"
+
+    if extra_validations:
+        for key, value in extra_validations.items():
+            assert key in body, f"Extra key {key} not in body"
+            assert body.get(key) == value, f"Extra key {key} is not {value}"
 
 
 def _build_expected_payload(
