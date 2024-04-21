@@ -34,7 +34,6 @@ from .const import (
     INDEX_MODE_DATASTREAM,
     INDEX_MODE_LEGACY,
     PUBLISH_MODE_ALL,
-    PUBLISH_MODE_ANY_CHANGES,
     PUBLISH_MODE_STATE_CHANGES,
     PUBLISH_REASON_ATTR_CHANGE,
     PUBLISH_REASON_POLLING,
@@ -62,6 +61,8 @@ class DocumentPublisher:
         self.remove_state_change_listener = None
 
         self.publish_queue = None
+
+        self.empty_queue()
 
         if not self.publish_enabled:
             LOGGER.debug("Not initializing document publisher")
@@ -138,8 +139,6 @@ class DocumentPublisher:
             LOGGER.debug("Aborting async_init: publish is not enabled")
             return
 
-        self.empty_queue()
-
         await self._document_creator.async_init()
 
         LOGGER.debug("async_init: starting publish timer")
@@ -176,11 +175,19 @@ class DocumentPublisher:
         domain = state.domain
         entity_id = state.entity_id
 
-        if not self._should_publish_entity_passes_filter(domain, entity_id):
+        if not self._should_publish_entity_passes_filter(entity_id):
             return
 
         if not self._should_publish_state_change_matches_mode(reason, state.entity_id):
             return
+
+        if not self.publish_enabled:
+            LOGGER.warning(
+                "Attempted to queue a state change for %s.%s, but publish is not enabled. This is a no-op (and a bug).",
+                domain,
+                entity_id,
+            )
+            return False
 
         self.publish_queue.put((state, event, reason))
 
@@ -221,9 +228,7 @@ class DocumentPublisher:
             for state in all_states:
                 if (
                     state.entity_id not in entity_counts
-                    and self._should_publish_entity_passes_filter(
-                        state.domain, state.entity_id
-                    )
+                    and self._should_publish_entity_passes_filter(state.entity_id)
                 ):
                     actions.append(
                         self._state_to_bulk_action(
@@ -295,70 +300,36 @@ class DocumentPublisher:
 
         return True
 
-    def _should_publish_entity_passes_filter(self, domain: str, entity_id: str):
+    def _should_publish_entity_passes_filter(self, entity_id: str):
         """Determine if a state change should be published."""
-        if not self.publish_enabled:
-            LOGGER.warning(
-                "Attempted to queue a state change for %s.%s, but publish is not enabled. This is a no-op (and a bug).",
-                domain,
-                entity_id,
-            )
-            return False
 
-        is_domain_included = self._included_domains and domain in self._included_domains
-        is_domain_excluded = self._excluded_domains and domain in self._excluded_domains
+        domain = entity_id.split(".")[0]
 
-        is_entity_included = (
-            self._included_entities and entity_id in self._included_entities
-        )
-        is_entity_excluded = (
-            self._excluded_entities and entity_id in self._excluded_entities
-        )
+        is_domain_included = domain in self._included_domains
+        is_domain_excluded = domain in self._excluded_domains
 
-        if is_entity_excluded:
-            message_suffix = ""
-            if is_domain_included:
-                message_suffix += ", which supersedes the configured domain inclusion."
+        is_entity_included = entity_id in self._included_entities
+        is_entity_excluded = entity_id in self._excluded_entities
 
-            LOGGER.debug(
-                "Skipping %s: this entity is explicitly excluded%s",
-                entity_id,
-                message_suffix,
-            )
-            return False
+        if self._destination_type == INDEX_MODE_DATASTREAM:
+            if is_entity_excluded or is_domain_excluded:
+                return False
 
-        if is_entity_included:
-            message_suffix = ""
+            if len(self._included_entities) == 0 and len(self._included_domains) == 0:
+                return True
+
+            if is_entity_included or is_domain_included:
+                return True
+
+            return True
+        else:
+            if is_entity_excluded:
+                return False
+            if is_entity_included or is_domain_included:
+                return True
             if is_domain_excluded:
-                message_suffix += ", which supersedes the configured domain exclusion."
-
-            LOGGER.debug(
-                "Including %s: this entity is explicitly included%s",
-                entity_id,
-                message_suffix,
-            )
+                return False
             return True
-
-        if is_domain_excluded:
-            LOGGER.debug(
-                "Skipping %s: it belongs to an excluded domain (%s)", entity_id, domain
-            )
-            return False
-
-        if is_domain_included:
-            LOGGER.debug(
-                "Including %s: this entity belongs to an included domain (%s)",
-                entity_id,
-                domain,
-            )
-            return True
-
-        # If we've made it this far, the domain and entity are not explicitly included, so if we have an inclusion list
-        # we should skip this entity as we have inclusion criteria and it didn't match it.
-        if self._included_domains or self._included_entities:
-            return False
-
-        return True
 
     def _state_to_bulk_action(self, state: State, time: datetime, reason: str):
         """Create a bulk action from the given state object."""

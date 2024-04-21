@@ -71,7 +71,7 @@ DEFAULT_ILM_POLICY_NAME = "home-assistant"
 DEFAULT_INDEX_MODE = "datastream"
 
 
-def build_new_options(existing_options=None, user_input=None):
+def build_new_options(existing_options: dict = None, user_input: dict = None):
     """Build the entire options validation schema."""
     if user_input is None:
         user_input = {}
@@ -96,6 +96,14 @@ def build_new_options(existing_options=None, user_input=None):
         CONF_INDEX_FORMAT: user_input.get(
             CONF_INDEX_FORMAT,
             existing_options.get(CONF_INDEX_FORMAT, DEFAULT_INDEX_FORMAT),
+        ),
+        CONF_ILM_POLICY_NAME: user_input.get(
+            CONF_ILM_POLICY_NAME,
+            existing_options.get(CONF_ILM_POLICY_NAME, DEFAULT_ILM_POLICY_NAME),
+        ),
+        CONF_ILM_ENABLED: user_input.get(
+            CONF_ILM_ENABLED,
+            existing_options.get(CONF_ILM_ENABLED, DEFAULT_ILM_ENABLED),
         ),
         CONF_EXCLUDED_DOMAINS: user_input.get(
             CONF_EXCLUDED_DOMAINS, existing_options.get(CONF_EXCLUDED_DOMAINS, [])
@@ -139,25 +147,31 @@ def build_new_data(existing_data: map = None, user_input: map = None):
             CONF_INDEX_MODE, existing_data.get(CONF_INDEX_MODE, DEFAULT_INDEX_MODE)
         ),
     }
+    auth = {
+        CONF_USERNAME: user_input.get(
+            CONF_USERNAME, existing_data.get(CONF_USERNAME, None)
+        ),
+        CONF_PASSWORD: user_input.get(
+            CONF_PASSWORD, existing_data.get(CONF_PASSWORD, None)
+        ),
+        CONF_API_KEY: user_input.get(
+            CONF_API_KEY, existing_data.get(CONF_API_KEY, None)
+        ),
+    }
 
     # Set auth method based on the user input provided, only save relevant params
-    if CONF_USERNAME in user_input or CONF_PASSWORD in user_input:
+    if auth.get(CONF_USERNAME) or auth.get(CONF_PASSWORD):
         data[CONF_AUTH_METHOD] = CONF_AUTH_BASIC_AUTH
-        data[CONF_USERNAME] = user_input.get(
-            CONF_USERNAME, existing_data.get(CONF_USERNAME)
-        )
-        data[CONF_PASSWORD] = user_input.get(
-            CONF_PASSWORD, existing_data.get(CONF_PASSWORD)
-        )
-    elif CONF_API_KEY in user_input:
+        data[CONF_USERNAME] = auth.get(CONF_USERNAME)
+        data[CONF_PASSWORD] = auth.get(CONF_PASSWORD)
+
+    elif auth.get(CONF_API_KEY):
         data[CONF_AUTH_METHOD] = CONF_AUTH_API_KEY_AUTH
-        data[CONF_API_KEY] = user_input.get(
-            CONF_API_KEY, existing_data.get(CONF_API_KEY)
-        )
+        data[CONF_API_KEY] = auth.get(CONF_API_KEY)
     else:
         data[CONF_AUTH_METHOD] = CONF_AUTH_NO_AUTH
 
-    if len(user_input.get(CONF_SSL_CA_PATH, "")):
+    if data.get(CONF_SSL_CA_PATH) and len(data.get(CONF_SSL_CA_PATH)) > 0:
         data[CONF_SSL_CA_PATH] = user_input[CONF_SSL_CA_PATH]
 
     return data

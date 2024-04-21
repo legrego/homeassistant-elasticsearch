@@ -6,7 +6,8 @@
 	],
 	"settings": {
 		"python.testing.pytestArgs": [
-			"tests"
+			"tests",
+			"--continue-on-collection-errors"
 		],
 		"python.testing.unittestEnabled": false,
 		"python.testing.pytestEnabled": true

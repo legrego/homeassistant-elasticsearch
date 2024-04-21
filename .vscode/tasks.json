@@ -35,6 +35,16 @@
             "label": "Run Elasticsearch 8.13.0 (HTTPS Port 9200) and Kibana 8.13.0 (HTTP Port 5601)",
             "type": "shell",
             "command": "/bin/bash ./scripts/run_ek_8_13_0"
+        },
+        {
+            "label": "Run all Tests",
+            "type": "shell",
+            "command": "/bin/bash ./scripts/test"
+        },
+        {
+            "label": "Update Test Snapshots",
+            "type": "shell",
+            "command": "/bin/bash ./scripts/test_update_snapshot"
         }
     ]
 }

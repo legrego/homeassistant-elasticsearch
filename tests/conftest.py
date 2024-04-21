@@ -22,7 +22,7 @@ from unittest import mock
 from unittest.mock import patch
 
 import pytest
-from homeassistant.core import HomeAssistant, State
+from homeassistant.core import State
 from homeassistant.helpers.typing import HomeAssistantType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
@@ -112,6 +112,14 @@ class MockEntityState(State):
             last_updated=last_updated,
             validate_entity_id=validate_entity_id,
         )
+
+    def to_publish(self):
+        """Return a dict to publish."""
+        return {
+            "entity_id": self.entity_id,
+            "new_state": self.state,
+            "attributes": self.attributes,
+        }
 
 
 def mock_entity_state(hass: HomeAssistantType) -> MockEntityState:

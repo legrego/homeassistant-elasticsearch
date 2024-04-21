@@ -175,7 +175,6 @@ class ElasticsearchGateway:
         verify_permissions=None,
     ):
         """Test the connection to the Elasticsearch server."""
-        from elasticsearch7 import TransportError
 
         es_client = self._create_es_client(
             url=url,
@@ -187,11 +186,13 @@ class ElasticsearchGateway:
             timeout=timeout,
         )
 
-        result = await self._test_connection_with_es_client(
-            es_client, verify_permissions
-        )
-
-        es_client.close()
+        try:
+            result = await self._test_connection_with_es_client(
+                es_client, verify_permissions
+            )
+        finally:
+            if es_client is not None:
+                await es_client.close()
 
         return result
 
@@ -231,7 +232,7 @@ class ElasticsearchGateway:
             raise convert_es_error("Connection test failed", err) from err
         finally:
             if es_client is not None:
-                es_client.close()
+                await es_client.close()
 
     @classmethod
     async def _enforce_privileges(self, es_client, required_privileges):

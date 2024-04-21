@@ -7,8 +7,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_ALIAS, CONF_API_KEY, CONF_USERNAME
 
 from custom_components.elasticsearch.const import (
-    CONF_AUTH_API_KEY_AUTH,
-    CONF_AUTH_BASIC_AUTH,
     CONF_AUTH_METHOD,
     CONF_AUTH_NO_AUTH,
     CONF_INDEX_FORMAT,
@@ -37,19 +35,19 @@ class PrivilegeCheckResult:
 class ESPrivilegeCheck:
     """Privilege check encapsulation."""
 
-    def __init__(self, es_gateway: ElasticsearchGateway, config_entry: ConfigEntry):
+    def __init__(self, gateway: ElasticsearchGateway, config_entry: ConfigEntry):
         """Initialize Privilege Checker."""
-        self.es_gateway = es_gateway
+        self.es_gateway = gateway
 
         self.username = config_entry.data.get(CONF_USERNAME)
         self.api_key = config_entry.data.get(CONF_API_KEY)
         self.index_mode = config_entry.data.get(CONF_INDEX_MODE)
-        self.index_format = config_entry.data.get(CONF_INDEX_FORMAT)
-        self.index_alias = config_entry.data.get(CONF_ALIAS) + VERSION_SUFFIX
+        self.index_format = config_entry.options.get(CONF_INDEX_FORMAT)
+        self.index_alias = config_entry.options.get(CONF_ALIAS) + VERSION_SUFFIX
 
         self.auth_mode = config_entry.data.get(CONF_AUTH_METHOD)
 
-    async def enforce_privileges(self, config_entry):
+    async def enforce_privileges(self):
         """Ensure client is configured with properly authorized credentials."""
         LOGGER.debug("Starting privilege enforcement")
 

@@ -9,8 +9,11 @@ from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClien
 
 from custom_components.elasticsearch.config_flow import (
     build_new_data,
+    build_new_options,
 )
 from custom_components.elasticsearch.const import (
+    CONF_ILM_ENABLED,
+    CONF_ILM_POLICY_NAME,
     CONF_INDEX_MODE,
     DATASTREAM_METRICS_ILM_POLICY_NAME,
     DATASTREAM_METRICS_INDEX_TEMPLATE_NAME,
@@ -40,16 +43,21 @@ async def get_index_manager(
     mock_entry = MockConfigEntry(
         unique_id="test_index_manager",
         domain=DOMAIN,
-        version=4,
+        version=5,
         data=build_new_data({"url": es_url, CONF_INDEX_MODE: index_mode}),
+        options=build_new_options(
+            {CONF_ILM_POLICY_NAME: "home-assistant", CONF_ILM_ENABLED: True}
+        ),
         title="ES Config",
     )
 
-    gateway = ElasticsearchGateway(config_entry=mock_entry)
+    mock_entry.add_to_hass(hass)
+
+    gateway = ElasticsearchGateway(hass=hass, config_entry=mock_entry)
 
     await gateway.async_init()
 
-    index_manager = IndexManager(hass, get_merged_config(mock_entry), gateway)
+    index_manager = IndexManager(hass=hass, config_entry=mock_entry, gateway=gateway)
 
     yield index_manager
 
@@ -494,6 +502,7 @@ async def test_es88_legacy_index_setup(
         es_aioclient_mock,
         es_url,
         mock_v88_cluster=True,
+        mock_ilm_setup=True,
         mock_template_setup=True,
     )
 

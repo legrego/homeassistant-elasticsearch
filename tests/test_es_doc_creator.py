@@ -4,7 +4,6 @@ from datetime import datetime
 from unittest import mock
 
 import pytest
-from elasticsearch.utils import get_merged_config
 from homeassistant.components import (
     counter,
 )
@@ -492,6 +491,7 @@ async def test_v1_doc_creation_geolocation(
         "host.hostname": "Test Host",
         "host.os.name": "Test OS",
         "tags": None,
+        "host.geo.location": {"lat": 99.0, "lon": 99.0},
     }
 
     assert document == expected

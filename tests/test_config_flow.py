@@ -19,7 +19,6 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
 from custom_components.elasticsearch.const import (
-    CONF_AUTH_BASIC_AUTH,
     CONF_AUTH_METHOD,
     CONF_INDEX_FORMAT,
     CONF_INDEX_MODE,

@@ -17,12 +17,8 @@ from .const import (
     CONF_INDEX_FORMAT,
     CONF_INDEX_MODE,
     CONF_PUBLISH_ENABLED,
-    DATASTREAM_DATASET_PREFIX,
     DATASTREAM_METRICS_ILM_POLICY_NAME,
     DATASTREAM_METRICS_INDEX_TEMPLATE_NAME,
-    DATASTREAM_NAMESPACE,
-    DATASTREAM_TYPE,
-    INDEX_MODE_DATASTREAM,
     INDEX_MODE_LEGACY,
     LEGACY_TEMPLATE_NAME,
     VERSION_SUFFIX,
@@ -41,7 +37,7 @@ class IndexManager:
     ):
         """Initialize index management."""
 
-        if not config_entry.data.get(CONF_PUBLISH_ENABLED):
+        if not config_entry.options.get(CONF_PUBLISH_ENABLED):
             return
 
         self._hass = hass
@@ -57,7 +53,8 @@ class IndexManager:
                 config_entry.options.get(CONF_INDEX_FORMAT) + VERSION_SUFFIX
             )
             self._using_ilm = config_entry.options.get(CONF_ILM_ENABLED)
-
+        elif self.index_mode == "datastream":
+            pass
         else:
             raise ElasticException("Unexpected index_mode: %s", self.index_mode)
 

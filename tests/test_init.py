@@ -1,5 +1,6 @@
 """Tests for Elastic init."""
 
+from elasticsearch.config_flow import build_new_options
 import pytest
 from elasticsearch import migrate_data_and_options_to_version
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
@@ -86,6 +87,7 @@ async def test_minimal_setup_component(
 
     expected_config = {
         "alias": "active-hass-index",
+        "auth_method": "no_auth",
         "ilm_enabled": True,
         "publish_enabled": True,
         "excluded_domains": [],
@@ -93,16 +95,10 @@ async def test_minimal_setup_component(
         "included_domains": [],
         "included_entities": [],
         "index_format": "hass-events",
-        "index_mode": "index",
-        "datastream_name_prefix": "homeassistant",
-        "datastream_namespace": "default",
-        "datastream_type": "metrics",
+        "index_mode": "datastream",
         "publish_mode": "Any changes",
         "publish_frequency": 60,
         "timeout": 30,
-        "username": None,
-        "password": None,
-        "api_key": None,
         "verify_ssl": True,
         "ssl_ca_path": None,
         "ilm_policy_name": "home-assistant",
@@ -137,23 +133,26 @@ async def test_complex_setup_component(
     merged_config = get_merged_config(config_entries[0])
 
     expected_config = {
-        "index_mode": "index",
-        "datastream_name_prefix": "homeassistant",
-        "datastream_namespace": "default",
-        "datastream_type": "metrics",
-        "excluded_domains": ["sensor", "weather"],
-        "excluded_entities": ["switch.my_switch"],
+        "auth_method": "basic_auth",
+        "url": "https://my-complex-es:9200",
+        "timeout": 60,
+        "verify_ssl": False,
+        "ssl_ca_path": None,
+        "index_mode": "datastream",
+        "username": "username",
+        "password": "changeme",
+        "publish_enabled": True,
+        "publish_frequency": 60,
+        "publish_mode": "Any changes",
+        "alias": "active-hass-index",
+        "index_format": "hass-events",
+        "ilm_policy_name": "home-assistant",
+        "ilm_enabled": True,
+        "excluded_domains": [],
+        "excluded_entities": [],
         "included_domains": [],
         "included_entities": [],
-        "ssl_ca_path": None,
-        "publish_mode": "Any changes",
-        "api_key": None,
-        **MOCK_COMPLEX_LEGACY_CONFIG,
     }
-
-    del expected_config["exclude"]
-    del expected_config["only_publish_changed"]
-    del expected_config["health_sensor_enabled"]
 
     assert merged_config == expected_config
 
@@ -194,6 +193,7 @@ async def test_update_entry(
         "url": es_url,
         "excluded_domains": ["sensor", "weather"],
         "index_mode": "index",
+        "auth_method": "no_auth",
     }
 
     assert merged_config == expected_config
@@ -213,6 +213,7 @@ async def test_unsupported_version(
         domain=ELASTIC_DOMAIN,
         version=3,
         data={"url": es_url},
+        options=build_new_options(),
         title="ES Config",
     )
 
@@ -238,7 +239,13 @@ async def test_reauth_setup_entry(
         unique_id="test_authentication_error",
         domain=ELASTIC_DOMAIN,
         version=3,
-        data={"url": es_url},
+        data={
+            "url": es_url,
+            "auth_method": "basic_auth",
+            "username": "username",
+            "password": "password",
+        },
+        options=build_new_options(),
         title="ES Config",
     )
 
@@ -251,7 +258,7 @@ async def test_reauth_setup_entry(
     assert len(flows) == 1
 
     flow = flows[0]
-    assert flow.get("step_id") == "reauth_confirm"
+    assert flow.get("step_id") == "basic_auth"
     assert flow.get("handler") == ELASTIC_DOMAIN
 
     assert "context" in flow
