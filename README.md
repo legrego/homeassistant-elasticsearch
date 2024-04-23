@@ -50,32 +50,6 @@ Some usage examples inspired by [real users](https://github.com/legrego/homeassi
 - Monitoring the humidity and temperature in a snake enclosure/habitat for a user's daughter, the integration facilitates the use of Elastic's Alerting framework. This choice is motivated by the framework's suitability for the monitoring requirements, providing a more intuitive solution compared to Home Assistant automations.
 - The integration allows users to maintain a smaller subset of data, focusing on individual stats of interest, for an extended period. This capability contrasts with the limited retention achievable with Home Assistant and databases like MariaDB/MySQL. This extended data retention facilitates very long-term trend analysis, such as for weather data, enabling users to glean insights over an extended timeframe.
 
-You can customize the mappings, settings and define an [ingest pipeline](https://www.elastic.co/guide/en/elasticsearch/reference/current/ingest.html) by creating a [component template](https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-component-template.html) called `metrics-homeassistant@custom`
-
-
-The following is an example on how to push your Home Assistant metrics into an ingest pipeline called `metrics-homeassistant-pipeline`:
-
-```
-PUT _ingest/pipeline/metrics-homeassistant-pipeline
-{
-  "description": "Pipeline for HomeAssistant dataset",
-  "processors": [ ]
-}
-```
-
-```
-PUT _component_template/metrics-homeassistant@custom
-{
-  "template": {
-    "mappings": {}
-    "settings": {
-      "index.default_pipeline": "metrics-homeassistant-pipeline",
-    }
-  }
-}
-```
-
-Component template changes apply when the datastream performs a rollover so the first time you modify the template you may need to manually initiate index/datastream rollover to start applying the pipeline.
 
 ## Create your own cluster health sensor
 Versions prior to `0.6.0` included a cluster health sensor. This has been removed in favor of a more generic approach. You can create your own cluster health sensor by using Home Assistant's built-in [REST sensor](https://www.home-assistant.io/integrations/sensor.rest).
