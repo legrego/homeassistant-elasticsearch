@@ -116,7 +116,7 @@ POST /_security/api_key
       "indices": [
         {
           "names": [
-            "metrics-homeassistant*"
+            "metrics-homeassistant.*"
           ],
           "privileges": [
             "manage",
@@ -161,7 +161,7 @@ POST /_security/role/hass_writer
   "indices": [
     {
       "names": [
-        "metrics-homeassistant*"
+        "metrics-homeassistant.*"
       ],
       "privileges": [
         "manage",

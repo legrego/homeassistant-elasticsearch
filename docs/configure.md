@@ -32,7 +32,7 @@ Use the following command to create an API Key for the Home Assistant component.
             "indices": [
               {
                 "names": [
-                  "metrics-homeassistant*"
+                  "metrics-homeassistant.*"
                 ],
                 "privileges": [
                   "manage",
@@ -66,7 +66,7 @@ Use the following command to create an API Key for the Home Assistant component.
           "indices": [
             {
               "names": [
-                "metrics-homeassistant*"
+                "metrics-homeassistant.*"
               ],
               "privileges": [
                 "manage",

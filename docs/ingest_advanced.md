@@ -70,4 +70,4 @@ The following is an example on how to push your Home Assistant metrics into an i
     3. Replace `changeme` with your Elasticsearch password
     4. Add your ingest pipeline processors to the `processors` array
 
-Component template changes apply when the datastream performs a rollover so the first time you modify the template you may need to manually initiate ILM rollover to start applying the pipeline.
+Component template changes apply when the datastream performs a rollover so the first time you modify the template you may need to manually initiate index/datastream rollover to start applying the pipeline.

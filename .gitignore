@@ -5,6 +5,7 @@ pytestdebug.log
 *.egg-info
 */build/*
 */dist/*
+site/*
 
 
 # misc
