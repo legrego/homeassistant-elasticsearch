@@ -40,14 +40,14 @@ Publish Home Assistant events to your [Elasticsearch](https://elastic.co) cluste
 ### HVAC Usage
 Graph your home's climate and HVAC Usage:
 
-![img](assets/hvac-history.png)
+![img](docs/assets/hvac-history.png)
 
 ### Weather Station
 Visualize and alert on data from your weather station:
 
-![img](assets/weather-station.png)
+![img](docs/assets/weather-station.png)
 
-![img](assets/weather-station-wind-pressure.png)
+![img](docs/assets/weather-station-wind-pressure.png)
 
 ### Additional examples
 
@@ -116,7 +116,7 @@ POST /_security/api_key
       "indices": [
         {
           "names": [
-            "metrics-homeassistant*"
+            "metrics-homeassistant.*"
           ],
           "privileges": [
             "manage",
@@ -161,7 +161,7 @@ POST /_security/role/hass_writer
   "indices": [
     {
       "names": [
-        "metrics-homeassistant*"
+        "metrics-homeassistant.*"
       ],
       "privileges": [
         "manage",
@@ -189,11 +189,11 @@ POST /_security/user/hass_writer
 This component is configured interactively via Home Assistant's integration configuration page.
 
 1. Restart Home-assistant once you've completed the installation instructions above.
-2. From the `Integrations` configuration menu, add a new `Elasticsearch` integration. ![img](assets/add-integration.png)
+2. From the `Integrations` configuration menu, add a new `Elasticsearch` integration. ![img](docs/assets/add-integration.png)
 3. Select the appropriate authentication method
-4. Provide connection information and optionally credentials to begin setup. ![img](assets/configure-integration.png)
+4. Provide connection information and optionally credentials to begin setup. ![img](docs/assets/configure-integration.png)
 5. Once the integration is setup, you may tweak all settings via the "Options" button on the integrations page.
-   ![img](assets/publish-options.png)
+   ![img](docs/assets/publish-options.png)
 
 ## Configuration options
 
@@ -240,7 +240,7 @@ Once you have created a Data View, you can start exploring your Home Assistant d
 5. You can pull specific fields into the document table at the bottom by clicking on the `+` icon next to a field
 6. You can change the time range of the data you are viewing using the time picker in the top right
 
-![img](assets/kibana-discover.png)
+![img](docs/assets/kibana-discover.png)
 
 ### Viewing Home Assistant data in Kibana
 
@@ -265,7 +265,7 @@ To build a visualization that shows the temperature of a specific entity over ti
 4. For the `Vertical axis` select `hass.entity.valueas.float`
 5. In the filter bar at the top, add a filter for `hass.entity.id` and set the value to the entity id of the entity you want to visualize (ex. `sensor.living_room_ecobee_temperature`) or `hass.entity.attributes.friendly_name` and set the value to the friendly name of the entity you want to visualize (ex. `Living Room EcoBee Temperature`)
 
-![img](assets/kibana-lens-visualization.png)
+![img](docs/assets/kibana-lens-visualization.png)
 
 ## Defining your own Index Mappings, Settings, and Ingest Pipeline
 
