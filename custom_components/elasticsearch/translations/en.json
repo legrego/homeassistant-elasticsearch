@@ -1,4 +1,14 @@
 {
+    "issues": {
+        "datastream_migration": {
+            "title": "Legacy Index Format Detected, manual migration required",
+            "description": "Datastreams are now the default destination for Homeassistant data. Your integration is configured to use the legacy index format. To migrate to the new datastream format, simply delete and recreate the Elasticsearch integration. To learn more, please click 'Learn More'."
+        },
+        "yaml_migration": {
+            "title": "YAML-based configuration detected, manual migration required",
+            "description": "Your integration is configured via YAML. A future version of the integration will remove support for configuring via YAML. Once removed, you will only be able to configure the integration via the UI. To learn more, please click 'Learn More'."
+        }
+    },
     "config": {
         "abort": {
             "reauth_successful": "Re-authentication was successful",
