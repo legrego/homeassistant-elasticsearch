@@ -101,6 +101,7 @@ async def create_and_return_document(
     """Create and return a test document."""
 
     state = MockEntityState(
+        hass=hass,
         entity_id=entity_id,
         state=value,
         attributes=attributes,

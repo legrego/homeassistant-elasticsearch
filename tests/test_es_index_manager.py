@@ -1,7 +1,6 @@
 """Testing for Elasticsearch Index Manager."""
 
 import pytest
-from elasticsearch.utils import get_merged_config
 from elasticsearch7 import ElasticsearchException
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry

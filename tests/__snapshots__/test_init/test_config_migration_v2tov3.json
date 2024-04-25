@@ -1,0 +1,10 @@
+{
+  "after_data": {
+    "url": "http://migration-test:9200"
+  },
+  "after_options": {},
+  "after_version": 3,
+  "before_data": "mappingproxy({'url': 'http://migration-test:9200', 'health_sensor_enabled': True})",
+  "before_options": "mappingproxy({})",
+  "before_version": 2
+}

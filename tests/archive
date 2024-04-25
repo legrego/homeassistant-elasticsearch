@@ -1,0 +1,190 @@
+# @pytest.fixture()
+# def standard_initialized_es_document(
+#     state,
+#     state_type,
+#     data,
+#     reason,
+#     last_changed: datetime = MOCK_NOON_APRIL_12TH_2023,
+#     entity_id: str = "counter.test_1",
+#     attributes: dict = {},
+# ):
+#     """Create a standard document for testing."""
+
+#     domain = entity_id.split(".")[0]
+#     object_id = entity_id.split(".")[1]
+
+#     if data.get(CONF_INDEX_MODE) == INDEX_MODE_LEGACY:
+#         document = {
+#             "_op_type": "index",
+#             "_index": "active-hass-index-v4_2",
+#             "_source": {
+#                 "@timestamp": last_changed,
+#                 "agent.name": "My Home Assistant",
+#                 "agent.type": "hass",
+#                 "agent.version": "2099.1.2",
+#                 "ecs.version": "1.0.0",
+#                 "hass.attributes": attributes,
+#                 "hass.domain": domain,
+#                 "hass.entity": {
+#                     "attributes": attributes,
+#                     "domain": domain,
+#                     "id": entity_id,
+#                     "value": state,
+#                 },
+#                 "hass.entity_id": entity_id,
+#                 "hass.entity_id_lower": entity_id.lower(),
+#                 "hass.object_id": object_id,
+#                 "hass.object_id_lower": object_id.lower(),
+#                 "hass.value": state,
+#                 "host.geo.location": {
+#                     "lat": MOCK_LOCATION_SERVER["lat"],
+#                     "lon": MOCK_LOCATION_SERVER["lon"],
+#                 },
+#                 "event": {
+#                     "action": (
+#                         "State change"
+#                         if reason == PUBLISH_REASON_STATE_CHANGE
+#                         else "Attribute change"
+#                     ),
+#                     "kind": "event",
+#                     "type": ("change" if reason != PUBLISH_REASON_POLLING else "info"),
+#                 },
+#                 "host.architecture": "Test Arch",
+#                 "host.hostname": "Test Host",
+#                 "host.os.name": "Test OS",
+#                 "tags": None,
+#             },
+#             "require_alias": True,
+#         }
+#     else:
+#         document = {
+#             "_op_type": "create",
+#             "_index": f"metrics-homeassistant.{domain}-default",
+#             "_source": {
+#                 "@timestamp": MOCK_NOON_APRIL_12TH_2023,
+#                 "agent.name": "My Home Assistant",
+#                 "agent.type": "hass",
+#                 "agent.version": "2099.1.2",
+#                 "ecs.version": "1.0.0",
+#                 "event": {
+#                     "action": (
+#                         "State change"
+#                         if reason == PUBLISH_REASON_STATE_CHANGE
+#                         else "Attribute change"
+#                     ),
+#                     "kind": "event",
+#                     "type": ("change" if reason != PUBLISH_REASON_POLLING else "info"),
+#                 },
+#                 "hass.entity": {
+#                     "attributes": attributes,
+#                     "domain": domain,
+#                     "id": entity_id,
+#                     "value": (str(state)),
+#                     "valueas": {f"{state_type}": state},
+#                     "geo.location": {
+#                         "lat": MOCK_LOCATION_SERVER["lat"],
+#                         "lon": MOCK_LOCATION_SERVER["lon"],
+#                     },
+#                 },
+#                 "data_stream": {
+#                     "type": DATASTREAM_TYPE,
+#                     "dataset": f"{DATASTREAM_DATASET_PREFIX}.{domain}",
+#                     "namespace": DATASTREAM_NAMESPACE,
+#                 },
+#                 "hass.object_id": object_id,
+#                 "host.geo.location": {
+#                     "lat": MOCK_LOCATION_SERVER["lat"],
+#                     "lon": MOCK_LOCATION_SERVER["lon"],
+#                 },
+#                 "host.architecture": "Test Arch",
+#                 "host.hostname": "Test Host",
+#                 "host.os.name": "Test OS",
+#                 "tags": None,
+#             },
+#         }
+
+#     return document
+
+
+# @pytest.fixture()
+# def standard_es_document(
+#     state,
+#     state_type,
+#     data,
+#     reason,
+#     last_changed: datetime = MOCK_NOON_APRIL_12TH_2023,
+#     entity_id: str = "counter.test_1",
+#     attributes: dict = {},
+# ):
+#     """Create a standard document for testing."""
+
+#     domain = entity_id.split(".")[0]
+#     object_id = entity_id.split(".")[1]
+
+#     if data.get(CONF_INDEX_MODE) == INDEX_MODE_LEGACY:
+#         document = {
+#             "_op_type": "index",
+#             "_index": "active-hass-index-v4_2",
+#             "_source": {
+#                 "@timestamp": last_changed,
+#                 "hass.attributes": attributes,
+#                 "hass.domain": domain,
+#                 "hass.entity": {
+#                     "attributes": attributes,
+#                     "domain": domain,
+#                     "id": entity_id,
+#                     "value": state,
+#                 },
+#                 "hass.entity_id": entity_id,
+#                 "hass.entity_id_lower": entity_id.lower(),
+#                 "hass.object_id": object_id,
+#                 "hass.object_id_lower": object_id.lower(),
+#                 "hass.value": state,
+#                 "event": {
+#                     "action": (
+#                         "State change"
+#                         if reason == PUBLISH_REASON_STATE_CHANGE
+#                         else "Attribute change"
+#                     ),
+#                     "kind": "event",
+#                     "type": ("change" if reason != PUBLISH_REASON_POLLING else "info"),
+#                 },
+#             },
+#             "require_alias": True,
+#         }
+#     else:
+#         document = {
+#             "_op_type": "create",
+#             "_index": f"metrics-homeassistant.{domain}-default",
+#             "_source": {
+#                 "@timestamp": MOCK_NOON_APRIL_12TH_2023,
+#                 "event": {
+#                     "action": (
+#                         "State change"
+#                         if reason == PUBLISH_REASON_STATE_CHANGE
+#                         else "Attribute change"
+#                     ),
+#                     "kind": "event",
+#                     "type": ("change" if reason != PUBLISH_REASON_POLLING else "info"),
+#                 },
+#                 "hass.entity": {
+#                     "attributes": attributes,
+#                     "domain": domain,
+#                     "id": entity_id,
+#                     "value": (str(state)),
+#                     "valueas": {state_type: state},
+#                     "geo.location": {
+#                         "lat": MOCK_LOCATION_SERVER["lat"],
+#                         "lon": MOCK_LOCATION_SERVER["lon"],
+#                     },
+#                 },
+#                 "data_stream": {
+#                     "type": DATASTREAM_TYPE,
+#                     "dataset": f"{DATASTREAM_DATASET_PREFIX}.{domain}",
+#                     "namespace": DATASTREAM_NAMESPACE,
+#                 },
+#                 "hass.object_id": object_id,
+#             },
+#         }
+
+#     return document

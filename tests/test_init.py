@@ -1,8 +1,8 @@
 """Tests for Elastic init."""
 
-from elasticsearch.config_flow import build_new_options
 import pytest
 from elasticsearch import migrate_data_and_options_to_version
+from elasticsearch.config_flow import build_new_options
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 from homeassistant.config_entries import SOURCE_REAUTH, ConfigEntryState
 from homeassistant.const import CONF_ALIAS, CONF_URL
@@ -10,6 +10,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
+from syrupy.assertion import SnapshotAssertion
+from syrupy.extensions.json import JSONSnapshotExtension
 
 from custom_components.elasticsearch.const import (
     CONF_EXCLUDED_DOMAINS,
@@ -20,6 +22,13 @@ from custom_components.elasticsearch.const import DOMAIN as ELASTIC_DOMAIN
 from custom_components.elasticsearch.utils import get_merged_config
 from tests.const import MOCK_COMPLEX_LEGACY_CONFIG, MOCK_MINIMAL_LEGACY_CONFIG
 from tests.test_util.es_startup_mocks import mock_es_initialization
+
+
+@pytest.fixture(autouse=True)
+def snapshot(snapshot):
+    """Provide a pre-configured snapshot object."""
+
+    return snapshot.with_defaults(extension_class=JSONSnapshotExtension)
 
 
 async def _setup_config_entry(hass: HomeAssistant, mock_entry: MockConfigEntry):
@@ -41,6 +50,7 @@ def _test_config_data_options_migration_to_version(
     after_version,
     after_data,
     after_options,
+    snapshot,
 ):
     mock_entry = MockConfigEntry(
         unique_id="mock migration",
@@ -61,6 +71,15 @@ def _test_config_data_options_migration_to_version(
     assert migrated_options == after_options
 
     assert end_version == after_version
+
+    assert {
+        "before_data": mock_entry.data,
+        "before_options": mock_entry.options,
+        "before_version": mock_entry.version,
+        "after_data": migrated_data,
+        "after_options": migrated_options,
+        "after_version": end_version,
+    } == snapshot
 
     return True
 
@@ -291,7 +310,7 @@ async def test_connection_error(
 
 @pytest.mark.asyncio
 async def test_config_migration_v1tov2(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, snapshot
 ):
     """Test config migration from v1."""
 
@@ -303,6 +322,7 @@ async def test_config_migration_v1tov2(
             "only_publish_changed": True,
         },
         after_version=2,
+        snapshot=snapshot,
         after_options={},
         after_data={
             "url": "http://migration-test:9200",
@@ -313,7 +333,7 @@ async def test_config_migration_v1tov2(
 
 @pytest.mark.asyncio
 async def test_config_migration_v2tov3(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, snapshot
 ):
     """Test config migration from v2."""
 
@@ -325,6 +345,7 @@ async def test_config_migration_v2tov3(
             "health_sensor_enabled": True,
         },
         after_version=3,
+        snapshot=snapshot,
         after_options={},
         after_data={"url": "http://migration-test:9200"},
     )
@@ -332,7 +353,7 @@ async def test_config_migration_v2tov3(
 
 @pytest.mark.asyncio
 async def test_config_migration_v3tov4(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, snapshot
 ):
     """Test config migration from v3."""
 
@@ -350,12 +371,13 @@ async def test_config_migration_v3tov4(
             "index_mode": "index",
         },
         after_version=4,
+        snapshot=snapshot,
     )
 
 
 @pytest.mark.asyncio
 async def test_config_migration_v4tov5(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, snapshot
 ):
     """Test config migration from v4."""
 
@@ -389,62 +411,47 @@ async def test_config_migration_v4tov5(
             "auth_method": "no_auth",
         },
         after_version=5,
+        snapshot=snapshot,
     )
 
 
 @pytest.mark.asyncio
 async def test_config_migration_v1tov5(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, snapshot
 ):
     """Test config migration from v1."""
 
-    before_version = 1
-    before_options = {}
-    before_data = {
-        "url": "http://migration-test:9200",
-        "ilm_max_size": "10gb",
-        "ilm_delete_after": "30d",
-        "health_sensor_enabled": True,
-        "only_publish_changed": True,
-        "publish_enabled": True,
-        "publish_frequency": 60,
-        "excluded_domains": [],
-        "excluded_entities": [],
-        "included_domains": [],
-        "included_entities": [],
-        "publish_mode": "Any changes",
-    }
-
-    after_version = 5
-    after_options = {
-        "publish_enabled": True,
-        "publish_frequency": 60,
-        "publish_mode": "Any changes",
-        "excluded_domains": [],
-        "excluded_entities": [],
-        "included_domains": [],
-        "included_entities": [],
-    }
-    after_data = {
-        "url": "http://migration-test:9200",
-        "index_mode": "index",
-        "auth_method": "no_auth",
-    }
-
-    mock_entry = MockConfigEntry(
-        unique_id="mock migration",
-        domain=ELASTIC_DOMAIN,
-        version=before_version,
-        data=before_data,
-        title="ES Config",
+    assert _test_config_data_options_migration_to_version(
+        before_version=1,
+        before_options={},
+        before_data={
+            "url": "http://migration-test:9200",
+            "ilm_max_size": "10gb",
+            "ilm_delete_after": "30d",
+            "health_sensor_enabled": True,
+            "only_publish_changed": True,
+            "publish_enabled": True,
+            "publish_frequency": 60,
+            "excluded_domains": [],
+            "excluded_entities": [],
+            "included_domains": [],
+            "included_entities": [],
+            "publish_mode": "Any changes",
+        },
+        after_options={
+            "publish_enabled": True,
+            "publish_frequency": 60,
+            "publish_mode": "Any changes",
+            "excluded_domains": [],
+            "excluded_entities": [],
+            "included_domains": [],
+            "included_entities": [],
+        },
+        after_data={
+            "url": "http://migration-test:9200",
+            "index_mode": "index",
+            "auth_method": "no_auth",
+        },
+        after_version=5,
+        snapshot=snapshot,
     )
-
-    mock_entry.add_to_hass(hass)
-    assert await async_setup_component(hass, ELASTIC_DOMAIN, {}) is True
-    await hass.async_block_till_done()
-
-    updated_entry = hass.config_entries.async_get_entry(mock_entry.entry_id)
-
-    assert updated_entry
-    assert updated_entry.version == after_version
-    assert updated_entry.data == after_data

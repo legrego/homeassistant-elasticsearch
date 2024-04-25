@@ -1,7 +1,12 @@
 """Test ES Privilege Check."""
 
 import pytest
-from elasticsearch.const import CONF_AUTH_BASIC_AUTH, CONF_AUTH_METHOD, CONF_INDEX_MODE
+from elasticsearch.const import (
+    CONF_AUTH_BASIC_AUTH,
+    CONF_AUTH_METHOD,
+    CONF_INDEX_MODE,
+    DOMAIN,
+)
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.helpers.typing import HomeAssistantType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -10,25 +15,6 @@ from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClien
 from custom_components.elasticsearch.config_flow import (
     build_new_data,
     build_new_options,
-)
-from custom_components.elasticsearch.const import (
-    CONF_EXCLUDED_DOMAINS,
-    CONF_EXCLUDED_ENTITIES,
-    CONF_INCLUDED_DOMAINS,
-    CONF_INCLUDED_ENTITIES,
-    CONF_INDEX_MODE,
-    CONF_PUBLISH_MODE,
-    DATASTREAM_DATASET_PREFIX,
-    DATASTREAM_NAMESPACE,
-    DATASTREAM_TYPE,
-    DOMAIN,
-    INDEX_MODE_DATASTREAM,
-    INDEX_MODE_LEGACY,
-    PUBLISH_MODE_ANY_CHANGES,
-    PUBLISH_MODE_STATE_CHANGES,
-    PUBLISH_REASON_ATTR_CHANGE,
-    PUBLISH_REASON_POLLING,
-    PUBLISH_REASON_STATE_CHANGE,
 )
 from custom_components.elasticsearch.errors import CannotConnect, InsufficientPrivileges
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway

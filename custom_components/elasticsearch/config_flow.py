@@ -415,7 +415,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         errors = {}
 
         try:
-            info = await ElasticsearchGateway.test_connection(
+            await ElasticsearchGateway.test_connection(
                 url=url,
                 username=username,
                 password=password,

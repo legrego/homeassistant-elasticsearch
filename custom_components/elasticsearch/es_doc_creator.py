@@ -396,7 +396,7 @@ class DocumentCreator:
 
     @classmethod
     def state_as_number(self, state: State) -> bool:
-        """Try to coerce our state to a number"""
+        """Try to coerce our state to a number."""
 
         number = state_helper.state_as_number(state)
 

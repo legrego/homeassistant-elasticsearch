@@ -10,7 +10,6 @@ from custom_components.elasticsearch.logger import LOGGER
 from .es_doc_publisher import DocumentPublisher
 from .es_gateway import ElasticsearchGateway
 from .es_index_manager import IndexManager
-from .utils import get_merged_config
 
 
 class ElasticIntegration:
@@ -30,12 +29,13 @@ class ElasticIntegration:
         )
         self.config_entry = config_entry
 
-    # TODO investivage hepers.event.async_call_later()
+    # TODO investigate helpers.event.async_call_later()
     async def async_init(self):
         """Async init procedure."""
 
         try:
             await self.gateway.async_init()
+            await self.gateway._enforce_privileges()
             await self.privilege_check.enforce_privileges()
             await self.index_manager.async_setup()
             await self.publisher.async_init()

@@ -15,6 +15,7 @@ from homeassistant.util.dt import UTC
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 from syrupy.assertion import SnapshotAssertion
+from syrupy.extensions.json import JSONSnapshotExtension
 
 from custom_components.elasticsearch.config_flow import (
     build_new_data,
@@ -27,16 +28,12 @@ from custom_components.elasticsearch.const import (
     CONF_INCLUDED_ENTITIES,
     CONF_INDEX_MODE,
     CONF_PUBLISH_MODE,
-    DATASTREAM_DATASET_PREFIX,
-    DATASTREAM_NAMESPACE,
-    DATASTREAM_TYPE,
     DOMAIN,
     INDEX_MODE_DATASTREAM,
     INDEX_MODE_LEGACY,
     PUBLISH_MODE_ANY_CHANGES,
     PUBLISH_MODE_STATE_CHANGES,
     PUBLISH_REASON_ATTR_CHANGE,
-    PUBLISH_REASON_POLLING,
     PUBLISH_REASON_STATE_CHANGE,
 )
 from custom_components.elasticsearch.errors import ElasticException
@@ -83,44 +80,51 @@ def mock_system_info():
 
 @pytest.fixture(autouse=True)
 def data():
-    """Data fixture."""
+    """Provide a default empty data object."""
 
     return {}
 
 
 @pytest.fixture(autouse=True)
 def options():
-    """Data fixture."""
+    """Provide a default options data object."""
 
     return {}
 
 
 @pytest.fixture(autouse=True)
 def state():
-    """Data fixture."""
+    """Provide a default empty state object."""
 
     return 1.0
 
 
 @pytest.fixture(autouse=True)
 def state_type():
-    """Data fixture."""
+    """Provide a default float state_type object."""
 
     return "float"
 
 
 @pytest.fixture(autouse=True)
 def index_mode():
-    """Data fixture."""
+    """Provide a default index_mode."""
 
     return INDEX_MODE_DATASTREAM
 
 
 @pytest.fixture(autouse=True)
 def reason():
-    """Data fixture."""
+    """Provide a publish reason."""
 
     return PUBLISH_REASON_STATE_CHANGE
+
+
+@pytest.fixture(autouse=True)
+def snapshot(snapshot):
+    """Provide a pre-configured snapshot object."""
+
+    return snapshot.with_defaults(extension_class=JSONSnapshotExtension)
 
 
 @pytest.fixture(autouse=True)
@@ -131,11 +135,13 @@ def freeze_time(freezer: FrozenDateTimeFactory):
 
 @pytest.fixture()
 def standard_entity_state(
+    hass,
     state,
     attributes={},
 ):
     """Create a standard entity state for testing."""
     return MockEntityState(
+        hass=hass,
         entity_id="counter.test_1",
         state=state,
         attributes=attributes,
@@ -144,200 +150,9 @@ def standard_entity_state(
     )
 
 
-@pytest.fixture()
-def standard_initialized_es_document(
-    state,
-    state_type,
-    data,
-    reason,
-    last_changed: datetime = MOCK_NOON_APRIL_12TH_2023,
-    entity_id: str = "counter.test_1",
-    attributes: dict = {},
-):
-    """Create a standard document for testing."""
-
-    domain = entity_id.split(".")[0]
-    object_id = entity_id.split(".")[1]
-
-    if data.get(CONF_INDEX_MODE) == INDEX_MODE_LEGACY:
-        document = {
-            "_op_type": "index",
-            "_index": "active-hass-index-v4_2",
-            "_source": {
-                "@timestamp": last_changed,
-                "agent.name": "My Home Assistant",
-                "agent.type": "hass",
-                "agent.version": "2099.1.2",
-                "ecs.version": "1.0.0",
-                "hass.attributes": attributes,
-                "hass.domain": domain,
-                "hass.entity": {
-                    "attributes": attributes,
-                    "domain": domain,
-                    "id": entity_id,
-                    "value": state,
-                },
-                "hass.entity_id": entity_id,
-                "hass.entity_id_lower": entity_id.lower(),
-                "hass.object_id": object_id,
-                "hass.object_id_lower": object_id.lower(),
-                "hass.value": state,
-                "host.geo.location": {
-                    "lat": MOCK_LOCATION_SERVER["lat"],
-                    "lon": MOCK_LOCATION_SERVER["lon"],
-                },
-                "event": {
-                    "action": (
-                        "State change"
-                        if reason == PUBLISH_REASON_STATE_CHANGE
-                        else "Attribute change"
-                    ),
-                    "kind": "event",
-                    "type": ("change" if reason != PUBLISH_REASON_POLLING else "info"),
-                },
-                "host.architecture": "Test Arch",
-                "host.hostname": "Test Host",
-                "host.os.name": "Test OS",
-                "tags": None,
-            },
-            "require_alias": True,
-        }
-    else:
-        document = {
-            "_op_type": "create",
-            "_index": f"metrics-homeassistant.{domain}-default",
-            "_source": {
-                "@timestamp": MOCK_NOON_APRIL_12TH_2023,
-                "agent.name": "My Home Assistant",
-                "agent.type": "hass",
-                "agent.version": "2099.1.2",
-                "ecs.version": "1.0.0",
-                "event": {
-                    "action": (
-                        "State change"
-                        if reason == PUBLISH_REASON_STATE_CHANGE
-                        else "Attribute change"
-                    ),
-                    "kind": "event",
-                    "type": ("change" if reason != PUBLISH_REASON_POLLING else "info"),
-                },
-                "hass.entity": {
-                    "attributes": attributes,
-                    "domain": domain,
-                    "id": entity_id,
-                    "value": (str(state)),
-                    "valueas": {f"{state_type}": state},
-                    "geo.location": {
-                        "lat": MOCK_LOCATION_SERVER["lat"],
-                        "lon": MOCK_LOCATION_SERVER["lon"],
-                    },
-                },
-                "data_stream": {
-                    "type": DATASTREAM_TYPE,
-                    "dataset": f"{DATASTREAM_DATASET_PREFIX}.{domain}",
-                    "namespace": DATASTREAM_NAMESPACE,
-                },
-                "hass.object_id": object_id,
-                "host.geo.location": {
-                    "lat": MOCK_LOCATION_SERVER["lat"],
-                    "lon": MOCK_LOCATION_SERVER["lon"],
-                },
-                "host.architecture": "Test Arch",
-                "host.hostname": "Test Host",
-                "host.os.name": "Test OS",
-                "tags": None,
-            },
-        }
-
-    return document
-
-
-@pytest.fixture()
-def standard_es_document(
-    state,
-    state_type,
-    data,
-    reason,
-    last_changed: datetime = MOCK_NOON_APRIL_12TH_2023,
-    entity_id: str = "counter.test_1",
-    attributes: dict = {},
-):
-    """Create a standard document for testing."""
-
-    domain = entity_id.split(".")[0]
-    object_id = entity_id.split(".")[1]
-
-    if data.get(CONF_INDEX_MODE) == INDEX_MODE_LEGACY:
-        document = {
-            "_op_type": "index",
-            "_index": "active-hass-index-v4_2",
-            "_source": {
-                "@timestamp": last_changed,
-                "hass.attributes": attributes,
-                "hass.domain": domain,
-                "hass.entity": {
-                    "attributes": attributes,
-                    "domain": domain,
-                    "id": entity_id,
-                    "value": state,
-                },
-                "hass.entity_id": entity_id,
-                "hass.entity_id_lower": entity_id.lower(),
-                "hass.object_id": object_id,
-                "hass.object_id_lower": object_id.lower(),
-                "hass.value": state,
-                "event": {
-                    "action": (
-                        "State change"
-                        if reason == PUBLISH_REASON_STATE_CHANGE
-                        else "Attribute change"
-                    ),
-                    "kind": "event",
-                    "type": ("change" if reason != PUBLISH_REASON_POLLING else "info"),
-                },
-            },
-            "require_alias": True,
-        }
-    else:
-        document = {
-            "_op_type": "create",
-            "_index": f"metrics-homeassistant.{domain}-default",
-            "_source": {
-                "@timestamp": MOCK_NOON_APRIL_12TH_2023,
-                "event": {
-                    "action": (
-                        "State change"
-                        if reason == PUBLISH_REASON_STATE_CHANGE
-                        else "Attribute change"
-                    ),
-                    "kind": "event",
-                    "type": ("change" if reason != PUBLISH_REASON_POLLING else "info"),
-                },
-                "hass.entity": {
-                    "attributes": attributes,
-                    "domain": domain,
-                    "id": entity_id,
-                    "value": (str(state)),
-                    "valueas": {state_type: state},
-                    "geo.location": {
-                        "lat": MOCK_LOCATION_SERVER["lat"],
-                        "lon": MOCK_LOCATION_SERVER["lon"],
-                    },
-                },
-                "data_stream": {
-                    "type": DATASTREAM_TYPE,
-                    "dataset": f"{DATASTREAM_DATASET_PREFIX}.{domain}",
-                    "namespace": DATASTREAM_NAMESPACE,
-                },
-                "hass.object_id": object_id,
-            },
-        }
-
-    return document
-
-
 @pytest.fixture(scope="function")
 def config_entry(hass: HomeAssistant, data, options):
+    """Create a mock config entry."""
     es_url = "http://localhost:9200"
 
     # If we set data and options to have default values in our definition
@@ -415,18 +230,19 @@ async def initialized_gateway(
     await gateway.async_stop_gateway()
 
 
-def compare_es_doc_to_bulk_request(
-    es_doc: dict,
-    bulk_request: list[dict],
-):
-    """Compare an Elasticsearch document to a bulk request."""
-    if len(bulk_request) > 2:
-        raise ValueError("Bulk request can only have two entries")
+# def compare_es_doc_to_bulk_request(
+#     es_doc: dict,
+#     bulk_request: list[dict],
+# ):
+#     """Compare an Elasticsearch document to a bulk request."""
+#     if len(bulk_request) > 2:
+#         raise ValueError("Bulk request can only have two entries")
 
-    bulk_request_type = es_doc["_op_type"]
+#     bulk_request_type = es_doc["_op_type"]
 
-    assert es_doc["_index"] == bulk_request[0][bulk_request_type]["_index"]
-    assert es_doc["_source"] == bulk_request[1]
+
+#     assert es_doc["_index"] == bulk_request[0][bulk_request_type]["_index"]
+#     assert es_doc["_source"] == bulk_request[1]
 
 
 @pytest.mark.asyncio
@@ -443,7 +259,6 @@ class Test_Unit_Tests:
             ("-test_name", "test_name"),
             ("test/name", "testname"),
             ("test? name", "test_name"),
-            ("a" * 256, "a" * 239),
             ("Test_Name", "test_name"),
             ("test..name", "test..name"),
             (".,?/:*<>|#+", None),
@@ -472,26 +287,49 @@ class Test_Unit_Tests:
                     type="metrics", dataset=case, namespace="default"
                 )
             )
+
             assert dataset == expected
-            assert {"dataset": dataset, "expected": expected} == snapshot
+            assert {"dataset": case, "sanitized_dataset": dataset} == snapshot
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "case,expected",
+        [("a" * 256, "a" * 239)],
+    )
+    async def test_sanitize_long_datastream_name(
+        self,
+        case: str,
+        expected: str,
+        hass: HomeAssistant,
+        snapshot: SnapshotAssertion,
+    ):
+        """Test datastream names are sanitized correctly."""
+
+        if expected is None:
+            with pytest.raises(ElasticException):
+                DocumentPublisher._sanitize_datastream_name(
+                    type="metrics", dataset=case, namespace="default"
+                )
+        else:
+            type, dataset, namespace, full_name = (
+                DocumentPublisher._sanitize_datastream_name(
+                    type="metrics", dataset=case, namespace="default"
+                )
+            )
+            assert dataset == expected
 
     class Test_Change_Mode:
+        """Test change mode functions."""
+
         @pytest.mark.asyncio
         async def test_determine_change_type(
-            self, data, options, uninitialized_publisher: DocumentPublisher
+            self, hass, data, options, uninitialized_publisher: DocumentPublisher
         ):
+            """Test entity change is published."""
             assert (
                 uninitialized_publisher._determine_change_type(
-                    new_state=State(entity_id="test.test_1", state="1"),
-                    old_state=MockEntityState(entity_id="test.test_1", state="0"),
-                )
-                == PUBLISH_REASON_STATE_CHANGE
-            )
-
-            assert (
-                uninitialized_publisher._determine_change_type(
-                    new_state=MockEntityState(entity_id="test.test_1", state="red"),
-                    old_state=MockEntityState(entity_id="test.test_1", state="brown"),
+                    new_state=MockEntityState(hass, entity_id="test.test_1", state="1"),
+                    old_state=MockEntityState(hass, entity_id="test.test_1", state="0"),
                 )
                 == PUBLISH_REASON_STATE_CHANGE
             )
@@ -499,10 +337,28 @@ class Test_Unit_Tests:
             assert (
                 uninitialized_publisher._determine_change_type(
                     new_state=MockEntityState(
-                        entity_id="test.test_1", state="1", attributes={"attr": "test"}
+                        hass, entity_id="test.test_1", state="red"
                     ),
                     old_state=MockEntityState(
-                        entity_id="test.test_1", state="1", attributes={"attr": "test"}
+                        hass, entity_id="test.test_1", state="brown"
+                    ),
+                )
+                == PUBLISH_REASON_STATE_CHANGE
+            )
+
+            assert (
+                uninitialized_publisher._determine_change_type(
+                    new_state=MockEntityState(
+                        hass,
+                        entity_id="test.test_1",
+                        state="1",
+                        attributes={"attr": "test"},
+                    ),
+                    old_state=MockEntityState(
+                        hass,
+                        entity_id="test.test_1",
+                        state="1",
+                        attributes={"attr": "test"},
                     ),  # this is a corner case
                 )
                 == PUBLISH_REASON_ATTR_CHANGE
@@ -511,10 +367,16 @@ class Test_Unit_Tests:
             assert (
                 uninitialized_publisher._determine_change_type(
                     new_state=MockEntityState(
-                        entity_id="test.test_1", state="1", attributes={"attr": "test"}
+                        hass,
+                        entity_id="test.test_1",
+                        state="1",
+                        attributes={"attr": "test"},
                     ),
                     old_state=MockEntityState(
-                        entity_id="test.test_1", state="1", attributes={"attr": "test"}
+                        hass,
+                        entity_id="test.test_1",
+                        state="1",
+                        attributes={"attr": "test"},
                     ),
                 )
                 == PUBLISH_REASON_ATTR_CHANGE
@@ -536,6 +398,7 @@ class Test_Unit_Tests:
         async def test_queue_enqueue(
             self,
             data: None,
+            hass,
             options,
             uninitialized_publisher: DocumentPublisher,
         ):
@@ -543,7 +406,7 @@ class Test_Unit_Tests:
 
             # Test enqueuing a state object into the publisher
             uninitialized_publisher.enqueue_state(
-                MockEntityState(entity_id="test.test_1", state="1"),
+                MockEntityState(hass, entity_id="test.test_1", state="1"),
                 "test",
                 "test",
             )
@@ -562,13 +425,14 @@ class Test_Unit_Tests:
         @pytest.mark.asyncio
         async def test_queue_empty(
             self,
+            hass,
             uninitialized_publisher: DocumentPublisher,
         ):
             """Test entity change is published."""
 
             # Test enqueuing a state object into the publisher
             uninitialized_publisher.enqueue_state(
-                MockEntityState(entity_id="test.test_1", state="1"),
+                MockEntityState(hass, entity_id="test.test_1", state="1"),
                 "test",
                 "test",
             )
@@ -583,13 +447,14 @@ class Test_Unit_Tests:
         @pytest.mark.asyncio
         async def test_queue_has_entries_to_publish(
             self,
+            hass,
             uninitialized_publisher: DocumentPublisher,
         ):
             """Test entity change is published."""
 
             # Test enqueuing a state object into the publisher
             uninitialized_publisher.enqueue_state(
-                MockEntityState(entity_id="test.test_1", state="1"),
+                MockEntityState(hass, entity_id="test.test_1", state="1"),
                 "test",
                 "test",
             )
@@ -627,20 +492,23 @@ class Test_Unit_Tests:
 
         )  # fmt: off
         async def test_publishing_datastream_filters(
-            hass: HomeAssistant,
+            self,
             uninitialized_publisher: DocumentPublisher,
             order: int,
             entity_id: str,
             expected: bool,
             snapshot: SnapshotAssertion,
         ):
+            """Test publishing filters."""
+
             result = uninitialized_publisher._should_publish_entity_passes_filter(
                 entity_id=entity_id,
             )
 
-            assert result == expected
-
-            assert result == snapshot
+            assert {
+                "entity_id": entity_id,
+                "should_publish": result,
+            } == snapshot
 
         @pytest.mark.asyncio  # fmt: skip
         @pytest.mark.parametrize(
@@ -680,8 +548,10 @@ class Test_Unit_Tests:
                 entity_id=entity_id,
             )
 
-            assert result == expected
-            assert result == snapshot
+            assert {
+                "entity": entity_id,
+                "should_publish": result,
+            } == snapshot
 
     class Test_Publisher_Document_Creation:
         """Test document creation functions."""
@@ -715,7 +585,6 @@ class Test_Unit_Tests:
             reason,
             uninitialized_publisher: DocumentPublisher,
             standard_entity_state,
-            standard_es_document,
             snapshot: SnapshotAssertion,
         ):
             """Test state to bulk action."""
@@ -725,56 +594,10 @@ class Test_Unit_Tests:
                 reason=reason,
             )
 
-            assert result["_index"] == standard_es_document["_index"]
-            assert result["_source"] == standard_es_document["_source"]
-            assert result == standard_es_document
-            assert result == snapshot
-
-        @pytest.mark.asyncio
-        @pytest.mark.parametrize(
-            "data",
-            [
-                {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM},
-                {CONF_INDEX_MODE: INDEX_MODE_LEGACY},
-            ],
-        )
-        @pytest.mark.parametrize(
-            "order,state,state_type,attributes,reason",
-            [
-                (0, 0.0, "float", {}, PUBLISH_REASON_ATTR_CHANGE),
-                (1, 0.0, "float", {}, PUBLISH_REASON_ATTR_CHANGE),
-                (2, "tomato", "string", {"attr": "value"}, PUBLISH_REASON_ATTR_CHANGE),
-                (3, "tomato", "string", {"attr": "value"}, PUBLISH_REASON_STATE_CHANGE),
-                (4, 1.0, "float", {"attr": "value"}, PUBLISH_REASON_STATE_CHANGE),
-                (5, "tomato", "string", {"attr": "value"}, PUBLISH_REASON_STATE_CHANGE),
-            ],
-        )
-        async def test_state_to_bulk_action_via_uninitialized_publisher(
-            self,
-            order,
-            data,
-            state,
-            state_type,
-            attributes,
-            reason,
-            uninitialized_publisher: DocumentPublisher,
-            standard_entity_state,
-            standard_es_document,
-            snapshot: SnapshotAssertion,
-        ):
-            """Test state to bulk action."""
-            result = uninitialized_publisher._state_to_bulk_action(
-                state=standard_entity_state,
-                time=dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023),
-                reason=reason,
-            )
-
-            assert result["_index"] == standard_es_document["_index"]
-            assert result["_source"] == standard_es_document["_source"]
-            assert result == standard_es_document
-            assert result == snapshot
-
-            # assert result == snapshot
+            assert {
+                "entity": standard_entity_state.as_dict(),
+                "_bulk": result,
+            } == snapshot
 
         @pytest.mark.asyncio
         @pytest.mark.parametrize(
@@ -805,7 +628,6 @@ class Test_Unit_Tests:
             reason,
             initialized_publisher: DocumentPublisher,
             standard_entity_state,
-            standard_initialized_es_document,
             snapshot: SnapshotAssertion,
         ):
             """Test state to bulk action."""
@@ -815,15 +637,15 @@ class Test_Unit_Tests:
                 reason=reason,
             )
 
-            assert result["_index"] == standard_initialized_es_document["_index"]
-            assert result["_source"] == standard_initialized_es_document["_source"]
-            assert result == standard_initialized_es_document
-            assert result == snapshot
-
-            # assert result == snapshot
+            assert {
+                "entity": standard_entity_state.as_dict(),
+                "_bulk": result,
+            } == snapshot
 
 
 class Test_Integration_Tests:
+    """Integration tests for the Elasticsearch Document Publisher."""
+
     class Test_Publishing:
         """Test publishing functions."""
 
@@ -863,20 +685,15 @@ class Test_Integration_Tests:
             state_type,
             attributes,
             reason,
-            hass: HomeAssistant,
             initialized_publisher: DocumentPublisher,
             standard_entity_state: MockEntityState,
-            standard_initialized_es_document,
             es_aioclient_mock: AiohttpClientMocker,
             snapshot: SnapshotAssertion,
         ):
             # mock the gateway
-
             """Test entity change is published."""
 
-            hass.states.async_set(**(standard_entity_state.to_publish()))
-
-            await hass.async_block_till_done()
+            await standard_entity_state.add_to_hass()
 
             await initialized_publisher.async_do_publish()
 
@@ -886,34 +703,15 @@ class Test_Integration_Tests:
                 assert len(requests) == 1
                 assert len(requests[0].data) == 2
 
-                compare_es_doc_to_bulk_request(
-                    es_doc=standard_initialized_es_document,
-                    bulk_request=requests[0].data,
-                )
             elif options.get(CONF_PUBLISH_MODE) == PUBLISH_MODE_STATE_CHANGES:
                 if reason == PUBLISH_REASON_STATE_CHANGE:
                     assert len(requests) == 1
                     assert len(requests[0].data) == 2
 
-                    compare_es_doc_to_bulk_request(
-                        es_doc=standard_initialized_es_document,
-                        bulk_request=requests[0].data,
-                    )
                 else:
                     assert len(requests) == 0
 
-            assert requests[0].data == snapshot
-
-        # @pytest.mark.parametrize(
-        #     "example_input,expectation",
-        #     [
-        #         (3, does_not_raise()),
-        #         (2, does_not_raise()),
-        #         (1, does_not_raise()),
-        #         (0, pytest.raises(ZeroDivisionError)),
-        #     ],
-        # )
-        # def test_division(example_input, expectation):
-        #     """Test how much I know division."""
-        #     with expectation:
-        #         assert (6 / example_input) is not None
+            assert {
+                "entity": standard_entity_state.as_dict(),
+                "request": requests[0].data,
+            } == snapshot

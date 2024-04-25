@@ -26,6 +26,7 @@ from homeassistant.core import State
 from homeassistant.helpers.typing import HomeAssistantType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
+from pytest_socket import disable_socket, enable_socket, socket_allow_hosts
 
 pytest_plugins = "pytest_homeassistant_custom_component"
 
@@ -89,6 +90,7 @@ class MockEntityState(State):
 
     def __init__(
         self,
+        hass: HomeAssistantType,
         entity_id: str,
         state: str,
         attributes: map | None = None,
@@ -104,6 +106,8 @@ class MockEntityState(State):
         if last_updated is None:
             last_updated = datetime.now()
 
+        self.hass = hass
+
         super().__init__(
             entity_id=entity_id,
             state=state,
@@ -113,6 +117,27 @@ class MockEntityState(State):
             validate_entity_id=validate_entity_id,
         )
 
+    def as_dict(self):
+        """Return a dict representation of the State.
+
+        Async friendly.
+
+        To be used for JSON serialization.
+        Ensures: state == State.from_dict(state.as_dict())
+        """
+        last_changed_isoformat = self.last_changed.isoformat()
+        if self.last_changed == self.last_updated:
+            last_updated_isoformat = last_changed_isoformat
+        else:
+            last_updated_isoformat = self.last_updated.isoformat()
+        return {
+            "entity_id": self.entity_id,
+            "state": self.state,
+            "attributes": self.attributes,
+            "last_changed": last_changed_isoformat,
+            "last_updated": last_updated_isoformat,
+        }
+
     def to_publish(self):
         """Return a dict to publish."""
         return {
@@ -121,9 +146,23 @@ class MockEntityState(State):
             "attributes": self.attributes,
         }
 
+    async def add_to_hass(self):
+        """Add the state to Homeassistant"""
+        self.hass.states.async_set(**(self.to_publish()))
+
+        await self.hass.async_block_till_done()
+
 
 def mock_entity_state(hass: HomeAssistantType) -> MockEntityState:
     """Mock an entity state in the state machine."""
 
     state = MockEntityState()
     return state
+
+
+# https://github.com/MatthewFlamm/pytest-homeassistant-custom-component/issues/154#issuecomment-2065081783
+@pytest.hookimpl(trylast=True)
+def pytest_runtest_setup():
+    """Enable socket and allow local connections."""
+    enable_socket()
+    socket_allow_hosts(["127.0.0.1", "localhost", "::1"], allow_unix_socket=True)
