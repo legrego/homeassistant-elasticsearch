@@ -98,51 +98,6 @@ async def document_creator(hass: HomeAssistant):
     yield creator
 
 
-async def create_and_return_document(
-    hass: HomeAssistant,
-    document_creator: DocumentCreator,
-    value: str | float,
-    attributes: dict,
-    entity_id="sensor.test_1",
-    timestamp=MOCK_NOON_APRIL_12TH_2023,
-    version=2,
-):
-    """Create and return a test document."""
-
-    state = MockEntityState(
-        hass=hass,
-        entity_id=entity_id,
-        state=value,
-        attributes=attributes,
-        last_changed=timestamp,
-        last_updated=timestamp,
-    )
-
-    return document_creator.state_to_document(
-        state, dt_util.parse_datetime(timestamp), "testing", version
-    )
-
-
-async def create_and_return_state(
-    hass: HomeAssistant,
-    value: str | float,
-    attributes: dict,
-    domain="sensor",
-    entity_id="test_1",
-):
-    """Create and return a standard test state."""
-    entity = domain + "." + entity_id
-
-    hass.states.async_set(entity, value, attributes, True)
-
-    await hass.async_block_till_done()
-
-    return hass.states.get(entity)
-
-
-# Unit tests for state conversions
-
-
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "input,result,success",
@@ -353,7 +308,9 @@ async def test_state_to_attributes(
         True: "Key is a bool, and should be excluded",
     }
 
-    state = await create_and_return_state(hass, value="2", attributes=testAttributes)
+    state = MockEntityState(
+        hass, entity_id="test.test_1", state="2", attributes=testAttributes
+    )
 
     attributes = document_creator._state_to_attributes(state)
 
@@ -478,7 +435,7 @@ async def test_state_to_value_v2(
         (False, {}),
     ],
 )
-async def test_doc_creation(
+async def test_state_to_document(
     hass: HomeAssistant,
     document_creator: DocumentCreator,
     snapshot,
@@ -510,3 +467,28 @@ async def test_doc_creation(
         "document": document,
         "version": version,
     } == snapshot
+
+
+@pytest.mark.asyncio
+async def test_state_to_document_no_tz(
+    hass: HomeAssistant, document_creator: DocumentCreator, snapshot
+):
+    """Test Doc Creation."""
+
+    entity_state = MockEntityState(
+        hass,
+        entity_id="sensor.test_1",
+        state="1",
+        attributes={},
+        last_changed=dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023),
+        last_updated=dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023),
+    )
+
+    document = document_creator.state_to_document(
+        entity_state,
+        dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023).replace(tzinfo=None),
+        "testing",
+        1,
+    )
+
+    assert document == snapshot

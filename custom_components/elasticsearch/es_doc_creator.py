@@ -197,13 +197,7 @@ class DocumentCreator:
         _state = state.state
 
         if isinstance(_state, str) and self.try_state_as_number(state):
-            tempState = state_helper.state_as_number(state)
-
-            # Ensure we don't return "Infinity" as a number...
-            if self.is_valid_number(tempState):
-                return tempState
-            else:
-                return _state
+            return state_helper.state_as_number(state)
 
         else:
             return _state
