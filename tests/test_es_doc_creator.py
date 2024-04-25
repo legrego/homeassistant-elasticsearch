@@ -13,7 +13,6 @@ from homeassistant.setup import async_setup_component
 from homeassistant.util import dt as dt_util
 from jsondiff import diff
 from pytest_homeassistant_custom_component.common import MockConfigEntry
-from syrupy.assertion import SnapshotAssertion
 from syrupy.extensions.json import JSONSnapshotExtension
 
 from custom_components.elasticsearch.config_flow import (

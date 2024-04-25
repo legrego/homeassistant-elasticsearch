@@ -26,7 +26,7 @@ from homeassistant.core import State
 from homeassistant.helpers.typing import HomeAssistantType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
-from pytest_socket import disable_socket, enable_socket, socket_allow_hosts
+from pytest_socket import enable_socket, socket_allow_hosts
 
 pytest_plugins = "pytest_homeassistant_custom_component"
 
@@ -147,7 +147,7 @@ class MockEntityState(State):
         }
 
     async def add_to_hass(self):
-        """Add the state to Homeassistant"""
+        """Add the state to Homeassistant."""
         self.hass.states.async_set(**(self.to_publish()))
 
         await self.hass.async_block_till_done()

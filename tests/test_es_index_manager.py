@@ -11,9 +11,6 @@ from custom_components.elasticsearch.config_flow import (
     build_new_options,
 )
 from custom_components.elasticsearch.const import (
-    CONF_ILM_ENABLED,
-    CONF_ILM_POLICY_NAME,
-    CONF_INDEX_MODE,
     DATASTREAM_METRICS_ILM_POLICY_NAME,
     DATASTREAM_METRICS_INDEX_TEMPLATE_NAME,
     DOMAIN,

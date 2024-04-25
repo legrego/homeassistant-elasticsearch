@@ -9,7 +9,7 @@ from freezegun.api import FrozenDateTimeFactory
 from homeassistant.const import (
     CONF_URL,
 )
-from homeassistant.core import HomeAssistant, State
+from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 from homeassistant.util.dt import UTC
 from pytest_homeassistant_custom_component.common import MockConfigEntry
