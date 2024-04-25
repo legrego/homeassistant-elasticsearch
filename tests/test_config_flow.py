@@ -503,67 +503,6 @@ async def test_reauth_flow_api_key(
 
 
 @pytest.mark.asyncio
-async def test_step_import_already_exist(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
-):
-    """Test that errors are shown when duplicates are added."""
-    es_url = "http://test_step_import_already_exist:9200"
-
-    mock_es_initialization(es_aioclient_mock, url=es_url)
-
-    mock_entry = MockConfigEntry(
-        unique_id="test_step_import_already_exist",
-        domain=DOMAIN,
-        version=3,
-        data={"url": es_url, "api_key": "abc123"},
-        title="ES Config",
-    )
-
-    await _setup_config_entry(hass, mock_entry)
-
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN,
-        context={"source": "import"},
-        data={"url": "http://other-url:9200", "username": "xyz321", "password": "123"},
-    )
-    assert result["type"] == data_entry_flow.FlowResultType.ABORT
-    assert result["reason"] == "single_instance_allowed"
-
-
-@pytest.mark.asyncio
-async def test_step_import_update_existing(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
-):
-    """Test that yml config is reflected in existing config entry."""
-    es_url = "http://test_step_import_update_existing:9200"
-
-    mock_es_initialization(es_aioclient_mock, url=es_url)
-
-    mock_entry = MockConfigEntry(
-        unique_id="test_step_import_update_existing",
-        domain=DOMAIN,
-        version=3,
-        data={"url": es_url, "username": "original_user", "password": "abc123"},
-        title="ES Config",
-    )
-
-    await _setup_config_entry(hass, mock_entry)
-
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN,
-        context={"source": "import"},
-        data={
-            "url": es_url,
-            "username": "new_user",
-            "password": "xyz321",
-            CONF_INDEX_MODE: "index",
-        },
-    )
-    assert result["type"] == data_entry_flow.FlowResultType.ABORT
-    assert result["reason"] == "updated_entry"
-
-
-@pytest.mark.asyncio
 async def test_api_key_flow(
     hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
 ):

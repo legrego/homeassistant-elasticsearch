@@ -289,39 +289,6 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             errors=result.errors,
         )
 
-    async def async_step_import(self, import_config):
-        """Import a config entry from configuration.yaml."""
-
-        # Check if new config entry matches any existing config entries
-        entries = self.hass.config_entries.async_entries(ELASTIC_DOMAIN)
-        for entry in entries:
-            # If source is ignore bypass host check and continue through loop
-            if entry.source == SOURCE_IGNORE:
-                continue
-
-            if entry.data[CONF_URL] == import_config[CONF_URL]:
-                self.hass.config_entries.async_update_entry(
-                    entry=entry,
-                    data=build_full_config(import_config),
-                    options=import_config,
-                )
-                return self.async_abort(reason="updated_entry")
-
-        if entries:
-            LOGGER.warning("Already configured. Only a single configuration possible.")
-            return self.async_abort(reason="single_instance_allowed")
-
-        self.config = build_full_config(import_config)
-        # Configure legacy yml to use legacy index mode
-        self.config[CONF_INDEX_MODE] = INDEX_MODE_LEGACY
-
-        result = await self._async_elasticsearch_login()
-
-        if result.success:
-            return await self._async_create_entry()
-
-        raise ConfigEntryNotReady
-
     async def async_step_reauth(self, user_input) -> FlowResult:
         """Handle reauthorization."""
         entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
@@ -448,14 +415,7 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_init(self, hass):  # pylint disable=unused-argument
         """Manage the Elastic options."""
 
-        if self.config_entry.source == SOURCE_IMPORT:
-            return await self.async_step_yaml()
-
         return await self.async_step_publish_options()
-
-    async def async_step_yaml(self, user_input=None):  # pylint disable=unused-argument
-        """No options for yaml managed entries."""
-        return self.async_abort(reason="configured_via_yaml")
 
     async def async_step_publish_options(self, user_input=None):
         """Publish Options."""
