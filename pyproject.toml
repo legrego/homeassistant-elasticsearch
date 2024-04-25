@@ -17,6 +17,9 @@ homeassistant = "==2024.1.2"
 ruff = ">=0.0.291"
 pip = ">=21.0,<24.1"
 
+[tool.poetry.group.docs.dependencies]
+mkdocs-material = ">=9.5.17"
+
 [tool.poetry.group.test.dependencies]
 pytest = ">=7.3.1"
 pytest-asyncio = ">=0.20.3"
