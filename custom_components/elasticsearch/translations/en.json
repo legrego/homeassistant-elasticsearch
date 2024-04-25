@@ -6,7 +6,7 @@
         },
         "yaml_migration": {
             "title": "YAML-based configuration detected, manual migration required",
-            "description": "Your integration is configured via YAML. A future version of the integration will remove support for configuring via YAML. Once removed, you will only be able to configure the integration via the UI. To learn more, please click 'Learn More'."
+            "description": "Your integration is configured via YAML. The integration no longer supports configuring via YAML. You will only be able to configure the integration via the UI and we recommend removing any configurations from `configuration.yaml`. To learn more, please click 'Learn More'."
         }
     },
     "config": {
