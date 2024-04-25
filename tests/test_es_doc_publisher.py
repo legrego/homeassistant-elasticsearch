@@ -468,33 +468,41 @@ class Test_Unit_Tests:
 
         @pytest.mark.asyncio  # fmt: skip
         @pytest.mark.parametrize(
-            "order, data, options, entity_id, expected",
+            "data, options, entity_id, expected",
             [
-                (0, {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"]}, "test.test_1", True),
-                (1, {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", True),
-                (2, {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_1", False),
-                (3, {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_EXCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", False),
+                ({CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"]}, "test.test_1", True),
+                ({CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"]}, "counter.test_1", False),
+                ({CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_1", False),
+                ({CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_EXCLUDED_DOMAINS: ["test"]}, "counter.test_1", True),
+                ({CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", True),
+                ({CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_ENTITIES: ["test.test_1"]}, "test.test_2", False),
+                ({CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_EXCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", False),
                 # now pass in combinations
-                (4, {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", True),
-                (5, {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_EXCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", False),
-                (6, {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_EXCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", False),
-                (7, {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_EXCLUDED_DOMAINS: ["test"], CONF_EXCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", False),
+                ({CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", True),
+                ({CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"]}, "test.test_2", True),
+                ({CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"]}, "counter.test_1", False),
+                ({CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_EXCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", False),
+                ({CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_EXCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"]}, "test.test_2", False),
+                ({CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_EXCLUDED_DOMAINS: ["test"], CONF_EXCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", False),
                 # now pass in combinations of 3
-                (8, {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", False),
-                (9, {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_1", False),
-                (10, {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_EXCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_1", False),
-                (11, {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_EXCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", False),
+                ({CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_2"], CONF_EXCLUDED_ENTITIES: ["test.test_2"]}, "test.test_1", True),
+                ({CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_2"], CONF_EXCLUDED_ENTITIES: ["test.test_2"]}, "counter.test_1", False),
+                ({CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_1", True),
+                ( {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_EXCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_1", False),
+                ( {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_EXCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_DOMAINS: ["test"]}, "counter.test_1", False),
+                ( {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_EXCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", True),
                 # now pass in all 4
-                (12, {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_1", False),
-                (13, {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_2"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_1", False),
-                (14, {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_2"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_2", False),
+                ( {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_1", True),
+                ( {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_2"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_1", True),
+                ( {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_2"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_2", False),
+                ( {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_2"], CONF_EXCLUDED_DOMAINS: ["test"]}, "counter.test_1", False),
+                ( {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_2"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_2", False),
             ]
 
         )  # fmt: off
         async def test_publishing_datastream_filters(
             self,
             uninitialized_publisher: DocumentPublisher,
-            order: int,
             entity_id: str,
             expected: bool,
             snapshot: SnapshotAssertion,
@@ -505,6 +513,7 @@ class Test_Unit_Tests:
                 entity_id=entity_id,
             )
 
+            assert result == expected
             assert {
                 "entity_id": entity_id,
                 "should_publish": result,
@@ -512,33 +521,32 @@ class Test_Unit_Tests:
 
         @pytest.mark.asyncio  # fmt: skip
         @pytest.mark.parametrize(
-            "order, data, options, entity_id, expected",
+            "data, options, entity_id, expected",
             [
-                (0, {CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_DOMAINS: ["test"]}, "test.test_1", True),
-                (1, {CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", True),
-                (2, {CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_1", False),
-                (3, {CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_EXCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", False),
+                ({CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_DOMAINS: ["test"]}, "test.test_1", True),
+                ({CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", True),
+                ({CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_1", False),
+                ({CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_EXCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", False),
                 # now pass in combinations
-                (4, {CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", True),
-                (5, {CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_EXCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", False),
-                (6, {CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_EXCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", True),
-                (7, {CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_EXCLUDED_DOMAINS: ["test"], CONF_EXCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", False),
+                ({CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", True),
+                ({CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_EXCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", False),
+                ({CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_EXCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", True),
+                ({CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_EXCLUDED_DOMAINS: ["test"], CONF_EXCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", False),
                 # now pass in combinations of 3
-                (8, {CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", False),
-                (9, {CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_1", True),
-                (10, {CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_EXCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_1", False),
-                (11, {CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_EXCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", False),
+                ({CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", False),
+                ({CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_1", True),
+                ( {CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_EXCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_1", False),
+                ( {CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_EXCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", False),
                 # now pass in all 4
-                (12, {CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_1", False),
-                (13, {CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_2"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_1", True),
-                (14, {CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_2"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_2", False),
+                ( {CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_1", False),
+                ( {CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_2"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_1", True),
+                ( {CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_2"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_2", False),
             ]
 
         )  # fmt: off
         async def test_publishing_legacy_filters(
             hass: HomeAssistant,
             uninitialized_publisher: DocumentPublisher,
-            order: int,
             entity_id: str,
             expected: bool,
             snapshot: SnapshotAssertion,

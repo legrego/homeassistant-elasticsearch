@@ -21,6 +21,8 @@ from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 from custom_components.elasticsearch.es_privilege_check import ESPrivilegeCheck
 from tests.test_util.es_startup_mocks import mock_es_initialization
 
+# TODO: Remove when we remove legacy index support
+
 
 @pytest.mark.asyncio
 async def test_bad_connection(

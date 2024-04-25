@@ -32,21 +32,34 @@ from tests.test_util.aioclient_mock_utils import (
 from tests.test_util.es_startup_mocks import mock_es_initialization
 
 
-async def get_index_manager(
-    hass: HomeAssistant,
-    es_url: str,
-    index_mode: str,
-):
-    """Return a configured IndexManager."""
+@pytest.fixture(autouse=True)
+def data():
+    """Provide a default empty data object."""
+
+    return {}
+
+
+@pytest.fixture(autouse=True)
+def options():
+    """Provide a default options data object."""
+
+    return {}
+
+
+@pytest.fixture()
+async def legacy_index_manager(hass: HomeAssistant, data, options):
+    """Create a mock config entry."""
+    es_url = "http://localhost:9200"
+
+    # If we set data and options to have default values in our definition
+    # the values wont pass through from the test so we need to set them to None here instead
 
     mock_entry = MockConfigEntry(
-        unique_id="test_index_manager",
+        unique_id="pytest",
         domain=DOMAIN,
         version=5,
-        data=build_new_data({"url": es_url, CONF_INDEX_MODE: index_mode}),
-        options=build_new_options(
-            {CONF_ILM_POLICY_NAME: "home-assistant", CONF_ILM_ENABLED: True}
-        ),
+        data=build_new_data({"url": es_url, "index_mode": INDEX_MODE_LEGACY, **data}),
+        options=build_new_options(user_input={**options}),
         title="ES Config",
     )
 
@@ -54,7 +67,35 @@ async def get_index_manager(
 
     gateway = ElasticsearchGateway(hass=hass, config_entry=mock_entry)
 
-    await gateway.async_init()
+    index_manager = IndexManager(hass=hass, config_entry=mock_entry, gateway=gateway)
+
+    yield index_manager
+
+    await gateway.async_stop_gateway()
+
+
+@pytest.fixture()
+async def modern_index_manager(hass: HomeAssistant, data, options):
+    """Create a mock config entry."""
+    es_url = "http://localhost:9200"
+
+    # If we set data and options to have default values in our definition
+    # the values wont pass through from the test so we need to set them to None here instead
+
+    mock_entry = MockConfigEntry(
+        unique_id="pytest",
+        domain=DOMAIN,
+        version=5,
+        data=build_new_data(
+            {"url": es_url, "index_mode": INDEX_MODE_DATASTREAM, **data}
+        ),
+        options=build_new_options(user_input={**options}),
+        title="ES Config",
+    )
+
+    mock_entry.add_to_hass(hass)
+
+    gateway = ElasticsearchGateway(hass=hass, config_entry=mock_entry)
 
     index_manager = IndexManager(hass=hass, config_entry=mock_entry, gateway=gateway)
 
@@ -67,6 +108,7 @@ async def get_index_manager(
 async def test_esserverless_datastream_setup(
     hass: HomeAssistant,
     es_aioclient_mock: AiohttpClientMocker,
+    modern_index_manager,
 ):
     """Test for modern index mode setup."""
 
@@ -79,12 +121,9 @@ async def test_esserverless_datastream_setup(
         mock_modern_template_setup=True,
     )
 
-    modern_index_manager = await get_index_manager(
-        hass=hass, es_url=es_url, index_mode=INDEX_MODE_DATASTREAM
-    ).__anext__()
-
     assert len(extract_es_modern_index_template_requests(es_aioclient_mock)) == 0
 
+    await modern_index_manager._gateway.async_init()
     await modern_index_manager.async_setup()
 
     modern_template_requests = extract_es_modern_index_template_requests(
@@ -107,6 +146,7 @@ async def test_esserverless_datastream_setup(
 async def test_es811_datastream_setup(
     hass: HomeAssistant,
     es_aioclient_mock: AiohttpClientMocker,
+    modern_index_manager,
 ):
     """Test for modern index mode setup."""
 
@@ -122,12 +162,7 @@ async def test_es811_datastream_setup(
 
     assert len(extract_es_modern_index_template_requests(es_aioclient_mock)) == 0
 
-    modern_index_manager = await get_index_manager(
-        hass=hass, es_url=es_url, index_mode=INDEX_MODE_DATASTREAM
-    ).__anext__()
-
-    assert len(extract_es_modern_index_template_requests(es_aioclient_mock)) == 0
-
+    await modern_index_manager._gateway.async_init()
     await modern_index_manager.async_setup()
 
     modern_template_requests = extract_es_modern_index_template_requests(
@@ -171,6 +206,7 @@ async def test_es811_datastream_setup(
 async def test_es88_datastream_setup(
     hass: HomeAssistant,
     es_aioclient_mock: AiohttpClientMocker,
+    modern_index_manager,
 ):
     """Test for modern index mode setup."""
 
@@ -187,12 +223,7 @@ async def test_es88_datastream_setup(
 
     assert len(extract_es_modern_index_template_requests(es_aioclient_mock)) == 0
 
-    modern_index_manager = await get_index_manager(
-        hass=hass, es_url=es_url, index_mode=INDEX_MODE_DATASTREAM
-    ).__anext__()
-
-    assert len(extract_es_modern_index_template_requests(es_aioclient_mock)) == 0
-
+    await modern_index_manager._gateway.async_init()
     await modern_index_manager.async_setup()
 
     modern_template_requests = extract_es_modern_index_template_requests(
@@ -245,6 +276,7 @@ async def test_es88_datastream_setup(
 async def test_es80_datastream_setup(
     hass: HomeAssistant,
     es_aioclient_mock: AiohttpClientMocker,
+    modern_index_manager,
 ):
     """Test for modern index mode setup."""
 
@@ -261,12 +293,7 @@ async def test_es80_datastream_setup(
 
     assert len(extract_es_modern_index_template_requests(es_aioclient_mock)) == 0
 
-    modern_index_manager = await get_index_manager(
-        hass=hass, es_url=es_url, index_mode=INDEX_MODE_DATASTREAM
-    ).__anext__()
-
-    assert len(extract_es_modern_index_template_requests(es_aioclient_mock)) == 0
-
+    await modern_index_manager._gateway.async_init()
     await modern_index_manager.async_setup()
 
     modern_template_requests = extract_es_modern_index_template_requests(
@@ -318,6 +345,7 @@ async def test_es80_datastream_setup(
 async def test_es717_datastream_setup(
     hass: HomeAssistant,
     es_aioclient_mock: AiohttpClientMocker,
+    modern_index_manager,
 ):
     """Test for modern index mode setup."""
 
@@ -334,12 +362,7 @@ async def test_es717_datastream_setup(
 
     assert len(extract_es_modern_index_template_requests(es_aioclient_mock)) == 0
 
-    modern_index_manager = await get_index_manager(
-        hass=hass, es_url=es_url, index_mode=INDEX_MODE_DATASTREAM
-    ).__anext__()
-
-    assert len(extract_es_modern_index_template_requests(es_aioclient_mock)) == 0
-
+    await modern_index_manager._gateway.async_init()
     await modern_index_manager.async_setup()
 
     modern_template_requests = extract_es_modern_index_template_requests(
@@ -389,8 +412,7 @@ async def test_es717_datastream_setup(
 
 @pytest.mark.asyncio
 async def test_es711_datastream_setup(
-    hass: HomeAssistant,
-    es_aioclient_mock: AiohttpClientMocker,
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, modern_index_manager
 ):
     """Test for modern index mode setup."""
 
@@ -407,12 +429,7 @@ async def test_es711_datastream_setup(
 
     assert len(extract_es_modern_index_template_requests(es_aioclient_mock)) == 0
 
-    modern_index_manager = await get_index_manager(
-        hass=hass, es_url=es_url, index_mode=INDEX_MODE_DATASTREAM
-    ).__anext__()
-
-    assert len(extract_es_modern_index_template_requests(es_aioclient_mock)) == 0
-
+    await modern_index_manager._gateway.async_init()
     await modern_index_manager.async_setup()
 
     modern_template_requests = extract_es_modern_index_template_requests(
@@ -462,8 +479,7 @@ async def test_es711_datastream_setup(
 
 @pytest.mark.asyncio
 async def test_fail_esserverless_legacy_index_setup(
-    hass: HomeAssistant,
-    es_aioclient_mock: AiohttpClientMocker,
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, legacy_index_manager
 ):
     """Test for failure of legacy index mode setup on serverless."""
 
@@ -476,11 +492,7 @@ async def test_fail_esserverless_legacy_index_setup(
         mock_template_setup=True,
     )
 
-    assert len(extract_es_legacy_index_template_requests(es_aioclient_mock)) == 0
-
-    legacy_index_manager = await get_index_manager(
-        hass=hass, es_url=es_url, index_mode=INDEX_MODE_LEGACY
-    ).__anext__()
+    await legacy_index_manager._gateway.async_init()
 
     assert len(extract_es_legacy_index_template_requests(es_aioclient_mock)) == 0
 
@@ -490,8 +502,7 @@ async def test_fail_esserverless_legacy_index_setup(
 
 @pytest.mark.asyncio
 async def test_es88_legacy_index_setup(
-    hass: HomeAssistant,
-    es_aioclient_mock: AiohttpClientMocker,
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, legacy_index_manager
 ):
     """Test for modern index mode setup."""
 
@@ -507,12 +518,7 @@ async def test_es88_legacy_index_setup(
 
     assert len(extract_es_legacy_index_template_requests(es_aioclient_mock)) == 0
 
-    legacy_index_manager = await get_index_manager(
-        hass=hass, es_url=es_url, index_mode=INDEX_MODE_LEGACY
-    ).__anext__()
-
-    assert len(extract_es_legacy_index_template_requests(es_aioclient_mock)) == 0
-
+    await legacy_index_manager._gateway.async_init()
     await legacy_index_manager.async_setup()
 
     legacy_template_requests = extract_es_legacy_index_template_requests(
@@ -529,8 +535,7 @@ async def test_es88_legacy_index_setup(
 
 
 async def test_es711_legacy_index_setup(
-    hass: HomeAssistant,
-    es_aioclient_mock: AiohttpClientMocker,
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, legacy_index_manager
 ):
     """Test for modern index mode setup."""
 
@@ -544,12 +549,7 @@ async def test_es711_legacy_index_setup(
 
     assert len(extract_es_legacy_index_template_requests(es_aioclient_mock)) == 0
 
-    legacy_index_manager = await get_index_manager(
-        hass=hass, es_url=es_url, index_mode=INDEX_MODE_LEGACY
-    ).__anext__()
-
-    assert len(extract_es_legacy_index_template_requests(es_aioclient_mock)) == 0
-
+    await legacy_index_manager._gateway.async_init()
     await legacy_index_manager.async_setup()
 
     legacy_template_requests = extract_es_legacy_index_template_requests(
@@ -565,29 +565,9 @@ async def test_es711_legacy_index_setup(
     assert len(extract_es_ilm_template_requests(es_aioclient_mock)) == 1
 
 
-async def test_es711_invalid_index_setup(
-    hass: HomeAssistant,
-    es_aioclient_mock: AiohttpClientMocker,
-):
-    """Test for modern index mode setup."""
-
-    es_url = "http://localhost:9200"
-
-    mock_es_initialization(
-        es_aioclient_mock,
-        es_url,
-        mock_template_setup=True,
-    )
-
-    with pytest.raises(ElasticException):
-        await get_index_manager(
-            hass=hass, es_url=es_url, index_mode="invalid"
-        ).__anext__()
-
-
 @pytest.mark.asyncio
 async def test_modern_index_mode_update(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, modern_index_manager
 ):
     """Test for modern index mode update."""
 
@@ -601,12 +581,7 @@ async def test_modern_index_mode_update(
         mock_modern_template_update=True,
     )
 
-    modern_index_manager = await get_index_manager(
-        hass=hass, es_url=es_url, index_mode=INDEX_MODE_DATASTREAM
-    ).__anext__()
-
-    assert len(extract_es_modern_index_template_requests(es_aioclient_mock)) == 0
-
+    await modern_index_manager._gateway.async_init()
     await modern_index_manager.async_setup()
 
     # In Datastream mode the template is updated each time the manager is initialized
@@ -628,7 +603,7 @@ async def test_modern_index_mode_update(
 
 @pytest.mark.asyncio
 async def test_modern_index_mode_error(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, modern_index_manager
 ):
     """Test for modern index mode update."""
 
@@ -641,12 +616,7 @@ async def test_modern_index_mode_error(
         mock_modern_template_setup=False,
         mock_modern_template_error=True,
     )
-
-    modern_index_manager = await get_index_manager(
-        hass=hass, es_url=es_url, index_mode=INDEX_MODE_DATASTREAM
-    ).__anext__()
-
-    assert len(extract_es_modern_index_template_requests(es_aioclient_mock)) == 0
+    await modern_index_manager._gateway.async_init()
 
     with pytest.raises(ElasticsearchException):
         await modern_index_manager.async_setup()
@@ -656,7 +626,7 @@ async def test_modern_index_mode_error(
 
 
 async def test_legacy_index_mode_update(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, legacy_index_manager
 ):
     """Test for modern index mode update."""
 
@@ -670,14 +640,9 @@ async def test_legacy_index_mode_update(
         mock_template_update=True,
     )
 
-    legacy_index_manager = await get_index_manager(
-        hass=hass, es_url=es_url, index_mode=INDEX_MODE_LEGACY
-    ).__anext__()
-
     # Index Templates do not get updated in Legacy mode but ILM templates do
 
-    assert len(extract_es_legacy_index_template_requests(es_aioclient_mock)) == 0
-
+    await legacy_index_manager._gateway.async_init()
     await legacy_index_manager.async_setup()
 
     assert len(extract_es_legacy_index_template_requests(es_aioclient_mock)) == 0
@@ -686,7 +651,7 @@ async def test_legacy_index_mode_update(
 
 
 async def test_legacy_index_mode_error(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, legacy_index_manager
 ):
     """Test for modern index mode update."""
 
@@ -700,13 +665,7 @@ async def test_legacy_index_mode_error(
         mock_template_error=True,
     )
 
-    legacy_index_manager = await get_index_manager(
-        hass=hass, es_url=es_url, index_mode=INDEX_MODE_LEGACY
-    ).__anext__()
-
-    # Index Templates do not get updated in Legacy mode but ILM templates do
-
-    assert len(extract_es_legacy_index_template_requests(es_aioclient_mock)) == 0
+    await legacy_index_manager._gateway.async_init()
 
     with pytest.raises(ElasticException):
         await legacy_index_manager.async_setup()

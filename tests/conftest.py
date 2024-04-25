@@ -165,4 +165,4 @@ def mock_entity_state(hass: HomeAssistantType) -> MockEntityState:
 def pytest_runtest_setup():
     """Enable socket and allow local connections."""
     enable_socket()
-    socket_allow_hosts(["127.0.0.1", "localhost", "::1"], allow_unix_socket=True)
+    socket_allow_hosts("localhost", allow_unix_socket=True)

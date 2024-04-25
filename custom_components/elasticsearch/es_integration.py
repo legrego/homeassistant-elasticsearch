@@ -35,7 +35,6 @@ class ElasticIntegration:
 
         try:
             await self.gateway.async_init()
-            await self.gateway._enforce_privileges()
             await self.privilege_check.enforce_privileges()
             await self.index_manager.async_setup()
             await self.publisher.async_init()

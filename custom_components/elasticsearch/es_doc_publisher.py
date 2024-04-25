@@ -312,16 +312,22 @@ class DocumentPublisher:
         is_entity_excluded = entity_id in self._excluded_entities
 
         if self._destination_type == INDEX_MODE_DATASTREAM:
-            if is_entity_excluded or is_domain_excluded:
+            if is_entity_included:
+                return True
+
+            if is_entity_excluded:
+                return False
+
+            if is_domain_included:
+                return True
+
+            if is_domain_excluded:
                 return False
 
             if len(self._included_entities) == 0 and len(self._included_domains) == 0:
                 return True
 
-            if is_entity_included or is_domain_included:
-                return True
-
-            return True
+            return False
         else:
             if is_entity_excluded:
                 return False
