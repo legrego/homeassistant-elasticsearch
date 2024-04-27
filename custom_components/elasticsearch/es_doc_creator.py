@@ -164,12 +164,10 @@ class DocumentCreator:
             return
 
         entity_additions = {
-            "class": entity_details.entity.device_class
-            or entity_details.entity.original_device_class,
             "labels": entity_details.entity_label,
             "name": entity_details.entity.name or entity_details.entity.original_name,
             "platform": entity_details.entity.platform,
-            "unit_of_measurement": entity_details.unit_of_measurement,
+            "unit_of_measurement": entity_details.entity.unit_of_measurement,
         }
 
         if entity_details.entity_area:
@@ -179,7 +177,8 @@ class DocumentCreator:
             }
 
         device_additions = {
-            "class": entity_details.device.entry_type.toString(),
+            "class": entity_details.entity.device_class
+            or entity_details.entity.original_device_class,
             "id": entity_details.device.id,
             "labels": entity_details.device_label,
             "name": entity_details.device.name,
