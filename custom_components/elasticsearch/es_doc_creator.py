@@ -154,33 +154,51 @@ class DocumentCreator:
         """
         entity_details = self._entity_details.async_get(state.entity_id)
 
-        additions = {}
+        entity_additions = {}
+        device_additions = {}
 
-        if entity_details is not None:
-            additions["device"] = {}
+        if entity_details is None:
+            return
 
-            if entity_details.device:
-                additions["device"]["id"] = entity_details.device.id
-                additions["device"]["name"] = entity_details.device.name
+        entity_additions = {
+            "class": entity_details.entity.device_class
+            or entity_details.entity.original_device_class,
+            "labels": entity_details.entity_label,
+            "name": entity_details.entity.name or entity_details.entity.original_name,
+            "platform": entity_details.entity.platform,
+            "unit_of_measurement": entity_details.unit_of_measurement,
+        }
 
-            if entity_details.entity_area:
-                additions["area"] = {
-                    "id": entity_details.entity_area.id,
-                    "name": entity_details.entity_area.name,
-                }
+        if entity_details.entity_area:
+            entity_additions["area"] = {
+                "id": entity_details.entity_area.id,
+                "name": entity_details.entity_area.name,
+            }
 
-            if entity_details.entity.platform:
-                additions["platform"] = entity_details.entity.platform
-            if entity_details.entity.name:
-                additions["name"] = entity_details.entity.name
+        device_additions = {
+            "class": entity_details.device.entry_type.toString(),
+            "id": entity_details.device.id,
+            "labels": entity_details.device_label,
+            "name": entity_details.device.name,
+        }
 
-            if entity_details.device_area:
-                additions["device"]["area"] = {
-                    "id": entity_details.device_area.id,
-                    "name": entity_details.device_area.name,
-                }
+        if entity_details.device_floor:
+            device_additions["floor"] = {
+                "id": entity_details.device_floor.id,
+                "name": entity_details.device_floor.name,
+            }
 
-        return additions
+        if entity_details.device_area:
+            device_additions["area"] = {
+                "id": entity_details.device_area.id,
+                "name": entity_details.device_area.name,
+            }
+
+        # Remove any keys set to `None`
+        entity_additions = {k: v for k, v in entity_additions.items() if v is not None}
+        device_additions = {k: v for k, v in device_additions.items() if v is not None}
+
+        return {**entity_additions, "device": {**device_additions}}
 
     def _state_to_value_v1(self, state: State) -> str | float:
         """Coerce the value from state into a string or a float.
