@@ -450,8 +450,16 @@ class DocumentPublisher:
         next_publish = time.monotonic() + self._publish_frequency
         while self.publish_active:
             try:
-                can_publish = next_publish <= time.monotonic()
-                if can_publish and not self._gateway.active_connection_error and self._has_entries_to_publish():
+                time_to_publish = next_publish <= time.monotonic()
+
+                can_publish = not self._gateway.active_connection_error
+
+                should_publish = (
+                    self._has_entries_to_publish()
+                    or self._publish_mode == PUBLISH_MODE_ALL
+                )
+
+                if time_to_publish and can_publish and should_publish:
                     try:
                         await self.async_do_publish()
                     finally:
