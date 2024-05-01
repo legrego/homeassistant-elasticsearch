@@ -375,7 +375,7 @@ class DocumentPublisher:
 
         return True
 
-    @lru_cache(maxsize=64)
+    @lru_cache(maxsize=128)
     def _sanitize_datastream_name(self, name: str):
         """Sanitize a datastream name."""
 

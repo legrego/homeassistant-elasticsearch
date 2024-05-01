@@ -360,7 +360,7 @@ class DocumentCreator:
 
         return document_body
 
-    @lru_cache(maxsize=1024)
+    @lru_cache(maxsize=4096)
     def normalize_attribute_name(self, attribute_name: str) -> str:
         """Create an ECS-compliant version of the provided attribute name."""
         # Normalize to closest ASCII equivalent where possible
