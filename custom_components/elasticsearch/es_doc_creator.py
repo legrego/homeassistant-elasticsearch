@@ -31,11 +31,8 @@ from custom_components.elasticsearch.system_info import SystemInfo
 ALLOWED_ATTRIBUTE_TYPES = tuple | dict | set | list | int | float | bool | str | None
 SKIP_ATTRIBUTES = [
     "friendly_name",
-    "id",
-    "type",
     "entity_picture",
     "icon",
-    "entity_id",
     "device_class",
     "state_class",
     "unit_of_measurement",
