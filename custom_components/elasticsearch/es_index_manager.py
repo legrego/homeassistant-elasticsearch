@@ -162,11 +162,21 @@ class IndexManager:
                 name=DATASTREAM_METRICS_INDEX_TEMPLATE_NAME, body=index_template
             )
 
+            if await self.requires_datastream_ignore_dynamic_fields_migration():
+                LOGGER.debug(
+                    "Performing a one-time migration of datastream write indices to set dynamic=false."
+                )
+                await self.migrate_datastreams_to_ignore_dynamic_fields()
+
         except ElasticsearchException as err:
             LOGGER.exception("Error creating/updating index template: %s", err)
             # We do not want to proceed with indexing if we don't have any index templates as this
             # will result in the user having to clean-up indices with improper mappings.
-            if not template_exists:
+            # We also do not want to proceed if updating the datastreams to ignore dynamic fields fails.
+            if (
+                not template_exists
+                or self.requires_datastream_ignore_dynamic_fields_migration()
+            ):
                 raise err
 
     async def _create_legacy_template(self):
@@ -295,3 +305,46 @@ class IndexManager:
             await client.ilm.put_lifecycle(ilm_policy_name, policy)
         except ElasticsearchException as err:
             raise convert_es_error("Error creating initial ILM policy", err) from err
+
+    async def requires_datastream_ignore_dynamic_fields_migration(self):
+        """Check if datastreams need to be migrated to ignore dynamic fields."""
+        if self.index_mode != INDEX_MODE_DATASTREAM:
+            return False
+
+        client = self._gateway.get_client()
+
+        try:
+            mappings = await client.indices.get_mapping(
+                index=self.datastream_type + "-" + self.datastream_name_prefix + ".*"
+            )
+        except ElasticsearchException as err:
+            raise convert_es_error(
+                "Error checking datastream mapping for dynamic fields", err
+            ) from err
+
+        for index, mapping in mappings.items():
+            if mapping.get("dynamic") == "strict":
+                return True
+
+        return False
+
+    async def migrate_datastreams_to_ignore_dynamic_fields(self):
+        """Migrate datastreams to ignore dynamic fields."""
+        if self.index_mode != INDEX_MODE_DATASTREAM:
+            return
+
+        client = self._gateway.get_client()
+
+        try:
+            await client.indices.put_mapping(
+                index=self.datastream_type + "-" + self.datastream_name_prefix + ".*",
+                body={
+                    "dynamic": "false",
+                },
+                allow_no_indices=True,
+                write_index_only=True,
+            )
+        except ElasticsearchException as err:
+            raise convert_es_error(
+                "Error migrating datastream to ignore dynamic fields", err
+            ) from err
