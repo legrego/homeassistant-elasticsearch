@@ -2,6 +2,7 @@
 import asyncio
 import time
 from datetime import datetime
+from functools import lru_cache
 from queue import Queue
 
 from homeassistant.config_entries import ConfigEntry
@@ -374,6 +375,7 @@ class DocumentPublisher:
 
         return True
 
+    @lru_cache(maxsize=128)
     def _sanitize_datastream_name(self, name: str):
         """Sanitize a datastream name."""
 
