@@ -154,48 +154,49 @@ class DocumentCreator:
         """
         entity_details = self._entity_details.async_get(state.entity_id)
 
-        entity_additions = {}
-        device_additions = {}
-
         if entity_details is None:
-            return
+            return {}
+
+        entity = entity_details.entity
+        entity_capabilities = entity.capabilities or {}
+        entity_area = entity_details.entity_area or {}
 
         entity_additions = {
             "labels": entity_details.entity_label,
-            "name": entity_details.entity.name or entity_details.entity.original_name,
-            "platform": entity_details.entity.platform,
-            "unit_of_measurement": entity_details.entity.unit_of_measurement,
+            "name": entity.name or entity.original_name,
+            "platform": entity.platform,
+            "unit_of_measurement": str(entity.unit_of_measurement),
+            "area.id": entity_area.get("id"),
+            "area.name": entity_area.get("name"),
+            "class": entity_capabilities.get("state_class"),
         }
 
-        if entity_details.entity_area:
-            entity_additions["area"] = {
-                "id": entity_details.entity_area.id,
-                "name": entity_details.entity_area.name,
-            }
+        entity_additions = {
+            k: str(v)
+            for k, v in entity_additions.items()
+            if (v is not None and v != "None")
+        }
+
+        device = entity_details.device
+        device_floor = entity_details.device_floor or {}
+        device_area = entity_details.device_area or {}
 
         device_additions = {
-            "class": entity_details.entity.device_class
-            or entity_details.entity.original_device_class,
-            "id": entity_details.device.id,
+            "class": entity.device_class or entity.original_device_class,
+            "id": (device.id if device else None),
             "labels": entity_details.device_label,
-            "name": entity_details.device.name,
+            "name": (device.name if device else None),
+            "floor.id": device_floor.get("id"),
+            "floor.name": device_floor.get("name"),
+            "area.id": device_area.get("id"),
+            "area.name": device_area.get("name"),
         }
 
-        if entity_details.device_floor:
-            device_additions["floor"] = {
-                "id": entity_details.device_floor.id,
-                "name": entity_details.device_floor.name,
-            }
-
-        if entity_details.device_area:
-            device_additions["area"] = {
-                "id": entity_details.device_area.id,
-                "name": entity_details.device_area.name,
-            }
-
-        # Remove any keys set to `None`
-        entity_additions = {k: v for k, v in entity_additions.items() if v is not None}
-        device_additions = {k: v for k, v in device_additions.items() if v is not None}
+        device_additions = {
+            k: str(v)
+            for k, v in device_additions.items()
+            if (v is not None and v != "None")
+        }
 
         return {**entity_additions, "device": {**device_additions}}
 
