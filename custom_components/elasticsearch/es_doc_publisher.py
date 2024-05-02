@@ -402,8 +402,8 @@ class DocumentPublisher:
 
         return True
 
-    @lru_cache(maxsize=128)
     @classmethod
+    @lru_cache(maxsize=128)
     def _sanitize_datastream_name(
         self, dataset: str, type: str = "metrics", namespace: str = "default"
     ):
