@@ -24,7 +24,8 @@
 				"ms-python.python",
 				"github.vscode-pull-request-github",
 				"ryanluker.vscode-coverage-gutters",
-				"charliermarsh.ruff"
+				"charliermarsh.ruff",
+				"redhat.vscode-yaml"
 			],
 			"settings": {
 				"files.eol": "\n",
