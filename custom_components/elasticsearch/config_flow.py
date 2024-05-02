@@ -18,6 +18,7 @@ from homeassistant.const import (
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.selector import selector
 
 from custom_components.elasticsearch.es_privilege_check import ESPrivilegeCheck
@@ -39,6 +40,7 @@ from .const import (
     CONF_PUBLISH_FREQUENCY,
     CONF_PUBLISH_MODE,
     CONF_SSL_CA_PATH,
+    DOMAIN,
     INDEX_MODE_DATASTREAM,
     INDEX_MODE_LEGACY,
     ONE_MINUTE,
