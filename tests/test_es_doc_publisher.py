@@ -230,21 +230,6 @@ async def initialized_gateway(
     await gateway.async_stop_gateway()
 
 
-# def compare_es_doc_to_bulk_request(
-#     es_doc: dict,
-#     bulk_request: list[dict],
-# ):
-#     """Compare an Elasticsearch document to a bulk request."""
-#     if len(bulk_request) > 2:
-#         raise ValueError("Bulk request can only have two entries")
-
-#     bulk_request_type = es_doc["_op_type"]
-
-
-#     assert es_doc["_index"] == bulk_request[0][bulk_request_type]["_index"]
-#     assert es_doc["_source"] == bulk_request[1]
-
-
 @pytest.mark.asyncio
 class Test_Unit_Tests:
     """Unit tests for the Elasticsearch Document Publisher."""
