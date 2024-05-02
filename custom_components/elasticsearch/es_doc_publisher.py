@@ -363,8 +363,6 @@ class DocumentPublisher:
             self._publish_timer_ref = self._config_entry.async_create_background_task(self._hass, self._publish_queue_timer(), 'publish_queue_timer')
         else:
             self._publish_timer_ref = asyncio.ensure_future(self._publish_queue_timer())
-        self.publish_active = True
-
 
     def _has_entries_to_publish(self):
         """Determine if now is a good time to publish documents."""
@@ -447,6 +445,9 @@ class DocumentPublisher:
             "Starting publish timer: executes every %i seconds.",
             self._publish_frequency,
         )
+
+        self.publish_active = True
+
         next_publish = time.monotonic() + self._publish_frequency
         while self.publish_active:
             try:
