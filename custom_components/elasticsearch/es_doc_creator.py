@@ -3,6 +3,7 @@
 import re
 import unicodedata
 from datetime import datetime
+from functools import lru_cache
 from math import isinf
 
 from homeassistant.components.sun import STATE_ABOVE_HORIZON, STATE_BELOW_HORIZON
@@ -355,6 +356,7 @@ class DocumentCreator:
 
         return document_body
 
+    @lru_cache(maxsize=4096)
     def normalize_attribute_name(self, attribute_name: str) -> str:
         """Create an ECS-compliant version of the provided attribute name."""
         # Normalize to closest ASCII equivalent where possible

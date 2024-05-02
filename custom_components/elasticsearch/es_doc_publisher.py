@@ -3,6 +3,7 @@
 import asyncio
 import time
 from datetime import datetime
+from functools import lru_cache
 from queue import Queue
 
 from homeassistant.config_entries import ConfigEntry
@@ -401,6 +402,7 @@ class DocumentPublisher:
 
         return True
 
+    @lru_cache(maxsize=128)
     @classmethod
     def _sanitize_datastream_name(
         self, dataset: str, type: str = "metrics", namespace: str = "default"
@@ -495,12 +497,16 @@ class DocumentPublisher:
         next_publish = time.monotonic() + self._publish_frequency
         while self.publish_active:
             try:
-                can_publish = next_publish <= time.monotonic()
-                if (
-                    can_publish
-                    and not self._gateway.active_connection_error
-                    and self._has_entries_to_publish()
-                ):
+                time_to_publish = next_publish <= time.monotonic()
+
+                can_publish = not self._gateway.active_connection_error
+
+                should_publish = (
+                    self._has_entries_to_publish()
+                    or self._publish_mode == PUBLISH_MODE_ALL
+                )
+
+                if time_to_publish and can_publish and should_publish:
                     try:
                         await self.async_do_publish()
                     finally:

@@ -17,6 +17,8 @@ from homeassistant.const import (
 )
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.selector import selector
 
 from .const import (
@@ -37,6 +39,7 @@ from .const import (
     CONF_PUBLISH_MODE,
     CONF_SSL_CA_PATH,
     ES_CHECK_PERMISSIONS_DATASTREAM,
+    DOMAIN,
     INDEX_MODE_DATASTREAM,
     INDEX_MODE_LEGACY,
     ONE_MINUTE,
@@ -357,7 +360,19 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
     async def async_step_import(self, import_config):
         """Import a config entry from configuration.yaml."""
 
-        # Look for a pre-existing Entry
+        ir.async_create_issue(
+            self.hass,
+            domain=DOMAIN,
+            issue_id="yaml_migration",
+            issue_domain=DOMAIN,
+            is_fixable=False,
+            is_persistent=True,
+            learn_more_url="https://github.com/legrego/homeassistant-elasticsearch/wiki/Migrating-from-YAML-configuration-to-UI-configuration",
+            severity=ir.IssueSeverity.WARNING,
+            translation_key="yaml_migration",
+        )
+
+        # Check if new config entry matches any existing config entries
         entries = self.hass.config_entries.async_entries(ELASTIC_DOMAIN)
         update_entry = None
         for entry in entries:
