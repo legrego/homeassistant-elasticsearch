@@ -454,7 +454,7 @@ async def test_reauth_flow_api_key(
     mock_entry = MockConfigEntry(
         unique_id="test_reauth_flow_basic",
         domain=DOMAIN,
-        version=3,
+        version=5,
         data={
             "url": es_url,
             "api_key": "abc123",
