@@ -129,11 +129,9 @@ async def async_migrate_entry(hass: HomeAssistantType, config_entry: ConfigEntry
 
     config_entry.version = migrated_version
 
-    hass.config_entries.async_update_entry(
+    return hass.config_entries.async_update_entry(
         config_entry, data=migrated_data, options=migrated_options
     )
-
-    return migrated_version == latest_version
 
 
 async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry):
@@ -192,7 +190,9 @@ async def _async_init_integration(hass: HomeAssistantType, config_entry: ConfigE
     return True
 
 
-def migrate_data_and_options_to_version(config_entry, desired_version):
+def migrate_data_and_options_to_version(
+    config_entry: ConfigEntry, desired_version: int
+):
     """Migrate a config entry from its current version to a desired version."""
     LOGGER.debug(
         "Migrating config entry from version %s to %s",

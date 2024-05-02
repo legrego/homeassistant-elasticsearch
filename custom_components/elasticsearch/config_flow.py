@@ -122,7 +122,7 @@ def build_new_options(existing_options: dict = None, user_input: dict = None):
     return options
 
 
-def build_new_data(existing_data: map = None, user_input: map = None):
+def build_new_data(existing_data: dict = None, user_input: dict = None):
     """Build the entire data validation schema."""
     if user_input is None:
         user_input = {}
@@ -219,9 +219,9 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
     async def _handle_auth_flow(
         self,
         type: str,
-        user_input: map | None,
-        data: map | None = None,
-        options: map | None = None,
+        user_input: dict | None,
+        data: dict | None = None,
+        options: dict | None = None,
         retry=True,
     ):
         # Combines the logic from all the async_step_*_auth methods into a single method
