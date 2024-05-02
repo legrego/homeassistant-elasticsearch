@@ -244,7 +244,7 @@ class Test_Unit_Tests:
             ("-test_name", "test_name"),
             ("test/name", "testname"),
             ("test? name", "test_name"),
-            ("Test_Name", "test_name"),
+            ("Test_Name_2", "test_name_2"),
             ("test..name", "test..name"),
             (".,?/:*<>|#+", None),
             (".", None),
