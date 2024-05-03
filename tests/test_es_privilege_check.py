@@ -1,64 +1,91 @@
 """Test ES Privilege Check."""
 
 import pytest
-from elasticsearch.const import CONF_INDEX_MODE
-from homeassistant.const import CONF_USERNAME
-from homeassistant.helpers.typing import HomeAssistantType
+from elasticsearch.const import (
+    CONF_INDEX_MODE,
+    DOMAIN,
+)
+from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
+from homeassistant.core import HomeAssistant
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
-from custom_components.elasticsearch.config_flow import build_full_config
+from custom_components.elasticsearch.config_flow import (
+    build_new_data,
+    build_new_options,
+)
 from custom_components.elasticsearch.errors import CannotConnect, InsufficientPrivileges
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 from custom_components.elasticsearch.es_privilege_check import ESPrivilegeCheck
 from tests.test_util.es_startup_mocks import mock_es_initialization
 
+# TODO: Remove when we remove legacy index support
+
 
 @pytest.mark.asyncio
 async def test_bad_connection(
-    hass: HomeAssistantType, es_aioclient_mock: AiohttpClientMocker
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
 ):
     """Test graceful error handling."""
 
     es_url = "http://test-bad-connection:9200"
     mock_es_initialization(es_aioclient_mock, es_url)
 
-    config = build_full_config({"url": es_url})
+    mock_entry = MockConfigEntry(
+        unique_id="test_authentication_error",
+        domain=DOMAIN,
+        version=5,
+        data=build_new_data({"url": es_url}),
+        options=build_new_options(),
+        title="ES Config",
+    )
 
-    gateway = ElasticsearchGateway(config)
+    gateway = ElasticsearchGateway(config_entry=mock_entry)
     await gateway.async_init()
 
     es_aioclient_mock.clear_requests()
     mock_es_initialization(es_aioclient_mock, mock_connection_error=True)
 
-    instance = ESPrivilegeCheck(gateway)
+    instance = ESPrivilegeCheck(gateway=gateway, config_entry=mock_entry)
 
     with pytest.raises(CannotConnect):
-        await instance.check_privileges(config)
+        await instance.check_privileges()
 
     await gateway.async_stop_gateway()
 
 
 @pytest.mark.asyncio
 async def test_successful_modern_privilege_check(
-    hass: HomeAssistantType, es_aioclient_mock: AiohttpClientMocker
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
 ):
     """Test successful privilege check."""
 
     es_url = "http://test_successful_modern_privilege_check:9200"
     mock_es_initialization(es_aioclient_mock, es_url)
 
-    config = build_full_config(
-        {"url": es_url, CONF_INDEX_MODE: "datastream", CONF_USERNAME: "test"}
+    mock_entry = MockConfigEntry(
+        unique_id="test_authentication_error",
+        domain=DOMAIN,
+        version=5,
+        data=build_new_data(
+            {
+                "url": es_url,
+                CONF_INDEX_MODE: "datastream",
+                CONF_USERNAME: "test",
+            }
+        ),
+        options=build_new_options(),
+        title="ES Config",
     )
 
-    gateway = ElasticsearchGateway(config)
+    gateway = ElasticsearchGateway(config_entry=mock_entry)
     await gateway.async_init()
 
-    instance = ESPrivilegeCheck(gateway)
-    result = await instance.check_privileges(config)
+    instance = ESPrivilegeCheck(gateway=gateway, config_entry=mock_entry)
+    result = await instance.check_privileges()
     assert result.has_all_requested
 
-    result = await instance.enforce_privileges(config)
+    result = await instance.enforce_privileges()
     assert result is None
 
     await gateway.async_stop_gateway()
@@ -66,24 +93,37 @@ async def test_successful_modern_privilege_check(
 
 @pytest.mark.asyncio
 async def test_successful_modern_privilege_check_missing_index_privilege(
-    hass: HomeAssistantType, es_aioclient_mock: AiohttpClientMocker
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
 ):
     """Test successful privilege check with missing index privileges."""
 
     es_url = "http://test_successful_modern_privilege_check:9200"
+
     mock_es_initialization(
         es_aioclient_mock, es_url, mock_modern_datastream_authorization_error=True
     )
 
-    config = build_full_config(
-        {"url": es_url, CONF_INDEX_MODE: "datastream", CONF_USERNAME: "test"}
+    mock_entry = MockConfigEntry(
+        unique_id="test_authentication_error",
+        domain=DOMAIN,
+        version=5,
+        data=build_new_data(
+            {
+                "url": es_url,
+                CONF_INDEX_MODE: "datastream",
+                CONF_USERNAME: "test",
+                CONF_PASSWORD: "test",
+            }
+        ),
+        options=build_new_options(),
+        title="ES Config",
     )
 
-    gateway = ElasticsearchGateway(config)
+    gateway = ElasticsearchGateway(config_entry=mock_entry)
     await gateway.async_init()
 
-    instance = ESPrivilegeCheck(gateway)
-    result = await instance.check_privileges(config)
+    instance = ESPrivilegeCheck(gateway=gateway, config_entry=mock_entry)
+    result = await instance.check_privileges()
     assert result.has_all_requested is False
     assert result.missing_cluster_privileges == []
     assert result.missing_index_privileges == {
@@ -91,27 +131,40 @@ async def test_successful_modern_privilege_check_missing_index_privilege(
     }
 
     with pytest.raises(InsufficientPrivileges):
-        await instance.enforce_privileges(config)
+        await instance.enforce_privileges()
 
     await gateway.async_stop_gateway()
 
 
 @pytest.mark.asyncio
 async def test_successful_legacy_privilege_check(
-    hass: HomeAssistantType, es_aioclient_mock: AiohttpClientMocker
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
 ):
     """Test successful privilege check."""
 
     es_url = "http://test_successful_privilege_check:9200"
     mock_es_initialization(es_aioclient_mock, es_url)
 
-    config = build_full_config({"url": es_url, CONF_USERNAME: "test"})
+    mock_entry = MockConfigEntry(
+        unique_id="test_authentication_error",
+        domain=DOMAIN,
+        version=5,
+        data=build_new_data(
+            {
+                "url": es_url,
+                CONF_USERNAME: "test",
+                CONF_PASSWORD: "test",
+            }
+        ),
+        options=build_new_options(),
+        title="ES Config",
+    )
 
-    gateway = ElasticsearchGateway(config)
+    gateway = ElasticsearchGateway(config_entry=mock_entry)
     await gateway.async_init()
 
-    instance = ESPrivilegeCheck(gateway)
-    result = await instance.check_privileges(config)
+    instance = ESPrivilegeCheck(gateway=gateway, config_entry=mock_entry)
+    result = await instance.check_privileges()
     assert result.has_all_requested
 
     await gateway.async_stop_gateway()
@@ -119,7 +172,7 @@ async def test_successful_legacy_privilege_check(
 
 @pytest.mark.asyncio
 async def test_successful_legacy_privilege_check_missing_index_privilege(
-    hass: HomeAssistantType, es_aioclient_mock: AiohttpClientMocker
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
 ):
     """Test successful privilege check with missing index privileges."""
 
@@ -128,26 +181,39 @@ async def test_successful_legacy_privilege_check_missing_index_privilege(
         es_aioclient_mock, es_url, mock_legacy_index_authorization_error=True
     )
 
-    config = build_full_config({"url": es_url, CONF_USERNAME: "test"})
+    mock_entry = MockConfigEntry(
+        unique_id="test_authentication_error",
+        domain=DOMAIN,
+        version=5,
+        data=build_new_data(
+            {
+                "url": es_url,
+                CONF_USERNAME: "test",
+                CONF_PASSWORD: "test",
+            }
+        ),
+        options=build_new_options(),
+        title="ES Config",
+    )
 
-    gateway = ElasticsearchGateway(config)
+    gateway = ElasticsearchGateway(mock_entry)
     await gateway.async_init()
 
-    instance = ESPrivilegeCheck(gateway)
-    result = await instance.check_privileges(config)
+    instance = ESPrivilegeCheck(gateway=gateway, config_entry=mock_entry)
+    result = await instance.check_privileges()
     assert result.has_all_requested is False
     assert result.missing_cluster_privileges == []
     assert result.missing_index_privileges == {"hass-events*": ["index"]}
 
     with pytest.raises(InsufficientPrivileges):
-        await instance.enforce_privileges(config)
+        await instance.enforce_privileges()
 
     await gateway.async_stop_gateway()
 
 
 @pytest.mark.asyncio
 async def test_enforce_auth_failure(
-    hass: HomeAssistantType, es_aioclient_mock: AiohttpClientMocker
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
 ):
     """Enforce should throw when missing privileges."""
 
@@ -156,36 +222,62 @@ async def test_enforce_auth_failure(
         es_aioclient_mock, es_url, mock_legacy_index_authorization_error=True
     )
 
-    config = build_full_config({"url": es_url, CONF_USERNAME: "test"})
+    mock_entry = MockConfigEntry(
+        unique_id="test_authentication_error",
+        domain=DOMAIN,
+        version=5,
+        data=build_new_data(
+            {
+                "url": es_url,
+                CONF_USERNAME: "test",
+                CONF_PASSWORD: "test",
+            }
+        ),
+        options=build_new_options(),
+        title="ES Config",
+    )
 
-    gateway = ElasticsearchGateway(config)
+    gateway = ElasticsearchGateway(config_entry=mock_entry)
     await gateway.async_init()
 
-    instance = ESPrivilegeCheck(gateway)
+    instance = ESPrivilegeCheck(gateway=gateway, config_entry=mock_entry)
     with pytest.raises(InsufficientPrivileges):
-        await instance.enforce_privileges(config)
+        await instance.enforce_privileges()
 
     await gateway.async_stop_gateway()
 
 
 @pytest.mark.asyncio
 async def test_enforce_auth_success(
-    hass: HomeAssistantType, es_aioclient_mock: AiohttpClientMocker
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
 ):
     """Enforce should not throw when not missing privileges."""
 
     es_url = "http://test_enforce_auth_success:9200"
     mock_es_initialization(es_aioclient_mock, es_url)
 
-    config = build_full_config({"url": es_url, CONF_USERNAME: "test"})
+    mock_entry = MockConfigEntry(
+        unique_id="test_authentication_error",
+        domain=DOMAIN,
+        version=5,
+        data=build_new_data(
+            {
+                "url": es_url,
+                CONF_USERNAME: "test",
+                CONF_PASSWORD: "test",
+            }
+        ),
+        options=build_new_options(),
+        title="ES Config",
+    )
 
-    gateway = ElasticsearchGateway(config)
+    gateway = ElasticsearchGateway(mock_entry)
     await gateway.async_init()
 
-    instance = ESPrivilegeCheck(gateway)
-    await instance.enforce_privileges(config)
+    instance = ESPrivilegeCheck(gateway=gateway, config_entry=mock_entry)
+    await instance.enforce_privileges()
 
-    result = await instance.enforce_privileges(config)
+    result = await instance.enforce_privileges()
     assert result is None
 
     await gateway.async_stop_gateway()

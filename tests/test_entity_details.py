@@ -9,7 +9,7 @@ from homeassistant.helpers import (
     floor_registry,
     label_registry,
 )
-from homeassistant.helpers.typing import HomeAssistantType
+from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -20,7 +20,7 @@ from custom_components.elasticsearch.entity_details import (
 
 
 @pytest.mark.asyncio
-async def test_missing_entity(hass: HomeAssistantType):
+async def test_missing_entity(hass: HomeAssistant):
     """Verify missing entity returns None."""
     instance = EntityDetails(hass)
 
@@ -28,7 +28,7 @@ async def test_missing_entity(hass: HomeAssistantType):
 
 
 @pytest.mark.asyncio
-async def test_entity_without_device(hass: HomeAssistantType):
+async def test_entity_without_device(hass: HomeAssistant):
     """Entity without device returns details."""
     config = {COUNTER_DOMAIN: {"test_1": {}}}
     assert await async_setup_component(hass, COUNTER_DOMAIN, config)
@@ -51,7 +51,7 @@ async def test_entity_without_device(hass: HomeAssistantType):
 
 
 @pytest.mark.asyncio
-async def test_entity_with_area(hass: HomeAssistantType):
+async def test_entity_with_area(hass: HomeAssistant):
     """Entity without device returns details."""
     area = area_registry.async_get(hass).async_create("mock")
 
@@ -80,7 +80,7 @@ async def test_entity_with_area(hass: HomeAssistantType):
 
 @pytest.mark.asyncio
 async def test_entity_with_device(
-    hass: HomeAssistantType, mock_config_entry: MockConfigEntry
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry
 ):
     """Entity with device returns details."""
     entity_area = area_registry.async_get(hass).async_create("entity area")

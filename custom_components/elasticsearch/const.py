@@ -14,10 +14,6 @@ CONF_PUBLISH_MODE = "publish_mode"
 CONF_INCLUDED_DOMAINS = "included_domains"
 CONF_INCLUDED_ENTITIES = "included_entities"
 
-CONF_DATASTREAM_TYPE = "datastream_type"
-CONF_DATASTREAM_NAME_PREFIX = "datastream_name_prefix"
-CONF_DATASTREAM_NAMESPACE = "datastream_namespace"
-
 CONF_ILM_ENABLED = "ilm_enabled"
 CONF_ILM_POLICY_NAME = "ilm_policy_name"
 CONF_SSL_CA_PATH = "ssl_ca_path"
@@ -34,8 +30,16 @@ ONE_HOUR = 60 * 60
 
 VERSION_SUFFIX = "-v4_2"
 
-DATASTREAM_METRICS_INDEX_TEMPLATE_NAME = "metrics-homeassistant"
-DATASTREAM_METRICS_ILM_POLICY_NAME = "metrics-homeassistant"
+DATASTREAM_TYPE = "metrics"
+DATASTREAM_DATASET_PREFIX = "homeassistant"
+DATASTREAM_NAMESPACE = "default"
+
+# Set to match the datastream prefix name
+DATASTREAM_METRICS_INDEX_TEMPLATE_NAME = (
+    DATASTREAM_TYPE + "-" + DATASTREAM_DATASET_PREFIX
+)
+DATASTREAM_METRICS_ILM_POLICY_NAME = DATASTREAM_TYPE + "-" + DATASTREAM_DATASET_PREFIX
+
 LEGACY_TEMPLATE_NAME = "hass-index-template" + VERSION_SUFFIX
 
 PUBLISH_MODE_ALL = "All"
@@ -48,3 +52,20 @@ PUBLISH_REASON_ATTR_CHANGE = "Attribute change"
 
 INDEX_MODE_LEGACY = "index"
 INDEX_MODE_DATASTREAM = "datastream"
+
+ES_CHECK_PERMISSIONS_DATASTREAM = {
+    "cluster": ["manage_index_templates", "manage_ilm", "monitor"],
+    "index": [
+        {
+            "names": [
+                "metrics-homeassistant.*",
+            ],
+            "privileges": [
+                "manage",
+                "index",
+                "create_index",
+                "create",
+            ],
+        }
+    ],
+}
