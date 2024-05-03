@@ -170,8 +170,8 @@ class DocumentCreator:
             "friendly_name": state.name,
             "platform": entity.platform,
             "unit_of_measurement": str(entity.unit_of_measurement),
-            "area.id": entity_area.get("id"),
-            "area.name": entity_area.get("name"),
+            "area.id": entity_area.id,
+            "area.name": entity_area.name,
             "class": entity_capabilities.get("state_class"),
         }
 
@@ -193,8 +193,8 @@ class DocumentCreator:
             "friendly_name": (device.name_by_user if device else None),
             "floor.id": device_floor.get("id"),
             "floor.name": device_floor.get("name"),
-            "area.id": device_area.get("id"),
-            "area.name": device_area.get("name"),
+            "area.id": device_area.id,
+            "area.name": device_area.name,
         }
 
         device_additions = {

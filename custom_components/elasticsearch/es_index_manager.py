@@ -18,9 +18,12 @@ from .const import (
     CONF_INDEX_FORMAT,
     CONF_INDEX_MODE,
     CONF_PUBLISH_ENABLED,
+    DATASTREAM_DATASET_PREFIX,
     DATASTREAM_METRICS_ILM_POLICY_NAME,
     DATASTREAM_METRICS_INDEX_TEMPLATE_NAME,
+    DATASTREAM_TYPE,
     DOMAIN,
+    INDEX_MODE_DATASTREAM,
     INDEX_MODE_LEGACY,
     LEGACY_TEMPLATE_NAME,
     VERSION_SUFFIX,
@@ -315,15 +318,15 @@ class IndexManager:
 
         try:
             mappings = await client.indices.get_mapping(
-                index=self.datastream_type + "-" + self.datastream_name_prefix + ".*"
+                index=DATASTREAM_TYPE + "-" + DATASTREAM_DATASET_PREFIX + ".*"
             )
         except ElasticsearchException as err:
             raise convert_es_error(
                 "Error checking datastream mapping for dynamic fields", err
             ) from err
 
-        for index, mapping in mappings.items():
-            if mapping.get("dynamic") == "strict":
+        for _index, mapping in mappings.items():
+            if mapping["mappings"].get("dynamic") == "strict":
                 return True
 
         return False
@@ -337,7 +340,7 @@ class IndexManager:
 
         try:
             await client.indices.put_mapping(
-                index=self.datastream_type + "-" + self.datastream_name_prefix + ".*",
+                index=DATASTREAM_TYPE + "-" + DATASTREAM_DATASET_PREFIX + ".*",
                 body={
                     "dynamic": "false",
                 },

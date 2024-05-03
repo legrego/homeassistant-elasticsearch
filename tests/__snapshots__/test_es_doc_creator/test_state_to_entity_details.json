@@ -1,0 +1,14 @@
+{
+  "area.id": "entity_area",
+  "area.name": "entity area",
+  "device": {
+    "area.id": "device_area",
+    "area.name": "device area",
+    "labels": "[]",
+    "name": "name"
+  },
+  "friendly_name": "My Test Counter",
+  "labels": "[]",
+  "name": "My Test Counter",
+  "platform": "counter"
+}
