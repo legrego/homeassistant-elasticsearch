@@ -1,7 +1,7 @@
 """Support for sending event data to an Elasticsearch cluster."""
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.helpers.typing import HomeAssistantType
+from homeassistant.core import HomeAssistant
 
 from custom_components.elasticsearch.errors import convert_es_error
 from custom_components.elasticsearch.es_privilege_check import ESPrivilegeCheck
@@ -15,7 +15,7 @@ from .es_index_manager import IndexManager
 class ElasticIntegration:
     """Integration for publishing entity state change events to Elasticsearch."""
 
-    def __init__(self, hass: HomeAssistantType, config_entry: ConfigEntry):
+    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry):
         """Integration initialization."""
 
         self.hass = hass

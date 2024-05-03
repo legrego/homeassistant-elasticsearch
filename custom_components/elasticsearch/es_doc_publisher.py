@@ -12,8 +12,7 @@ from homeassistant.const import (
     EVENT_HOMEASSISTANT_CLOSE,
     EVENT_STATE_CHANGED,
 )
-from homeassistant.core import HomeAssistant, State, callback
-from homeassistant.helpers.typing import EventType
+from homeassistant.core import Event, HomeAssistant, State, callback
 
 from custom_components.elasticsearch.errors import ElasticException
 from custom_components.elasticsearch.es_doc_creator import DocumentCreator
@@ -108,7 +107,7 @@ class DocumentPublisher:
                 "Including the following entities: %s", str(self._included_entities)
             )
 
-        def elastic_event_listener(event: EventType):
+        def elastic_event_listener(event: Event):
             """Listen for new messages on the bus and queue them for send."""
             state: State = event.data.get("new_state")
             old_state: State = event.data.get("old_state")
@@ -122,7 +121,7 @@ class DocumentPublisher:
         )
 
         @callback
-        def hass_close_event_listener(event: EventType):
+        def hass_close_event_listener(event: Event):
             LOGGER.debug("Detected Home Assistant Close Event.")
             self.stop_publisher()
 
@@ -170,7 +169,7 @@ class DocumentPublisher:
         """Return the approximate queue size."""
         return self.publish_queue.qsize()
 
-    def enqueue_state(self, state: State, event: EventType, reason: str):
+    def enqueue_state(self, state: State, event: Event, reason: str):
         """Queue up the provided state change."""
 
         domain = state.domain
@@ -195,7 +194,7 @@ class DocumentPublisher:
     def empty_queue(self):
         """Empty the publish queue."""
         self.publish_queue = Queue[
-            tuple[State, EventType, str]
+            tuple[State, Event, str]
         ]()  # Initialize a new queue and let the runtime perform garbage collection.
 
     async def async_do_publish(self):
@@ -392,7 +391,7 @@ class DocumentPublisher:
             )
         else:
             self._publish_timer_ref = asyncio.ensure_future(self._publish_queue_timer())
-        
+
     def _has_entries_to_publish(self):
         """Determine if now is a good time to publish documents."""
         if self.publish_queue.empty():

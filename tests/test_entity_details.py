@@ -2,8 +2,8 @@
 
 import pytest
 from homeassistant.components.counter import DOMAIN as COUNTER_DOMAIN
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers import area_registry, device_registry, entity_registry
-from homeassistant.helpers.typing import HomeAssistantType
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -14,14 +14,15 @@ from custom_components.elasticsearch.entity_details import (
 
 
 @pytest.mark.asyncio
-async def test_missing_entity(hass: HomeAssistantType):
+async def test_missing_entity(hass: HomeAssistant):
     """Verify missing entity returns None."""
     instance = EntityDetails(hass)
 
     assert instance.async_get("unknown_entity_id") is None
 
+
 @pytest.mark.asyncio
-async def test_entity_without_device(hass: HomeAssistantType):
+async def test_entity_without_device(hass: HomeAssistant):
     """Entity without device returns details."""
     config = {COUNTER_DOMAIN: {"test_1": {}}}
     assert await async_setup_component(hass, COUNTER_DOMAIN, config)
@@ -42,8 +43,9 @@ async def test_entity_without_device(hass: HomeAssistantType):
     assert deets.device is None
     assert deets.device_area is None
 
+
 @pytest.mark.asyncio
-async def test_entity_with_area(hass: HomeAssistantType):
+async def test_entity_with_area(hass: HomeAssistant):
     """Entity without device returns details."""
     area = area_registry.async_get(hass).async_create("mock")
 
@@ -69,8 +71,11 @@ async def test_entity_with_area(hass: HomeAssistantType):
     assert deets.device is None
     assert deets.device_area is None
 
+
 @pytest.mark.asyncio
-async def test_entity_with_device(hass: HomeAssistantType, mock_config_entry: MockConfigEntry):
+async def test_entity_with_device(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry
+):
     """Entity with device returns details."""
     entity_area = area_registry.async_get(hass).async_create("entity area")
     device_area = area_registry.async_get(hass).async_create("device area")
@@ -90,7 +95,9 @@ async def test_entity_with_device(hass: HomeAssistantType, mock_config_entry: Mo
     config = {COUNTER_DOMAIN: {"test_1": {}}}
     assert await async_setup_component(hass, COUNTER_DOMAIN, config)
     entity_id = "counter.test_1"
-    entity_registry.async_get(hass).async_update_entity(entity_id, area_id=entity_area.id, device_id=entry.id)
+    entity_registry.async_get(hass).async_update_entity(
+        entity_id, area_id=entity_area.id, device_id=entry.id
+    )
 
     state = hass.states.get(entity_id)
     assert int(state.state) == 0

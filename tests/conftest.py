@@ -22,8 +22,7 @@ from unittest import mock
 from unittest.mock import patch
 
 import pytest
-from homeassistant.core import State
-from homeassistant.helpers.typing import HomeAssistantType
+from homeassistant.core import HomeAssistant, State
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 from pytest_socket import enable_socket, socket_allow_hosts
@@ -78,7 +77,7 @@ def skip_notifications_fixture():
 
 
 @pytest.fixture()
-def mock_config_entry(hass: HomeAssistantType) -> MockConfigEntry:
+def mock_config_entry(hass: HomeAssistant) -> MockConfigEntry:
     """Create a mock config entry and add it to hass."""
     entry = MockConfigEntry(title=None)
     entry.add_to_hass(hass)
@@ -90,7 +89,7 @@ class MockEntityState(State):
 
     def __init__(
         self,
-        hass: HomeAssistantType,
+        hass: HomeAssistant,
         entity_id: str,
         state: str,
         attributes: map | None = None,
@@ -153,7 +152,7 @@ class MockEntityState(State):
         await self.hass.async_block_till_done()
 
 
-def mock_entity_state(hass: HomeAssistantType) -> MockEntityState:
+def mock_entity_state(hass: HomeAssistant) -> MockEntityState:
     """Mock an entity state in the state machine."""
 
     state = MockEntityState()

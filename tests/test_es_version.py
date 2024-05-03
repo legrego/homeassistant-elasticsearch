@@ -1,7 +1,7 @@
 """Test Elasticsearch Version."""
 
 import pytest
-from homeassistant.helpers.typing import HomeAssistantType
+from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
@@ -18,7 +18,7 @@ from tests.test_util.es_startup_mocks import mock_es_initialization
 
 @pytest.mark.asyncio
 async def test_serverless_true(
-    hass: HomeAssistantType, es_aioclient_mock: AiohttpClientMocker
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
 ):
     """Verify serverless instances are detected."""
 
@@ -45,7 +45,7 @@ async def test_serverless_true(
 
 @pytest.mark.asyncio
 async def test_serverless_false(
-    hass: HomeAssistantType, es_aioclient_mock: AiohttpClientMocker
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
 ):
     """Verify non-serverless instances are detected."""
 
@@ -74,7 +74,7 @@ async def test_serverless_false(
 
 @pytest.mark.asyncio
 async def test_fails_minimum_version(
-    hass: HomeAssistantType, es_aioclient_mock: AiohttpClientMocker
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
 ):
     """Verify minimum version function works."""
 
@@ -102,7 +102,7 @@ async def test_fails_minimum_version(
 
 @pytest.mark.asyncio
 async def test_passes_minimum_version(
-    hass: HomeAssistantType, es_aioclient_mock: AiohttpClientMocker
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
 ):
     """Verify minimum version function works."""
 
