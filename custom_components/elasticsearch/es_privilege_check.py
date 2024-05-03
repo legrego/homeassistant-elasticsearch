@@ -10,6 +10,7 @@ from custom_components.elasticsearch.const import (
     CONF_INDEX_FORMAT,
     CONF_INDEX_MODE,
     INDEX_MODE_DATASTREAM,
+    INDEX_MODE_LEGACY,
     VERSION_SUFFIX,
 )
 from custom_components.elasticsearch.errors import (
@@ -40,8 +41,10 @@ class ESPrivilegeCheck:
         self.username = config_entry.data.get(CONF_USERNAME)
         self.api_key = config_entry.data.get(CONF_API_KEY)
         self.index_mode = config_entry.data.get(CONF_INDEX_MODE)
-        self.index_format = config_entry.options.get(CONF_INDEX_FORMAT)
-        self.index_alias = config_entry.options.get(CONF_ALIAS) + VERSION_SUFFIX
+
+        if self.index_mode is INDEX_MODE_LEGACY:
+            self.index_format = config_entry.options.get(CONF_INDEX_FORMAT)
+            self.index_alias = config_entry.options.get(CONF_ALIAS) + VERSION_SUFFIX
 
     async def enforce_privileges(self):
         """Ensure client is configured with properly authorized credentials."""
