@@ -1,0 +1,35 @@
+{
+  "document": {
+    "@timestamp": "2023-04-12T12:00:00+00:00",
+    "event": {
+      "action": "testing",
+      "kind": "event",
+      "type": "change"
+    },
+    "hass.entity": {
+      "attributes": {},
+      "domain": "sensor",
+      "geo.location": {
+        "lat": 99.0,
+        "lon": 99.0
+      },
+      "id": "sensor.test_1",
+      "value": "2023-04-12T12:00:00+00:00",
+      "valueas": {
+        "date": "2023-04-12",
+        "datetime": "2023-04-12T12:00:00+00:00",
+        "time": "12:00:00"
+      }
+    },
+    "hass.object_id": "test_1"
+  },
+  "entity state": {
+    "attributes": {},
+    "entity_id": "sensor.test_1",
+    "last_changed": "2023-04-12T12:00:00+00:00",
+    "last_updated": "2023-04-12T12:00:00+00:00",
+    "state": "2023-04-12T12:00:00+00:00"
+  },
+  "state": "2023-04-12T12:00:00+00:00",
+  "version": 2
+}

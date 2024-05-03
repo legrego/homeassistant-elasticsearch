@@ -303,3 +303,9 @@ def mock_es_initialization(
             headers={"content-type": CONTENT_TYPE_JSON},
             json={"hi": "need dummy content"},
         )
+        aioclient_mock.get(
+            url + "/_ilm/policy",
+            status=200,
+            headers={"content-type": CONTENT_TYPE_JSON},
+            json=[{"hi": "need dummy content"}],
+        )
