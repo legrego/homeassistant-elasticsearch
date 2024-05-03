@@ -162,7 +162,7 @@ class DocumentCreator:
 
         entity = entity_details.entity
         entity_capabilities = entity.capabilities or {}
-        entity_area = entity_details.entity_area or {}
+        entity_area = entity_details.entity_area
 
         entity_additions = {
             "labels": entity_details.entity_label,
@@ -170,8 +170,8 @@ class DocumentCreator:
             "friendly_name": state.name,
             "platform": entity.platform,
             "unit_of_measurement": str(entity.unit_of_measurement),
-            "area.id": entity_area.id,
-            "area.name": entity_area.name,
+            "area.id": entity_area.id if entity_area else None,
+            "area.name": entity_area.name if entity_area else None,
             "class": entity_capabilities.get("state_class"),
         }
 
@@ -183,7 +183,7 @@ class DocumentCreator:
 
         device = entity_details.device
         device_floor = entity_details.device_floor or {}
-        device_area = entity_details.device_area or {}
+        device_area = entity_details.device_area
 
         device_additions = {
             "class": entity.device_class or entity.original_device_class,
@@ -193,8 +193,8 @@ class DocumentCreator:
             "friendly_name": (device.name_by_user if device else None),
             "floor.id": device_floor.get("id"),
             "floor.name": device_floor.get("name"),
-            "area.id": device_area.id,
-            "area.name": device_area.name,
+            "area.id": device_area.id if device_area else None,
+            "area.name": device_area.name if device_area else None,
         }
 
         device_additions = {
