@@ -9,4 +9,4 @@ esversion=$1
 
 set -e
 
-docker run -p 9200:9200 --name es01 --net elastic -q -d -m 1GB docker.elastic.co/elasticsearch/elasticsearch:"$esversion"
+docker run -p 9200:9200 --name es01 --add-host="host.docker.internal:host-gateway" --net elastic -q -d -m 1GB docker.elastic.co/elasticsearch/elasticsearch:"$esversion"

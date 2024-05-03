@@ -4,16 +4,15 @@ import json
 import os
 
 from elasticsearch7 import ElasticsearchException
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_ALIAS
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers import issue_registry as ir
 
 from custom_components.elasticsearch.errors import ElasticException, convert_es_error
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 
 from .const import (
-    CONF_DATASTREAM_NAME_PREFIX,
-    CONF_DATASTREAM_NAMESPACE,
-    CONF_DATASTREAM_TYPE,
     CONF_ILM_ENABLED,
     CONF_ILM_POLICY_NAME,
     CONF_INDEX_FORMAT,
@@ -22,7 +21,6 @@ from .const import (
     DATASTREAM_METRICS_ILM_POLICY_NAME,
     DATASTREAM_METRICS_INDEX_TEMPLATE_NAME,
     DOMAIN,
-    INDEX_MODE_DATASTREAM,
     INDEX_MODE_LEGACY,
     LEGACY_TEMPLATE_NAME,
     VERSION_SUFFIX,
@@ -33,27 +31,30 @@ from .logger import LOGGER
 class IndexManager:
     """Index management facilities."""
 
-    def __init__(self, hass, config, gateway):
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        gateway: ElasticsearchGateway,
+        config_entry: ConfigEntry,
+    ):
         """Initialize index management."""
 
-        self._config = config
-
-        if not config.get(CONF_PUBLISH_ENABLED):
+        if not config_entry.options.get(CONF_PUBLISH_ENABLED):
             return
 
         self._hass = hass
-
         self._gateway: ElasticsearchGateway = gateway
 
-        # Differentiate between index and datastream
-
-        self.index_mode = config.get(CONF_INDEX_MODE)
+        self.index_mode = config_entry.data.get(CONF_INDEX_MODE)
+        self.publish_enabled = config_entry.options.get(CONF_PUBLISH_ENABLED)
 
         if self.index_mode == INDEX_MODE_LEGACY:
-            self.index_alias = config.get(CONF_ALIAS) + VERSION_SUFFIX
-            self._ilm_policy_name = config.get(CONF_ILM_POLICY_NAME)
-            self._index_format = config.get(CONF_INDEX_FORMAT) + VERSION_SUFFIX
-            self._using_ilm = config.get(CONF_ILM_ENABLED)
+            self.index_alias = config_entry.options.get(CONF_ALIAS) + VERSION_SUFFIX
+            self.ilm_policy_name = config_entry.options.get(CONF_ILM_POLICY_NAME)
+            self.index_format = (
+                config_entry.options.get(CONF_INDEX_FORMAT) + VERSION_SUFFIX
+            )
+            self._using_ilm = config_entry.options.get(CONF_ILM_ENABLED)
 
             ir.async_create_issue(
                 hass,
@@ -66,21 +67,19 @@ class IndexManager:
                 severity=ir.IssueSeverity.WARNING,
                 translation_key="datastream_migration",
             )
+        elif self.index_mode == "datastream":
+            pass
 
-        elif self.index_mode == INDEX_MODE_DATASTREAM:
-            self.datastream_type = config.get(CONF_DATASTREAM_TYPE)
-            self.datastream_name_prefix = config.get(CONF_DATASTREAM_NAME_PREFIX)
-            self.datastream_namespace = config.get(CONF_DATASTREAM_NAMESPACE)
         else:
             raise ElasticException("Unexpected index_mode: %s", self.index_mode)
 
     async def async_setup(self):
         """Perform setup for index management."""
-        if not self._config.get(CONF_PUBLISH_ENABLED):
+        if not self.publish_enabled:
             return
 
         if self.index_mode == INDEX_MODE_LEGACY:
-            self._using_ilm = self._config.get(CONF_ILM_ENABLED)
+            self._using_ilm = self._using_ilm
 
             await self._create_legacy_template()
 
@@ -183,7 +182,7 @@ class IndexManager:
         client = self._gateway.get_client()
 
         # For Legacy mode we offer flexible configuration of the ILM policy
-        await self._create_basic_ilm_policy(ilm_policy_name=self._ilm_policy_name)
+        await self._create_basic_ilm_policy(ilm_policy_name=self.ilm_policy_name)
 
         with open(
             os.path.join(os.path.dirname(__file__), "index_mapping.json"),
@@ -204,7 +203,7 @@ class IndexManager:
             LOGGER.debug("Creating index template")
 
             index_template = {
-                "index_patterns": [self._index_format + "*"],
+                "index_patterns": [self.index_format + "*"],
                 "settings": {
                     "number_of_shards": 1,
                     "codec": "best_compression",
@@ -215,7 +214,7 @@ class IndexManager:
             }
             if self._using_ilm:
                 index_template["settings"]["index.lifecycle.name"] = (
-                    self._ilm_policy_name
+                    self.ilm_policy_name
                 )
                 index_template["settings"]["index.lifecycle.rollover_alias"] = (
                     self.index_alias
@@ -237,7 +236,7 @@ class IndexManager:
             LOGGER.debug("Creating initial index and alias")
             try:
                 await client.indices.create(
-                    index=self._index_format + "-000001",
+                    index=self.index_format + "-000001",
                     body={"aliases": {self.index_alias: {"is_write_index": True}}},
                 )
             except ElasticsearchException as err:

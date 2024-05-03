@@ -10,6 +10,9 @@
 		"source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind",
 		"source=${localEnv:HOME}/.ssh,target=/root/.ssh,readonly,type=bind"
 	],
+	"runArgs": [
+		"--add-host=host.docker.internal:host-gateway"
+	],
 	"initializeCommand": "ls",
 	"portsAttributes": {
 		"8123": {
@@ -37,7 +40,10 @@
 				"editor.formatOnPaste": false,
 				"editor.formatOnSave": true,
 				"editor.formatOnType": true,
-				"files.trimTrailingWhitespace": true
+				"files.trimTrailingWhitespace": true,
+				"python.experiments.optOutFrom": [
+					"pythonTestAdapter"
+				]
 			}
 		}
 	},
