@@ -238,7 +238,7 @@ class Test_Unit_Tests:
     @pytest.mark.parametrize(
         "case,expected",
         [
-            ("test_name", "test_name"),
+            ("a_test_name", "a_test_name"),
             ("test-name", "test-name"),
             ("test_name_1", "test_name_1"),
             ("-test_name", "test_name"),
