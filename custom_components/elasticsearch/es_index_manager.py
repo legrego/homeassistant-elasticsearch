@@ -21,7 +21,6 @@ from .const import (
     DATASTREAM_METRICS_ILM_POLICY_NAME,
     DATASTREAM_METRICS_INDEX_TEMPLATE_NAME,
     DOMAIN,
-    INDEX_MODE_DATASTREAM,
     INDEX_MODE_LEGACY,
     LEGACY_TEMPLATE_NAME,
     VERSION_SUFFIX,
@@ -56,7 +55,7 @@ class IndexManager:
                 config_entry.options.get(CONF_INDEX_FORMAT) + VERSION_SUFFIX
             )
             self._using_ilm = config_entry.options.get(CONF_ILM_ENABLED)
-        
+
             ir.async_create_issue(
                 hass,
                 domain=DOMAIN,
@@ -70,7 +69,7 @@ class IndexManager:
             )
         elif self.index_mode == "datastream":
             pass
-          
+
         else:
             raise ElasticException("Unexpected index_mode: %s", self.index_mode)
 

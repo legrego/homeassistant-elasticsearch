@@ -8,7 +8,6 @@ from elasticsearch.config_flow import ElasticFlowHandler
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.const import (
     CONF_ALIAS,
-    CONF_API_KEY,
     CONF_DOMAINS,
     CONF_ENTITIES,
     CONF_EXCLUDE,

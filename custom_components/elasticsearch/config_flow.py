@@ -17,7 +17,6 @@ from homeassistant.const import (
 )
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
-from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.selector import selector
 
@@ -34,8 +33,8 @@ from .const import (
     CONF_PUBLISH_FREQUENCY,
     CONF_PUBLISH_MODE,
     CONF_SSL_CA_PATH,
-    ES_CHECK_PERMISSIONS_DATASTREAM,
     DOMAIN,
+    ES_CHECK_PERMISSIONS_DATASTREAM,
     INDEX_MODE_DATASTREAM,
     INDEX_MODE_LEGACY,
     ONE_MINUTE,
