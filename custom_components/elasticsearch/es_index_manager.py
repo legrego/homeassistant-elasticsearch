@@ -5,6 +5,7 @@ import os
 
 from elasticsearch7 import ElasticsearchException
 from homeassistant.const import CONF_ALIAS
+from homeassistant.helpers import issue_registry as ir
 
 from custom_components.elasticsearch.errors import ElasticException, convert_es_error
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
@@ -20,6 +21,7 @@ from .const import (
     CONF_PUBLISH_ENABLED,
     DATASTREAM_METRICS_ILM_POLICY_NAME,
     DATASTREAM_METRICS_INDEX_TEMPLATE_NAME,
+    DOMAIN,
     INDEX_MODE_DATASTREAM,
     INDEX_MODE_LEGACY,
     LEGACY_TEMPLATE_NAME,
@@ -52,6 +54,19 @@ class IndexManager:
             self._ilm_policy_name = config.get(CONF_ILM_POLICY_NAME)
             self._index_format = config.get(CONF_INDEX_FORMAT) + VERSION_SUFFIX
             self._using_ilm = config.get(CONF_ILM_ENABLED)
+
+            ir.async_create_issue(
+                hass,
+                domain=DOMAIN,
+                issue_id="datastream_migration",
+                issue_domain=DOMAIN,
+                is_fixable=False,
+                is_persistent=True,
+                learn_more_url="https://github.com/legrego/homeassistant-elasticsearch/wiki/Migrating-from-Legacy-Indices-to-Datastreams",
+                severity=ir.IssueSeverity.WARNING,
+                translation_key="datastream_migration",
+            )
+
         elif self.index_mode == INDEX_MODE_DATASTREAM:
             self.datastream_type = config.get(CONF_DATASTREAM_TYPE)
             self.datastream_name_prefix = config.get(CONF_DATASTREAM_NAME_PREFIX)
