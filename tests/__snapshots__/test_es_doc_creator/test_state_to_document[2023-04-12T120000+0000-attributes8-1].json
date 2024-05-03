@@ -1,0 +1,32 @@
+{
+  "document": {
+    "@timestamp": "2023-04-12T12:00:00+00:00",
+    "event": {
+      "action": "testing",
+      "kind": "event",
+      "type": "change"
+    },
+    "hass.attributes": {},
+    "hass.domain": "sensor",
+    "hass.entity": {
+      "attributes": {},
+      "domain": "sensor",
+      "id": "sensor.test_1",
+      "value": "2023-04-12T12:00:00+00:00"
+    },
+    "hass.entity_id": "sensor.test_1",
+    "hass.entity_id_lower": "sensor.test_1",
+    "hass.object_id": "test_1",
+    "hass.object_id_lower": "test_1",
+    "hass.value": "2023-04-12T12:00:00+00:00"
+  },
+  "entity state": {
+    "attributes": {},
+    "entity_id": "sensor.test_1",
+    "last_changed": "2023-04-12T12:00:00+00:00",
+    "last_updated": "2023-04-12T12:00:00+00:00",
+    "state": "2023-04-12T12:00:00+00:00"
+  },
+  "state": "2023-04-12T12:00:00+00:00",
+  "version": 1
+}

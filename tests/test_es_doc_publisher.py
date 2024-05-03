@@ -1,25 +1,26 @@
-"""Tests for the DocumentPublisher class."""
+"""Tests for the Elasticsearch Document Publisher."""
 
 from datetime import datetime
 from unittest import mock
 
 import pytest
+from elasticsearch.system_info import SystemInfoResult
 from freezegun.api import FrozenDateTimeFactory
-from homeassistant.components import (
-    counter,
-    input_boolean,
-    input_button,
-    input_text,
+from homeassistant.const import (
+    CONF_URL,
 )
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import area_registry, device_registry, entity_registry
-from homeassistant.setup import async_setup_component
+from homeassistant.util import dt as dt_util
 from homeassistant.util.dt import UTC
-from jsondiff import diff
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
+from syrupy.assertion import SnapshotAssertion
+from syrupy.extensions.json import JSONSnapshotExtension
 
-from custom_components.elasticsearch.config_flow import build_full_config
+from custom_components.elasticsearch.config_flow import (
+    build_new_data,
+    build_new_options,
+)
 from custom_components.elasticsearch.const import (
     CONF_EXCLUDED_DOMAINS,
     CONF_EXCLUDED_ENTITIES,
@@ -30,21 +31,21 @@ from custom_components.elasticsearch.const import (
     DOMAIN,
     INDEX_MODE_DATASTREAM,
     INDEX_MODE_LEGACY,
-    PUBLISH_MODE_ALL,
     PUBLISH_MODE_ANY_CHANGES,
     PUBLISH_MODE_STATE_CHANGES,
     PUBLISH_REASON_ATTR_CHANGE,
-    PUBLISH_REASON_POLLING,
     PUBLISH_REASON_STATE_CHANGE,
 )
 from custom_components.elasticsearch.errors import ElasticException
-from custom_components.elasticsearch.es_doc_publisher import DocumentPublisher
+from custom_components.elasticsearch.es_doc_publisher import (
+    DocumentPublisher,
+)
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
-from custom_components.elasticsearch.es_index_manager import IndexManager
-from custom_components.elasticsearch.es_serializer import get_serializer
-from custom_components.elasticsearch.system_info import SystemInfoResult
-from tests.conftest import mock_config_entry
-from tests.const import MOCK_LOCATION_SERVER
+from tests.conftest import MockEntityState
+from tests.const import (
+    MOCK_LOCATION_SERVER,
+    MOCK_NOON_APRIL_12TH_2023,
+)
 from tests.test_util.aioclient_mock_utils import extract_es_bulk_requests
 from tests.test_util.es_startup_mocks import mock_es_initialization
 
@@ -55,12 +56,6 @@ def freeze_location(hass: HomeAssistant):
 
     hass.config.latitude = MOCK_LOCATION_SERVER["lat"]
     hass.config.longitude = MOCK_LOCATION_SERVER["lon"]
-
-
-@pytest.fixture(autouse=True)
-def freeze_time(freezer: FrozenDateTimeFactory):
-    """Freeze time so we can properly assert on payload contents."""
-    freezer.move_to(datetime(2023, 4, 12, 12, tzinfo=UTC))  # Monday
 
 
 @pytest.fixture(autouse=True)
@@ -83,1394 +78,633 @@ def mock_system_info():
         yield None
 
 
-async def _setup_config_entry(hass: HomeAssistant, mock_entry: mock_config_entry):
-    mock_entry.add_to_hass(hass)
-    assert await async_setup_component(hass, DOMAIN, {}) is True
-    await hass.async_block_till_done()
+@pytest.fixture(autouse=True)
+def data():
+    """Provide a default empty data object."""
 
-    config_entries = hass.config_entries.async_entries(DOMAIN)
-    assert len(config_entries) == 1
-    entry = config_entries[0]
+    return {}
+
+
+@pytest.fixture(autouse=True)
+def options():
+    """Provide a default options data object."""
+
+    return {}
+
+
+@pytest.fixture(autouse=True)
+def state():
+    """Provide a default empty state object."""
+
+    return 1.0
+
+
+@pytest.fixture(autouse=True)
+def state_type():
+    """Provide a default float state_type object."""
+
+    return "float"
+
+
+@pytest.fixture(autouse=True)
+def index_mode():
+    """Provide a default index_mode."""
+
+    return INDEX_MODE_DATASTREAM
+
+
+@pytest.fixture(autouse=True)
+def reason():
+    """Provide a publish reason."""
+
+    return PUBLISH_REASON_STATE_CHANGE
+
+
+@pytest.fixture(autouse=True)
+def snapshot(snapshot):
+    """Provide a pre-configured snapshot object."""
+
+    return snapshot.with_defaults(extension_class=JSONSnapshotExtension)
+
+
+@pytest.fixture(autouse=True)
+def freeze_time(freezer: FrozenDateTimeFactory):
+    """Freeze time so we can properly assert on payload contents."""
+    freezer.move_to(datetime(2023, 4, 12, 12, tzinfo=UTC))  # Monday
+
+
+@pytest.fixture()
+def standard_entity_state(
+    hass,
+    state,
+    attributes={},
+):
+    """Create a standard entity state for testing."""
+    return MockEntityState(
+        hass=hass,
+        entity_id="counter.test_1",
+        state=state,
+        attributes=attributes,
+        last_changed=dt_util.parse_date(MOCK_NOON_APRIL_12TH_2023),
+        last_updated=dt_util.parse_date(MOCK_NOON_APRIL_12TH_2023),
+    )
+
+
+@pytest.fixture(scope="function")
+def config_entry(hass: HomeAssistant, data, options):
+    """Create a mock config entry."""
+    es_url = "http://localhost:9200"
+
+    # If we set data and options to have default values in our definition
+    # the values wont pass through from the test so we need to set them to None here instead
+
+    entry = MockConfigEntry(
+        unique_id="pytest",
+        domain=DOMAIN,
+        version=5,
+        data=build_new_data({"url": es_url, **data}),
+        options=build_new_options(user_input={**options}),
+        title="ES Config",
+    )
+
+    entry.add_to_hass(hass)
 
     return entry
 
 
-@pytest.mark.asyncio
-async def test_sanitize_datastream_name(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
+@pytest.fixture()
+def uninitialized_gateway(hass: HomeAssistant, config_entry: MockConfigEntry):
+    """Create an uninitialized gateway."""
+    return ElasticsearchGateway(hass=hass, config_entry=config_entry)
+
+
+@pytest.fixture()
+def uninitialized_publisher(
+    config_entry: MockConfigEntry,
+    uninitialized_gateway: ElasticsearchGateway,
+    hass: HomeAssistant,
 ):
-    """Test datastream names are sanitized correctly."""
-    es_url = "http://localhost:9200"
-
-    mock_es_initialization(es_aioclient_mock, es_url)
-
-    config = build_full_config({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_DATASTREAM})
-
-    mock_entry = MockConfigEntry(
-        unique_id="test_entity_detail_publishing",
-        domain=DOMAIN,
-        version=3,
-        data=config,
-        title="ES Config",
-    )
-
-    entry = await _setup_config_entry(hass, mock_entry)
-
-    gateway = ElasticsearchGateway(config)
-    index_manager = IndexManager(hass, config, gateway)
+    """Create an uninitialized publisher."""
     publisher = DocumentPublisher(
-        config, gateway, index_manager, hass, config_entry=entry
+        gateway=uninitialized_gateway, hass=hass, config_entry=config_entry
     )
 
-    await gateway.async_init()
+    assert publisher.publish_queue.qsize() == 0
+
+    return publisher
+
+
+@pytest.fixture()
+async def initialized_publisher(
+    config_entry: MockConfigEntry,
+    initialized_gateway: ElasticsearchGateway,
+    hass: HomeAssistant,
+):
+    """Create an uninitialized publisher."""
+    publisher = DocumentPublisher(
+        gateway=initialized_gateway, hass=hass, config_entry=config_entry
+    )
+
     await publisher.async_init()
 
-    # Test case: name starts with invalid characters
-    name = "-test_name"
-    expected = "test_name"
-    assert publisher._sanitize_datastream_name(name) == expected
+    yield publisher
 
-    # Test case: name contains invalid characters
-    name = "test/name"
-    expected = "testname"
-    assert publisher._sanitize_datastream_name(name) == expected
-
-    # Test case: name contains invalid characters and spaces
-    name = "test? name"
-    expected = "test_name"
-    assert publisher._sanitize_datastream_name(name) == expected
-
-    # Test case: name exceeds 255 bytes
-    name = "a" * 256
-    expected = "a" * 255
-    assert publisher._sanitize_datastream_name(name) == expected
-
-    # Test case: name contains uppercase characters
-    name = "Test_Name"
-    expected = "test_name"
-    assert publisher._sanitize_datastream_name(name) == expected
-
-    # Test case: name contains multiple consecutive invalid characters
-    name = "test..name"
-    expected = "test..name"
-    assert publisher._sanitize_datastream_name(name) == expected
-
-    # Test case: name contains only invalid characters
-    name = ".,?/:*<>|#+"
-    with pytest.raises(ElasticException):
-        publisher._sanitize_datastream_name(name)
-
-    # Test case: name contains one period
-    name = "."
-    with pytest.raises(ElasticException):
-        publisher._sanitize_datastream_name(name)
-
-    # Test case: name is blank
-    name = ""
-    with pytest.raises(ElasticException):
-        publisher._sanitize_datastream_name(name)
-
-    # Test case: name contains only periods
-    name = "......"
-    with pytest.raises(ElasticException):
-        publisher._sanitize_datastream_name(name)
-
-    # Test case: name contains valid characters
-    name = "test_name"
-    expected = "test_name"
-    assert publisher._sanitize_datastream_name(name) == expected
+    publisher.stop_publisher()
 
 
-@pytest.mark.asyncio
-async def test_queue_functions(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
+@pytest.fixture()
+async def initialized_gateway(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    es_aioclient_mock: AiohttpClientMocker,
 ):
-    """Test entity change is published."""
+    """Create an uninitialized gateway."""
+    gateway = ElasticsearchGateway(hass=hass, config_entry=config_entry)
 
-    counter_config = {counter.DOMAIN: {"test_1": {}}}
-    assert await async_setup_component(hass, counter.DOMAIN, counter_config)
-    await hass.async_block_till_done()
-
-    es_url = "http://localhost:9200"
-
-    mock_es_initialization(es_aioclient_mock, es_url)
-
-    mock_entry = MockConfigEntry(
-        unique_id="test_queue_functions",
-        domain=DOMAIN,
-        version=3,
-        data=build_full_config({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_LEGACY}),
-        title="ES Config",
-    )
-
-    entry = await _setup_config_entry(hass, mock_entry)
-
-    config = entry.data
-    gateway = ElasticsearchGateway(config)
-    index_manager = IndexManager(hass, config, gateway)
-    publisher = DocumentPublisher(
-        config, gateway, index_manager, hass, config_entry=entry
-    )
+    mock_es_initialization(es_aioclient_mock, config_entry.data[CONF_URL])
 
     await gateway.async_init()
-    await publisher.async_init()
 
-    assert publisher.queue_size() == 0
-    assert not publisher._has_entries_to_publish()
-
-    hass.states.async_set("counter.test_1", "2")
-    await hass.async_block_till_done()
-
-    assert publisher._has_entries_to_publish()
-    assert publisher.queue_size() == 1
-    assert publisher._should_publish_entity_state(domain="counter", entity_id="test_1")
-
-    publisher.publish_enabled = False
-    assert not publisher._should_publish_entity_state(
-        domain="counter", entity_id="test_1"
-    )
-    publisher.publish_enabled = True
+    yield gateway
 
     await gateway.async_stop_gateway()
 
 
 @pytest.mark.asyncio
-async def test_publish_state_change(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
-):
-    """Test entity change is published."""
-
-    counter_config = {counter.DOMAIN: {"test_1": {}}}
-    assert await async_setup_component(hass, counter.DOMAIN, counter_config)
-    await hass.async_block_till_done()
-
-    es_url = "http://localhost:9200"
-
-    mock_es_initialization(es_aioclient_mock, es_url)
-
-    mock_entry = MockConfigEntry(
-        unique_id="test_publish_state_change",
-        domain=DOMAIN,
-        version=3,
-        data=build_full_config({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_LEGACY}),
-        title="ES Config",
-    )
-
-    entry = await _setup_config_entry(hass, mock_entry)
-
-    config = entry.data
-    gateway = ElasticsearchGateway(config)
-    index_manager = IndexManager(hass, config, gateway)
-    publisher = DocumentPublisher(
-        config, gateway, index_manager, hass, config_entry=entry
-    )
-
-    await gateway.async_init()
-    await publisher.async_init()
-
-    assert publisher.queue_size() == 0
-
-    hass.states.async_set("counter.test_1", "2")
-    await hass.async_block_till_done()
-
-    assert publisher.queue_size() == 1
-
-    await publisher.async_do_publish()
-
-    bulk_requests = extract_es_bulk_requests(es_aioclient_mock)
-
-    assert len(bulk_requests) == 1
-    request = bulk_requests[0]
-
-    events = [
-        {
-            "domain": "counter",
-            "object_id": "test_1",
-            "value": 2.0,
-            "platform": "counter",
-            "attributes": {},
-            "event": {
-                "action": "State change",
-                "kind": "event",
-                "type": "change",
-            },
-        }
-    ]
-
-    assert diff(request.data, _build_expected_payload(events)) == {}
-
-    await gateway.async_stop_gateway()
-
-
-@pytest.mark.asyncio
-async def test_entity_detail_publishing(
-    hass, es_aioclient_mock: AiohttpClientMocker, mock_config_entry: mock_config_entry
-):
-    """Test entity details are captured correctly."""
-
-    entity_area = area_registry.async_get(hass).async_create("entity area")
-    area_registry.async_get(hass).async_create("device area")
-
-    dr = device_registry.async_get(hass)
-    device = dr.async_get_or_create(
-        config_entry_id=mock_config_entry.entry_id,
-        connections={(device_registry.CONNECTION_NETWORK_MAC, "12:34:56:AB:CD:EF")},
-        identifiers={("bridgeid", "0123")},
-        sw_version="sw-version",
-        name="name",
-        manufacturer="manufacturer",
-        model="model",
-        suggested_area="device area",
-    )
-
-    config = {counter.DOMAIN: {"test_1": {}}}
-    assert await async_setup_component(hass, counter.DOMAIN, config)
-    entity_id = "counter.test_1"
-    entity_name = "My Test Counter"
-    entity_registry.async_get(hass).async_update_entity(
-        entity_id, area_id=entity_area.id, device_id=device.id, name=entity_name
-    )
-
-    counter_config = {counter.DOMAIN: {"test_1": {}}}
-    assert await async_setup_component(hass, counter.DOMAIN, counter_config)
-    await hass.async_block_till_done()
-
-    es_url = "http://localhost:9200"
-
-    mock_es_initialization(es_aioclient_mock, es_url)
-
-    config = build_full_config({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_LEGACY})
-
-    mock_entry = MockConfigEntry(
-        unique_id="test_entity_detail_publishing",
-        domain=DOMAIN,
-        version=3,
-        data=config,
-        title="ES Config",
-    )
-
-    entry = await _setup_config_entry(hass, mock_entry)
-
-    gateway = ElasticsearchGateway(config)
-    index_manager = IndexManager(hass, config, gateway)
-    publisher = DocumentPublisher(
-        config, gateway, index_manager, hass, config_entry=entry
-    )
-
-    await gateway.async_init()
-    await publisher.async_init()
-    assert publisher.queue_size() == 0
-
-    # State change
-    hass.states.async_set("counter.test_1", "3", force_update=True)
-    await hass.async_block_till_done()
-
-    await publisher.async_do_publish()
-
-    bulk_requests = extract_es_bulk_requests(es_aioclient_mock)
-    assert len(bulk_requests) == 1
-
-    events = [
-        {
-            "domain": "counter",
-            "object_id": "test_1",
-            "value": 3.0,
-            "platform": "counter",
-            "attributes": {},
-        }
-    ]
-
-    payload = bulk_requests[0].data
-
-    assert (
-        diff(
-            _build_expected_payload(
-                events,
-                include_entity_details=True,
-                device_id=device.id,
-                entity_name=entity_name,
-            ),
-            payload,
-        )
-        == {}
-    )
-    await gateway.async_stop_gateway()
-
-
-@pytest.mark.asyncio
-async def test_datastream_attribute_publishing(
-    hass, es_aioclient_mock: AiohttpClientMocker
-):
-    """Test entity attributes can be serialized correctly."""
-
-    counter_config = {counter.DOMAIN: {"test_1": {}}}
-    assert await async_setup_component(hass, counter.DOMAIN, counter_config)
-    await hass.async_block_till_done()
-
-    es_url = "http://localhost:9200"
-
-    mock_es_initialization(es_aioclient_mock, es_url)
-
-    config = build_full_config({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_DATASTREAM})
-
-    mock_entry = MockConfigEntry(
-        unique_id="test_entity_detail_publishing",
-        domain=DOMAIN,
-        version=3,
-        data=config,
-        title="ES Config",
-    )
-
-    entry = await _setup_config_entry(hass, mock_entry)
-
-    gateway = ElasticsearchGateway(config)
-    index_manager = IndexManager(hass, config, gateway)
-    publisher = DocumentPublisher(
-        config, gateway, index_manager, hass, config_entry=entry
-    )
-
-    await gateway.async_init()
-    await publisher.async_init()
-
-    assert publisher.queue_size() == 0
-
-    class CustomAttributeClass:
-        def __init__(self) -> None:
-            self.field = "This class should be skipped, as it cannot be serialized."
-            pass
-
-    hass.states.async_set("counter.test_1", "3")
-
-    await hass.async_block_till_done()
-
-    assert publisher.queue_size() == 1
-
-    publisher.empty_queue()
-
-    hass.states.async_set(
-        "counter.test_1",
-        "3",
-        {
-            "string": "abc123",
-            "int": 123,
-            "float": 123.456,
-            "dict": {
-                "string": "abc123",
-                "int": 123,
-                "float": 123.456,
-            },
-            "list": [1, 2, 3, 4],
-            "set": {5, 5},
-            "none": None,
-            # Keyless entry should be excluded from output
-            "": "Key is empty, and should be excluded",
-            # Custom classes should be excluded from output
-            "naughty": CustomAttributeClass(),
-            # Entries with non-string keys should be excluded from output
-            datetime.now(): "Key is a datetime, and should be excluded",
-            123: "Key is a number, and should be excluded",
-            True: "Key is a bool, and should be excluded",
-        },
-    )
-    await hass.async_block_till_done()
-
-    assert publisher.queue_size() == 1
-
-    await publisher.async_do_publish()
-
-    bulk_requests = extract_es_bulk_requests(es_aioclient_mock)
-
-    assert len(bulk_requests) == 1
-    request = bulk_requests[0]
-
-    expected = [
-        {"create": {"_index": "metrics-homeassistant.counter-default"}},
-        {
-            "@timestamp": "2023-04-12T12:00:00+00:00",
-            "agent.name": "My Home Assistant",
-            "agent.type": "hass",
-            "agent.version": "2099.1.2",
-            "ecs.version": "1.0.0",
-            "data_stream": {
-                "dataset": "homeassistant.counter",
-                "namespace": "default",
-                "type": "metrics",
-            },
-            "event": {
-                "action": "Attribute change",
-                "kind": "event",
-                "type": "change",
-            },
-            "hass.entity": {
-                "attributes": {
-                    "dict": '{"string":"abc123","int":123,"float":123.456}',
-                    "float": 123.456,
-                    "int": 123,
-                    "list": [1, 2, 3, 4],
-                    "none": None,
-                    "set": [5],
-                    "string": "abc123",
-                },
-                "device": {},
-                "domain": "counter",
-                "id": "counter.test_1",
-                "platform": "counter",
-                "value": "3",
-                "valueas": {"float": 3.0},
-                "geo.location": {
-                    "lat": MOCK_LOCATION_SERVER["lat"],
-                    "lon": MOCK_LOCATION_SERVER["lon"],
-                },
-            },
-            "hass.object_id": "test_1",
-            "host.geo.location": {
-                "lat": MOCK_LOCATION_SERVER["lat"],
-                "lon": MOCK_LOCATION_SERVER["lon"],
-            },
-            "host.architecture": "Test Arch",
-            "host.hostname": "Test Host",
-            "host.os.name": "Test OS",
-            "tags": None,
-        },
-    ]
-
-    assert diff(request.data, expected) == {}
-    await gateway.async_stop_gateway()
-
-
-@pytest.mark.asyncio
-async def test_datastream_invalid_but_fixable_domain(
-    hass, es_aioclient_mock: AiohttpClientMocker
-):
-    """Test entity attributes can be serialized correctly."""
-
-    counter_config = {counter.DOMAIN: {"test_1": {}}}
-    assert await async_setup_component(hass, counter.DOMAIN, counter_config)
-    await hass.async_block_till_done()
-
-    es_url = "http://localhost:9200"
-
-    mock_es_initialization(es_aioclient_mock, es_url)
-
-    config = build_full_config({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_DATASTREAM})
-
-    mock_entry = MockConfigEntry(
-        unique_id="test_entity_detail_publishing",
-        domain=DOMAIN,
-        version=3,
-        data=config,
-        title="ES Config",
-    )
-
-    entry = await _setup_config_entry(hass, mock_entry)
-
-    gateway = ElasticsearchGateway(config)
-    index_manager = IndexManager(hass, config, gateway)
-    publisher = DocumentPublisher(
-        config, gateway, index_manager, hass, config_entry=entry
-    )
-
-    await gateway.async_init()
-    await publisher.async_init()
-
-    assert publisher.queue_size() == 0
-
-    hass.states.async_set("TOM_ATO.test_1", "3")
-
-    await hass.async_block_till_done()
-
-    assert publisher.queue_size() == 1
-
-    await publisher.async_do_publish()
-
-    bulk_requests = extract_es_bulk_requests(es_aioclient_mock)
-
-    assert len(bulk_requests) == 1
-    request = bulk_requests[0]
-
-    expected = [
-        {"create": {"_index": "metrics-homeassistant.tom_ato-default"}},
-        {
-            "@timestamp": "2023-04-12T12:00:00+00:00",
-            "agent.name": "My Home Assistant",
-            "agent.type": "hass",
-            "agent.version": "2099.1.2",
-            "ecs.version": "1.0.0",
-            "data_stream": {
-                "dataset": "homeassistant.tom_ato",
-                "namespace": "default",
-                "type": "metrics",
-            },
-            "event": {
-                "action": "State change",
-                "kind": "event",
-                "type": "change",
-            },
-            "hass.entity": {
-                "attributes": {},
-                "domain": "tom_ato",
-                "geo.location": {
-                    "lat": MOCK_LOCATION_SERVER["lat"],
-                    "lon": MOCK_LOCATION_SERVER["lon"],
-                },
-                "id": "tom_ato.test_1",
-                "value": "3",
-                "valueas": {"float": 3.0},
-            },
-            "hass.object_id": "test_1",
-            "host.geo.location": {
-                "lat": MOCK_LOCATION_SERVER["lat"],
-                "lon": MOCK_LOCATION_SERVER["lon"],
-            },
-            "host.architecture": "Test Arch",
-            "host.hostname": "Test Host",
-            "host.os.name": "Test OS",
-            "tags": None,
-        },
-    ]
-
-    assert diff(request.data, expected) == {}
-    await gateway.async_stop_gateway()
-
-
-@pytest.mark.asyncio
-async def test_attribute_publishing(hass, es_aioclient_mock: AiohttpClientMocker):
-    """Test entity attributes can be serialized correctly."""
-
-    counter_config = {counter.DOMAIN: {"test_1": {}}}
-    assert await async_setup_component(hass, counter.DOMAIN, counter_config)
-    await hass.async_block_till_done()
-
-    es_url = "http://localhost:9200"
-
-    mock_es_initialization(es_aioclient_mock, es_url)
-
-    config = build_full_config({"url": es_url, CONF_INDEX_MODE: INDEX_MODE_LEGACY})
-
-    mock_entry = MockConfigEntry(
-        unique_id="test_entity_detail_publishing",
-        domain=DOMAIN,
-        version=3,
-        data=config,
-        title="ES Config",
-    )
-
-    entry = await _setup_config_entry(hass, mock_entry)
-
-    gateway = ElasticsearchGateway(config)
-    index_manager = IndexManager(hass, config, gateway)
-    publisher = DocumentPublisher(
-        config, gateway, index_manager, hass, config_entry=entry
-    )
-
-    await gateway.async_init()
-    await publisher.async_init()
-
-    assert publisher.queue_size() == 0
-
-    class CustomAttributeClass:
-        def __init__(self) -> None:
-            self.field = "This class should be skipped, as it cannot be serialized."
-            pass
-
-    hass.states.async_set("counter.test_1", "3")
-
-    await hass.async_block_till_done()
-
-    assert publisher.queue_size() == 1
-
-    publisher.empty_queue()
-
-    hass.states.async_set(
-        "counter.test_1",
-        "3",
-        {
-            "string": "abc123",
-            "int": 123,
-            "float": 123.456,
-            "dict": {
-                "string": "abc123",
-                "int": 123,
-                "float": 123.456,
-            },
-            "list": [1, 2, 3, 4],
-            "set": {5, 5},
-            "none": None,
-            # Keyless entry should be excluded from output
-            "": "Key is empty, and should be excluded",
-            # Custom classes should be excluded from output
-            "naughty": CustomAttributeClass(),
-            # Entries with non-string keys should be excluded from output
-            datetime.now(): "Key is a datetime, and should be excluded",
-            123: "Key is a number, and should be excluded",
-            True: "Key is a bool, and should be excluded",
-        },
-    )
-    await hass.async_block_till_done()
-
-    assert publisher.queue_size() == 1
-
-    await publisher.async_do_publish()
-
-    bulk_requests = extract_es_bulk_requests(es_aioclient_mock)
-
-    assert len(bulk_requests) == 1
-    request = bulk_requests[0]
-
-    serializer = get_serializer()
-
-    events = [
-        {
-            "domain": "counter",
-            "object_id": "test_1",
-            "value": 3.0,
-            "platform": "counter",
-            "attributes": {
-                "string": "abc123",
-                "int": 123,
-                "float": 123.456,
-                "dict": serializer.dumps(
-                    {
-                        "string": "abc123",
-                        "int": 123,
-                        "float": 123.456,
-                    }
-                ),
-                "list": [1, 2, 3, 4],
-                "set": [5],  # set should be converted to a list,
-                "none": None,
-            },
-        }
-    ]
-
-    assert (
-        diff(
-            request.data,
-            _build_expected_payload(events, change_type=PUBLISH_REASON_ATTR_CHANGE),
-        )
-        == {}
-    )
-    await gateway.async_stop_gateway()
-
-
-@pytest.mark.asyncio
-async def test_include_exclude_publishing_mode_all(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
-):
-    """Test entities can be included/excluded from publishing."""
-
-    counter_config = {counter.DOMAIN: {"test_1": {}, "test_2": {}}}
-    assert await async_setup_component(hass, counter.DOMAIN, counter_config)
-
-    input_boolean_config = {
-        input_boolean.DOMAIN: {
-            "test_1": {"name": "test boolean 1", "initial": False},
-            "test_2": {"name": "test boolean 2", "initial": True},
-        }
-    }
-    assert await async_setup_component(hass, input_boolean.DOMAIN, input_boolean_config)
-
-    input_button_config = {input_button.DOMAIN: {"test_1": {}, "test_2": {}}}
-    assert await async_setup_component(hass, input_button.DOMAIN, input_button_config)
-
-    input_text_config = {
-        input_text.DOMAIN: {
-            "test_1": {"name": "test text 1", "initial": "Hello"},
-            "test_2": {"name": "test text 2", "initial": "World"},
-        }
-    }
-    assert await async_setup_component(hass, input_text.DOMAIN, input_text_config)
-    await hass.async_block_till_done()
-
-    es_url = "http://localhost:9200"
-
-    mock_es_initialization(es_aioclient_mock, es_url)
-
-    config = build_full_config(
-        {
-            "url": es_url,
-            CONF_INDEX_MODE: INDEX_MODE_LEGACY,
-            CONF_PUBLISH_MODE: PUBLISH_MODE_ALL,
-            CONF_INCLUDED_ENTITIES: ["counter.test_1"],
-            CONF_INCLUDED_DOMAINS: [input_boolean.DOMAIN, input_button.DOMAIN],
-            CONF_EXCLUDED_ENTITIES: ["input_boolean.test_2"],
-            CONF_EXCLUDED_DOMAINS: [counter.DOMAIN],
-        }
-    )
-
-    mock_entry = MockConfigEntry(
-        unique_id="test_entity_detail_publishing",
-        domain=DOMAIN,
-        version=3,
-        data=config,
-        title="ES Config",
-    )
-
-    entry = await _setup_config_entry(hass, mock_entry)
-
-    # input_text is intentionally excluded from this configuration.
-    # It should still be included when publish_mode == PUBLISH_MODE_ALL
-
-    gateway = ElasticsearchGateway(config)
-    index_manager = IndexManager(hass, config, gateway)
-    publisher = DocumentPublisher(
-        config, gateway, index_manager, hass, config_entry=entry
-    )
-
-    await gateway.async_init()
-    await publisher.async_init()
-
-    assert publisher.queue_size() == 0
-    await hass.async_block_till_done()
-    assert publisher.queue_size() == 0
-
-    await publisher.async_do_publish()
-
-    bulk_requests = extract_es_bulk_requests(es_aioclient_mock)
-
-    assert len(bulk_requests) == 1
-    request = bulk_requests[0]
-    events = [
-        {
-            "domain": "counter",
-            "object_id": "test_1",
-            "value": 0.0,
-            "platform": "counter",
-            "attributes": {"editable": False, "initial": 0, "step": 1},
-        },
-        {
-            "domain": "input_boolean",
-            "object_id": "test_1",
-            "value": 0,
-            "platform": "input_boolean",
-            "attributes": {"editable": False, "friendly_name": "test boolean 1"},
-        },
-        {
-            "domain": "input_button",
-            "object_id": "test_1",
-            "value": 0,
-            "platform": "input_button",
-            "attributes": {"editable": False},
-        },
-        {
-            "domain": "input_button",
-            "object_id": "test_2",
-            "value": 0,
-            "platform": "input_button",
-            "attributes": {"editable": False},
-        },
-        {
-            "domain": "input_text",
-            "object_id": "test_1",
-            "value": "Hello",
-            "platform": "input_text",
-            "attributes": {
-                "editable": False,
-                "min": 0,
-                "max": 100,
-                "pattern": None,
-                "mode": "text",
-                "friendly_name": "test text 1",
-            },
-        },
-        {
-            "domain": "input_text",
-            "object_id": "test_2",
-            "value": "World",
-            "platform": "input_text",
-            "attributes": {
-                "editable": False,
-                "min": 0,
-                "max": 100,
-                "pattern": None,
-                "mode": "text",
-                "friendly_name": "test text 2",
-            },
-        },
-    ]
-
-    assert (
-        diff(
-            request.data,
-            _build_expected_payload(events, change_type=PUBLISH_REASON_POLLING),
-        )
-        == {}
-    )
-    await gateway.async_stop_gateway()
-
-
-@pytest.mark.asyncio
-async def test_include_exclude_publishing_mode_any(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
-):
-    """Test entities can be included/excluded from publishing."""
-
-    counter_config = {counter.DOMAIN: {"test_1": {}, "test_2": {}}}
-    assert await async_setup_component(hass, counter.DOMAIN, counter_config)
-
-    input_boolean_config = {
-        input_boolean.DOMAIN: {
-            "test_1": {"name": "test boolean 1", "initial": False},
-            "test_2": {"name": "test boolean 2", "initial": True},
-        }
-    }
-    assert await async_setup_component(hass, input_boolean.DOMAIN, input_boolean_config)
-
-    input_button_config = {input_button.DOMAIN: {"test_1": {}, "test_2": {}}}
-    assert await async_setup_component(hass, input_button.DOMAIN, input_button_config)
-
-    input_text_config = {
-        input_text.DOMAIN: {
-            "test_1": {"name": "test text 1", "initial": "Hello"},
-            "test_2": {"name": "test text 2", "initial": "World"},
-        }
-    }
-    assert await async_setup_component(hass, input_text.DOMAIN, input_text_config)
-    await hass.async_block_till_done()
-
-    es_url = "http://localhost:9200"
-
-    mock_es_initialization(es_aioclient_mock, es_url)
-
-    config = build_full_config(
-        {
-            "url": es_url,
-            CONF_PUBLISH_MODE: PUBLISH_MODE_ANY_CHANGES,
-            CONF_INDEX_MODE: INDEX_MODE_LEGACY,
-            CONF_INCLUDED_ENTITIES: ["counter.test_1"],
-            CONF_INCLUDED_DOMAINS: [input_boolean.DOMAIN, input_button.DOMAIN],
-            CONF_EXCLUDED_ENTITIES: ["input_boolean.test_2"],
-            CONF_EXCLUDED_DOMAINS: [counter.DOMAIN],
-        }
-    )
-
-    mock_entry = MockConfigEntry(
-        unique_id="test_entity_detail_publishing",
-        domain=DOMAIN,
-        version=3,
-        data=config,
-        title="ES Config",
-    )
-
-    entry = await _setup_config_entry(hass, mock_entry)
-
-    # input_text is intentionally excluded from this configuration.
-    # It should still be included when publish_mode == PUBLISH_MODE_ALL
-
-    gateway = ElasticsearchGateway(config)
-    index_manager = IndexManager(hass, config, gateway)
-    publisher = DocumentPublisher(
-        config, gateway, index_manager, hass, config_entry=entry
-    )
-
-    await gateway.async_init()
-    await publisher.async_init()
-
-    assert publisher.queue_size() == 0
-    await hass.async_block_till_done()
-    assert publisher.queue_size() == 0
-
-    await publisher.async_do_publish()
-
-    bulk_requests = extract_es_bulk_requests(es_aioclient_mock)
-    # At this point, no state changes have taken place
-    assert len(bulk_requests) == 0
-
-    # At this point in the test, no entity changes have taken place.
-
-    # Trigger state changes
-    hass.states.async_set("counter.test_1", "3.0")
-    hass.states.async_set("counter.test_1", "Infinity")
-    hass.states.async_set("counter.test_2", "3")
-    hass.states.async_set("input_boolean.test_2", "False")
-    hass.states.async_set("input_button.test_2", "1")
-
-    await hass.async_block_till_done()
-
-    await publisher.async_do_publish()
-    bulk_requests = extract_es_bulk_requests(es_aioclient_mock)
-    assert len(bulk_requests) == 1
-
-    request = bulk_requests[0]
-    events = [
-        {
-            "domain": "counter",
-            "object_id": "test_1",
-            "value": 3.0,
-            "platform": "counter",
-            "attributes": {},
-        },
-        {
-            "domain": "counter",
-            "object_id": "test_1",
-            "value": "Infinity",
-            "platform": "counter",
-            "attributes": {},
-        },
-        {
-            "domain": "input_button",
-            "object_id": "test_2",
-            "value": 1,
-            "platform": "input_button",
-            "attributes": {},
-        },
-    ]
-
-    assert (
-        diff(
-            request.data,
-            _build_expected_payload(events, change_type=PUBLISH_REASON_STATE_CHANGE),
-        )
-        == {}
-    )
-    await gateway.async_stop_gateway()
-
-
-@pytest.mark.asyncio
-async def test_publish_mode_state_changes(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
-):
-    """Test publish mode PUBLISH_MODE_STATE_CHANGES."""
-
-    counter_config = {counter.DOMAIN: {"test_1": {}, "test_2": {}}}
-    assert await async_setup_component(hass, counter.DOMAIN, counter_config)
-    await hass.async_block_till_done()
-
-    hass.states.async_set("counter.test_1", "2")
-    hass.states.async_set("counter.test_2", "2")
-    await hass.async_block_till_done()
-
-    es_url = "http://localhost:9200"
-
-    mock_es_initialization(es_aioclient_mock, es_url)
-
-    config = build_full_config(
-        {
-            "url": es_url,
-            CONF_PUBLISH_MODE: PUBLISH_MODE_STATE_CHANGES,
-            CONF_INDEX_MODE: INDEX_MODE_LEGACY,
-        }
-    )
-
-    mock_entry = MockConfigEntry(
-        unique_id="test_entity_detail_publishing",
-        domain=DOMAIN,
-        version=3,
-        data=config,
-        title="ES Config",
-    )
-
-    entry = await _setup_config_entry(hass, mock_entry)
-
-    gateway = ElasticsearchGateway(config)
-    index_manager = IndexManager(hass, config, gateway)
-    publisher = DocumentPublisher(
-        config, gateway, index_manager, hass, config_entry=entry
-    )
-
-    await gateway.async_init()
-    await publisher.async_init()
-
-    assert publisher.queue_size() == 0
-
-    # State change
-    hass.states.async_set("counter.test_1", "3", force_update=True)
-    await hass.async_block_till_done()
-
-    assert publisher.queue_size() == 1
-
-    await publisher.async_do_publish()
-
-    bulk_requests = extract_es_bulk_requests(es_aioclient_mock)
-    assert len(bulk_requests) == 1
-
-    events = [
-        {
-            "domain": "counter",
-            "object_id": "test_1",
-            "value": 3.0,
-            "platform": "counter",
-            "attributes": {},
-            "event": {
-                "action": "State change",
-                "kind": "event",
-                "type": "change",
-            },
-        }
-    ]
-
-    payload = bulk_requests[0].data
-
-    assert (
-        diff(
-            _build_expected_payload(events, change_type=PUBLISH_REASON_STATE_CHANGE),
-            payload,
-        )
-        == {}
-    )
-
-    assert publisher.queue_size() == 0
-
-    es_aioclient_mock.mock_calls.clear()
-
-    # Attribute change
-    hass.states.async_set(
-        "counter.test_1", "3", {"new_attr": "attr_value"}, force_update=True
-    )
-    await hass.async_block_till_done()
-
-    assert publisher.queue_size() == 0
-
-    await publisher.async_do_publish()
-
-    bulk_requests = extract_es_bulk_requests(es_aioclient_mock)
-    assert len(bulk_requests) == 0
-
-    await gateway.async_stop_gateway()
-
-
-@pytest.mark.asyncio
-async def test_publish_mode_any_changes(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
-):
-    """Test publish mode PUBLISH_MODE_ANY_CHANGES."""
-
-    counter_config = {counter.DOMAIN: {"test_1": {}, "test_2": {}}}
-    assert await async_setup_component(hass, counter.DOMAIN, counter_config)
-    await hass.async_block_till_done()
-
-    hass.states.async_set("counter.test_1", "2")
-    hass.states.async_set("counter.test_2", "2")
-    await hass.async_block_till_done()
-
-    es_url = "http://localhost:9200"
-
-    mock_es_initialization(es_aioclient_mock, es_url)
-
-    config = build_full_config(
-        {
-            "url": es_url,
-            CONF_PUBLISH_MODE: PUBLISH_MODE_ANY_CHANGES,
-            CONF_INDEX_MODE: INDEX_MODE_LEGACY,
-        }
-    )
-
-    mock_entry = MockConfigEntry(
-        unique_id="test_entity_detail_publishing",
-        domain=DOMAIN,
-        version=3,
-        data=config,
-        title="ES Config",
-    )
-
-    entry = await _setup_config_entry(hass, mock_entry)
-
-    gateway = ElasticsearchGateway(config)
-    index_manager = IndexManager(hass, config, gateway)
-    publisher = DocumentPublisher(
-        config, gateway, index_manager, hass, config_entry=entry
-    )
-
-    await gateway.async_init()
-    await publisher.async_init()
-
-    assert publisher.queue_size() == 0
-
-    # State change
-    hass.states.async_set("counter.test_1", "3", force_update=True)
-    await hass.async_block_till_done()
-
-    assert publisher.queue_size() == 1
-
-    await publisher.async_do_publish()
-
-    bulk_requests = extract_es_bulk_requests(es_aioclient_mock)
-    assert len(bulk_requests) == 1
-
-    events = [
-        {
-            "domain": "counter",
-            "object_id": "test_1",
-            "value": 3.0,
-            "platform": "counter",
-            "attributes": {},
-        }
-    ]
-
-    payload = bulk_requests[0].data
-
-    assert (
-        diff(
-            _build_expected_payload(events, change_type=PUBLISH_REASON_STATE_CHANGE),
-            payload,
-        )
-        == {}
-    )
-
-    assert publisher.queue_size() == 0
-
-    es_aioclient_mock.mock_calls.clear()
-
-    # Attribute change
-    hass.states.async_set(
-        "counter.test_1", "3", {"new_attr": "attr_value"}, force_update=True
-    )
-    await hass.async_block_till_done()
-
-    assert publisher.queue_size() == 1
-
-    await publisher.async_do_publish()
-
-    bulk_requests = extract_es_bulk_requests(es_aioclient_mock)
-    assert len(bulk_requests) == 1
-
-    events = [
-        {
-            "domain": "counter",
-            "object_id": "test_1",
-            "value": 3.0,
-            "platform": "counter",
-            "attributes": {"new_attr": "attr_value"},
-        }
-    ]
-
-    payload = bulk_requests[0].data
-
-    assert (
-        diff(
-            _build_expected_payload(events, change_type=PUBLISH_REASON_ATTR_CHANGE),
-            payload,
-        )
-        == {}
-    )
-
-    await gateway.async_stop_gateway()
-
-
-@pytest.mark.asyncio
-async def test_publish_mode_all(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
-):
-    """Test publish mode PUBLISH_MODE_ALL."""
-
-    counter_config = {counter.DOMAIN: {"test_1": {}, "test_2": {}}}
-    assert await async_setup_component(hass, counter.DOMAIN, counter_config)
-    await hass.async_block_till_done()
-
-    hass.states.async_set("counter.test_1", "2")
-    hass.states.async_set("counter.test_2", "2")
-    await hass.async_block_till_done()
-
-    es_url = "http://localhost:9200"
-
-    mock_es_initialization(es_aioclient_mock, es_url)
-
-    config = build_full_config(
-        {
-            "url": es_url,
-            CONF_PUBLISH_MODE: PUBLISH_MODE_ALL,
-            CONF_INDEX_MODE: INDEX_MODE_LEGACY,
-        }
-    )
-
-    mock_entry = MockConfigEntry(
-        unique_id="test_entity_detail_publishing",
-        domain=DOMAIN,
-        version=3,
-        data=config,
-        title="ES Config",
-    )
-
-    entry = await _setup_config_entry(hass, mock_entry)
-
-    gateway = ElasticsearchGateway(config)
-    index_manager = IndexManager(hass, config, gateway)
-    publisher = DocumentPublisher(
-        config, gateway, index_manager, hass, config_entry=entry
-    )
-
-    await gateway.async_init()
-    await publisher.async_init()
-
-    assert publisher.queue_size() == 0
-
-    # State change
-    hass.states.async_set("counter.test_1", "3", force_update=True)
-    await hass.async_block_till_done()
-
-    assert publisher.queue_size() == 1
-
-    await publisher.async_do_publish()
-
-    bulk_requests = extract_es_bulk_requests(es_aioclient_mock)
-    assert len(bulk_requests) == 1
-
-    payload = bulk_requests[0].data
-    events = _build_expected_payload(
+class Test_Unit_Tests:
+    """Unit tests for the Elasticsearch Document Publisher."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "case,expected",
         [
-            {
-                "domain": "counter",
-                "object_id": "test_1",
-                "value": 3.0,
-                "platform": "counter",
-                "attributes": {},
-            }
+            ("test_name", "test_name"),
+            ("test-name", "test-name"),
+            ("test_name_1", "test_name_1"),
+            ("-test_name", "test_name"),
+            ("test/name", "testname"),
+            ("test? name", "test_name"),
+            ("Test_Name", "test_name"),
+            ("test..name", "test..name"),
+            (".,?/:*<>|#+", None),
+            (".", None),
+            ("", None),
+            ("......", None),
         ],
-        change_type=PUBLISH_REASON_STATE_CHANGE,
     )
-    events += _build_expected_payload(
-        [
-            {
-                "domain": "counter",
-                "object_id": "test_2",
-                "value": 2.0,
-                "platform": "counter",
-                "attributes": {},
-            }
-        ],
-        change_type=PUBLISH_REASON_POLLING,
-    )
+    async def test_sanitize_datastream_name(
+        self,
+        case: str,
+        expected: str,
+        hass: HomeAssistant,
+        snapshot: SnapshotAssertion,
+    ):
+        """Test datastream names are sanitized correctly."""
 
-    assert (
-        diff(
-            events,
-            payload,
-        )
-        == {}
-    )
-
-    assert publisher.queue_size() == 0
-
-    es_aioclient_mock.mock_calls.clear()
-
-    # Attribute change
-    hass.states.async_set(
-        "counter.test_1", "3", {"new_attr": "attr_value"}, force_update=True
-    )
-    await hass.async_block_till_done()
-
-    assert publisher.queue_size() == 1
-
-    await publisher.async_do_publish()
-
-    bulk_requests = extract_es_bulk_requests(es_aioclient_mock)
-    assert len(bulk_requests) == 1
-
-    payload = bulk_requests[0].data
-    events = _build_expected_payload(
-        [
-            {
-                "domain": "counter",
-                "object_id": "test_1",
-                "value": 3.0,
-                "platform": "counter",
-                "attributes": {"new_attr": "attr_value"},
-            }
-        ],
-        change_type=PUBLISH_REASON_ATTR_CHANGE,
-    )
-
-    events += _build_expected_payload(
-        [
-            {
-                "domain": "counter",
-                "object_id": "test_2",
-                "value": 2.0,
-                "platform": "counter",
-                "attributes": {},
-            }
-        ],
-        change_type=PUBLISH_REASON_POLLING,
-    )
-
-    assert (
-        diff(
-            events,
-            payload,
-        )
-        == {}
-    )
-
-    await gateway.async_stop_gateway()
-
-
-def _build_expected_payload(
-    events: list,
-    include_entity_details=False,
-    device_id=None,
-    entity_name=None,
-    version=1,
-    change_type=PUBLISH_REASON_STATE_CHANGE,
-):
-    def event_to_payload(event, version=version):
-        if version == 1:
-            return event_to_payload_v1(event)
+        if expected is None:
+            with pytest.raises(ElasticException):
+                DocumentPublisher._sanitize_datastream_name(
+                    type="metrics", dataset=case, namespace="default"
+                )
         else:
-            raise ValueError(f"Unsupported version: {version}")
-
-    def event_to_payload_v1(event):
-        entity_id = event["domain"] + "." + event["object_id"]
-        payload = [{"index": {"_index": "active-hass-index-v4_2"}}]
-
-        entry = {
-            "hass.domain": event["domain"],
-            "hass.object_id": event["object_id"],
-            "hass.object_id_lower": event["object_id"],
-            "hass.entity_id": entity_id,
-            "hass.entity_id_lower": entity_id,
-            "hass.attributes": event["attributes"],
-            "hass.value": event["value"],
-            "event": {
-                "action": change_type,
-                "kind": "event",
-                "type": "change",
-            },
-            "@timestamp": "2023-04-12T12:00:00+00:00",
-            "hass.entity": {
-                "id": entity_id,
-                "domain": event["domain"],
-                "attributes": event["attributes"],
-                "device": {},
-                "value": event["value"],
-                "platform": event["platform"],
-            },
-            "agent.name": "My Home Assistant",
-            "agent.type": "hass",
-            "agent.version": "2099.1.2",
-            "ecs.version": "1.0.0",
-            "host.geo.location": {
-                "lat": MOCK_LOCATION_SERVER["lat"],
-                "lon": MOCK_LOCATION_SERVER["lon"],
-            },
-            "host.architecture": "Test Arch",
-            "host.os.name": "Test OS",
-            "host.hostname": "Test Host",
-            "tags": None,
-        }
-
-        if change_type == PUBLISH_REASON_POLLING:
-            entry["event"]["type"] = "info"
-
-        if include_entity_details:
-            entry["hass.entity"].update(
-                {
-                    "name": entity_name,
-                    "area": {"id": "entity_area", "name": "entity area"},
-                    "device": {
-                        "id": device_id,
-                        "name": "name",
-                        "area": {"id": "device_area", "name": "device area"},
-                    },
-                }
+            type, dataset, namespace, full_name = (
+                DocumentPublisher._sanitize_datastream_name(
+                    type="metrics", dataset=case, namespace="default"
+                )
             )
 
-        payload.append(entry)
+            assert dataset == expected
+            assert {"dataset": case, "sanitized_dataset": dataset} == snapshot
 
-        return payload
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "case,expected",
+        [("a" * 256, "a" * 239)],
+    )
+    async def test_sanitize_long_datastream_name(
+        self,
+        case: str,
+        expected: str,
+        hass: HomeAssistant,
+        snapshot: SnapshotAssertion,
+    ):
+        """Test datastream names are sanitized correctly."""
 
-    payload = []
-    for event in events:
-        for entry in event_to_payload(event, version=version):
-            payload.append(entry)
+        if expected is None:
+            with pytest.raises(ElasticException):
+                DocumentPublisher._sanitize_datastream_name(
+                    type="metrics", dataset=case, namespace="default"
+                )
+        else:
+            type, dataset, namespace, full_name = (
+                DocumentPublisher._sanitize_datastream_name(
+                    type="metrics", dataset=case, namespace="default"
+                )
+            )
+            assert dataset == expected
 
-    return payload
+    class Test_Change_Mode:
+        """Test change mode functions."""
+
+        @pytest.mark.asyncio
+        async def test_determine_change_type(
+            self, hass, data, options, uninitialized_publisher: DocumentPublisher
+        ):
+            """Test entity change is published."""
+            assert (
+                uninitialized_publisher._determine_change_type(
+                    new_state=MockEntityState(hass, entity_id="test.test_1", state="1"),
+                    old_state=MockEntityState(hass, entity_id="test.test_1", state="0"),
+                )
+                == PUBLISH_REASON_STATE_CHANGE
+            )
+
+            assert (
+                uninitialized_publisher._determine_change_type(
+                    new_state=MockEntityState(
+                        hass, entity_id="test.test_1", state="red"
+                    ),
+                    old_state=MockEntityState(
+                        hass, entity_id="test.test_1", state="brown"
+                    ),
+                )
+                == PUBLISH_REASON_STATE_CHANGE
+            )
+
+            assert (
+                uninitialized_publisher._determine_change_type(
+                    new_state=MockEntityState(
+                        hass,
+                        entity_id="test.test_1",
+                        state="1",
+                        attributes={"attr": "test"},
+                    ),
+                    old_state=MockEntityState(
+                        hass,
+                        entity_id="test.test_1",
+                        state="1",
+                        attributes={"attr": "test"},
+                    ),  # this is a corner case
+                )
+                == PUBLISH_REASON_ATTR_CHANGE
+            )
+
+            assert (
+                uninitialized_publisher._determine_change_type(
+                    new_state=MockEntityState(
+                        hass,
+                        entity_id="test.test_1",
+                        state="1",
+                        attributes={"attr": "test"},
+                    ),
+                    old_state=MockEntityState(
+                        hass,
+                        entity_id="test.test_1",
+                        state="1",
+                        attributes={"attr": "test"},
+                    ),
+                )
+                == PUBLISH_REASON_ATTR_CHANGE
+            )
+
+    class Test_Queue_Management:
+        """Test queue management functions."""
+
+        # @pytest.mark.asyncio
+        # @pytest.mark.parametrize("data,options", ({},{}))
+        # async def test_queue_enqueue(
+        #     self,
+        #     data,
+        #     options: None,
+        #     uninitialized_publisher: DocumentPublisher,
+        # ):
+
+        @pytest.mark.asyncio
+        async def test_queue_enqueue(
+            self,
+            data: None,
+            hass,
+            options,
+            uninitialized_publisher: DocumentPublisher,
+        ):
+            """Test entity change is published."""
+
+            # Test enqueuing a state object into the publisher
+            uninitialized_publisher.enqueue_state(
+                MockEntityState(hass, entity_id="test.test_1", state="1"),
+                "test",
+                "test",
+            )
+
+            # Check queue size in publisher directly
+            assert uninitialized_publisher.publish_queue.qsize() == 1
+
+            assert uninitialized_publisher._has_entries_to_publish()
+            assert uninitialized_publisher.queue_size() == 1
+
+            uninitialized_publisher.empty_queue()
+
+            assert not uninitialized_publisher._has_entries_to_publish()
+            assert uninitialized_publisher.queue_size() == 0
+
+        @pytest.mark.asyncio
+        async def test_queue_empty(
+            self,
+            hass,
+            uninitialized_publisher: DocumentPublisher,
+        ):
+            """Test entity change is published."""
+
+            # Test enqueuing a state object into the publisher
+            uninitialized_publisher.enqueue_state(
+                MockEntityState(hass, entity_id="test.test_1", state="1"),
+                "test",
+                "test",
+            )
+
+            # Check queue size in publisher directly
+            assert uninitialized_publisher.publish_queue.qsize() == 1
+
+            uninitialized_publisher.empty_queue()
+
+            assert uninitialized_publisher.publish_queue.qsize() == 0
+
+        @pytest.mark.asyncio
+        async def test_queue_has_entries_to_publish(
+            self,
+            hass,
+            uninitialized_publisher: DocumentPublisher,
+        ):
+            """Test entity change is published."""
+
+            # Test enqueuing a state object into the publisher
+            uninitialized_publisher.enqueue_state(
+                MockEntityState(hass, entity_id="test.test_1", state="1"),
+                "test",
+                "test",
+            )
+
+            assert uninitialized_publisher.publish_queue.qsize() == 1
+
+            assert uninitialized_publisher._has_entries_to_publish()
+
+    class Test_Publishing_Filters:
+        """Test publishing functions."""
+
+        @pytest.mark.asyncio  # fmt: skip
+        @pytest.mark.parametrize(
+            "data, options, entity_id, expected",
+            [
+                ({CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"]}, "test.test_1", True),
+                ({CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"]}, "counter.test_1", False),
+                ({CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_1", False),
+                ({CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_EXCLUDED_DOMAINS: ["test"]}, "counter.test_1", True),
+                ({CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", True),
+                ({CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_ENTITIES: ["test.test_1"]}, "test.test_2", False),
+                ({CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_EXCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", False),
+                # now pass in combinations
+                ({CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", True),
+                ({CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"]}, "test.test_2", True),
+                ({CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"]}, "counter.test_1", False),
+                ({CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_EXCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", False),
+                ({CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_EXCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"]}, "test.test_2", False),
+                ({CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_EXCLUDED_DOMAINS: ["test"], CONF_EXCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", False),
+                # now pass in combinations of 3
+                ({CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_2"], CONF_EXCLUDED_ENTITIES: ["test.test_2"]}, "test.test_1", True),
+                ({CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_2"], CONF_EXCLUDED_ENTITIES: ["test.test_2"]}, "counter.test_1", False),
+                ({CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_1", True),
+                ( {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_EXCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_1", False),
+                ( {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_EXCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_DOMAINS: ["test"]}, "counter.test_1", False),
+                ( {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_EXCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", True),
+                # now pass in all 4
+                ( {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_1", True),
+                ( {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_2"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_1", True),
+                ( {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_2"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_2", False),
+                ( {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_2"], CONF_EXCLUDED_DOMAINS: ["test"]}, "counter.test_1", False),
+                ( {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_2"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_2", False),
+            ]
+
+        )  # fmt: off
+        async def test_publishing_datastream_filters(
+            self,
+            uninitialized_publisher: DocumentPublisher,
+            entity_id: str,
+            expected: bool,
+            snapshot: SnapshotAssertion,
+        ):
+            """Test publishing filters."""
+
+            result = uninitialized_publisher._should_publish_entity_passes_filter(
+                entity_id=entity_id,
+            )
+
+            assert result == expected
+            assert {
+                "entity_id": entity_id,
+                "should_publish": result,
+            } == snapshot
+
+        @pytest.mark.asyncio  # fmt: skip
+        @pytest.mark.parametrize(
+            "data, options, entity_id, expected",
+            [
+                ({CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_DOMAINS: ["test"]}, "test.test_1", True),
+                ({CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", True),
+                ({CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_1", False),
+                ({CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_EXCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", False),
+                # now pass in combinations
+                ({CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", True),
+                ({CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_EXCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", False),
+                ({CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_EXCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", True),
+                ({CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_EXCLUDED_DOMAINS: ["test"], CONF_EXCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", False),
+                # now pass in combinations of 3
+                ({CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", False),
+                ({CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_1", True),
+                ( {CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_EXCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_1", False),
+                ( {CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_EXCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", False),
+                # now pass in all 4
+                ( {CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_1", False),
+                ( {CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_2"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_1", True),
+                ( {CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_2"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_2", False),
+            ]
+
+        )  # fmt: off
+        async def test_publishing_legacy_filters(
+            hass: HomeAssistant,
+            uninitialized_publisher: DocumentPublisher,
+            entity_id: str,
+            expected: bool,
+            snapshot: SnapshotAssertion,
+        ):
+            """Test publishing filters."""
+            result = uninitialized_publisher._should_publish_entity_passes_filter(
+                entity_id=entity_id,
+            )
+
+            assert {
+                "entity": entity_id,
+                "should_publish": result,
+            } == snapshot
+
+    class Test_Publisher_Document_Creation:
+        """Test document creation functions."""
+
+        @pytest.mark.asyncio
+        @pytest.mark.parametrize(
+            "data",
+            [
+                {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM},
+                {CONF_INDEX_MODE: INDEX_MODE_LEGACY},
+            ],
+        )
+        @pytest.mark.parametrize(
+            "order,state,state_type,attributes,reason",
+            [
+                (0, 0.0, "float", {}, PUBLISH_REASON_ATTR_CHANGE),
+                (1, 0.0, "float", {}, PUBLISH_REASON_ATTR_CHANGE),
+                (2, "tomato", "string", {"attr": "value"}, PUBLISH_REASON_ATTR_CHANGE),
+                (3, "tomato", "string", {"attr": "value"}, PUBLISH_REASON_STATE_CHANGE),
+                (4, 1.0, "float", {"attr": "value"}, PUBLISH_REASON_STATE_CHANGE),
+                (5, "tomato", "string", {"attr": "value"}, PUBLISH_REASON_STATE_CHANGE),
+            ],
+        )
+        async def test_state_to_bulk_action_via_uninitialized_publisher(
+            self,
+            order,
+            data,
+            state,
+            state_type,
+            attributes,
+            reason,
+            uninitialized_publisher: DocumentPublisher,
+            standard_entity_state,
+            snapshot: SnapshotAssertion,
+        ):
+            """Test state to bulk action."""
+            result = uninitialized_publisher._state_to_bulk_action(
+                state=standard_entity_state,
+                time=dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023),
+                reason=reason,
+            )
+
+            assert {
+                "entity": standard_entity_state.as_dict(),
+                "_bulk": result,
+            } == snapshot
+
+        @pytest.mark.asyncio
+        @pytest.mark.parametrize(
+            "data",
+            [
+                {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM},
+                {CONF_INDEX_MODE: INDEX_MODE_LEGACY},
+            ],
+        )
+        @pytest.mark.parametrize(
+            "order,state,state_type,attributes,reason",
+            [
+                (0, 0.0, "float", {}, PUBLISH_REASON_ATTR_CHANGE),
+                (1, 0.0, "float", {}, PUBLISH_REASON_ATTR_CHANGE),
+                (2, "tomato", "string", {"attr": "value"}, PUBLISH_REASON_ATTR_CHANGE),
+                (3, "tomato", "string", {"attr": "value"}, PUBLISH_REASON_STATE_CHANGE),
+                (4, 1.0, "float", {"attr": "value"}, PUBLISH_REASON_STATE_CHANGE),
+                (5, "tomato", "string", {"attr": "value"}, PUBLISH_REASON_STATE_CHANGE),
+            ],
+        )
+        async def test_state_to_bulk_action_via_initialized_publisher(
+            self,
+            order,
+            data,
+            state,
+            state_type,
+            attributes,
+            reason,
+            initialized_publisher: DocumentPublisher,
+            standard_entity_state,
+            snapshot: SnapshotAssertion,
+        ):
+            """Test state to bulk action."""
+            result = initialized_publisher._state_to_bulk_action(
+                state=standard_entity_state,
+                time=dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023),
+                reason=reason,
+            )
+
+            assert {
+                "entity": standard_entity_state.as_dict(),
+                "_bulk": result,
+            } == snapshot
+
+
+class Test_Integration_Tests:
+    """Integration tests for the Elasticsearch Document Publisher."""
+
+    class Test_Publishing:
+        """Test publishing functions."""
+
+        # These are e2e tests, so we will need to mock the Elasticsearch Gateway and test the Document Publisher with it
+        @pytest.mark.asyncio
+        @pytest.mark.parametrize(
+            "options",
+            [
+                {CONF_PUBLISH_MODE: PUBLISH_MODE_ANY_CHANGES},
+                {CONF_PUBLISH_MODE: PUBLISH_MODE_STATE_CHANGES},
+            ],
+        )
+        @pytest.mark.parametrize(
+            "data",
+            [
+                {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM},
+                {CONF_INDEX_MODE: INDEX_MODE_LEGACY},
+            ],
+        )
+        @pytest.mark.parametrize(
+            "order,state,state_type,attributes,reason",
+            [
+                (0, 0.0, "float", {}, PUBLISH_REASON_STATE_CHANGE),
+                (1, 0.0, "float", {}, PUBLISH_REASON_STATE_CHANGE),
+                (2, "tomato", "string", {"attr": "value"}, PUBLISH_REASON_STATE_CHANGE),
+                (3, "tomato", "string", {"attr": "value"}, PUBLISH_REASON_STATE_CHANGE),
+                (4, 1.0, "float", {"attr": "value"}, PUBLISH_REASON_STATE_CHANGE),
+                (5, "tomato", "string", {"attr": "value"}, PUBLISH_REASON_STATE_CHANGE),
+            ],
+        )
+        async def test_publishing_state_change(
+            self,
+            data,
+            options,
+            order,
+            state,
+            state_type,
+            attributes,
+            reason,
+            initialized_publisher: DocumentPublisher,
+            standard_entity_state: MockEntityState,
+            es_aioclient_mock: AiohttpClientMocker,
+            snapshot: SnapshotAssertion,
+        ):
+            # mock the gateway
+            """Test entity change is published."""
+
+            await standard_entity_state.add_to_hass()
+
+            await initialized_publisher.async_do_publish()
+
+            requests = extract_es_bulk_requests(es_aioclient_mock)
+
+            if options.get(CONF_PUBLISH_MODE) == PUBLISH_MODE_ANY_CHANGES:
+                assert len(requests) == 1
+                assert len(requests[0].data) == 2
+
+            elif options.get(CONF_PUBLISH_MODE) == PUBLISH_MODE_STATE_CHANGES:
+                if reason == PUBLISH_REASON_STATE_CHANGE:
+                    assert len(requests) == 1
+                    assert len(requests[0].data) == 2
+
+                else:
+                    assert len(requests) == 0
+
+            assert {
+                "entity": standard_entity_state.as_dict(),
+                "request": requests[0].data,
+            } == snapshot

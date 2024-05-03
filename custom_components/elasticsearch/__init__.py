@@ -4,6 +4,7 @@ from copy import deepcopy
 
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
+from elasticsearch.config_flow import ElasticFlowHandler
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.const import (
     CONF_ALIAS,
@@ -42,7 +43,6 @@ from .const import (
 from .errors import AuthenticationRequired, InsufficientPrivileges, UnsupportedVersion
 from .es_integration import ElasticIntegration
 from .logger import LOGGER
-from .utils import get_merged_config
 
 # Legacy (yml-based) configuration schema
 CONFIG_SCHEMA = vol.Schema(
@@ -112,53 +112,21 @@ async def async_setup(hass: HomeAssistantType, config):
 
 async def async_migrate_entry(hass: HomeAssistantType, config_entry: ConfigEntry):  # pylint: disable=unused-argument
     """Migrate old entry."""
-    LOGGER.debug("Migrating config entry from version %s", config_entry.version)
 
-    if config_entry.version == 1:
-        new = get_merged_config(config_entry)
+    latest_version = ElasticFlowHandler.VERSION
 
-        only_publish_changed = new.get(CONF_ONLY_PUBLISH_CHANGED, False)
-        new[CONF_PUBLISH_MODE] = (
-            PUBLISH_MODE_ALL if not only_publish_changed else PUBLISH_MODE_ANY_CHANGES
-        )
+    if config_entry.version == latest_version:
+        return True
 
-        if CONF_ONLY_PUBLISH_CHANGED in new:
-            del new[CONF_ONLY_PUBLISH_CHANGED]
+    migrated_data, migrated_options, migrated_version = (
+        migrate_data_and_options_to_version(config_entry, latest_version)
+    )
 
-        config_entry.data = {**new}
+    config_entry.version = migrated_version
 
-        config_entry.version = 2
-
-    if config_entry.version == 2:
-        new = get_merged_config(config_entry)
-        if CONF_HEALTH_SENSOR_ENABLED in new:
-            del new[CONF_HEALTH_SENSOR_ENABLED]
-
-        config_entry.data = {**new}
-
-        config_entry.version = 3
-
-    if config_entry.version == 3:
-        new = get_merged_config(config_entry)
-
-        # Check the configured options for the index_mode
-        if CONF_INDEX_MODE not in new:
-            new[CONF_INDEX_MODE] = INDEX_MODE_LEGACY
-
-        CONF_ILM_MAX_SIZE = "ilm_max_size"
-        if CONF_ILM_MAX_SIZE in new:
-            del new[CONF_ILM_MAX_SIZE]
-
-        CONF_ILM_DELETE_AFTER = "ilm_delete_after"
-        if CONF_ILM_DELETE_AFTER in new:
-            del new[CONF_ILM_DELETE_AFTER]
-
-        config_entry.data = {**new}
-        config_entry.version = 4
-
-    LOGGER.info("Migration to version %s successful", config_entry.version)
-
-    return True
+    return hass.config_entries.async_update_entry(
+        config_entry, data=migrated_data, options=migrated_options
+    )
 
 
 async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry):
@@ -215,3 +183,99 @@ async def _async_init_integration(hass: HomeAssistantType, config_entry: ConfigE
     hass.data[DOMAIN] = integration
 
     return True
+
+
+def migrate_data_and_options_to_version(
+    config_entry: ConfigEntry, desired_version: int
+):
+    """Migrate a config entry from its current version to a desired version."""
+    LOGGER.debug(
+        "Migrating config entry from version %s to %s",
+        config_entry.version,
+        desired_version,
+    )
+
+    data = {**config_entry.data}
+    options = {**config_entry.options}
+    begin_version = config_entry.version
+    current_version = begin_version
+
+    if current_version == 1 and desired_version >= 2:
+        only_publish_changed = data.get(CONF_ONLY_PUBLISH_CHANGED, False)
+        data[CONF_PUBLISH_MODE] = (
+            PUBLISH_MODE_ALL if not only_publish_changed else PUBLISH_MODE_ANY_CHANGES
+        )
+
+        if CONF_ONLY_PUBLISH_CHANGED in data:
+            del data[CONF_ONLY_PUBLISH_CHANGED]
+
+        current_version = 2
+
+    if current_version == 2 and desired_version >= 3:
+        if CONF_HEALTH_SENSOR_ENABLED in data:
+            del data[CONF_HEALTH_SENSOR_ENABLED]
+
+        current_version = 3
+
+    if current_version == 3 and desired_version >= 4:
+        # Check the configured options for the index_mode
+        if CONF_INDEX_MODE not in data:
+            data[CONF_INDEX_MODE] = INDEX_MODE_LEGACY
+
+        CONF_ILM_MAX_SIZE = "ilm_max_size"
+        if CONF_ILM_MAX_SIZE in data:
+            del data[CONF_ILM_MAX_SIZE]
+
+        CONF_ILM_DELETE_AFTER = "ilm_delete_after"
+        if CONF_ILM_DELETE_AFTER in data:
+            del data[CONF_ILM_DELETE_AFTER]
+
+        current_version = 4
+
+    if current_version == 4 and desired_version >= 5:
+        keys_to_remove = [
+            "datastream_type",
+            "datastream_name_prefix",
+            "datastream_namespace",
+        ]
+
+        for key in keys_to_remove:
+            if key in data:
+                del data[key]
+
+        keys_to_migrate = [
+            "publish_enabled",
+            "publish_frequency",
+            "publish_mode",
+            "excluded_domains",
+            "excluded_entities",
+            "included_domains",
+            "included_entities",
+        ]
+
+        for key in keys_to_migrate:
+            if key not in options and key in data:
+                options[key] = data[key]
+            if key in data:
+                del data[key]
+
+        # Check for the auth parameters and set the auth_method config based on which values are populated
+        remove_keys_if_empty = [
+            "username",
+            "password",
+            "api_key",
+        ]
+
+        for key in remove_keys_if_empty:
+            if key in data and data[key] == "":
+                del data[key]
+
+        current_version = 5
+
+    end_version = current_version
+
+    LOGGER.info(
+        "Migration from version %s to version %s successful", begin_version, end_version
+    )
+
+    return data, options, end_version
