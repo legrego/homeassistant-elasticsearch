@@ -23,6 +23,7 @@ from custom_components.elasticsearch.const import (
     CONF_INDEX_MODE,
     CONF_PUBLISH_MODE,
     DOMAIN,
+    INDEX_MODE_DATASTREAM,
     INDEX_MODE_LEGACY,
     PUBLISH_MODE_ALL,
 )
@@ -79,11 +80,11 @@ async def test_no_auth_flow_isolate(
     assert result["type"] == data_entry_flow.RESULT_TYPE_CREATE_ENTRY
     assert result["title"] == es_url
     assert result["data"]["url"] == es_url
-    assert result["data"]["username"] is None
-    assert result["data"]["password"] is None
+    assert result["data"].get("username") is None
+    assert result["data"].get("password") is None
     assert result["data"]["ssl_ca_path"] is None
     assert result["data"]["verify_ssl"] is True
-    assert result["data"]["publish_enabled"] is True
+    assert result["options"]["publish_enabled"] is True
     assert "health_sensor_enabled" not in result["data"]
 
 
@@ -245,7 +246,11 @@ async def test_basic_auth_flow(
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
-        user_input={"url": es_url, "username": "hass_writer", "password": "changeme"},
+        user_input={
+            "url": es_url,
+            "username": "hass_writer",
+            "password": "changeme",
+        },
     )
 
     assert result["type"] == data_entry_flow.RESULT_TYPE_CREATE_ENTRY
@@ -253,10 +258,10 @@ async def test_basic_auth_flow(
     assert result["data"]["url"] == es_url
     assert result["data"]["username"] == "hass_writer"
     assert result["data"]["password"] == "changeme"
-    assert result["data"]["api_key"] is None
+    assert result["data"].get("api_key") is None
     assert result["data"]["ssl_ca_path"] is None
     assert result["data"]["verify_ssl"] is True
-    assert result["data"]["publish_enabled"] is True
+    assert result["options"]["publish_enabled"] is True
     assert "health_sensor_enabled" not in result["data"]
 
 
@@ -285,7 +290,11 @@ async def test_basic_auth_flow_unauthorized(
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
-        user_input={"url": es_url, "username": "hass_writer", "password": "changeme"},
+        user_input={
+            "url": es_url,
+            "username": "hass_writer",
+            "password": "changeme",
+        },
     )
 
     assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
@@ -316,12 +325,16 @@ async def test_basic_auth_flow_missing_index_privilege(
     es_url = "http://basic-auth-flow:9200"
 
     mock_es_initialization(
-        es_aioclient_mock, url=es_url, mock_legacy_index_authorization_error=True
+        es_aioclient_mock, url=es_url, mock_modern_datastream_authorization_error=True
     )
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
-        user_input={"url": es_url, "username": "hass_writer", "password": "changeme"},
+        user_input={
+            "url": es_url,
+            "username": "hass_writer",
+            "password": "changeme",
+        },
     )
 
     assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
@@ -342,8 +355,12 @@ async def test_reauth_flow_basic(
     mock_entry = MockConfigEntry(
         unique_id="test_reauth_flow_basic",
         domain=DOMAIN,
-        version=3,
-        data={"url": es_url, "username": "elastic", "password": "changeme"},
+        version=5,
+        data={
+            "url": es_url,
+            "username": "elastic",
+            "password": "changeme",
+        },
         title="ES Config",
     )
 
@@ -352,7 +369,7 @@ async def test_reauth_flow_basic(
     # Simulate authorization error (403)
     es_aioclient_mock.clear_requests()
     mock_es_initialization(
-        es_aioclient_mock, url=es_url, mock_legacy_index_authorization_error=True
+        es_aioclient_mock, url=es_url, mock_modern_datastream_authorization_error=True
     )
 
     # Start reauth flow
@@ -362,7 +379,7 @@ async def test_reauth_flow_basic(
         data=entry.data,
     )
     assert result["type"] == "form"
-    assert result["step_id"] == "reauth_confirm"
+    assert result["step_id"] == "basic_auth"
 
     # New creds valid, but privileges still insufficient
     result = await hass.config_entries.flow.async_configure(
@@ -374,7 +391,7 @@ async def test_reauth_flow_basic(
     )
     await hass.async_block_till_done()
     assert result["type"] == "form"
-    assert result["step_id"] == "reauth_confirm"
+    assert result["step_id"] == "basic_auth"
     assert result["errors"] == {"base": "insufficient_privileges"}
 
     # Simulate authentication error (401)
@@ -393,7 +410,7 @@ async def test_reauth_flow_basic(
     )
     await hass.async_block_till_done()
     assert result["type"] == "form"
-    assert result["step_id"] == "reauth_confirm"
+    assert result["step_id"] == "basic_auth"
     assert result["errors"] == {"base": "invalid_basic_auth"}
 
     # Simulate success
@@ -410,12 +427,15 @@ async def test_reauth_flow_basic(
     )
     await hass.async_block_till_done()
     assert result["type"] == "abort"
-    assert result["reason"] == "reauth_successful"
+    assert result["reason"] == "updated_entry"
     assert entry.data.copy() == {
         CONF_URL: es_url,
         CONF_USERNAME: "successful_user",
         CONF_PASSWORD: "successful_password",
-        CONF_INDEX_MODE: "index",
+        CONF_INDEX_MODE: INDEX_MODE_DATASTREAM,
+        "ssl_ca_path": None,
+        "timeout": 30,
+        "verify_ssl": True,
     }
 
 
@@ -431,8 +451,12 @@ async def test_reauth_flow_api_key(
     mock_entry = MockConfigEntry(
         unique_id="test_reauth_flow_basic",
         domain=DOMAIN,
-        version=3,
-        data={"url": es_url, "api_key": "abc123"},
+        version=5,
+        data={
+            "url": es_url,
+            "api_key": "abc123",
+            CONF_INDEX_MODE: INDEX_MODE_DATASTREAM,
+        },
         title="ES Config",
     )
 
@@ -441,7 +465,7 @@ async def test_reauth_flow_api_key(
     # Simulate authorization error (403)
     es_aioclient_mock.clear_requests()
     mock_es_initialization(
-        es_aioclient_mock, url=es_url, mock_legacy_index_authorization_error=True
+        es_aioclient_mock, url=es_url, mock_modern_datastream_authorization_error=True
     )
 
     # Start reauth flow
@@ -451,7 +475,7 @@ async def test_reauth_flow_api_key(
         data=entry.data,
     )
     assert result["type"] == "form"
-    assert result["step_id"] == "reauth_confirm"
+    assert result["step_id"] == "api_key"
 
     # New creds valid, but privileges still insufficient
     result = await hass.config_entries.flow.async_configure(
@@ -460,7 +484,7 @@ async def test_reauth_flow_api_key(
     )
     await hass.async_block_till_done()
     assert result["type"] == "form"
-    assert result["step_id"] == "reauth_confirm"
+    assert result["step_id"] == "api_key"
     assert result["errors"] == {"base": "insufficient_privileges"}
 
     # Simulate authentication error (401)
@@ -478,7 +502,7 @@ async def test_reauth_flow_api_key(
     )
     await hass.async_block_till_done()
     assert result["type"] == "form"
-    assert result["step_id"] == "reauth_confirm"
+    assert result["step_id"] == "api_key"
     assert result["errors"] == {"base": "invalid_api_key"}
 
     # Simulate success
@@ -494,11 +518,14 @@ async def test_reauth_flow_api_key(
     )
     await hass.async_block_till_done()
     assert result["type"] == "abort"
-    assert result["reason"] == "reauth_successful"
+    assert result["reason"] == "updated_entry"
     assert entry.data.copy() == {
         CONF_URL: es_url,
         CONF_API_KEY: "good456",
-        CONF_INDEX_MODE: "index",
+        CONF_INDEX_MODE: INDEX_MODE_DATASTREAM,
+        "ssl_ca_path": None,
+        "timeout": 30,
+        "verify_ssl": True,
     }
 
 
@@ -587,18 +614,22 @@ async def test_api_key_flow(
     mock_es_initialization(es_aioclient_mock, url=es_url)
 
     result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], user_input={"url": es_url, "api_key": "ABC123=="}
+        result["flow_id"],
+        user_input={
+            "url": es_url,
+            "api_key": "ABC123==",
+        },
     )
 
     assert result["type"] == data_entry_flow.RESULT_TYPE_CREATE_ENTRY
     assert result["title"] == es_url
     assert result["data"]["url"] == es_url
-    assert result["data"]["username"] is None
-    assert result["data"]["password"] is None
+    assert result["data"].get("username") is None
+    assert result["data"].get("password") is None
     assert result["data"]["api_key"] == "ABC123=="
     assert result["data"]["ssl_ca_path"] is None
     assert result["data"]["verify_ssl"] is True
-    assert result["data"]["publish_enabled"] is True
+    assert result["options"]["publish_enabled"] is True
     assert "health_sensor_enabled" not in result["data"]
 
 
@@ -625,7 +656,11 @@ async def test_api_key_flow_fails_unauthorized(
     es_aioclient_mock.get(es_url, status=401)
 
     result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], user_input={"url": es_url, "api_key": "ABC123=="}
+        result["flow_id"],
+        user_input={
+            "url": es_url,
+            "api_key": "ABC123==",
+        },
     )
 
     assert result["type"] == data_entry_flow.RESULT_TYPE_FORM

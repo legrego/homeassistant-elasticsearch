@@ -1,0 +1,19 @@
+{
+  "after_data": {
+    "index_mode": "index",
+    "url": "http://migration-test:9200"
+  },
+  "after_options": {
+    "excluded_domains": [],
+    "excluded_entities": [],
+    "included_domains": [],
+    "included_entities": [],
+    "publish_enabled": true,
+    "publish_frequency": 60,
+    "publish_mode": "Any changes"
+  },
+  "after_version": 5,
+  "before_data": "mappingproxy({'url': 'http://migration-test:9200', 'ilm_max_size': '10gb', 'ilm_delete_after': '30d', 'health_sensor_enabled': True, 'only_publish_changed': True, 'publish_enabled': True, 'publish_frequency': 60, 'excluded_domains': [], 'excluded_entities': [], 'included_domains': [], 'included_entities': [], 'publish_mode': 'Any changes'})",
+  "before_options": "mappingproxy({})",
+  "before_version": 1
+}
