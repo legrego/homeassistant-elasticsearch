@@ -1,6 +1,5 @@
 {
   "after_data": {
-    "auth_method": "no_auth",
     "url": "http://migration-test:9200"
   },
   "after_options": {

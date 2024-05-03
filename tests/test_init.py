@@ -105,7 +105,6 @@ async def test_minimal_setup_component(
 
     expected_config = {
         "alias": "active-hass-index",
-        "auth_method": "no_auth",
         "ilm_enabled": True,
         "publish_enabled": True,
         "excluded_domains": [],
@@ -151,7 +150,6 @@ async def test_complex_setup_component(
     merged_config = get_merged_config(config_entries[0])
 
     expected_config = {
-        "auth_method": "basic_auth",
         "url": "https://my-complex-es:9200",
         "timeout": 60,
         "verify_ssl": False,
@@ -211,7 +209,6 @@ async def test_update_entry(
         "url": es_url,
         "excluded_domains": ["sensor", "weather"],
         "index_mode": "index",
-        "auth_method": "no_auth",
     }
 
     assert merged_config == expected_config
@@ -259,7 +256,6 @@ async def test_reauth_setup_entry(
         version=3,
         data={
             "url": es_url,
-            "auth_method": "basic_auth",
             "username": "username",
             "password": "password",
         },
@@ -407,7 +403,6 @@ async def test_config_migration_v4tov5(
         },
         after_data={
             "url": "http://migration-test:9200",
-            "auth_method": "no_auth",
         },
         after_version=5,
         snapshot=snapshot,
@@ -449,7 +444,6 @@ async def test_config_migration_v1tov5(
         after_data={
             "url": "http://migration-test:9200",
             "index_mode": "index",
-            "auth_method": "no_auth",
         },
         after_version=5,
         snapshot=snapshot,

@@ -22,10 +22,6 @@ from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers.typing import HomeAssistantType
 
 from .const import (
-    CONF_AUTH_API_KEY_AUTH,
-    CONF_AUTH_BASIC_AUTH,
-    CONF_AUTH_METHOD,
-    CONF_AUTH_NO_AUTH,
     CONF_EXCLUDED_DOMAINS,
     CONF_EXCLUDED_ENTITIES,
     CONF_HEALTH_SENSOR_ENABLED,
@@ -265,17 +261,15 @@ def migrate_data_and_options_to_version(
                 del data[key]
 
         # Check for the auth parameters and set the auth_method config based on which values are populated
-        if (
-            CONF_USERNAME in data
-            and CONF_USERNAME != ""
-            and CONF_PASSWORD in data
-            and CONF_PASSWORD != ""
-        ):
-            data[CONF_AUTH_METHOD] = CONF_AUTH_BASIC_AUTH
-        elif CONF_API_KEY in data and CONF_API_KEY != "":
-            data[CONF_AUTH_METHOD] = CONF_AUTH_API_KEY_AUTH
-        else:
-            data[CONF_AUTH_METHOD] = CONF_AUTH_NO_AUTH
+        remove_keys_if_empty = [
+            "username",
+            "password",
+            "api_key",
+        ]
+
+        for key in remove_keys_if_empty:
+            if key in data and data[key] == "":
+                del data[key]
 
         current_version = 5
 

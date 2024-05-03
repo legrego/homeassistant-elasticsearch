@@ -22,10 +22,6 @@ from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.selector import selector
 
 from .const import (
-    CONF_AUTH_API_KEY_AUTH,
-    CONF_AUTH_BASIC_AUTH,
-    CONF_AUTH_METHOD,
-    CONF_AUTH_NO_AUTH,
     CONF_EXCLUDED_DOMAINS,
     CONF_EXCLUDED_ENTITIES,
     CONF_ILM_ENABLED,
@@ -62,7 +58,6 @@ from .logger import LOGGER
 DEFAULT_URL = "http://localhost:9200"
 DEFAULT_ALIAS = "active-hass-index"
 DEFAULT_INDEX_FORMAT = "hass-events"
-DEFAULT_AUTH_METHOD = "no_auth"
 
 DEFAULT_PUBLISH_ENABLED = True
 DEFAULT_PUBLISH_FREQUENCY = ONE_MINUTE
@@ -133,9 +128,6 @@ def build_new_data(existing_data: dict = None, user_input: dict = None):
         existing_data = {}
 
     data = {
-        CONF_AUTH_METHOD: user_input.get(
-            CONF_AUTH_METHOD, existing_data.get(CONF_AUTH_METHOD, DEFAULT_AUTH_METHOD)
-        ),
         CONF_URL: user_input.get(CONF_URL, existing_data.get(CONF_URL, DEFAULT_URL)),
         CONF_TIMEOUT: user_input.get(
             CONF_TIMEOUT, existing_data.get(CONF_TIMEOUT, DEFAULT_TIMEOUT_SECONDS)
@@ -164,15 +156,11 @@ def build_new_data(existing_data: dict = None, user_input: dict = None):
 
     # Set auth method based on the user input provided, only save relevant params
     if auth.get(CONF_USERNAME) or auth.get(CONF_PASSWORD):
-        data[CONF_AUTH_METHOD] = CONF_AUTH_BASIC_AUTH
         data[CONF_USERNAME] = auth.get(CONF_USERNAME)
         data[CONF_PASSWORD] = auth.get(CONF_PASSWORD)
 
     elif auth.get(CONF_API_KEY):
-        data[CONF_AUTH_METHOD] = CONF_AUTH_API_KEY_AUTH
         data[CONF_API_KEY] = auth.get(CONF_API_KEY)
-    else:
-        data[CONF_AUTH_METHOD] = CONF_AUTH_NO_AUTH
 
     if data.get(CONF_SSL_CA_PATH) and len(data.get(CONF_SSL_CA_PATH)) > 0:
         data[CONF_SSL_CA_PATH] = user_input[CONF_SSL_CA_PATH]
@@ -309,12 +297,10 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         }
 
         # Handle testing various authentication methods
-        if type == CONF_AUTH_NO_AUTH:
-            pass
-        if type == CONF_AUTH_BASIC_AUTH:
+        if type == "basic_auth":
             params[CONF_USERNAME] = user_input.get(CONF_USERNAME)
             params[CONF_PASSWORD] = user_input.get(CONF_PASSWORD)
-        if type == CONF_AUTH_API_KEY_AUTH:
+        if type == "api_key":
             params[CONF_API_KEY] = user_input.get(CONF_API_KEY)
 
         result = await self._async_elasticsearch_login(**params)
@@ -322,7 +308,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         # Connection to Elasticsearch was successful. Create the entry.
         if result.success:
             return await self._async_create_entry(
-                data={**effective_data, CONF_AUTH_METHOD: type},
+                data={**effective_data},
                 options=build_new_options(options),
             )
 
@@ -386,12 +372,12 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         if len(entries) >= 1 and not update_entry:
             return self.async_abort(reason="single_instance_allowed")
 
-        auth_method = CONF_AUTH_NO_AUTH
+        auth_method = "no_auth"
         if import_config.get(CONF_USERNAME):
-            auth_method = CONF_AUTH_BASIC_AUTH
+            auth_method = "basic_auth"
 
         if import_config.get(CONF_API_KEY):
-            auth_method = CONF_AUTH_API_KEY_AUTH
+            auth_method = "api_key"
 
         return await self._handle_auth_flow(
             data={**update_entry.data, CONF_INDEX_MODE: INDEX_MODE_LEGACY}
@@ -408,11 +394,18 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
         assert entry is not None
 
+        auth_method = "no_auth"
+        if entry.data.get(CONF_USERNAME):
+            auth_method = "basic_auth"
+
+        if entry.data.get(CONF_API_KEY):
+            auth_method = "api_key"
+
         return await self._handle_auth_flow(
             data=entry.data,
             user_input=user_input,
             options=entry.options,
-            type=entry.data.get(CONF_AUTH_METHOD),
+            type=auth_method,
         )
 
     async def _async_elasticsearch_login(

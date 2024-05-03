@@ -2,8 +2,6 @@
 
 import pytest
 from elasticsearch.const import (
-    CONF_AUTH_BASIC_AUTH,
-    CONF_AUTH_METHOD,
     CONF_INDEX_MODE,
     DOMAIN,
 )
@@ -73,7 +71,6 @@ async def test_successful_modern_privilege_check(
             {
                 "url": es_url,
                 CONF_INDEX_MODE: "datastream",
-                CONF_AUTH_METHOD: CONF_AUTH_BASIC_AUTH,
                 CONF_USERNAME: "test",
             }
         ),
@@ -114,7 +111,6 @@ async def test_successful_modern_privilege_check_missing_index_privilege(
             {
                 "url": es_url,
                 CONF_INDEX_MODE: "datastream",
-                CONF_AUTH_METHOD: CONF_AUTH_BASIC_AUTH,
                 CONF_USERNAME: "test",
                 CONF_PASSWORD: "test",
             }
@@ -156,7 +152,6 @@ async def test_successful_legacy_privilege_check(
         data=build_new_data(
             {
                 "url": es_url,
-                CONF_AUTH_METHOD: CONF_AUTH_BASIC_AUTH,
                 CONF_USERNAME: "test",
                 CONF_PASSWORD: "test",
             }
@@ -193,7 +188,6 @@ async def test_successful_legacy_privilege_check_missing_index_privilege(
         data=build_new_data(
             {
                 "url": es_url,
-                CONF_AUTH_METHOD: CONF_AUTH_BASIC_AUTH,
                 CONF_USERNAME: "test",
                 CONF_PASSWORD: "test",
             }
@@ -235,7 +229,6 @@ async def test_enforce_auth_failure(
         data=build_new_data(
             {
                 "url": es_url,
-                CONF_AUTH_METHOD: CONF_AUTH_BASIC_AUTH,
                 CONF_USERNAME: "test",
                 CONF_PASSWORD: "test",
             }
@@ -270,7 +263,6 @@ async def test_enforce_auth_success(
         data=build_new_data(
             {
                 "url": es_url,
-                CONF_AUTH_METHOD: CONF_AUTH_BASIC_AUTH,
                 CONF_USERNAME: "test",
                 CONF_PASSWORD: "test",
             }

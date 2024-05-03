@@ -19,7 +19,6 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
 from custom_components.elasticsearch.const import (
-    CONF_AUTH_METHOD,
     CONF_INDEX_FORMAT,
     CONF_INDEX_MODE,
     CONF_PUBLISH_MODE,
@@ -361,7 +360,6 @@ async def test_reauth_flow_basic(
             "url": es_url,
             "username": "elastic",
             "password": "changeme",
-            CONF_AUTH_METHOD: "basic_auth",
         },
         title="ES Config",
     )
@@ -432,7 +430,6 @@ async def test_reauth_flow_basic(
     assert result["reason"] == "updated_entry"
     assert entry.data.copy() == {
         CONF_URL: es_url,
-        CONF_AUTH_METHOD: "basic_auth",
         CONF_USERNAME: "successful_user",
         CONF_PASSWORD: "successful_password",
         CONF_INDEX_MODE: INDEX_MODE_DATASTREAM,
@@ -458,7 +455,6 @@ async def test_reauth_flow_api_key(
         data={
             "url": es_url,
             "api_key": "abc123",
-            CONF_AUTH_METHOD: "api_key",
             CONF_INDEX_MODE: INDEX_MODE_DATASTREAM,
         },
         title="ES Config",
@@ -527,7 +523,6 @@ async def test_reauth_flow_api_key(
         CONF_URL: es_url,
         CONF_API_KEY: "good456",
         CONF_INDEX_MODE: INDEX_MODE_DATASTREAM,
-        "auth_method": "api_key",
         "ssl_ca_path": None,
         "timeout": 30,
         "verify_ssl": True,

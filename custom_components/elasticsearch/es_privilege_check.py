@@ -7,8 +7,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_ALIAS, CONF_API_KEY, CONF_USERNAME
 
 from custom_components.elasticsearch.const import (
-    CONF_AUTH_METHOD,
-    CONF_AUTH_NO_AUTH,
     CONF_INDEX_FORMAT,
     CONF_INDEX_MODE,
     INDEX_MODE_DATASTREAM,
@@ -45,13 +43,11 @@ class ESPrivilegeCheck:
         self.index_format = config_entry.options.get(CONF_INDEX_FORMAT)
         self.index_alias = config_entry.options.get(CONF_ALIAS) + VERSION_SUFFIX
 
-        self.auth_mode = config_entry.data.get(CONF_AUTH_METHOD)
-
     async def enforce_privileges(self):
         """Ensure client is configured with properly authorized credentials."""
         LOGGER.debug("Starting privilege enforcement")
 
-        if self.auth_mode is CONF_AUTH_NO_AUTH:
+        if self.username is None and self.api_key is None:
             return
 
         LOGGER.debug("Checking privileges of %s", self.username or "API key")
