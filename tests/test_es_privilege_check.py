@@ -6,7 +6,7 @@ from elasticsearch.const import (
     DOMAIN,
 )
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
-from homeassistant.helpers.typing import HomeAssistantType
+from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
@@ -24,7 +24,7 @@ from tests.test_util.es_startup_mocks import mock_es_initialization
 
 @pytest.mark.asyncio
 async def test_bad_connection(
-    hass: HomeAssistantType, es_aioclient_mock: AiohttpClientMocker
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
 ):
     """Test graceful error handling."""
 
@@ -56,7 +56,7 @@ async def test_bad_connection(
 
 @pytest.mark.asyncio
 async def test_successful_modern_privilege_check(
-    hass: HomeAssistantType, es_aioclient_mock: AiohttpClientMocker
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
 ):
     """Test successful privilege check."""
 
@@ -93,7 +93,7 @@ async def test_successful_modern_privilege_check(
 
 @pytest.mark.asyncio
 async def test_successful_modern_privilege_check_missing_index_privilege(
-    hass: HomeAssistantType, es_aioclient_mock: AiohttpClientMocker
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
 ):
     """Test successful privilege check with missing index privileges."""
 
@@ -138,7 +138,7 @@ async def test_successful_modern_privilege_check_missing_index_privilege(
 
 @pytest.mark.asyncio
 async def test_successful_legacy_privilege_check(
-    hass: HomeAssistantType, es_aioclient_mock: AiohttpClientMocker
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
 ):
     """Test successful privilege check."""
 
@@ -172,7 +172,7 @@ async def test_successful_legacy_privilege_check(
 
 @pytest.mark.asyncio
 async def test_successful_legacy_privilege_check_missing_index_privilege(
-    hass: HomeAssistantType, es_aioclient_mock: AiohttpClientMocker
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
 ):
     """Test successful privilege check with missing index privileges."""
 
@@ -213,7 +213,7 @@ async def test_successful_legacy_privilege_check_missing_index_privilege(
 
 @pytest.mark.asyncio
 async def test_enforce_auth_failure(
-    hass: HomeAssistantType, es_aioclient_mock: AiohttpClientMocker
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
 ):
     """Enforce should throw when missing privileges."""
 
@@ -249,7 +249,7 @@ async def test_enforce_auth_failure(
 
 @pytest.mark.asyncio
 async def test_enforce_auth_success(
-    hass: HomeAssistantType, es_aioclient_mock: AiohttpClientMocker
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
 ):
     """Enforce should not throw when not missing privileges."""
 

@@ -17,8 +17,8 @@ from homeassistant.const import (
     CONF_USERNAME,
     CONF_VERIFY_SSL,
 )
+from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
-from homeassistant.helpers.typing import HomeAssistantType
 
 from .const import (
     CONF_EXCLUDED_DOMAINS,
@@ -88,7 +88,7 @@ CONFIG_SCHEMA = vol.Schema(
 )
 
 
-async def async_setup(hass: HomeAssistantType, config):
+async def async_setup(hass: HomeAssistant, config):
     """Set up Elasticsearch integration via legacy yml-based setup."""
     if DOMAIN not in config:
         return True
@@ -110,7 +110,7 @@ async def async_setup(hass: HomeAssistantType, config):
     return True
 
 
-async def async_migrate_entry(hass: HomeAssistantType, config_entry: ConfigEntry):  # pylint: disable=unused-argument
+async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):  # pylint: disable=unused-argument
     """Migrate old entry."""
 
     latest_version = ElasticFlowHandler.VERSION
@@ -129,7 +129,7 @@ async def async_migrate_entry(hass: HomeAssistantType, config_entry: ConfigEntry
     )
 
 
-async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry):
+async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     """Set up integration via config flow."""
 
     LOGGER.debug("Setting up integration")
@@ -138,7 +138,7 @@ async def async_setup_entry(hass: HomeAssistantType, config_entry: ConfigEntry):
     return init
 
 
-async def async_unload_entry(hass: HomeAssistantType, config_entry: ConfigEntry):
+async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     """Teardown integration."""
     existing_instance = hass.data.get(DOMAIN)
     if isinstance(existing_instance, ElasticIntegration):
@@ -148,15 +148,13 @@ async def async_unload_entry(hass: HomeAssistantType, config_entry: ConfigEntry)
     return True
 
 
-async def async_config_entry_updated(
-    hass: HomeAssistantType, config_entry: ConfigEntry
-):
+async def async_config_entry_updated(hass: HomeAssistant, config_entry: ConfigEntry):
     """Respond to config changes."""
     LOGGER.debug("Configuration change detected")
     return await _async_init_integration(hass, config_entry)
 
 
-async def _async_init_integration(hass: HomeAssistantType, config_entry: ConfigEntry):
+async def _async_init_integration(hass: HomeAssistant, config_entry: ConfigEntry):
     """Initialize integration."""
     await async_unload_entry(hass, config_entry)
 
