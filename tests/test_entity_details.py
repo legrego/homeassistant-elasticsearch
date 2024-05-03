@@ -2,6 +2,7 @@
 
 import pytest
 from homeassistant.components.counter import DOMAIN as COUNTER_DOMAIN
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers import (
     area_registry,
     device_registry,
@@ -9,7 +10,6 @@ from homeassistant.helpers import (
     floor_registry,
     label_registry,
 )
-from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -129,7 +129,7 @@ async def test_entity_with_device(
 
 @pytest.mark.asyncio
 async def test_entity_with_floor_and_labels(
-    hass: HomeAssistantType, mock_config_entry: MockConfigEntry
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry
 ):
     """Entity with device returns details."""
     floor = floor_registry.async_get(hass).async_create("floor")
@@ -139,8 +139,8 @@ async def test_entity_with_floor_and_labels(
         "device area", floor_id=floor.floor_id
     )
 
-    device_label = label_registry.async_get(hass).async_create("device label")
-    entity_label = label_registry.async_get(hass).async_create("entity label")
+    label_registry.async_get(hass).async_create("device label")
+    label_registry.async_get(hass).async_create("entity label")
 
     dr = device_registry.async_get(hass)
     entry = dr.async_get_or_create(
