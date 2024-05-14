@@ -4,7 +4,6 @@ from copy import deepcopy
 
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
-from elasticsearch.config_flow import ElasticFlowHandler
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.const import (
     CONF_ALIAS,
@@ -20,6 +19,7 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 
+from .config_flow import ElasticFlowHandler
 from .const import (
     CONF_EXCLUDED_DOMAINS,
     CONF_EXCLUDED_ENTITIES,
