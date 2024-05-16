@@ -342,52 +342,6 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
         return await self._handle_auth_flow(user_input=user_input, type="api_key")
 
-    async def async_step_import(self, import_config):
-        """Import a config entry from configuration.yaml."""
-
-        ir.async_create_issue(
-            self.hass,
-            domain=DOMAIN,
-            issue_id="yaml_migration",
-            issue_domain=DOMAIN,
-            is_fixable=False,
-            is_persistent=True,
-            learn_more_url="https://github.com/legrego/homeassistant-elasticsearch/wiki/Migrating-from-YAML-configuration-to-UI-configuration",
-            severity=ir.IssueSeverity.WARNING,
-            translation_key="yaml_migration",
-        )
-
-        # Check if new config entry matches any existing config entries
-        entries = self.hass.config_entries.async_entries(ELASTIC_DOMAIN)
-        update_entry = None
-        for entry in entries:
-            if entry.source == SOURCE_IGNORE:
-                continue
-            if entry.data[CONF_URL] == import_config[CONF_URL]:
-                update_entry = entry
-                break
-
-        # If we have more than one entry, we can't continue
-        if len(entries) >= 1 and not update_entry:
-            return self.async_abort(reason="single_instance_allowed")
-
-        auth_method = "no_auth"
-        if import_config.get(CONF_USERNAME):
-            auth_method = "basic_auth"
-
-        if import_config.get(CONF_API_KEY):
-            auth_method = "api_key"
-
-        return await self._handle_auth_flow(
-            data={**update_entry.data, CONF_INDEX_MODE: INDEX_MODE_LEGACY}
-            if update_entry
-            else None,
-            options=update_entry.options if update_entry else None,
-            user_input=import_config,
-            type=auth_method,
-            retry=False,
-        )
-
     async def async_step_reauth(self, user_input) -> FlowResult:
         """Handle reauthorization."""
         entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
@@ -506,14 +460,7 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_init(self, hass):  # pylint disable=unused-argument
         """Manage the Elastic options."""
 
-        if self.config_entry.source == SOURCE_IMPORT:
-            return await self.async_step_yaml()
-
         return await self.async_step_publish_options()
-
-    async def async_step_yaml(self, user_input=None):  # pylint disable=unused-argument
-        """No options for yaml managed entries."""
-        return self.async_abort(reason="configured_via_yaml")
 
     async def async_step_publish_options(self, user_input=None):
         """Publish Options."""
