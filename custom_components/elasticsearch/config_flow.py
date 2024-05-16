@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from homeassistant import config_entries
-from homeassistant.config_entries import SOURCE_IGNORE, SOURCE_IMPORT, ConfigEntry
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONF_ALIAS,
     CONF_API_KEY,
@@ -17,7 +17,6 @@ from homeassistant.const import (
 )
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
-from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.selector import selector
 
 from .const import (
@@ -33,7 +32,6 @@ from .const import (
     CONF_PUBLISH_FREQUENCY,
     CONF_PUBLISH_MODE,
     CONF_SSL_CA_PATH,
-    DOMAIN,
     ES_CHECK_PERMISSIONS_DATASTREAM,
     INDEX_MODE_DATASTREAM,
     INDEX_MODE_LEGACY,

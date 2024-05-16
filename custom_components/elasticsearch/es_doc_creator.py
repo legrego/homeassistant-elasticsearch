@@ -165,7 +165,7 @@ class DocumentCreator:
         entity_area = entity_details.entity_area
 
         entity_additions = {
-            "labels": entity_details.entity_label,
+            "labels": entity_details.entity_labels,
             "name": entity.name or entity.original_name,
             "friendly_name": state.name,
             "platform": entity.platform,
@@ -182,17 +182,17 @@ class DocumentCreator:
         }
 
         device = entity_details.device
-        device_floor = entity_details.device_floor or {}
+        device_floor = entity_details.device_floor
         device_area = entity_details.device_area
 
         device_additions = {
             "class": entity.device_class or entity.original_device_class,
             "id": (device.id if device else None),
-            "labels": entity_details.device_label,
+            "labels": entity_details.device_labels,
             "name": (device.name if device else None),
             "friendly_name": (device.name_by_user if device else None),
-            "floor.id": device_floor.get("id"),
-            "floor.name": device_floor.get("name"),
+            "floor.id": device_floor.floor_id if device_floor else None,
+            "floor.name": device_floor.name if device_floor else None,
             "area.id": device_area.id if device_area else None,
             "area.name": device_area.name if device_area else None,
         }

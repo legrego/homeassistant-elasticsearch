@@ -165,6 +165,14 @@ class IndexManager:
                 name=DATASTREAM_METRICS_INDEX_TEMPLATE_NAME, body=index_template
             )
 
+        except ElasticsearchException as err:
+            LOGGER.exception("Error creating/updating index template: %s", err)
+            if not template_exists:
+                raise convert_es_error(
+                    "No index template present in Elasticsearch and failed to create one",
+                    err,
+                ) from err
+        try:
             if await self.requires_datastream_ignore_dynamic_fields_migration():
                 LOGGER.debug(
                     "Performing a one-time migration of datastream write indices to set dynamic=false."
@@ -172,15 +180,7 @@ class IndexManager:
                 await self.migrate_datastreams_to_ignore_dynamic_fields()
 
         except ElasticsearchException as err:
-            LOGGER.exception("Error creating/updating index template: %s", err)
-            # We do not want to proceed with indexing if we don't have any index templates as this
-            # will result in the user having to clean-up indices with improper mappings.
-            # We also do not want to proceed if updating the datastreams to ignore dynamic fields fails.
-            if (
-                not template_exists
-                or self.requires_datastream_ignore_dynamic_fields_migration()
-            ):
-                raise err
+            raise convert_es_error(err)
 
     async def _create_legacy_template(self):
         """Initialize the Elasticsearch cluster with an index template, initial index, and alias."""
