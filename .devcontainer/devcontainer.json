@@ -4,7 +4,9 @@
 	"context": "..",
 	"name": "Elasticsearch integration development",
 	"forwardPorts": [
-		8123
+		5601,
+		8123,
+		9200
 	],
 	"mounts": [
 		"source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind",
