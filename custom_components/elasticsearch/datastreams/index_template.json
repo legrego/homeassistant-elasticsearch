@@ -62,6 +62,17 @@
                                     "type": "object",
                                     "dynamic": true
                                 },
+                                "floor": {
+                                    "type": "object",
+                                    "properties": {
+                                        "id": {
+                                            "type": "keyword"
+                                        },
+                                        "name": {
+                                            "type": "keyword"
+                                        }
+                                    }
+                                },
                                 "geo": {
                                     "type": "object",
                                     "properties": {

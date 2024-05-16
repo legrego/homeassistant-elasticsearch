@@ -623,7 +623,7 @@ async def test_modern_index_mode_error(
     )
     await modern_index_manager._gateway.async_init()
 
-    with pytest.raises(ElasticsearchException):
+    with pytest.raises(ElasticException):
         await modern_index_manager.async_setup()
 
     # ILM setup occurs before our index template creation error
