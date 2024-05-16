@@ -3,9 +3,7 @@
 import pytest
 from elasticsearch import migrate_data_and_options_to_version
 from elasticsearch.config_flow import build_new_options
-from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 from homeassistant.config_entries import SOURCE_REAUTH, ConfigEntryState
-from homeassistant.const import CONF_ALIAS, CONF_URL
 from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -14,12 +12,9 @@ from syrupy.extensions.json import JSONSnapshotExtension
 
 from custom_components.elasticsearch.const import (
     CONF_EXCLUDED_DOMAINS,
-    CONF_ILM_POLICY_NAME,
-    CONF_INDEX_FORMAT,
 )
 from custom_components.elasticsearch.const import DOMAIN as ELASTIC_DOMAIN
 from custom_components.elasticsearch.utils import get_merged_config
-from tests.const import MOCK_COMPLEX_LEGACY_CONFIG, MOCK_MINIMAL_LEGACY_CONFIG
 from tests.test_util.es_startup_mocks import mock_es_initialization
 
 
