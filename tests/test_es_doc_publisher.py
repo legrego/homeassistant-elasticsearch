@@ -641,7 +641,7 @@ class Test_Benchmark_Tests:
 
     @pytest.fixture(autouse=True)
     def freeze_time(freezer: FrozenDateTimeFactory):
-        """Freeze time so we can properly assert on payload contents."""
+        """Do not freeze time, override auto-use fixture."""
         return
 
     @pytest.mark.asyncio
@@ -652,8 +652,7 @@ class Test_Benchmark_Tests:
         initialized_publisher: DocumentPublisher,
         es_aioclient_mock: AiohttpClientMocker,
     ):
-        # mock the gateway
-        """Test entity change is published."""
+        """Benchmark entity publishing."""
 
         # If processing 500 entities takes more than 1s we have a significant performance degration
         for i in range(500):
