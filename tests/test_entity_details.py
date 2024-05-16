@@ -133,11 +133,14 @@ async def test_entity_with_floor_and_labels(
     hass: HomeAssistant, mock_config_entry: MockConfigEntry
 ):
     """Entity with device returns details."""
-    floor = floor_registry.async_get(hass).async_create("floor")
+    device_floor = floor_registry.async_get(hass).async_create("device floor")
+    entity_floor = floor_registry.async_get(hass).async_create("entity_floor")
 
-    entity_area = area_registry.async_get(hass).async_create("entity area")
+    entity_area = area_registry.async_get(hass).async_create(
+        "entity area", floor_id=entity_floor.floor_id
+    )
     device_area = area_registry.async_get(hass).async_create(
-        "device area", floor_id=floor.floor_id
+        "device area", floor_id=device_floor.floor_id
     )
 
     label_registry.async_get(hass).async_create("device label")
@@ -180,6 +183,7 @@ async def test_entity_with_floor_and_labels(
     assert isinstance(deets.entity_area, area_registry.AreaEntry) is True
     assert deets.entity_area.id == entity_area.id
     assert deets.entity_area.name == entity_area.name
+    assert deets.entity_floor == entity_floor
 
     assert isinstance(deets.device, device_registry.DeviceEntry) is True
     assert isinstance(deets.device_area, area_registry.AreaEntry) is True
@@ -188,6 +192,6 @@ async def test_entity_with_floor_and_labels(
     assert deets.device_area.id == device_area.id
     assert deets.device_area.name == device_area.name
 
-    assert deets.device_label == ["device label"]
-    assert deets.entity_label == ["entity label"]
-    assert deets.device_floor == floor
+    assert deets.device_labels == ["device label"]
+    assert deets.entity_labels == ["entity label"]
+    assert deets.device_floor == device_floor
