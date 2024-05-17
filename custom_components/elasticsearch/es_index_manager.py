@@ -92,7 +92,7 @@ class IndexManager:
         """Initialize the Elasticsearch cluster with an index template, initial index, and alias."""
         LOGGER.debug("Initializing modern index templates")
 
-        client = self._gateway.get_client()
+        client = self._gateway.client
 
         # Open datastreams/index_template.json and load the ES modern index template
         with open(
@@ -179,7 +179,7 @@ class IndexManager:
                 "Serverless environment detected, legacy index usage not allowed in ES Serverless. Switch to datastreams."
             )
 
-        client = self._gateway.get_client()
+        client = self._gateway.client
 
         # For Legacy mode we offer flexible configuration of the ILM policy
         await self._create_basic_ilm_policy(ilm_policy_name=self.ilm_policy_name)
@@ -246,7 +246,7 @@ class IndexManager:
         """Create the index lifecycle management policy."""
         from elasticsearch7.exceptions import TransportError
 
-        client = self._gateway.get_client()
+        client = self._gateway.client
 
         try:
             existing_policy = await client.ilm.get_lifecycle(ilm_policy_name)

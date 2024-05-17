@@ -12,7 +12,9 @@ from custom_components.elasticsearch.config_flow import (
 from custom_components.elasticsearch.const import (
     DOMAIN,
 )
-from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
+from custom_components.elasticsearch.es_gateway import (
+    Elasticsearch7Gateway,
+)
 from tests.test_util.es_startup_mocks import mock_es_initialization
 
 
@@ -35,12 +37,12 @@ async def test_serverless_true(
         title="ES Config",
     )
 
-    gateway = ElasticsearchGateway(mock_entry)
+    gateway = Elasticsearch7Gateway(mock_entry)
     await gateway.async_init()
 
     assert gateway.es_version.is_serverless() is True
 
-    await gateway.async_stop_gateway()
+    await gateway.close()
 
 
 @pytest.mark.asyncio
@@ -64,12 +66,12 @@ async def test_serverless_false(
 
     mock_entry.add_to_hass(hass)
 
-    gateway = ElasticsearchGateway(mock_entry)
+    gateway = Elasticsearch7Gateway(mock_entry)
     await gateway.async_init()
 
     assert gateway.es_version.is_serverless() is False
 
-    await gateway.async_stop_gateway()
+    await gateway.close()
 
 
 @pytest.mark.asyncio
@@ -92,12 +94,12 @@ async def test_fails_minimum_version(
 
     mock_entry.add_to_hass(hass)
 
-    gateway = ElasticsearchGateway(mock_entry)
+    gateway = Elasticsearch7Gateway(mock_entry)
     await gateway.async_init()
 
     assert gateway.es_version.meets_minimum_version(8, 10) is False
 
-    await gateway.async_stop_gateway()
+    await gateway.close()
 
 
 @pytest.mark.asyncio
@@ -119,9 +121,9 @@ async def test_passes_minimum_version(
         title="ES Config",
     )
 
-    gateway = ElasticsearchGateway(mock_entry)
+    gateway = Elasticsearch7Gateway(mock_entry)
     await gateway.async_init()
 
     assert gateway.es_version.meets_minimum_version(7, 10) is True
 
-    await gateway.async_stop_gateway()
+    await gateway.close()

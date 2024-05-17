@@ -40,7 +40,10 @@ from custom_components.elasticsearch.errors import ElasticException
 from custom_components.elasticsearch.es_doc_publisher import (
     DocumentPublisher,
 )
-from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
+from custom_components.elasticsearch.es_gateway import (
+    Elasticsearch7Gateway,
+    ElasticsearchGateway,
+)
 from tests.conftest import MockEntityState
 from tests.const import (
     MOCK_LOCATION_SERVER,
@@ -175,7 +178,7 @@ def config_entry(hass: HomeAssistant, data, options):
 @pytest.fixture()
 def uninitialized_gateway(hass: HomeAssistant, config_entry: MockConfigEntry):
     """Create an uninitialized gateway."""
-    return ElasticsearchGateway(hass=hass, config_entry=config_entry)
+    return Elasticsearch7Gateway(hass=hass, config_entry=config_entry)
 
 
 @pytest.fixture()
@@ -219,7 +222,7 @@ async def initialized_gateway(
     es_aioclient_mock: AiohttpClientMocker,
 ):
     """Create an uninitialized gateway."""
-    gateway = ElasticsearchGateway(hass=hass, config_entry=config_entry)
+    gateway = Elasticsearch7Gateway(hass=hass, config_entry=config_entry)
 
     mock_es_initialization(es_aioclient_mock, config_entry.data[CONF_URL])
 
@@ -227,7 +230,7 @@ async def initialized_gateway(
 
     yield gateway
 
-    await gateway.async_stop_gateway()
+    await gateway.close()
 
 
 @pytest.mark.asyncio

@@ -92,7 +92,7 @@ class ESPrivilegeCheck:
 
         try:
             LOGGER.debug("Privilege check starting")
-            es_client = self.es_gateway.get_client()
+            es_client = self.es_gateway.client
             privilege_response = await es_client.security.has_privileges(
                 body={
                     "cluster": required_cluster_privileges,

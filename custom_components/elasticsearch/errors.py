@@ -1,4 +1,5 @@
 """Errors for the Elastic component."""
+
 from homeassistant.exceptions import HomeAssistantError
 
 
@@ -34,6 +35,9 @@ class UnsupportedVersion(ElasticException):
     """Connected to an unsupported version of Elasticsearch."""
 
 
+# Convert errors from elasticsearch7 package AND elasticsearch8 package to our own exceptions
+
+
 def convert_es_error(msg, err):
     """Convert an internal error from the elasticsearch package into one of our own."""
     import aiohttp
@@ -48,7 +52,7 @@ def convert_es_error(msg, err):
     )
 
     if isinstance(err, SSLError):
-          return UntrustedCertificate(msg, err)
+        return UntrustedCertificate(msg, err)
 
     if isinstance(err, ESConnectionError):
         if isinstance(
@@ -61,10 +65,10 @@ def convert_es_error(msg, err):
         return CannotConnect(msg, err)
 
     if isinstance(err, AuthenticationException):
-         return AuthenticationRequired(msg, err)
+        return AuthenticationRequired(msg, err)
 
     if isinstance(err, AuthorizationException):
-         return InsufficientPrivileges(msg, err)
+        return InsufficientPrivileges(msg, err)
 
     if isinstance(err, ElasticsearchException):
         return ElasticException(msg, err)

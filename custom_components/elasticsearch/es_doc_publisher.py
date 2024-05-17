@@ -6,6 +6,8 @@ from datetime import datetime
 from functools import lru_cache
 from queue import Queue
 
+from elasticsearch7 import TransportError as TransportError7
+from elasticsearch8 import TransportError as TransportError8
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONF_ALIAS,
@@ -88,24 +90,16 @@ class DocumentPublisher:
         self._included_entities = config_entry.options.get(CONF_INCLUDED_ENTITIES)
 
         if self._excluded_domains:
-            LOGGER.debug(
-                "Excluding the following domains: %s", str(self._excluded_domains)
-            )
+            LOGGER.debug("Excluding the following domains: %s", str(self._excluded_domains))
 
         if self._excluded_entities:
-            LOGGER.debug(
-                "Excluding the following entities: %s", str(self._excluded_entities)
-            )
+            LOGGER.debug("Excluding the following entities: %s", str(self._excluded_entities))
 
         if self._included_domains:
-            LOGGER.debug(
-                "Including the following domains: %s", str(self._included_domains)
-            )
+            LOGGER.debug("Including the following domains: %s", str(self._included_domains))
 
         if self._included_entities:
-            LOGGER.debug(
-                "Including the following entities: %s", str(self._included_entities)
-            )
+            LOGGER.debug("Including the following entities: %s", str(self._included_entities))
 
         def elastic_event_listener(event: Event):
             """Listen for new messages on the bus and queue them for send."""
@@ -116,18 +110,14 @@ class DocumentPublisher:
 
             self.enqueue_state(state, event, reason)
 
-        self.remove_state_change_listener = hass.bus.async_listen(
-            EVENT_STATE_CHANGED, elastic_event_listener
-        )
+        self.remove_state_change_listener = hass.bus.async_listen(EVENT_STATE_CHANGED, elastic_event_listener)
 
         @callback
         def hass_close_event_listener(event: Event):
             LOGGER.debug("Detected Home Assistant Close Event.")
             self.stop_publisher()
 
-        self.remove_hass_close_listener = hass.bus.async_listen_once(
-            EVENT_HOMEASSISTANT_CLOSE, hass_close_event_listener
-        )
+        self.remove_hass_close_listener = hass.bus.async_listen_once(EVENT_HOMEASSISTANT_CLOSE, hass_close_event_listener)
 
         self._document_creator = DocumentCreator(hass=hass, config_entry=config_entry)
 
@@ -193,9 +183,7 @@ class DocumentPublisher:
 
     def empty_queue(self):
         """Empty the publish queue."""
-        self.publish_queue = Queue[
-            tuple[State, Event, str]
-        ]()  # Initialize a new queue and let the runtime perform garbage collection.
+        self.publish_queue = Queue[tuple[State, Event, str]]()  # Initialize a new queue and let the runtime perform garbage collection.
 
     async def async_do_publish(self):
         """Publish all queued documents to the Elasticsearch cluster."""
@@ -217,24 +205,15 @@ class DocumentPublisher:
 
             key = state.entity_id
 
-            entity_counts[key] = (
-                1 if key not in entity_counts else entity_counts[key] + 1
-            )
+            entity_counts[key] = 1 if key not in entity_counts else entity_counts[key] + 1
             actions.append(self._state_to_bulk_action(state, event.time_fired, reason))
 
         if publish_all_states:
             all_states = self._hass.states.async_all()
             reason = PUBLISH_REASON_POLLING
             for state in all_states:
-                if (
-                    state.entity_id not in entity_counts
-                    and self._should_publish_entity_passes_filter(state.entity_id)
-                ):
-                    actions.append(
-                        self._state_to_bulk_action(
-                            state, self._last_publish_time, reason
-                        )
-                    )
+                if state.entity_id not in entity_counts and self._should_publish_entity_passes_filter(state.entity_id):
+                    actions.append(self._state_to_bulk_action(state, self._last_publish_time, reason))
 
         # Check for duplicate entries
         # The timestamp and object_id field are combined to generate the Elasticsearch document ID
@@ -259,7 +238,7 @@ class DocumentPublisher:
         from elasticsearch7.helpers import async_bulk
 
         try:
-            bulk_response = await async_bulk(self._gateway.get_client(), actions)
+            bulk_response = await async_bulk(self._gateway.client, actions)
             LOGGER.debug("Elasticsearch bulk response: %s", str(bulk_response))
             LOGGER.info("Publish Succeeded")
         except ElasticsearchException as err:
@@ -288,10 +267,7 @@ class DocumentPublisher:
         if self._publish_mode != PUBLISH_MODE_STATE_CHANGES:
             return True
 
-        if (
-            change_type == PUBLISH_REASON_ATTR_CHANGE
-            and self._publish_mode == PUBLISH_MODE_STATE_CHANGES
-        ):
+        if change_type == PUBLISH_REASON_ATTR_CHANGE and self._publish_mode == PUBLISH_MODE_STATE_CHANGES:
             LOGGER.debug(
                 "Excluding event state change for %s because the value did not change and publish mode is set to state changes only.",
                 entity_id,
@@ -341,9 +317,7 @@ class DocumentPublisher:
         """Create a bulk action from the given state object."""
 
         if self._destination_type == INDEX_MODE_DATASTREAM:
-            document = self._document_creator.state_to_document(
-                state, time, reason, version=2
-            )
+            document = self._document_creator.state_to_document(state, time, reason, version=2)
 
             (
                 datastream_type,
@@ -370,9 +344,7 @@ class DocumentPublisher:
             }
 
         if self._destination_type == INDEX_MODE_LEGACY:
-            document = self._document_creator.state_to_document(
-                state, time, reason, version=1
-            )
+            document = self._document_creator.state_to_document(state, time, reason, version=1)
 
             return {
                 "_op_type": "index",
@@ -386,9 +358,7 @@ class DocumentPublisher:
     def _start_publish_timer(self):
         """Initialize the publish timer."""
         if self._config_entry:
-            self._publish_timer_ref = self._config_entry.async_create_background_task(
-                self._hass, self._publish_queue_timer(), "publish_queue_timer"
-            )
+            self._publish_timer_ref = self._config_entry.async_create_background_task(self._hass, self._publish_queue_timer(), "publish_queue_timer")
         else:
             self._publish_timer_ref = asyncio.ensure_future(self._publish_queue_timer())
 
@@ -402,17 +372,13 @@ class DocumentPublisher:
 
     @classmethod
     @lru_cache(maxsize=128)
-    def _sanitize_datastream_name(
-        self, dataset: str, type: str = "metrics", namespace: str = "default"
-    ):
+    def _sanitize_datastream_name(self, dataset: str, type: str = "metrics", namespace: str = "default"):
         """Sanitize a datastream name."""
 
         full_datastream_name = f"{type}-{dataset}-{namespace}"
 
         if self._datastream_has_fatal_name(full_datastream_name):
-            raise ElasticException(
-                "Invalid / unfixable datastream name: %s", full_datastream_name
-            )
+            raise ElasticException("Invalid / unfixable datastream name: %s", full_datastream_name)
 
         if self._datastream_has_unsafe_name(full_datastream_name):
             LOGGER.debug(
@@ -424,9 +390,7 @@ class DocumentPublisher:
 
         # Cannot include \, /, *, ?, ", <, >, |, ` ` (space character), comma, #, :
         invalid_chars = r"\\/*?\":<>|,#+"
-        sanitized_dataset = sanitized_dataset.translate(
-            str.maketrans("", "", invalid_chars)
-        )
+        sanitized_dataset = sanitized_dataset.translate(str.maketrans("", "", invalid_chars))
         sanitized_dataset = sanitized_dataset.replace(" ", "_")
 
         while sanitized_dataset.startswith(("-", "_", "+", ".")):
@@ -486,8 +450,6 @@ class DocumentPublisher:
 
     async def _publish_queue_timer(self):
         """Publish queue timer."""
-        from elasticsearch7 import TransportError
-
         LOGGER.debug(
             "Starting publish timer: executes every %i seconds.",
             self._publish_frequency,
@@ -496,30 +458,27 @@ class DocumentPublisher:
         self.publish_active = True
 
         next_publish = time.monotonic() + self._publish_frequency
+
         while self.publish_active:
             try:
                 time_to_publish = next_publish <= time.monotonic()
 
-                can_publish = not self._gateway.active_connection_error
+                can_publish = self._gateway.active
 
-                should_publish = (
-                    self._has_entries_to_publish()
-                    or self._publish_mode == PUBLISH_MODE_ALL
-                )
+                should_publish = self._has_entries_to_publish() or self._publish_mode == PUBLISH_MODE_ALL
 
                 if time_to_publish and can_publish and should_publish:
                     try:
                         await self.async_do_publish()
                     finally:
                         next_publish = time.monotonic() + self._publish_frequency
-            except TransportError as transport_error:
+            except (TransportError7, TransportError8) as transport_error:
                 # Do not spam the logs with connection errors if we already know there is a problem.
-                if not self._gateway.active_connection_error:
+                if not self._gateway.active:
                     LOGGER.exception(
-                        "Connection error during publish queue handling. Publishing will be paused until connection is fixed. %s",
+                        "Cannot publish to an inactive connection: %s",
                         transport_error,
                     )
-                    self._gateway.notify_of_connection_error()
             except Exception as err:
                 LOGGER.exception("Error during publish queue handling %s", err)
             finally:
@@ -531,13 +490,7 @@ class DocumentPublisher:
         duplicate_entries = {}
 
         for action in actions:
-            key = (
-                action["_source"]["@timestamp"]
-                + "_"
-                + action["_source"]["hass.entity"]["domain"]
-                + "."
-                + action["_source"]["hass.object_id"]
-            )
+            key = action["_source"]["@timestamp"] + "_" + action["_source"]["hass.entity"]["domain"] + "." + action["_source"]["hass.object_id"]
 
             if key in duplicate_entries:
                 old_action = duplicate_entries[key]

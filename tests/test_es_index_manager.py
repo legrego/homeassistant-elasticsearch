@@ -19,7 +19,9 @@ from custom_components.elasticsearch.const import (
     LEGACY_TEMPLATE_NAME,
 )
 from custom_components.elasticsearch.errors import ElasticException
-from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
+from custom_components.elasticsearch.es_gateway import (
+    Elasticsearch7Gateway,
+)
 from custom_components.elasticsearch.es_index_manager import IndexManager
 from tests.test_util.aioclient_mock_utils import (
     extract_es_ilm_template_requests,
@@ -62,13 +64,13 @@ async def legacy_index_manager(hass: HomeAssistant, data, options):
 
     mock_entry.add_to_hass(hass)
 
-    gateway = ElasticsearchGateway(hass=hass, config_entry=mock_entry)
+    gateway = Elasticsearch7Gateway(hass=hass, config_entry=mock_entry)
 
     index_manager = IndexManager(hass=hass, config_entry=mock_entry, gateway=gateway)
 
     yield index_manager
 
-    await gateway.async_stop_gateway()
+    await gateway.close()
 
 
 @pytest.fixture()
@@ -92,13 +94,13 @@ async def modern_index_manager(hass: HomeAssistant, data, options):
 
     mock_entry.add_to_hass(hass)
 
-    gateway = ElasticsearchGateway(hass=hass, config_entry=mock_entry)
+    gateway = Elasticsearch7Gateway(hass=hass, config_entry=mock_entry)
 
     index_manager = IndexManager(hass=hass, config_entry=mock_entry, gateway=gateway)
 
     yield index_manager
 
-    await gateway.async_stop_gateway()
+    await gateway.close()
 
 
 @pytest.mark.asyncio

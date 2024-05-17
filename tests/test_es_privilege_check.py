@@ -15,7 +15,9 @@ from custom_components.elasticsearch.config_flow import (
     build_new_options,
 )
 from custom_components.elasticsearch.errors import CannotConnect, InsufficientPrivileges
-from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
+from custom_components.elasticsearch.es_gateway import (
+    Elasticsearch7Gateway,
+)
 from custom_components.elasticsearch.es_privilege_check import ESPrivilegeCheck
 from tests.test_util.es_startup_mocks import mock_es_initialization
 
@@ -40,7 +42,7 @@ async def test_bad_connection(
         title="ES Config",
     )
 
-    gateway = ElasticsearchGateway(config_entry=mock_entry)
+    gateway = Elasticsearch7Gateway(config_entry=mock_entry)
     await gateway.async_init()
 
     es_aioclient_mock.clear_requests()
@@ -51,7 +53,7 @@ async def test_bad_connection(
     with pytest.raises(CannotConnect):
         await instance.check_privileges()
 
-    await gateway.async_stop_gateway()
+    await gateway.close()
 
 
 @pytest.mark.asyncio
@@ -78,7 +80,7 @@ async def test_successful_modern_privilege_check(
         title="ES Config",
     )
 
-    gateway = ElasticsearchGateway(config_entry=mock_entry)
+    gateway = Elasticsearch7Gateway(config_entry=mock_entry)
     await gateway.async_init()
 
     instance = ESPrivilegeCheck(gateway=gateway, config_entry=mock_entry)
@@ -88,7 +90,7 @@ async def test_successful_modern_privilege_check(
     result = await instance.enforce_privileges()
     assert result is None
 
-    await gateway.async_stop_gateway()
+    await gateway.close()
 
 
 @pytest.mark.asyncio
@@ -119,7 +121,7 @@ async def test_successful_modern_privilege_check_missing_index_privilege(
         title="ES Config",
     )
 
-    gateway = ElasticsearchGateway(config_entry=mock_entry)
+    gateway = Elasticsearch7Gateway(config_entry=mock_entry)
     await gateway.async_init()
 
     instance = ESPrivilegeCheck(gateway=gateway, config_entry=mock_entry)
@@ -133,7 +135,7 @@ async def test_successful_modern_privilege_check_missing_index_privilege(
     with pytest.raises(InsufficientPrivileges):
         await instance.enforce_privileges()
 
-    await gateway.async_stop_gateway()
+    await gateway.close()
 
 
 @pytest.mark.asyncio
@@ -160,14 +162,14 @@ async def test_successful_legacy_privilege_check(
         title="ES Config",
     )
 
-    gateway = ElasticsearchGateway(config_entry=mock_entry)
+    gateway = Elasticsearch7Gateway(config_entry=mock_entry)
     await gateway.async_init()
 
     instance = ESPrivilegeCheck(gateway=gateway, config_entry=mock_entry)
     result = await instance.check_privileges()
     assert result.has_all_requested
 
-    await gateway.async_stop_gateway()
+    await gateway.close()
 
 
 @pytest.mark.asyncio
@@ -196,7 +198,7 @@ async def test_successful_legacy_privilege_check_missing_index_privilege(
         title="ES Config",
     )
 
-    gateway = ElasticsearchGateway(mock_entry)
+    gateway = Elasticsearch7Gateway(mock_entry)
     await gateway.async_init()
 
     instance = ESPrivilegeCheck(gateway=gateway, config_entry=mock_entry)
@@ -208,7 +210,7 @@ async def test_successful_legacy_privilege_check_missing_index_privilege(
     with pytest.raises(InsufficientPrivileges):
         await instance.enforce_privileges()
 
-    await gateway.async_stop_gateway()
+    await gateway.close()
 
 
 @pytest.mark.asyncio
@@ -237,14 +239,14 @@ async def test_enforce_auth_failure(
         title="ES Config",
     )
 
-    gateway = ElasticsearchGateway(config_entry=mock_entry)
+    gateway = Elasticsearch7Gateway(config_entry=mock_entry)
     await gateway.async_init()
 
     instance = ESPrivilegeCheck(gateway=gateway, config_entry=mock_entry)
     with pytest.raises(InsufficientPrivileges):
         await instance.enforce_privileges()
 
-    await gateway.async_stop_gateway()
+    await gateway.close()
 
 
 @pytest.mark.asyncio
@@ -271,7 +273,7 @@ async def test_enforce_auth_success(
         title="ES Config",
     )
 
-    gateway = ElasticsearchGateway(mock_entry)
+    gateway = Elasticsearch7Gateway(mock_entry)
     await gateway.async_init()
 
     instance = ESPrivilegeCheck(gateway=gateway, config_entry=mock_entry)
@@ -280,4 +282,4 @@ async def test_enforce_auth_success(
     result = await instance.enforce_privileges()
     assert result is None
 
-    await gateway.async_stop_gateway()
+    await gateway.close()
