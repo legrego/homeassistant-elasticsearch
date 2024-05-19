@@ -58,24 +58,32 @@ def mock_es_initialization(
 
     if mock_serverless_version:
         aioclient_mock.get(url, status=200, json=CLUSTER_INFO_SERVERLESS_RESPONSE_BODY)
+        aioclient_mock.request(url=url, method="HEAD", status=200)
     elif mock_unsupported_version:
         aioclient_mock.get(url, status=200, json=CLUSTER_INFO_UNSUPPORTED_RESPONSE_BODY)
+        aioclient_mock.request(url=url, method="HEAD", status=200)
     elif mock_authentication_error:
         aioclient_mock.get(url, status=401, json={"error": "unauthorized"})
     elif mock_connection_error:
         aioclient_mock.get(url, status=500, json={"error": "idk"})
     elif mock_v811_cluster:
         aioclient_mock.get(url, status=200, json=CLUSTER_INFO_8DOT11_RESPONSE_BODY)
+        aioclient_mock.request(url=url, method="HEAD", status=200)
     elif mock_v88_cluster:
         aioclient_mock.get(url, status=200, json=CLUSTER_INFO_8DOT8_RESPONSE_BODY)
+        aioclient_mock.request(url=url, method="HEAD", status=200)
     elif mock_v80_cluster:
         aioclient_mock.get(url, status=200, json=CLUSTER_INFO_8DOT0_RESPONSE_BODY)
+        aioclient_mock.request(url=url, method="HEAD", status=200)
     elif mock_v711_cluster:
         aioclient_mock.get(url, status=200, json=CLUSTER_INFO_7DOT11_RESPONSE_BODY)
+        aioclient_mock.request(url=url, method="HEAD", status=200)
     elif mock_v717_cluster:
         aioclient_mock.get(url, status=200, json=CLUSTER_INFO_7DOT17_RESPONSE_BODY)
+        aioclient_mock.request(url=url, method="HEAD", status=200)
     else:
         aioclient_mock.get(url, status=200, json=CLUSTER_INFO_RESPONSE_BODY)
+        aioclient_mock.request(url=url, method="HEAD", status=200)
 
     aioclient_mock.post(url + "/_bulk", status=200, json={"items": []})
 
@@ -315,8 +323,7 @@ def mock_es_initialization(
 
     if mock_mapping_dynamic_strict:
         aioclient_mock.get(
-            url
-            + f"/{DATASTREAM_TYPE + "-" + DATASTREAM_DATASET_PREFIX + ".*" + "/_mapping"}",
+            url + f"/{DATASTREAM_TYPE + "-" + DATASTREAM_DATASET_PREFIX + ".*" + "/_mapping"}",
             status=200,
             headers={"content-type": CONTENT_TYPE_JSON},
             json={
@@ -328,16 +335,14 @@ def mock_es_initialization(
             },
         )
         aioclient_mock.put(
-            url
-            + f"/{DATASTREAM_TYPE + "-" + DATASTREAM_DATASET_PREFIX + ".*" + "/_mapping"}",
+            url + f"/{DATASTREAM_TYPE + "-" + DATASTREAM_DATASET_PREFIX + ".*" + "/_mapping"}",
             status=200,
             headers={"content-type": CONTENT_TYPE_JSON},
             json={"hi": "need dummy content"},
         )
     if mock_mapping_dynamic_false:
         aioclient_mock.get(
-            url
-            + f"/{DATASTREAM_TYPE + "-" + DATASTREAM_DATASET_PREFIX + ".*" + "/_mapping"}",
+            url + f"/{DATASTREAM_TYPE + "-" + DATASTREAM_DATASET_PREFIX + ".*" + "/_mapping"}",
             status=200,
             headers={"content-type": CONTENT_TYPE_JSON},
             json={

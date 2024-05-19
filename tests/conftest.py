@@ -157,11 +157,3 @@ def mock_entity_state(hass: HomeAssistant) -> MockEntityState:
 
     state = MockEntityState()
     return state
-
-
-# https://github.com/MatthewFlamm/pytest-homeassistant-custom-component/issues/154#issuecomment-2065081783
-@pytest.hookimpl(trylast=True)
-def pytest_runtest_setup():
-    """Enable socket and allow local connections."""
-    enable_socket()
-    socket_allow_hosts("localhost", allow_unix_socket=True)

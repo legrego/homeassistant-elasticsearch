@@ -54,7 +54,9 @@ addopts = [
   "-vv",
   "-l",
   "--asyncio-mode=auto",
-  "--junitxml=test_results/pytest.xml"
+  "--junitxml=test_results/pytest.xml",
+  "--disable-socket",
+  "--allow-unix-socket"
 ]
 filterwarnings = ["ignore:ssl.PROTOCOL_TLS is deprecated:DeprecationWarning"]
 testpaths = ["tests"]

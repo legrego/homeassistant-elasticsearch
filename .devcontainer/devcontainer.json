@@ -51,6 +51,10 @@
 				"python.testing.pytestEnabled": true,
 				"ruff.format.args": [
 					"--config=./.ruff.toml"
+				],
+				"python.analysis.inlayHints.pytestParameters": true,
+				"python.experiments.optInto": [
+					"pythonTestAdapter"
 				]
 			}
 		}
