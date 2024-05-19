@@ -19,9 +19,7 @@ from tests.test_util.es_startup_mocks import mock_es_initialization
 
 
 @pytest.mark.asyncio
-async def test_serverless_true(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
-):
+async def test_serverless_true(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker):
     """Verify serverless instances are detected."""
 
     es_url = "http://test_serverless_true:9200"
@@ -37,7 +35,7 @@ async def test_serverless_true(
         title="ES Config",
     )
 
-    gateway = Elasticsearch7Gateway(mock_entry)
+    gateway = Elasticsearch7Gateway(**Elasticsearch7Gateway.build_gateway_parameters(hass, mock_entry))
     await gateway.async_init()
 
     assert gateway.es_version.is_serverless() is True
@@ -46,9 +44,7 @@ async def test_serverless_true(
 
 
 @pytest.mark.asyncio
-async def test_serverless_false(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
-):
+async def test_serverless_false(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker):
     """Verify non-serverless instances are detected."""
 
     es_url = "http://test_serverless_false:9200"
@@ -66,7 +62,7 @@ async def test_serverless_false(
 
     mock_entry.add_to_hass(hass)
 
-    gateway = Elasticsearch7Gateway(mock_entry)
+    gateway = Elasticsearch7Gateway(**Elasticsearch7Gateway.build_gateway_parameters(hass, mock_entry))
     await gateway.async_init()
 
     assert gateway.es_version.is_serverless() is False
@@ -75,9 +71,7 @@ async def test_serverless_false(
 
 
 @pytest.mark.asyncio
-async def test_fails_minimum_version(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
-):
+async def test_fails_minimum_version(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker):
     """Verify minimum version function works."""
 
     es_url = "http://test_serverless_false:9200"
@@ -94,7 +88,7 @@ async def test_fails_minimum_version(
 
     mock_entry.add_to_hass(hass)
 
-    gateway = Elasticsearch7Gateway(mock_entry)
+    gateway = Elasticsearch7Gateway(**Elasticsearch7Gateway.build_gateway_parameters(hass, mock_entry))
     await gateway.async_init()
 
     assert gateway.es_version.meets_minimum_version(8, 10) is False
@@ -103,9 +97,7 @@ async def test_fails_minimum_version(
 
 
 @pytest.mark.asyncio
-async def test_passes_minimum_version(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker
-):
+async def test_passes_minimum_version(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker):
     """Verify minimum version function works."""
 
     es_url = "http://test_serverless_false:9200"
@@ -121,7 +113,7 @@ async def test_passes_minimum_version(
         title="ES Config",
     )
 
-    gateway = Elasticsearch7Gateway(mock_entry)
+    gateway = Elasticsearch7Gateway(**Elasticsearch7Gateway.build_gateway_parameters(hass, mock_entry))
     await gateway.async_init()
 
     assert gateway.es_version.meets_minimum_version(7, 10) is True
