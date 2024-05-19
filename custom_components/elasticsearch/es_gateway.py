@@ -9,7 +9,7 @@ from elasticsearch8._async.client import AsyncElasticsearch as AsyncElasticsearc
 from elasticsearch8._async.client import AsyncElasticsearch as AsyncElasticsearch8
 from homeassistant.core import HomeAssistant
 
-from .const import CONF_SSL_CA_PATH
+from .const import ES_CHECK_PERMISSIONS_DATASTREAM
 from .errors import (
     InsufficientPrivileges,
     UnsupportedVersion,
@@ -172,17 +172,19 @@ class ElasticsearchGateway(ABC):
         """Non-I/O bound init."""
 
         self._hass = hass
-        self._client = self._create_es_client(self._client_args)
-        self._client_args = self._create_es_client_args(url, username, password, api_key, verify_certs, ca_certs, timeout)
+        self._url = url
+        client_args = self._create_es_client_args(
+            url=url, username=username, password=password, api_key=api_key, verify_certs=verify_certs, ca_certs=ca_certs, timeout=timeout
+        )
+        self._client = self._create_es_client(**client_args)
         self._connection_monitor: ConnectionMonitor = None
         self._minimum_privileges = minimum_privileges
 
-    @abstractmethod
     async def async_init(self):
         """I/O bound init."""
 
-        # Perform the connection
-        await self.client.async_init()
+        # Test the connection
+        await self.test()
 
         # if we have minimum privileges, enforce them
         if self._minimum_privileges:
@@ -194,6 +196,21 @@ class ElasticsearchGateway(ABC):
         # Start a new connection monitor
         self._connection_monitor = ConnectionMonitor(self)
         await self._connection_monitor.async_init()
+
+    @classmethod
+    def build_gateway_parameters(self, hass, config_entry):
+        """Build the parameters for the Elasticsearch gateway."""
+        return {
+            "hass": hass,
+            "url": config_entry.data.get("url"),
+            "username": config_entry.data.get("username"),
+            "password": config_entry.data.get("password"),
+            "api_key": config_entry.data.get("api_key"),
+            "verify_certs": config_entry.data.get("verify_certs"),
+            "ca_certs": config_entry.data.get("ca_certs"),
+            "timeout": config_entry.data.get("timeout"),
+            "minimum_privileges": ES_CHECK_PERMISSIONS_DATASTREAM,
+        }
 
     @property
     def client(self):
@@ -222,7 +239,6 @@ class ElasticsearchGateway(ABC):
         """Return the connection monitor."""
         return self._connection_monitor
 
-    @abstractmethod
     async def stop(self):
         """Stop the ES Gateway."""
         LOGGER.debug("Stopping Elasticsearch Gateway")
@@ -233,102 +249,36 @@ class ElasticsearchGateway(ABC):
 
         LOGGER.debug("Elasticsearch Gateway stopped")
 
-    @classmethod
-    async def _test_connection(self, **kwargs):
-        """Test the connection to the Elasticsearch server."""
+    # @classmethod
+    # async def _test_connection(self):
+    #     """Test the connection to the Elasticsearch server."""
 
-        es_client = self._create_es_client(
-            url=url,
-            username=username,
-            password=password,
-            api_key=api_key,
-            verify_certs=verify_certs,
-            ca_certs=ca_certs,
-            timeout=timeout,
-        )
+    #     try:
+    #         # Create an Elasticsearch client
+    #         es_client = await self._create_es_client(**kwargs)
+    #         await self._get_cluster_info(es_client)
 
-        try:
-            result = await self._test_connection_with_es_client(
-                es_client, verify_permissions
-            )
-        finally:
-            if es_client is not None:
-                await es_client.close()
+    #         LOGGER.debug("Connection test to [%s] was successful.", url)
 
-        return result
+    #         return True
 
-    @classmethod
-    async def _test_connection_with_es_client(
-        self,
-        es_client,
-        verify_permissions=None,
-    ):
+    #     except Exception as err:
+    #         LOGGER.debug("Connection test to [%s] failed: %s", url, err)
+
+    #     return False
+
+    async def test(self):
         """Test the connection to the Elasticsearch server."""
         from elasticsearch7 import TransportError
 
-        try:
-            es_client_info = await es_client.info()
+        LOGGER.debug("Testing the connection for [%s].", self._url)
 
-            if verify_permissions is not None:
-                await self._enforce_privileges(es_client, verify_permissions)
+        if not await self._client.ping():
+            LOGGER.debug("Connection test to [%s] failed.", self._url)
+            return False
 
-            es_version = ElasticsearchVersion(es_client)
-            await es_version.async_init()
-
-            if not es_version.is_supported_version():
-                LOGGER.fatal(
-                    "UNSUPPORTED VERSION OF ELASTICSEARCH DETECTED: %s.",
-                    es_version.to_string(),
-                )
-                raise UnsupportedVersion()
-
-            return es_client_info
-        except InsufficientPrivileges as insuff_err:
-            raise insuff_err
-        except TransportError as transport_err:
-            raise convert_es_error(
-                "Connection test failed", transport_err
-            ) from transport_err
-        except Exception as err:
-            raise convert_es_error("Connection test failed", err) from err
-        finally:
-            if es_client is not None:
-                await es_client.close()
-
-    @classmethod
-    async def _enforce_privileges(self, es_client, required_privileges):
-        """Enforce the required privileges."""
-        from elasticsearch7 import TransportError
-
-        try:
-            privilege_response = await es_client.security.has_privileges(
-                body=required_privileges
-            )
-
-            if not privilege_response.get("has_all_requested"):
-                LOGGER.debug("Required privileges are missing.")
-                raise InsufficientPrivileges()
-
-            return privilege_response
-        except TransportError as transport_err:
-            raise convert_es_error(
-                "Error enforcing privileges", transport_err
-            ) from transport_err
-        except Exception as err:
-            raise convert_es_error("Error enforcing privileges", err) from err
-
-    @classmethod
-    def _create_es_client(
-        self, url, username, password, api_key, verify_certs, ca_certs, timeout
-    ):
-        """Construct an instance of the Elasticsearch client."""
-        from elasticsearch7._async.client import AsyncElasticsearch
-
-        es_client_args = self._create_es_client_args(
-            url, username, password, api_key, verify_certs, ca_certs
-        )
-
-        return AsyncElasticsearch(**es_client_args)
+        LOGGER.debug("Connection test to [%s] was successful.", self._url)
+        return True
 
     @classmethod
     def _create_es_client_args(
@@ -362,8 +312,8 @@ class ElasticsearchGateway(ABC):
 
         return args
 
-    @classmethod
-    async def _enforce_privileges(self, es_client, required_privileges):
+    @abstractmethod
+    async def _has_required_privileges(self, required_privileges):
         pass
 
     async def _get_cluster_info(self, es_client) -> dict:
@@ -374,34 +324,21 @@ class ElasticsearchGateway(ABC):
         except Exception as err:
             raise convert_es_error("Connection test failed", err) from err
 
-    def _create_es_client(self, url, username, password, api_key, verify_certs, ca_certs, timeout):
-        pass
-
-    def _create_es_client_args(
-        self,
-        url: str,
-        username: str = None,
-        password: str = None,
-        api_key: str = None,
-        verify_certs: bool = True,
-        ca_certs: str = None,
-        timeout: int = 30,
-    ):
+    @abstractmethod
+    def _create_es_client(self, hosts, username, password, api_key, verify_certs, ca_certs, timeout):
         pass
 
 
 class Elasticsearch8Gateway(ElasticsearchGateway):
     """Encapsulates Elasticsearch operations."""
 
-    client: AsyncElasticsearch8 = None
+    client: AsyncElasticsearch8
 
     @classmethod
-    def _create_es_client(self, url, username, password, api_key, verify_certs, ca_certs, timeout):
+    def _create_es_client(self, **kwargs):
         """Construct an instance of the Elasticsearch client."""
 
-        es_client_args = self._create_es_client_args(url, username, password, api_key, verify_certs, ca_certs)
-
-        return AsyncElasticsearch8(**es_client_args)
+        return AsyncElasticsearch8(**kwargs)
 
     async def _has_required_privileges(self, required_privileges):
         """Enforce the required privileges."""
@@ -420,15 +357,11 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
 class Elasticsearch7Gateway(ElasticsearchGateway):
     """Encapsulates Elasticsearch operations."""
 
-    client: AsyncElasticsearch7 = None
+    client: AsyncElasticsearch7
 
     @classmethod
-    def _create_es_client(self, url, username, password, api_key, verify_certs, ca_certs, timeout):
-        """Construct an instance of the Elasticsearch client."""
-
-        es_client_args = self._create_es_client_args(url, username, password, api_key, verify_certs, ca_certs)
-
-        return AsyncElasticsearch7(**es_client_args)
+    def _create_es_client(self, **kwargs):
+        return AsyncElasticsearch7(**kwargs)
 
     async def _has_required_privileges(self, required_privileges):
         """Enforce the required privileges."""
