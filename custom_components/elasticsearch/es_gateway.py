@@ -9,7 +9,7 @@ from elasticsearch8._async.client import AsyncElasticsearch as AsyncElasticsearc
 from elasticsearch8._async.client import AsyncElasticsearch as AsyncElasticsearch8
 from homeassistant.core import HomeAssistant
 
-from .const import ES_CHECK_PERMISSIONS_DATASTREAM
+from .const import ES_CHECK_PERMISSIONS_DATASTREAM, Capabilities
 from .errors import (
     InsufficientPrivileges,
     UnsupportedVersion,
@@ -167,7 +167,8 @@ class ElasticsearchGateway(ABC):
         verify_certs: bool = True,
         ca_certs: str = None,
         timeout: int = 30,
-        verify_permissions=None,
+        minimum_privileges: dict = None,
+        use_connection_monitor=True,
     ):
         """Non-I/O bound init."""
 
@@ -179,26 +180,61 @@ class ElasticsearchGateway(ABC):
         self._client = self._create_es_client(**client_args)
         self._connection_monitor: ConnectionMonitor = None
         self._minimum_privileges = minimum_privileges
+        self._info = None
+        self._capabilities = None
+        self._use_connection_monitor = use_connection_monitor
 
     async def async_init(self):
         """I/O bound init."""
 
         # Test the connection
-        await self.test()
+        if not await self.test():
+            raise ConnectionError("Connection test failed.")
 
         # if we have minimum privileges, enforce them
-        if self._minimum_privileges:
+        if self._minimum_privileges is not None:
             has_all_privileges = await self._has_required_privileges(self._minimum_privileges)
 
             if not has_all_privileges:
                 raise InsufficientPrivileges()
 
-        # Start a new connection monitor
-        self._connection_monitor = ConnectionMonitor(self)
-        await self._connection_monitor.async_init()
+        self._info = await self._get_cluster_info()
+
+        # Obtain the capabilities of the Elasticsearch instance
+        self._capabilities = self._build_capabilities()
+
+        if self._use_connection_monitor:
+            # Start a new connection monitor
+            self._connection_monitor = ConnectionMonitor(self)
+            await self._connection_monitor.async_init()
+
+    def _build_capabilities(self) -> dict[str, int | bool | str]:
+        def meets_minimum_version(version_info: dict, major: int, minor: int) -> bool:
+            """Determine if this version of ES meets the minimum version requirements."""
+            return version_info[Capabilities.MAJOR] > major or (
+                version_info[Capabilities.MAJOR] == major and version_info[Capabilities.MINOR] >= minor
+            )
+
+        version_info = {
+            Capabilities.MAJOR: int(self._info["version"]["number"].split(".")[0]),
+            Capabilities.MINOR: int(self._info["version"]["number"].split(".")[1]),
+            Capabilities.BUILD_FLAVOR: self._info["version"]["build_flavor"],
+            Capabilities.SERVERLESS: self._info["version"]["build_flavor"] == "serverless",
+            # Capabilities.OSS: self._info["version"]["build_flavor"] == "oss",
+        }
+
+        capabilities = {
+            Capabilities.SUPPORTED: meets_minimum_version(version_info, major=7, minor=11),
+            Capabilities.TIMESERIES_DATASTREAM: meets_minimum_version(version_info, major=8, minor=7),
+            Capabilities.IGNORE_MISSING_COMPONENT_TEMPLATES: meets_minimum_version(version_info, major=8, minor=7),
+            Capabilities.DATASTREAM_LIFECYCLE_MANAGEMENT: meets_minimum_version(version_info, major=8, minor=11),
+            Capabilities.MAX_PRIMARY_SHARD_SIZE: meets_minimum_version(version_info, major=7, minor=13),
+        }
+
+        return {**version_info, **capabilities}
 
     @classmethod
-    def build_gateway_parameters(self, hass, config_entry):
+    def build_gateway_parameters(self, hass, config_entry, minimum_privileges=ES_CHECK_PERMISSIONS_DATASTREAM):
         """Build the parameters for the Elasticsearch gateway."""
         return {
             "hass": hass,
@@ -209,8 +245,17 @@ class ElasticsearchGateway(ABC):
             "verify_certs": config_entry.data.get("verify_certs"),
             "ca_certs": config_entry.data.get("ca_certs"),
             "timeout": config_entry.data.get("timeout"),
-            "minimum_privileges": ES_CHECK_PERMISSIONS_DATASTREAM,
+            "minimum_privileges": minimum_privileges,
         }
+
+    @property
+    def capabilities(self):
+        """Return the underlying ES Capabilities."""
+        return self._capabilities
+
+    def has_capability(self, capability):
+        """Determine if the Elasticsearch instance has the specified capability."""
+        return self.capabilities.get(capability, False)
 
     @property
     def client(self):
@@ -232,6 +277,12 @@ class ElasticsearchGateway(ABC):
     def hass(self) -> HomeAssistant:
         """Return the Home Assistant instance."""
         return self._hass
+
+    # Getter for url
+    @property
+    def url(self) -> HomeAssistant:
+        """Return the Home Assistant instance."""
+        return self._url
 
     # Getter for connection_monitor
     @property
@@ -312,17 +363,17 @@ class ElasticsearchGateway(ABC):
 
         return args
 
-    @abstractmethod
-    async def _has_required_privileges(self, required_privileges):
-        pass
-
-    async def _get_cluster_info(self, es_client) -> dict:
+    async def _get_cluster_info(self) -> dict:
         """Retrieve info about the connected elasticsearch cluster."""
         try:
-            return await es_client.info()
+            return await self._client.info()
 
         except Exception as err:
             raise convert_es_error("Connection test failed", err) from err
+
+    @abstractmethod
+    async def _has_required_privileges(self, required_privileges):
+        pass
 
     @abstractmethod
     def _create_es_client(self, hosts, username, password, api_key, verify_certs, ca_certs, timeout):
