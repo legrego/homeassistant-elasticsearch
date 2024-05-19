@@ -58,3 +58,10 @@ addopts = [
 filterwarnings = ["ignore:ssl.PROTOCOL_TLS is deprecated:DeprecationWarning"]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+
+[tool.ruff]
+# Allow lines to be as long as 120.
+line-length = 150
+
+[tool.mypy]
+strict = true
