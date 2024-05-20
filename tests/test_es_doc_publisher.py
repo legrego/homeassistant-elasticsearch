@@ -636,6 +636,46 @@ class Test_Unit_Tests:
             } == snapshot
 
 
+class Test_Benchmark_Tests:
+    """Benchmark tests for the Elasticsearch Document Publisher."""
+
+    @pytest.fixture(autouse=True)
+    def freeze_time(freezer: FrozenDateTimeFactory):
+        """Do not freeze time, override auto-use fixture."""
+        return
+
+    @pytest.mark.asyncio
+    async def test_publishing_benchmark(
+        self,
+        hass: HomeAssistant,
+        state,
+        initialized_publisher: DocumentPublisher,
+        es_aioclient_mock: AiohttpClientMocker,
+    ):
+        """Benchmark entity publishing."""
+
+        # If processing 500 entities takes more than 1s we have a significant performance degration
+        for i in range(500):
+            entity = MockEntityState(
+                hass=hass,
+                entity_id=f"counter.test_{i}",
+                state=state,
+                attributes={"some_attribute": "tomato"},
+            )
+
+            await entity.add_to_hass()
+
+        start = datetime.now()
+
+        await initialized_publisher.async_do_publish()
+
+        end = datetime.now()
+
+        duration = (end - start).total_seconds()
+
+        assert duration < 1
+
+
 class Test_Integration_Tests:
     """Integration tests for the Elasticsearch Document Publisher."""
 
