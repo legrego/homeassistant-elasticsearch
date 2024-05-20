@@ -6,6 +6,7 @@ from datetime import datetime
 from functools import lru_cache
 from math import isinf
 
+from elasticsearch.es_gateway import Elasticsearch7Gateway
 from homeassistant.components.sun import STATE_ABOVE_HORIZON, STATE_BELOW_HORIZON
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
@@ -26,7 +27,6 @@ from pytz import utc
 
 from custom_components.elasticsearch.const import CONF_TAGS, PUBLISH_REASON_POLLING
 from custom_components.elasticsearch.entity_details import EntityDetails
-from custom_components.elasticsearch.es_serializer import get_serializer
 from custom_components.elasticsearch.logger import LOGGER
 from custom_components.elasticsearch.system_info import SystemInfo
 
@@ -41,7 +41,7 @@ class DocumentCreator:
         self._entity_details = EntityDetails(hass)
         self._static_v1doc_properties: dict | None = None
         self._static_v2doc_properties: dict | None = None
-        self._serializer = get_serializer()
+        self._serializer = Elasticsearch7Gateway._new_encoder()
         self._system_info: SystemInfo = SystemInfo(hass)
         self._hass = hass
 
@@ -139,9 +139,7 @@ class DocumentCreator:
                     key,
                     state.entity_id,
                 )
-            attributes[key] = (
-                self._serializer.dumps(value) if should_serialize else value
-            )
+            attributes[key] = self._serializer.dumps(value) if should_serialize else value
 
         return attributes
 
@@ -175,11 +173,7 @@ class DocumentCreator:
             "class": entity_capabilities.get("state_class"),
         }
 
-        entity_additions = {
-            k: str(v)
-            for k, v in entity_additions.items()
-            if (v is not None and v != "None")
-        }
+        entity_additions = {k: str(v) for k, v in entity_additions.items() if (v is not None and v != "None")}
 
         device = entity_details.device
         device_floor = entity_details.device_floor
@@ -197,11 +191,7 @@ class DocumentCreator:
             "area.name": device_area.name if device_area else None,
         }
 
-        device_additions = {
-            k: str(v)
-            for k, v in device_additions.items()
-            if (v is not None and v != "None")
-        }
+        device_additions = {k: str(v) for k, v in device_additions.items() if (v is not None and v != "None")}
 
         return {**entity_additions, "device": {**device_additions}}
 
@@ -240,11 +230,7 @@ class DocumentCreator:
         if isinstance(_state, str) and self.try_state_as_boolean(state):
             additions["valueas"]["boolean"] = self.state_as_boolean(state)
 
-        elif (
-            isinstance(_state, str)
-            and self.try_state_as_number(state)
-            and self.is_valid_number(state_helper.state_as_number(state))
-        ):
+        elif isinstance(_state, str) and self.try_state_as_number(state) and self.is_valid_number(state_helper.state_as_number(state)):
             additions["valueas"]["float"] = state_helper.state_as_number(state)
 
         elif isinstance(_state, str) and self.try_state_as_datetime(state):
@@ -305,9 +291,7 @@ class DocumentCreator:
 
         return additions
 
-    def state_to_document(
-        self, state: State, time: datetime, reason: str, version: int = 2
-    ) -> dict:
+    def state_to_document(self, state: State, time: datetime, reason: str, version: int = 2) -> dict:
         """Convert entity state to ES document."""
 
         if time.tzinfo is None:
@@ -351,10 +335,7 @@ class DocumentCreator:
             },
         }
 
-        if (
-            self._static_v1doc_properties is None
-            or self._static_v2doc_properties is None
-        ):
+        if self._static_v1doc_properties is None or self._static_v2doc_properties is None:
             LOGGER.warning(
                 "Event for entity [%s] is missing static doc properties. This is a bug.",
                 state.entity_id,
@@ -380,11 +361,7 @@ class DocumentCreator:
     def normalize_attribute_name(self, attribute_name: str) -> str:
         """Create an ECS-compliant version of the provided attribute name."""
         # Normalize to closest ASCII equivalent where possible
-        normalized_string = (
-            unicodedata.normalize("NFKD", attribute_name)
-            .encode("ascii", "ignore")
-            .decode()
-        )
+        normalized_string = unicodedata.normalize("NFKD", attribute_name).encode("ascii", "ignore").decode()
 
         # Replace all non-word characters with an underscore
         replaced_string = re.sub(r"[\W]+", "_", normalized_string)

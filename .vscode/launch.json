@@ -22,7 +22,8 @@
             "module": "pytest",
             "console": "integratedTerminal",
             "args": [
-                "tests"
+                "tests",
+                "--continue-on-collection-errors"
             ]
         },
         {

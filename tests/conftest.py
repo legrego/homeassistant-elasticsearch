@@ -25,7 +25,6 @@ import pytest
 from homeassistant.core import HomeAssistant, State
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
-from pytest_socket import enable_socket, socket_allow_hosts
 
 pytest_plugins = "pytest_homeassistant_custom_component"
 
