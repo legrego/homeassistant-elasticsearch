@@ -321,6 +321,40 @@ async def test_state_to_attributes(
 
 
 @pytest.mark.asyncio
+async def test_state_to_attributes_skipping(
+    hass: HomeAssistant, document_creator: DocumentCreator
+):
+    """Test state to attribute doc component creation."""
+
+    class CustomAttributeClass:
+        def __init__(self) -> None:
+            self.field = "This class should be skipped, as it cannot be serialized."
+            pass
+
+    testAttributes = {
+        "string": "abc123",
+        "friendly_name": "tomato",
+        "entity_picture": "tomato",
+        "icon": "tomato",
+        "device_class": "tomato",
+        "state_class": "tomato",
+        "unit_of_measurement": "tomato",
+    }
+
+    state = MockEntityState(
+        hass, entity_id="test.test_1", state="2", attributes=testAttributes
+    )
+
+    attributes = document_creator._state_to_attributes(state)
+
+    expected = {
+        "string": "abc123",
+    }
+
+    assert diff(attributes, expected) == {}
+
+
+@pytest.mark.asyncio
 async def test_state_to_value_v1(
     hass: HomeAssistant, document_creator: DocumentCreator
 ):

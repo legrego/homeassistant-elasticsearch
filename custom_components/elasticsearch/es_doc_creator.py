@@ -31,6 +31,14 @@ from custom_components.elasticsearch.logger import LOGGER
 from custom_components.elasticsearch.system_info import SystemInfo
 
 ALLOWED_ATTRIBUTE_TYPES = tuple | dict | set | list | int | float | bool | str | None
+SKIP_ATTRIBUTES = [
+    "friendly_name",
+    "entity_picture",
+    "icon",
+    "device_class",
+    "state_class",
+    "unit_of_measurement",
+]
 
 
 class DocumentCreator:
@@ -105,6 +113,9 @@ class DocumentCreator:
                     orig_key if isinstance(orig_key, str) else f"type:{type(orig_key)}",
                     state.entity_id,
                 )
+                continue
+
+            if orig_key in SKIP_ATTRIBUTES:
                 continue
 
             key = self.normalize_attribute_name(orig_key)
