@@ -8,12 +8,12 @@ readme = "README.md"
 packages = [{ include = "elasticsearch", from = "custom_components" }]
 
 [tool.poetry.dependencies]
-python = ">=3.11,<3.13"
+python = ">=3.12,<3.13"
 elasticsearch7 = "~=7.11.0"
 
 [tool.poetry.group.dev.dependencies]
 colorlog = "==6.8.2"
-homeassistant = "==2024.1.2"
+homeassistant = "==2024.4.0"
 ruff = ">=0.0.291"
 pip = ">=21.0,<24.1"
 
@@ -25,7 +25,7 @@ syrupy = ">=4.6.0"
 pytest = ">=7.3.1"
 pytest-asyncio = ">=0.20.3"
 pytest-cov = ">=4.0.0"
-pytest-homeassistant-custom-component = "==0.13.88"
+pytest-homeassistant-custom-component = "==0.13.111"
 jsondiff = "*"
 
 

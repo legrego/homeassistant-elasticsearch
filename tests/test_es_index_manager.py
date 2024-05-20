@@ -24,6 +24,7 @@ from custom_components.elasticsearch.es_index_manager import IndexManager
 from tests.test_util.aioclient_mock_utils import (
     extract_es_ilm_template_requests,
     extract_es_legacy_index_template_requests,
+    extract_es_modern_index_mapping_requests,
     extract_es_modern_index_template_requests,
 )
 from tests.test_util.es_startup_mocks import mock_es_initialization
@@ -116,6 +117,7 @@ async def test_esserverless_datastream_setup(
         es_url,
         mock_serverless_version=True,
         mock_modern_template_setup=True,
+        mock_mapping_dynamic_false=True,
     )
 
     assert len(extract_es_modern_index_template_requests(es_aioclient_mock)) == 0
@@ -155,6 +157,7 @@ async def test_es811_datastream_setup(
         mock_v811_cluster=True,
         mock_ilm_setup=True,
         mock_modern_template_setup=True,
+        mock_mapping_dynamic_false=True,
     )
 
     assert len(extract_es_modern_index_template_requests(es_aioclient_mock)) == 0
@@ -216,6 +219,7 @@ async def test_es88_datastream_setup(
         mock_ilm_setup=True,
         ilm_policy_name=DATASTREAM_METRICS_ILM_POLICY_NAME,
         mock_modern_template_setup=True,
+        mock_mapping_dynamic_false=True,
     )
 
     assert len(extract_es_modern_index_template_requests(es_aioclient_mock)) == 0
@@ -286,6 +290,7 @@ async def test_es80_datastream_setup(
         mock_ilm_setup=True,
         ilm_policy_name=DATASTREAM_METRICS_ILM_POLICY_NAME,
         mock_modern_template_setup=True,
+        mock_mapping_dynamic_false=True,
     )
 
     assert len(extract_es_modern_index_template_requests(es_aioclient_mock)) == 0
@@ -355,6 +360,7 @@ async def test_es717_datastream_setup(
         mock_ilm_setup=True,
         ilm_policy_name=DATASTREAM_METRICS_ILM_POLICY_NAME,
         mock_modern_template_setup=True,
+        mock_mapping_dynamic_false=True,
     )
 
     assert len(extract_es_modern_index_template_requests(es_aioclient_mock)) == 0
@@ -422,6 +428,7 @@ async def test_es711_datastream_setup(
         mock_ilm_setup=True,
         ilm_policy_name=DATASTREAM_METRICS_ILM_POLICY_NAME,
         mock_modern_template_setup=True,
+        mock_mapping_dynamic_false=True,
     )
 
     assert len(extract_es_modern_index_template_requests(es_aioclient_mock)) == 0
@@ -576,6 +583,7 @@ async def test_modern_index_mode_update(
         mock_v811_cluster=True,
         mock_modern_template_setup=False,
         mock_modern_template_update=True,
+        mock_mapping_dynamic_false=True,
     )
 
     await modern_index_manager._gateway.async_init()
@@ -615,7 +623,7 @@ async def test_modern_index_mode_error(
     )
     await modern_index_manager._gateway.async_init()
 
-    with pytest.raises(ElasticsearchException):
+    with pytest.raises(ElasticException):
         await modern_index_manager.async_setup()
 
     # ILM setup occurs before our index template creation error
@@ -671,3 +679,73 @@ async def test_legacy_index_mode_error(
 
     # ILM Setup occurs before the index creation fails
     assert len(extract_es_ilm_template_requests(es_aioclient_mock)) == 1
+
+
+@pytest.mark.asyncio
+async def test_datastream_dynamic_mode_migration(
+    hass: HomeAssistant,
+    es_aioclient_mock: AiohttpClientMocker,
+    modern_index_manager,
+):
+    """Test for dynamic mode migration."""
+
+    es_url = "http://localhost:9200"
+
+    mock_es_initialization(
+        es_aioclient_mock,
+        es_url,
+        mock_serverless_version=True,
+        mock_modern_template_setup=True,
+        mock_mapping_dynamic_strict=True,
+    )
+
+    modern_mapping_requests = extract_es_modern_index_mapping_requests(
+        es_aioclient_mock
+    )
+
+    assert len(modern_mapping_requests) == 0
+    await modern_index_manager._gateway.async_init()
+    await modern_index_manager.async_setup()
+
+    modern_mapping_requests = extract_es_modern_index_mapping_requests(
+        es_aioclient_mock
+    )
+
+    assert len(modern_mapping_requests) == 1
+
+    assert modern_mapping_requests[0].method == "PUT"
+    assert modern_mapping_requests[0].url.path == "/metrics-homeassistant.*/_mapping"
+    assert modern_mapping_requests[0].data == [{"dynamic": "false"}]
+
+
+@pytest.mark.asyncio
+async def test_datastream_dynamic_mode_migration_skip(
+    hass: HomeAssistant,
+    es_aioclient_mock: AiohttpClientMocker,
+    modern_index_manager,
+):
+    """Test for dynamic mode migration."""
+
+    es_url = "http://localhost:9200"
+
+    mock_es_initialization(
+        es_aioclient_mock,
+        es_url,
+        mock_serverless_version=True,
+        mock_modern_template_setup=True,
+        mock_mapping_dynamic_false=True,
+    )
+
+    modern_mapping_requests = extract_es_modern_index_mapping_requests(
+        es_aioclient_mock
+    )
+
+    assert len(modern_mapping_requests) == 0
+    await modern_index_manager._gateway.async_init()
+    await modern_index_manager.async_setup()
+
+    modern_mapping_requests = extract_es_modern_index_mapping_requests(
+        es_aioclient_mock
+    )
+
+    assert len(modern_mapping_requests) == 0

@@ -4,7 +4,7 @@
     ],
     "template": {
         "mappings": {
-            "dynamic": "strict",
+            "dynamic": "false",
             "dynamic_templates": [
                 {
                     "hass_entity_attributes": {
@@ -62,6 +62,17 @@
                                     "type": "object",
                                     "dynamic": true
                                 },
+                                "floor": {
+                                    "type": "object",
+                                    "properties": {
+                                        "id": {
+                                            "type": "keyword"
+                                        },
+                                        "name": {
+                                            "type": "keyword"
+                                        }
+                                    }
+                                },
                                 "geo": {
                                     "type": "object",
                                     "properties": {
@@ -117,6 +128,15 @@
                                 "platform": {
                                     "type": "keyword"
                                 },
+                                "unit_of_measure": {
+                                    "type": "keyword"
+                                },
+                                "class": {
+                                    "type": "keyword"
+                                },
+                                "labels": {
+                                    "type": "keyword"
+                                },
                                 "area": {
                                     "type": "object",
                                     "properties": {
@@ -137,7 +157,24 @@
                                         "name": {
                                             "type": "keyword"
                                         },
+                                        "class": {
+                                            "type": "keyword"
+                                        },
+                                        "labels": {
+                                            "type": "keyword"
+                                        },
                                         "area": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "keyword"
+                                                },
+                                                "name": {
+                                                    "type": "keyword"
+                                                }
+                                            }
+                                        },
+                                        "floor": {
                                             "type": "object",
                                             "properties": {
                                                 "id": {

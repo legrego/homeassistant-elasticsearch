@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/vscode/devcontainers/python:0-3.11-bullseye
+FROM mcr.microsoft.com/vscode/devcontainers/python:3.12-bookworm
 
 RUN apt-get update && apt-get install -y apt-transport-https gnupg2 procps less curl
 

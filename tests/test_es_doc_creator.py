@@ -216,7 +216,7 @@ async def test_state_as_datetime(
         )
 
 
-async def test_state_to_entity_details(hass: HomeAssistant):
+async def test_state_to_entity_details(hass: HomeAssistant, snapshot: snapshot):
     """Test entity details creation."""
     es_url = "http://localhost:9200"
 
@@ -257,18 +257,10 @@ async def test_state_to_entity_details(hass: HomeAssistant):
 
     document = creator._state_to_entity_details(hass.states.get(entity_id))
 
-    expected = {
-        "area": {"id": "entity_area", "name": "entity area"},
-        "device": {
-            "area": {"id": "device_area", "name": "device area"},
-            "id": device.id,
-            "name": "name",
-        },
-        "name": "My Test Counter",
-        "platform": "counter",
-    }
+    # Delete the id field from the document dict
+    del document["device"]["id"]
 
-    assert document == expected
+    assert document == snapshot
 
 
 @pytest.mark.asyncio

@@ -1,5 +1,6 @@
 """ES Startup Mocks."""
 
+from elasticsearch.const import DATASTREAM_DATASET_PREFIX, DATASTREAM_TYPE
 from homeassistant.const import CONF_URL, CONTENT_TYPE_JSON
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
@@ -36,6 +37,8 @@ def mock_es_initialization(
     mock_index_creation=True,
     mock_health_check=True,
     mock_ilm_setup=True,
+    mock_mapping_dynamic_strict=False,
+    mock_mapping_dynamic_false=False,
     mock_serverless_version=False,
     mock_unsupported_version=False,
     mock_authentication_error=False,
@@ -308,4 +311,40 @@ def mock_es_initialization(
             status=200,
             headers={"content-type": CONTENT_TYPE_JSON},
             json=[{"hi": "need dummy content"}],
+        )
+
+    if mock_mapping_dynamic_strict:
+        aioclient_mock.get(
+            url
+            + f"/{DATASTREAM_TYPE + "-" + DATASTREAM_DATASET_PREFIX + ".*" + "/_mapping"}",
+            status=200,
+            headers={"content-type": CONTENT_TYPE_JSON},
+            json={
+                ".ds-metrics-homeassistant.switch-default-2024.04.05-000002": {
+                    "mappings": {
+                        "dynamic": "strict",
+                    },
+                }
+            },
+        )
+        aioclient_mock.put(
+            url
+            + f"/{DATASTREAM_TYPE + "-" + DATASTREAM_DATASET_PREFIX + ".*" + "/_mapping"}",
+            status=200,
+            headers={"content-type": CONTENT_TYPE_JSON},
+            json={"hi": "need dummy content"},
+        )
+    if mock_mapping_dynamic_false:
+        aioclient_mock.get(
+            url
+            + f"/{DATASTREAM_TYPE + "-" + DATASTREAM_DATASET_PREFIX + ".*" + "/_mapping"}",
+            status=200,
+            headers={"content-type": CONTENT_TYPE_JSON},
+            json={
+                ".ds-metrics-homeassistant.switch-default-2024.04.05-000002": {
+                    "mappings": {
+                        "dynamic": "false",
+                    },
+                }
+            },
         )

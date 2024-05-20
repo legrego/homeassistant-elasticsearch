@@ -8,27 +8,27 @@ jobs:
     runs-on: "ubuntu-latest"
     name: Validate
     steps:
-        - uses: "actions/checkout@v4"
+      - uses: "actions/checkout@v4"
 
-        - name: HACS validation
-          uses: "hacs/action@main"
-          with:
-            category: "integration"
+      - name: HACS validation
+        uses: "hacs/action@main"
+        with:
+          category: "integration"
 
-        - name: Hassfest validation
-          uses: "home-assistant/actions/hassfest@master"
+      - name: Hassfest validation
+        uses: "home-assistant/actions/hassfest@master"
 
   style:
     runs-on: "ubuntu-latest"
     name: Check style formatting
     steps:
-        - uses: "actions/checkout@v4"
-        - uses: "actions/setup-python@v5"
-          with:
-            python-version: "3.x"
-        - run: python3 -m pip install poetry~=1.7
-        - run: poetry install
-        - run: poetry run ./scripts/lint
+      - uses: "actions/checkout@v4"
+      - uses: "actions/setup-python@v5"
+        with:
+          python-version: "3.12"
+      - run: python3 -m pip install poetry~=1.7
+      - run: poetry install
+      - run: poetry run ./scripts/lint
 
   tests:
     runs-on: "ubuntu-latest"
@@ -39,7 +39,7 @@ jobs:
       - name: Setup Python
         uses: "actions/setup-python@v5"
         with:
-          python-version: "3.11"
+          python-version: "3.12"
       - name: Install requirements
         run: python3 -m pip install poetry~=1.7 && poetry install
       - name: Run tests

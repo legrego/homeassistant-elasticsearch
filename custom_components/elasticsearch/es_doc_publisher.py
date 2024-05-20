@@ -75,7 +75,10 @@ class DocumentPublisher:
 
         self._destination_type: str = config_entry.data.get(CONF_INDEX_MODE)
 
-        self.legacy_index_name = config_entry.options.get(CONF_ALIAS) + VERSION_SUFFIX
+        if self._destination_type == INDEX_MODE_LEGACY:
+            self.legacy_index_name = (
+                config_entry.options.get(CONF_ALIAS) + VERSION_SUFFIX
+            )
 
         self._publish_frequency = config_entry.options.get(CONF_PUBLISH_FREQUENCY)
         self._publish_mode = config_entry.options.get(CONF_PUBLISH_MODE)
