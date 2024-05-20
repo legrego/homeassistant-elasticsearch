@@ -7,7 +7,6 @@ from custom_components.elasticsearch.errors import convert_es_error
 from custom_components.elasticsearch.logger import LOGGER
 
 from .const import ES_CHECK_PERMISSIONS_DATASTREAM
-
 from .es_doc_publisher import DocumentPublisher
 from .es_gateway import ElasticsearchGateway
 from .es_index_manager import IndexManager
@@ -44,14 +43,13 @@ class ElasticIntegration:
         """Async init procedure."""
 
         try:
-            await self.gateway.async_init()
-            await self.privilege_check.enforce_privileges()
-            await self.index_manager.async_setup()
-            await self.publisher.async_init()
+            await self._gateway.async_init()
+            await self._index_manager.async_setup()
+            await self._publisher.async_init()
         except Exception as err:
             try:
-                self.publisher.stop_publisher()
-                await self.gateway.async_stop_gateway()
+                self._publisher.stop_publisher()
+                await self._gateway.stop()
             except Exception as shutdown_err:
                 LOGGER.error(
                     "Error shutting down gateway following failed initialization",
@@ -65,8 +63,8 @@ class ElasticIntegration:
     ):  # pylint disable=unused-argument
         """Async shutdown procedure."""
         LOGGER.debug("async_shutdown: starting shutdown")
-        self.publisher.stop_publisher()
-        await self.gateway.async_stop_gateway()
+        self._publisher.stop_publisher()
+        await self._gateway.stop()
         LOGGER.debug("async_shutdown: shutdown complete")
         return True
 
@@ -78,10 +76,11 @@ class ElasticIntegration:
             "username": config_entry.data.get("username"),
             "password": config_entry.data.get("password"),
             "api_key": config_entry.data.get("api_key"),
-            "verify_ssl": config_entry.data.get("verify_ssl"),
+            "verify_certs": config_entry.data.get("verify_ssl"),
             "ca_certs": config_entry.data.get("ca_certs"),
-            "timeout": config_entry.data.get("timeout"),
+            "request_timeout": config_entry.data.get("timeout"),
             "minimum_privileges": ES_CHECK_PERMISSIONS_DATASTREAM,
+            "use_connection_monitor": config_entry.data.get("use_connection_monitor", True),
         }
 
     def build_index_manager_parameters(self, config_entry):
@@ -89,14 +88,9 @@ class ElasticIntegration:
         return {
             "hass": self._hass,
             "config_entry": config_entry,
-            "gateway": self.gateway,
+            "gateway": self._gateway,
         }
 
     def build_publisher_parameters(self, config_entry):
         """Build the parameters for the Elasticsearch document publisher."""
-        return {
-            "hass": self._hass,
-            "config_entry": config_entry,
-            "gateway": self.gateway,
-            "hass": self.hass,
-        }
+        return {"hass": self._hass, "config_entry": config_entry, "gateway": self._gateway}

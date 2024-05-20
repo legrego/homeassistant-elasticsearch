@@ -1,11 +1,11 @@
 """Tests for the Elasticsearch Gateway."""
 
 import asyncio
-import time
 from unittest import mock
 
 import pytest
 from homeassistant.core import HomeAssistant
+from syrupy.extensions.json import JSONSnapshotExtension
 
 from custom_components.elasticsearch.es_gateway import (
     ConnectionMonitor,
@@ -14,16 +14,14 @@ from custom_components.elasticsearch.es_gateway import (
     ElasticsearchGateway,
     InsufficientPrivileges,
 )
-from syrupy.assertion import SnapshotAssertion
-from syrupy.extensions.json import JSONSnapshotExtension
 
 from .const import (
-    CLUSTER_INFO_8DOT0_RESPONSE_BODY,
     CLUSTER_INFO_7DOT11_RESPONSE_BODY,
-    CLUSTER_INFO_UNSUPPORTED_RESPONSE_BODY,
     CLUSTER_INFO_7DOT17_RESPONSE_BODY,
-    CLUSTER_INFO_8DOT11_RESPONSE_BODY,
+    CLUSTER_INFO_8DOT0_RESPONSE_BODY,
     CLUSTER_INFO_8DOT8_RESPONSE_BODY,
+    CLUSTER_INFO_8DOT11_RESPONSE_BODY,
+    CLUSTER_INFO_SERVERLESS_RESPONSE_BODY,
 )
 
 
@@ -100,6 +98,8 @@ class Test_Elasticsearch_Gateway:
         assert uninitialized_gateway._capabilities is not None
         assert uninitialized_gateway._connection_monitor is None
 
+        uninitialized_gateway.stop()
+
     @pytest.mark.asyncio
     @pytest.mark.parametrize("minimum_privileges", [{}])
     async def test_async_init_with_insufficient_privileges(
@@ -114,8 +114,8 @@ class Test_Elasticsearch_Gateway:
         ):
             await uninitialized_gateway.async_init()
 
-        assert uninitialized_gateway._info is None
-        assert uninitialized_gateway._capabilities is None
+        assert uninitialized_gateway._info is not None
+        assert uninitialized_gateway._capabilities is not None
         assert uninitialized_gateway._connection_monitor is None
 
     @pytest.mark.asyncio
@@ -126,7 +126,7 @@ class Test_Elasticsearch_Gateway:
         async_test_result.set_result(True)
 
         with (
-            mock.patch.object(initialized_gateway._client, "ping", return_value=async_test_result),
+            mock.patch.object(initialized_gateway, "_get_cluster_info", return_value=async_test_result),
         ):
             assert await initialized_gateway.test()
 
@@ -134,16 +134,14 @@ class Test_Elasticsearch_Gateway:
     async def test_test_failed(hass: HomeAssistant, initialized_gateway: ElasticsearchGateway):
         """Test the gateway connection test function for failure."""
 
-        async_test_result = asyncio.Future()
-        async_test_result.set_result(False)
-
         with (
-            mock.patch.object(initialized_gateway._client, "ping", return_value=async_test_result),
+            mock.patch.object(initialized_gateway, "_get_cluster_info", side_effect=Exception("Info Failed")),
         ):
             assert not await initialized_gateway.test()
 
     @pytest.mark.parametrize("minimum_privileges", [None, {}])
     async def test_build_gateway_parameters(hass: HomeAssistant, minimum_privileges: dict | None):
+        """Test build_gateway_parameters."""
         hass = mock.Mock()
         config_entry = mock.Mock()
         config_entry.data = {
@@ -154,6 +152,7 @@ class Test_Elasticsearch_Gateway:
             "ca_certs": "/path/to/ca_certs",
             "timeout": 30,
         }
+        """ Test build_gateway_parameters."""
 
         parameters = ElasticsearchGateway.build_gateway_parameters(hass=hass, config_entry=config_entry, minimum_privileges=minimum_privileges)
 
@@ -163,32 +162,34 @@ class Test_Elasticsearch_Gateway:
         assert parameters["password"] == "password"
         assert parameters["verify_certs"] is True
         assert parameters["ca_certs"] == "/path/to/ca_certs"
-        assert parameters["timeout"] == 30
+        assert parameters["request_timeout"] == 30
         assert parameters["minimum_privileges"] == minimum_privileges
 
     @pytest.mark.parametrize(
-        "cluster_info",
+        "name, cluster_info",
         [
-            CLUSTER_INFO_UNSUPPORTED_RESPONSE_BODY,
-            CLUSTER_INFO_7DOT11_RESPONSE_BODY,
-            CLUSTER_INFO_7DOT17_RESPONSE_BODY,
-            CLUSTER_INFO_8DOT0_RESPONSE_BODY,
-            CLUSTER_INFO_8DOT8_RESPONSE_BODY,
-            CLUSTER_INFO_8DOT11_RESPONSE_BODY,
+            ("7DOT11_CAPABILITIES", CLUSTER_INFO_7DOT11_RESPONSE_BODY),
+            ("7DOT17_CAPABILITIES", CLUSTER_INFO_7DOT17_RESPONSE_BODY),
+            ("8DOT0_CAPABILITIES", CLUSTER_INFO_8DOT0_RESPONSE_BODY),
+            ("8DOT8_CAPABILITIES", CLUSTER_INFO_8DOT8_RESPONSE_BODY),
+            ("8DOT11_CAPABILITIES", CLUSTER_INFO_8DOT11_RESPONSE_BODY),
+            ("SERVERLESS_CAPABILITIES", CLUSTER_INFO_SERVERLESS_RESPONSE_BODY),
         ],
     )
-    async def test_capabilities(hass: HomeAssistant, uninitialized_gateway: ElasticsearchGateway, cluster_info: dict):
+    async def test_capabilities(hass: HomeAssistant, uninitialized_gateway: ElasticsearchGateway, name: str, cluster_info: dict, snapshot):
+        """Test capabilities."""
         with (
-            mock.patch.object(uninitialized_gateway, "_get_cluster_info", return_value=CLUSTER_INFO_8DOT0_RESPONSE_BODY),
+            mock.patch.object(uninitialized_gateway, "_get_cluster_info", return_value=cluster_info),
             mock.patch.object(uninitialized_gateway, "test", return_value=True),
         ):
             await uninitialized_gateway.async_init()
 
         assert uninitialized_gateway._capabilities is not None
 
-        assert uninitialized_gateway._capabilities == snapshot
+        assert {"name": name, "cluster info": cluster_info, "capabilities": uninitialized_gateway._capabilities} == snapshot
 
     def test_has_capability(hass: HomeAssistant, uninitialized_gateway: ElasticsearchGateway):
+        """Test has_capability."""
         uninitialized_gateway._capabilities = {
             "supported": True,
             "timeseries_datastream": True,
@@ -205,11 +206,19 @@ class Test_Elasticsearch_Gateway:
         assert uninitialized_gateway.has_capability("invalid_capability") is False
 
     def test_client(hass: HomeAssistant, uninitialized_gateway: ElasticsearchGateway):
+        """Test Getter for client."""
         uninitialized_gateway._client = mock.Mock()
 
         assert uninitialized_gateway.client == uninitialized_gateway._client
 
+    def test_connection_monitor(hass: HomeAssistant, uninitialized_gateway: ElasticsearchGateway):
+        """Test Getter for connection_monitor."""
+        uninitialized_gateway._connection_monitor = mock.Mock()
+
+        assert uninitialized_gateway.connection_monitor == uninitialized_gateway._connection_monitor
+
     def test_authentication_type(hass: HomeAssistant, uninitialized_gateway: ElasticsearchGateway):
+        """Test Getter for authentication_type."""
         uninitialized_gateway.username = "admin"
         uninitialized_gateway.password = "password"
         uninitialized_gateway.api_key = None
@@ -229,11 +238,13 @@ class Test_Elasticsearch_Gateway:
         assert uninitialized_gateway.authentication_type == "none"
 
     def test_hass(hass: HomeAssistant, uninitialized_gateway: ElasticsearchGateway):
+        """Test Getter for hass."""
         uninitialized_gateway._hass = mock.Mock()
 
         assert uninitialized_gateway.hass == uninitialized_gateway._hass
 
     def test_url(hass: HomeAssistant, uninitialized_gateway: ElasticsearchGateway):
+        """Test Getter for url."""
         uninitialized_gateway._url = "http://localhost:9200"
 
         assert uninitialized_gateway.url == "http://localhost:9200"
@@ -243,10 +254,14 @@ class Test_Connection_Monitor:
     """Test ConnectionMonitor."""
 
     @pytest.fixture()
-    def connection_monitor(self):
+    async def connection_monitor(self):
         """Return a connection monitor instance."""
         gateway = mock.Mock()
-        return ConnectionMonitor(gateway)
+        connection_monitor = ConnectionMonitor(gateway)
+
+        yield connection_monitor
+
+        await connection_monitor.stop()
 
     async def test_async_init(self):
         """Test async_init."""
@@ -265,7 +280,9 @@ class Test_Connection_Monitor:
         assert monitor.active is True
         assert monitor.task is not None
 
-    def test_active(self):
+        await monitor.stop()
+
+    async def test_active(self):
         """Test active."""
         gateway = mock.Mock()
         monitor = ConnectionMonitor(gateway)
@@ -273,7 +290,9 @@ class Test_Connection_Monitor:
 
         assert monitor.active is True
 
-    def test_previous(self):
+        await monitor.stop()
+
+    async def test_previous(self):
         """Test previous."""
         gateway = mock.Mock()
         monitor = ConnectionMonitor(gateway)
@@ -281,14 +300,18 @@ class Test_Connection_Monitor:
 
         assert monitor.previous is True
 
-    def test_should_test(self):
+        await monitor.stop()
+
+    async def test_should_test(self):
         """Test should_test."""
 
         gateway = mock.Mock()
         monitor = ConnectionMonitor(gateway)
-        monitor._next_test = time.monotonic() - 10
+        monitor._next_test = 0
 
         assert monitor.should_test() is True
+
+        await monitor.stop()
 
     async def test_spin(self):
         """Test spin."""
@@ -322,7 +345,9 @@ class Test_Connection_Monitor:
             assert monitor._previous is True
             assert monitor._active is True
 
-    async def test_test(self):
+        await monitor.stop()
+
+    async def test_test_success(self):
         """Test test."""
         gateway = mock.Mock()
         monitor = ConnectionMonitor(gateway)
@@ -335,6 +360,24 @@ class Test_Connection_Monitor:
             mock.patch.object(gateway, "test", return_value=async_test_result),
         ):
             assert await monitor.test() is True
+
+        await monitor.stop()
+
+    async def test_test_failure(self):
+        """Test test."""
+        gateway = mock.Mock()
+        monitor = ConnectionMonitor(gateway)
+
+        async_test_result = asyncio.Future()
+        async_test_result.set_result(False)
+
+        with (
+            mock.patch.object(monitor, "should_test", return_value=True),
+            mock.patch.object(gateway, "test", return_value=async_test_result),
+        ):
+            assert await monitor.test() is False
+
+        await monitor.stop()
 
     async def test_stop(self):
         """Test stop."""

@@ -69,8 +69,8 @@ ES_CHECK_PERMISSIONS_DATASTREAM = {
 }
 
 
-class Capabilities:
-    """Elasticsearch Capabilities constants."""
+class CAPABILITIES:
+    """Elasticsearch CAPABILITIES constants."""
 
     MAJOR = "MAJOR"
     MINOR = "MINOR"

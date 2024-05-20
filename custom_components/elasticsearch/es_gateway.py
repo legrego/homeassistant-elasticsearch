@@ -4,19 +4,19 @@ import asyncio
 import time
 
 from elasticsearch7 import TransportError as TransportError7
+from elasticsearch7._async.client import AsyncElasticsearch as AsyncElasticsearch7
+from elasticsearch7.serializer import JSONSerializer as JSONSerializer7
 from elasticsearch8 import TransportError as TransportError8
-from elasticsearch8._async.client import AsyncElasticsearch as AsyncElasticsearch7
 from elasticsearch8._async.client import AsyncElasticsearch as AsyncElasticsearch8
+from elasticsearch8.serializer import JSONSerializer as JSONSerializer8
 from homeassistant.core import HomeAssistant
 
-from .const import ES_CHECK_PERMISSIONS_DATASTREAM, Capabilities
+from .const import CAPABILITIES, ES_CHECK_PERMISSIONS_DATASTREAM
 from .errors import (
     InsufficientPrivileges,
     UnsupportedVersion,
     convert_es_error,
 )
-from .es_serializer import get_serializer
-from .es_version import ElasticsearchVersion
 from .logger import LOGGER
 
 
@@ -166,7 +166,7 @@ class ElasticsearchGateway(ABC):
         api_key: str = None,
         verify_certs: bool = True,
         ca_certs: str = None,
-        timeout: int = 30,
+        request_timeout: int = 30,
         minimum_privileges: dict = None,
         use_connection_monitor=True,
     ):
@@ -175,7 +175,13 @@ class ElasticsearchGateway(ABC):
         self._hass = hass
         self._url = url
         client_args = self._create_es_client_args(
-            url=url, username=username, password=password, api_key=api_key, verify_certs=verify_certs, ca_certs=ca_certs, timeout=timeout
+            url=url,
+            username=username,
+            password=password,
+            api_key=api_key,
+            verify_certs=verify_certs,
+            ca_certs=ca_certs,
+            request_timeout=request_timeout,
         )
         self._client = self._create_es_client(**client_args)
         self._connection_monitor: ConnectionMonitor = None
@@ -188,8 +194,17 @@ class ElasticsearchGateway(ABC):
         """I/O bound init."""
 
         # Test the connection
+        self._info = await self._get_cluster_info()
+
         if not await self.test():
             raise ConnectionError("Connection test failed.")
+
+        # Obtain the capabilities of the Elasticsearch instance
+        self._capabilities = self._build_capabilities()
+
+        # Enforce minimum version
+        if self.has_capability(CAPABILITIES.SUPPORTED) is False:
+            raise UnsupportedVersion()
 
         # if we have minimum privileges, enforce them
         if self._minimum_privileges is not None:
@@ -197,11 +212,6 @@ class ElasticsearchGateway(ABC):
 
             if not has_all_privileges:
                 raise InsufficientPrivileges()
-
-        self._info = await self._get_cluster_info()
-
-        # Obtain the capabilities of the Elasticsearch instance
-        self._capabilities = self._build_capabilities()
 
         if self._use_connection_monitor:
             # Start a new connection monitor
@@ -211,24 +221,24 @@ class ElasticsearchGateway(ABC):
     def _build_capabilities(self) -> dict[str, int | bool | str]:
         def meets_minimum_version(version_info: dict, major: int, minor: int) -> bool:
             """Determine if this version of ES meets the minimum version requirements."""
-            return version_info[Capabilities.MAJOR] > major or (
-                version_info[Capabilities.MAJOR] == major and version_info[Capabilities.MINOR] >= minor
+            return version_info[CAPABILITIES.MAJOR] > major or (
+                version_info[CAPABILITIES.MAJOR] == major and version_info[CAPABILITIES.MINOR] >= minor
             )
 
         version_info = {
-            Capabilities.MAJOR: int(self._info["version"]["number"].split(".")[0]),
-            Capabilities.MINOR: int(self._info["version"]["number"].split(".")[1]),
-            Capabilities.BUILD_FLAVOR: self._info["version"]["build_flavor"],
-            Capabilities.SERVERLESS: self._info["version"]["build_flavor"] == "serverless",
-            # Capabilities.OSS: self._info["version"]["build_flavor"] == "oss",
+            CAPABILITIES.MAJOR: int(self._info["version"]["number"].split(".")[0]),
+            CAPABILITIES.MINOR: int(self._info["version"]["number"].split(".")[1]),
+            CAPABILITIES.BUILD_FLAVOR: self._info["version"].get("build_flavor", None),
+            # CAPABILITIES.OSS: self._info["version"]["build_flavor"] == "oss",
         }
 
         capabilities = {
-            Capabilities.SUPPORTED: meets_minimum_version(version_info, major=7, minor=11),
-            Capabilities.TIMESERIES_DATASTREAM: meets_minimum_version(version_info, major=8, minor=7),
-            Capabilities.IGNORE_MISSING_COMPONENT_TEMPLATES: meets_minimum_version(version_info, major=8, minor=7),
-            Capabilities.DATASTREAM_LIFECYCLE_MANAGEMENT: meets_minimum_version(version_info, major=8, minor=11),
-            Capabilities.MAX_PRIMARY_SHARD_SIZE: meets_minimum_version(version_info, major=7, minor=13),
+            CAPABILITIES.SERVERLESS: version_info[CAPABILITIES.BUILD_FLAVOR] == "serverless",
+            CAPABILITIES.SUPPORTED: meets_minimum_version(version_info, major=7, minor=11),
+            CAPABILITIES.TIMESERIES_DATASTREAM: meets_minimum_version(version_info, major=8, minor=7),
+            CAPABILITIES.IGNORE_MISSING_COMPONENT_TEMPLATES: meets_minimum_version(version_info, major=8, minor=7),
+            CAPABILITIES.DATASTREAM_LIFECYCLE_MANAGEMENT: meets_minimum_version(version_info, major=8, minor=11),
+            CAPABILITIES.MAX_PRIMARY_SHARD_SIZE: meets_minimum_version(version_info, major=7, minor=13),
         }
 
         return {**version_info, **capabilities}
@@ -244,7 +254,7 @@ class ElasticsearchGateway(ABC):
             "api_key": config_entry.data.get("api_key"),
             "verify_certs": config_entry.data.get("verify_certs"),
             "ca_certs": config_entry.data.get("ca_certs"),
-            "timeout": config_entry.data.get("timeout"),
+            "request_timeout": config_entry.data.get("timeout"),
             "minimum_privileges": minimum_privileges,
         }
 
@@ -256,6 +266,11 @@ class ElasticsearchGateway(ABC):
     def has_capability(self, capability):
         """Determine if the Elasticsearch instance has the specified capability."""
         return self.capabilities.get(capability, False)
+
+    @property
+    def active(self):
+        """Return the state of the connection_monitor."""
+        return self._connection_monitor.active
 
     @property
     def client(self):
@@ -296,7 +311,7 @@ class ElasticsearchGateway(ABC):
 
         if self.client:
             await self.client.close()
-            self.client = None
+            self._client = None
 
         LOGGER.debug("Elasticsearch Gateway stopped")
 
@@ -324,12 +339,13 @@ class ElasticsearchGateway(ABC):
 
         LOGGER.debug("Testing the connection for [%s].", self._url)
 
-        if not await self._client.ping():
-            LOGGER.debug("Connection test to [%s] failed.", self._url)
+        try:
+            await self._get_cluster_info()
+            LOGGER.debug("Connection test to [%s] was successful.", self._url)
+            return True
+        except Exception as err:
+            LOGGER.debug("Connection test to [%s] failed: %s", self._url, err)
             return False
-
-        LOGGER.debug("Connection test to [%s] was successful.", self._url)
-        return True
 
     @classmethod
     def _create_es_client_args(
@@ -340,7 +356,7 @@ class ElasticsearchGateway(ABC):
         api_key: str = None,
         verify_certs: bool = True,
         ca_certs: str = None,
-        timeout: int = 30,
+        request_timeout: int = 30,
     ):
         """Construct the arguments for the Elasticsearch client."""
         use_basic_auth = username is not None and password is not None
@@ -348,11 +364,11 @@ class ElasticsearchGateway(ABC):
 
         args = {
             "hosts": [url],
-            "serializer": get_serializer(),
+            "serializer": self._new_encoder(),
             "verify_certs": verify_certs,
             "ssl_show_warn": verify_certs,
             "ca_certs": ca_certs,
-            "timeout": timeout,
+            "request_timeout": request_timeout,
         }
 
         if use_basic_auth:
@@ -367,17 +383,22 @@ class ElasticsearchGateway(ABC):
         """Retrieve info about the connected elasticsearch cluster."""
         try:
             return await self._client.info()
-
         except Exception as err:
             raise convert_es_error("Connection test failed", err) from err
 
     @abstractmethod
     async def _has_required_privileges(self, required_privileges):
-        pass
+        pass  # pragma: no cover
 
+    @classmethod
+    @abstractmethod
+    def _new_encoder(self):
+        pass  # pragma: no cover
+
+    @classmethod
     @abstractmethod
     def _create_es_client(self, hosts, username, password, api_key, verify_certs, ca_certs, timeout):
-        pass
+        pass  # pragma: no cover
 
 
 class Elasticsearch8Gateway(ElasticsearchGateway):
@@ -404,6 +425,24 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
         except Exception as err:
             raise convert_es_error("Error enforcing privileges", err) from err
 
+    @classmethod
+    def _new_encoder(self):
+        """Create a new instance of the JSON serializer."""
+
+        class SetEncoder(JSONSerializer8):
+            """JSONSerializer which serializes sets to lists."""
+
+            def default(self, data):
+                """Entry point."""
+                if isinstance(data, set):
+                    output = list(data)
+                    output.sort()
+                    return output
+
+                return JSONSerializer8.default(self, data)
+
+        return SetEncoder()
+
 
 class Elasticsearch7Gateway(ElasticsearchGateway):
     """Encapsulates Elasticsearch operations."""
@@ -427,6 +466,24 @@ class Elasticsearch7Gateway(ElasticsearchGateway):
             return privilege_response
         except Exception as err:
             raise convert_es_error("Error enforcing privileges", err) from err
+
+    @classmethod
+    def _new_encoder(self):
+        """Create a new instance of the JSON serializer."""
+
+        class SetEncoder(JSONSerializer7):
+            """JSONSerializer which serializes sets to lists."""
+
+            def default(self, data):
+                """Entry point."""
+                if isinstance(data, set):
+                    output = list(data)
+                    output.sort()
+                    return output
+
+                return JSONSerializer7.default(self, data)
+
+        return SetEncoder()
 
 
 class ConnectionMonitor:
@@ -543,7 +600,7 @@ class ConnectionMonitor:
 
     async def stop(self) -> None:
         """Stop the connection monitor."""
-        LOGGER.warn("Stopping connection monitor.")
+        LOGGER.warning("Stopping connection monitor.")
 
         if not self.active:
             LOGGER.debug(
@@ -558,4 +615,4 @@ class ConnectionMonitor:
             self._task.cancel()
             self._task = None
 
-        LOGGER.warn("Connection monitor stopped.")
+        LOGGER.warning("Connection monitor stopped.")
