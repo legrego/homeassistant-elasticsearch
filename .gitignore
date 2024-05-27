@@ -18,7 +18,7 @@ site/*
 !.vscode/tasks.json
 coverage.xml
 test_results/*
-
+*.creds
 
 # Home Assistant configuration
 config/*

@@ -442,7 +442,7 @@ class ConnectionMonitor:
             if self._active and not self._previous:
                 self._logger.info("Connection to [%s] has been reestablished.", self.gateway.url)
             elif self._active:
-                self._logger.info("Successfully initialized new connection to [%s].", self.gateway.url)
+                self._logger.debug("Connection test to [%s] was successful.", self.gateway.url)
             else:
                 self._logger.error("Connection to [%s] is currently inactive.", self.gateway.url)
 

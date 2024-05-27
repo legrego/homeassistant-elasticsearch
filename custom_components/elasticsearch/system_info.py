@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from homeassistant.components.hassio import get_host_info
 from homeassistant.core import HomeAssistant
 
-from .logger import LOGGER
+from .logger import logger
 
 
 @dataclass
@@ -46,5 +46,5 @@ class SystemInfo:
                 hostname=hostname,
             )
         except Exception as err:  # pylint disable=broad-exception-caught
-            LOGGER.exception("Error retrieving system info: %s", err)
+            logger.exception("Error retrieving system info: %s", err)
             return None

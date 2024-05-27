@@ -40,7 +40,7 @@ from custom_components.elasticsearch.errors import ElasticException
 from custom_components.elasticsearch.es_doc_publisher import (
     DocumentPublisher,
 )
-from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
+from custom_components.elasticsearch.es_gateway import Elasticsearch7Gateway, ElasticsearchGateway
 from tests.conftest import MockEntityState
 from tests.const import (
     CLUSTER_INFO_8DOT0_RESPONSE_BODY,

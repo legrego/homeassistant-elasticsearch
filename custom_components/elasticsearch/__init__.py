@@ -5,6 +5,8 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 
+from custom_components.elasticsearch.logger import have_child, logger
+
 from .const import (
     CONF_HEALTH_SENSOR_ENABLED,
     CONF_INDEX_MODE,
@@ -17,7 +19,6 @@ from .const import (
 )
 from .errors import AuthenticationRequired, InsufficientPrivileges, UnsupportedVersion
 from .es_integration import ElasticIntegration
-from .logger import LOGGER
 
 
 async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):  # pylint: disable=unused-argument
@@ -38,8 +39,8 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):  
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     """Set up integration via config flow."""
 
-    LOGGER.debug("Setting up integration")
-    init = await _async_init_integration(hass, config_entry)
+    logger.debug("Setting up integration")
+    init = await _async_init_integration(hass=hass, config_entry=config_entry)
     config_entry.add_update_listener(async_config_entry_updated)
     return init
 
@@ -48,7 +49,7 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     """Teardown integration."""
     existing_instance = hass.data.get(DOMAIN)
     if isinstance(existing_instance, ElasticIntegration):
-        LOGGER.debug("Shutting down previous integration")
+        logger.debug("Shutting down previous integration")
         await existing_instance.async_shutdown(config_entry)
         hass.data[DOMAIN] = None
     return True
@@ -56,32 +57,34 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
 async def async_config_entry_updated(hass: HomeAssistant, config_entry: ConfigEntry):
     """Respond to config changes."""
-    LOGGER.debug("Configuration change detected")
-    return await _async_init_integration(hass, config_entry)
+    logger.debug("Configuration change detected")
+    return await _async_init_integration(hass=hass, config_entry=config_entry)
 
 
 async def _async_init_integration(hass: HomeAssistant, config_entry: ConfigEntry):
     """Initialize integration."""
-    await async_unload_entry(hass, config_entry)
+    await async_unload_entry(hass=hass, config_entry=config_entry)
 
-    integration = None
+    logger = have_child(name=config_entry.title)
+    logger.info(f"Initializing integration for {config_entry.title}")
+
     try:
-        integration = ElasticIntegration(hass, config_entry)
+        integration = ElasticIntegration(hass=hass, config_entry=config_entry, log=logger)
         await integration.async_init()
     except UnsupportedVersion as err:
         msg = "Unsupported Elasticsearch version detected"
-        LOGGER.error(msg)
+        logger.error(msg)
         raise ConfigEntryNotReady(msg) from err
     except AuthenticationRequired as err:
         msg = "Missing or invalid credentials"
-        LOGGER.error(msg)
+        logger.error(msg)
         raise ConfigEntryAuthFailed(msg) from err
     except InsufficientPrivileges as err:
-        LOGGER.error("Account does not have sufficient privileges")
+        logger.error("Account does not have sufficient privileges")
         raise ConfigEntryAuthFailed from err
     except Exception as err:  # pylint disable=broad-exception-caught
         msg = "Exception during component initialization"
-        LOGGER.error(msg + ": %s", err)
+        logger.error(msg + ": %s", err)
         raise ConfigEntryNotReady(msg) from err
 
     hass.data[DOMAIN] = integration
@@ -91,7 +94,7 @@ async def _async_init_integration(hass: HomeAssistant, config_entry: ConfigEntry
 
 def migrate_data_and_options_to_version(config_entry: ConfigEntry, desired_version: int):
     """Migrate a config entry from its current version to a desired version."""
-    LOGGER.debug(
+    logger.debug(
         "Migrating config entry from version %s to %s",
         config_entry.version,
         desired_version,
@@ -174,6 +177,6 @@ def migrate_data_and_options_to_version(config_entry: ConfigEntry, desired_versi
 
     end_version = current_version
 
-    LOGGER.info("Migration from version %s to version %s successful", begin_version, end_version)
+    logger.info("Migration from version %s to version %s successful", begin_version, end_version)
 
     return data, options, end_version
