@@ -29,17 +29,20 @@ from .const import (
     LEGACY_TEMPLATE_NAME,
     VERSION_SUFFIX,
 )
+from .logger import logger as base_logger
 
 
 class IndexManager:
     """Index management facilities."""
 
+    _logger = base_logger
+
     def __init__(
         self,
-        log,
         hass: HomeAssistant,
         gateway: ElasticsearchGateway,
         config_entry: ConfigEntry,
+        log=base_logger,
     ):
         """Initialize index management."""
 

@@ -21,7 +21,7 @@
         "time": "12:00:00"
       }
     },
-    "hass.object_id": "test_1"
+    "hass.entity.object.id": "test_1"
   },
   "entity state": {
     "attributes": {},

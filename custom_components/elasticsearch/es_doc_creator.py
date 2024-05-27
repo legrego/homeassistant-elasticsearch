@@ -29,6 +29,8 @@ from custom_components.elasticsearch.const import CONF_TAGS, PUBLISH_REASON_POLL
 from custom_components.elasticsearch.entity_details import EntityDetails
 from custom_components.elasticsearch.system_info import SystemInfo
 
+from .logger import logger as base_logger
+
 ALLOWED_ATTRIBUTE_TYPES = tuple | dict | set | list | int | float | bool | str | None
 SKIP_ATTRIBUTES = [
     "friendly_name",
@@ -43,7 +45,9 @@ SKIP_ATTRIBUTES = [
 class DocumentCreator:
     """Create ES documents from Home Assistant state change events."""
 
-    def __init__(self, log, hass: HomeAssistant, config_entry: ConfigEntry) -> None:
+    _logger = base_logger
+
+    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry, log=base_logger) -> None:
         """Initialize."""
         self._logger = log
         self._entity_details = EntityDetails(hass)

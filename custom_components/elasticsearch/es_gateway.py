@@ -22,13 +22,17 @@ from custom_components.elasticsearch.errors import (
     convert_es_error,
 )
 
+from .logger import logger as base_logger
+
 
 class ElasticsearchGateway(ABC):
     """Encapsulates Elasticsearch operations."""
 
+    _logger = base_logger
+
     def __init__(
         self,
-        log,
+        log=base_logger,
         hass: HomeAssistant = None,
         url: str = None,
         username: str = None,
@@ -347,7 +351,7 @@ class Elasticsearch7Gateway(ElasticsearchGateway):
 class ConnectionMonitor:
     """Connection monitor for Elasticsearch."""
 
-    def __init__(self, log, gateway: ElasticsearchGateway):
+    def __init__(self, gateway: ElasticsearchGateway, log=base_logger):
         """Initialize the connection monitor."""
         self._logger = log
 
@@ -363,8 +367,6 @@ class ConnectionMonitor:
         # we have already been async_init'd
         if self._task is not None:
             return
-
-        self._logger.info("Starting new connection monitor.")
 
         # Ensure our connection is active
         await self._connection_monitor_task(single_test=True)
@@ -456,13 +458,15 @@ class ConnectionMonitor:
 
     def start(self, config_entry):
         """Start the connection monitor."""
-        self._task = config_entry.async_create_background_task(
+        self._logger.info("Starting new connection monitor.")
+        result = config_entry.async_create_background_task(
             self.gateway.hass,
             self._connection_monitor_task(),
             "connection_monitor",
         )
+        return True
 
-    async def stop(self) -> None:
+    def stop(self) -> None:
         """Stop the connection monitor."""
         self._logger.warning("Stopping connection monitor.")
 

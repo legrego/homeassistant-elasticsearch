@@ -40,17 +40,20 @@ from .const import (
     PUBLISH_REASON_STATE_CHANGE,
     VERSION_SUFFIX,
 )
+from .logger import logger as base_logger
 
 
 class DocumentPublisher:
     """Publishes documents to Elasticsearch."""
 
+    _logger = base_logger
+
     def __init__(
         self,
-        log,
         gateway: ElasticsearchGateway,
         hass: HomeAssistant,
         config_entry: ConfigEntry,
+        log=base_logger,
     ):
         """Initialize the publisher."""
 
