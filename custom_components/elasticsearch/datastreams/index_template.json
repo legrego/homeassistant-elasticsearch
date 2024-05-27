@@ -43,9 +43,6 @@
                 "hass": {
                     "type": "object",
                     "properties": {
-                        "object_id": {
-                            "type": "keyword"
-                        },
                         "entity": {
                             "type": "object",
                             "properties": {
@@ -62,13 +59,10 @@
                                     "type": "object",
                                     "dynamic": true
                                 },
-                                "floor": {
+                                "object": {
                                     "type": "object",
                                     "properties": {
                                         "id": {
-                                            "type": "keyword"
-                                        },
-                                        "name": {
                                             "type": "keyword"
                                         }
                                     }
@@ -131,8 +125,12 @@
                                 "unit_of_measure": {
                                     "type": "keyword"
                                 },
-                                "class": {
-                                    "type": "keyword"
+                                "state": {
+                                    "properties": {
+                                        "class": {
+                                            "type": "keyword"
+                                        }
+                                    }
                                 },
                                 "labels": {
                                     "type": "keyword"
@@ -140,6 +138,17 @@
                                 "area": {
                                     "type": "object",
                                     "properties": {
+                                        "floor": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "keyword"
+                                                },
+                                                "name": {
+                                                    "type": "keyword"
+                                                }
+                                            }
+                                        },
                                         "id": {
                                             "type": "keyword"
                                         },
@@ -166,17 +175,17 @@
                                         "area": {
                                             "type": "object",
                                             "properties": {
-                                                "id": {
-                                                    "type": "keyword"
+                                                "floor": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "keyword"
+                                                        },
+                                                        "name": {
+                                                            "type": "keyword"
+                                                        }
+                                                    }
                                                 },
-                                                "name": {
-                                                    "type": "keyword"
-                                                }
-                                            }
-                                        },
-                                        "floor": {
-                                            "type": "object",
-                                            "properties": {
                                                 "id": {
                                                     "type": "keyword"
                                                 },

@@ -53,7 +53,7 @@ class EntityDetails:
             LOGGER.debug("Entity not found: %s", entity_id)
             return None
 
-        entity_label = self.async_get_entity_labels(entity)
+        entity_labels = self.async_get_entity_labels(entity)
         entity_area = self.async_get_entity_area(entity)
         entity_floor = self.async_get_area_floor(entity_area)
 
@@ -62,19 +62,23 @@ class EntityDetails:
         if device is None:
             LOGGER.debug("Device not found for entity: %s", entity_id)
 
-        device_label = self.async_get_device_labels(device)
+        device_labels = self.async_get_device_labels(device)
         device_area = self.async_get_device_area(device)
         device_floor = self.async_get_area_floor(device_area)
+
+        # If entity_floor is None, use device_floor
+        if entity_floor is None:
+            entity_floor = device_floor
 
         return FullEntityDetails(
             entity,
             entity_area,
             entity_floor,
-            entity_label,
+            entity_labels,
             device,
             device_area,
             device_floor,
-            device_label,
+            device_labels,
         )
 
     # Entity functions
@@ -82,17 +86,13 @@ class EntityDetails:
         """Retrieve entity details."""
         return self._registry_entry.async_get(entity_id)
 
-    def async_get_entity_area(
-        self, entity: entity_registry.RegistryEntry
-    ) -> area_registry.AreaEntry | None:
+    def async_get_entity_area(self, entity: entity_registry.RegistryEntry) -> area_registry.AreaEntry | None:
         """Retrieve entity area details."""
         if entity.area_id is None:
             return None
         return self._registry_area.async_get_area(entity.area_id)
 
-    def async_get_entity_labels(
-        self, entity: entity_registry.RegistryEntry
-    ) -> list[label_registry.LabelEntry]:
+    def async_get_entity_labels(self, entity: entity_registry.RegistryEntry) -> list[label_registry.LabelEntry]:
         """Retrieve entity label details."""
         return list(entity.labels)
 
@@ -101,26 +101,20 @@ class EntityDetails:
         """Retrieve device details."""
         return self._registry_device.async_get(device_id)
 
-    def async_get_device_area(
-        self, device: device_registry.DeviceEntry
-    ) -> area_registry.AreaEntry | None:
+    def async_get_device_area(self, device: device_registry.DeviceEntry) -> area_registry.AreaEntry | None:
         """Retrieve device area details."""
         if device is None or device.area_id is None:
             return None
         return self._registry_area.async_get_area(device.area_id)
 
-    def async_get_device_labels(
-        self, device: device_registry.DeviceEntry
-    ) -> list[label_registry.LabelEntry]:
+    def async_get_device_labels(self, device: device_registry.DeviceEntry) -> list[label_registry.LabelEntry]:
         """Retrieve device label details."""
         if device is None:
             return None
         return list(device.labels)
 
     # Other Functions
-    def async_get_area_floor(
-        self, area: area_registry.AreaEntry
-    ) -> floor_registry.FloorEntry | None:
+    def async_get_area_floor(self, area: area_registry.AreaEntry) -> floor_registry.FloorEntry | None:
         """Retrieve entity floor details."""
         if area is None:
             return None
