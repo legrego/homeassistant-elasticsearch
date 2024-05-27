@@ -169,8 +169,6 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
     # Build the first step of the flow
     async def async_step_user(self, user_input=None):
         """Handle a flow initialized by the user."""
-        if self._async_current_entries():
-            return self.async_abort(reason="single_instance_allowed")
 
         return self.async_show_menu(
             step_id="user",
@@ -415,17 +413,17 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
         entries = self.hass.config_entries.async_entries(ELASTIC_DOMAIN)
 
-        if len(entries) == 0:
-            return self.async_create_entry(title=data.get(CONF_URL), data=data, options=options)
+        # look at the entries in entries, look at the data conf_url value and if it matches, update the config entry, if it doesnt, make a new one
 
-        entry = entries[0]
+        for entry in entries:
+            if entry.data.get(CONF_URL) == data.get(CONF_URL):
+                self.hass.config_entries.async_update_entry(entry, data=data, options=options)
 
-        self.hass.config_entries.async_update_entry(entry, data=data, options=options)
+                self.hass.async_create_task(self.hass.config_entries.async_reload(entry.entry_id))
 
-        # Reload the config entry otherwise devices will remain unavailable
-        self.hass.async_create_task(self.hass.config_entries.async_reload(entry.entry_id))
+                return self.async_abort(reason="updated_entry")
 
-        return self.async_abort(reason="updated_entry")
+        return self.async_create_entry(title=data.get(CONF_URL), data=data, options=options)
 
 
 class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
