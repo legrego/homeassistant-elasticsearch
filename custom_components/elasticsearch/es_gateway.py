@@ -459,12 +459,11 @@ class ConnectionMonitor:
     def start(self, config_entry):
         """Start the connection monitor."""
         self._logger.info("Starting new connection monitor.")
-        result = config_entry.async_create_background_task(
+        config_entry.async_create_background_task(
             self.gateway.hass,
             self._connection_monitor_task(),
             "connection_monitor",
         )
-        return True
 
     def stop(self) -> None:
         """Stop the connection monitor."""
