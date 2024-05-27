@@ -50,7 +50,7 @@ from .errors import (
     UntrustedCertificate,
 )
 from .es_gateway import Elasticsearch7Gateway
-from .logger import LOGGER
+from .logger import logger
 
 DEFAULT_URL = "http://localhost:9200"
 DEFAULT_ALIAS = "active-hass-index"
@@ -396,7 +396,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         except UnsupportedVersion:
             errors["base"] = "unsupported_version"
         except Exception as ex:  # pylint: disable=broad-except
-            LOGGER.error(
+            logger.error(
                 "Unknown error connecting with Elasticsearch cluster. %s",
                 ex,
             )

@@ -4,68 +4,66 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 from custom_components.elasticsearch.errors import convert_es_error
-from custom_components.elasticsearch.logger import LOGGER
 
 from .const import ES_CHECK_PERMISSIONS_DATASTREAM
 from .es_doc_publisher import DocumentPublisher
-from .es_gateway import ElasticsearchGateway
+from .es_gateway import Elasticsearch7Gateway
 from .es_index_manager import IndexManager
 
 
 class ElasticIntegration:
     """Integration for publishing entity state change events to Elasticsearch."""
 
-    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry):
+    def __init__(self, log, hass: HomeAssistant, config_entry: ConfigEntry):
         """Integration initialization."""
 
-        self.hass = hass
-        self.gateway = ElasticsearchGateway(config_entry=config_entry, hass=hass)
-        self.privilege_check = ESPrivilegeCheck(self.gateway, config_entry=config_entry)
-        self.index_manager = IndexManager(
-            hass, config_entry=config_entry, gateway=self.gateway
-        )
-        self.publisher = DocumentPublisher(
-            config_entry=config_entry, gateway=self.gateway, hass=self.hass
-        )
-        self.config_entry = config_entry
+        self._hass = hass
 
-        gateway_parameters = self.build_gateway_parameters(config_entry)
-        self._gateway = Elasticsearch7Gateway(**gateway_parameters)
+        self._logger = log
+        self._config_entry = config_entry
 
-        index_parameters = self.build_index_manager_parameters(config_entry)
-        self._index_manager = IndexManager(**index_parameters)
+        self._logger.info("Initializing integration.")
 
-        publisher_parameters = self.build_publisher_parameters(config_entry)
-        self._publisher = DocumentPublisher(**publisher_parameters)
+        gateway_parameters = self.build_gateway_parameters(self._config_entry)
+        self._gateway = Elasticsearch7Gateway(log=self._logger, **gateway_parameters)
+
+        index_parameters = self.build_index_manager_parameters(self._config_entry)
+        self._index_manager = IndexManager(log=self._logger, **index_parameters)
+
+        publisher_parameters = self.build_publisher_parameters(self._config_entry)
+        self._publisher = DocumentPublisher(log=self._logger, **publisher_parameters)
 
     # TODO investigate helpers.event.async_call_later()
     async def async_init(self):
         """Async init procedure."""
 
+        # Include the title of the config_entry we are running under
+
         try:
             await self._gateway.async_init()
+            self._gateway.connection_monitor.start(config_entry=self._config_entry)
+
             await self._index_manager.async_setup()
             await self._publisher.async_init()
+
         except Exception as err:
             try:
                 self._publisher.stop_publisher()
                 await self._gateway.stop()
             except Exception as shutdown_err:
-                LOGGER.error(
+                self._logger.error(
                     "Error shutting down gateway following failed initialization",
                     shutdown_err,
                 )
 
             raise convert_es_error("Failed to initialize integration", err) from err
 
-    async def async_shutdown(
-        self, config_entry: ConfigEntry
-    ):  # pylint disable=unused-argument
+    async def async_shutdown(self, config_entry: ConfigEntry):  # pylint disable=unused-argument
         """Async shutdown procedure."""
-        LOGGER.debug("async_shutdown: starting shutdown")
+        self._logger.debug("async_shutdown: starting shutdown")
         self._publisher.stop_publisher()
         await self._gateway.stop()
-        LOGGER.debug("async_shutdown: shutdown complete")
+        self._logger.debug("async_shutdown: shutdown complete")
         return True
 
     def build_gateway_parameters(self, config_entry):
