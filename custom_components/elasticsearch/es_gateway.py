@@ -364,10 +364,6 @@ class ConnectionMonitor:
     async def async_init(self):
         """Start the connection monitor."""
 
-        # we have already been async_init'd
-        if self._task is not None:
-            return
-
         # Ensure our connection is active
         await self._connection_monitor_task(single_test=True)
 

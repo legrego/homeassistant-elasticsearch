@@ -279,7 +279,7 @@ class Test_Connection_Monitor:
     #         await monitor.async_init()
     #         assert monitor.start(config_entry) is True
 
-    #     await monitor.stop()
+    #     monitor.stop()
 
     async def test_active(self):
         """Test active."""
@@ -289,7 +289,7 @@ class Test_Connection_Monitor:
 
         assert monitor.active is True
 
-        await monitor.stop()
+        monitor.stop()
 
     async def test_previous(self):
         """Test previous."""
@@ -299,7 +299,7 @@ class Test_Connection_Monitor:
 
         assert monitor.previous is True
 
-        await monitor.stop()
+        monitor.stop()
 
     async def test_should_test(self):
         """Test should_test."""
@@ -310,7 +310,7 @@ class Test_Connection_Monitor:
 
         assert monitor.should_test() is True
 
-        await monitor.stop()
+        monitor.stop()
 
     async def test_spin(self):
         """Test spin."""
@@ -344,7 +344,7 @@ class Test_Connection_Monitor:
             assert monitor._previous is True
             assert monitor._active is True
 
-        await monitor.stop()
+        monitor.stop()
 
     async def test_test_success(self):
         """Test test."""
@@ -360,7 +360,7 @@ class Test_Connection_Monitor:
         ):
             assert await monitor.test() is True
 
-        await monitor.stop()
+        monitor.stop()
 
     async def test_test_failure(self):
         """Test test."""
@@ -376,7 +376,7 @@ class Test_Connection_Monitor:
         ):
             assert await monitor.test() is False
 
-        await monitor.stop()
+        monitor.stop()
 
     async def test_stop(self):
         """Test stop."""
@@ -385,7 +385,7 @@ class Test_Connection_Monitor:
         monitor._active = True
         monitor._task = mock.Mock()
 
-        await monitor.stop()
+        monitor.stop()
 
         assert monitor.active is False
         assert monitor.task is None
