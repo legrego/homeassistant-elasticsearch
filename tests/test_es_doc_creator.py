@@ -495,6 +495,46 @@ async def test_state_to_document(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("version", [1, 2])
+@pytest.mark.parametrize(
+    "state, attributes",
+    [(2, {})],
+)
+async def test_state_to_document_polling(
+    hass: HomeAssistant,
+    document_creator: DocumentCreator,
+    snapshot,
+    state,
+    attributes,
+    version,
+):
+    """Test Doc Creation."""
+
+    entity_state = MockEntityState(
+        hass,
+        entity_id="sensor.test_1",
+        state=state,
+        attributes=attributes,
+        last_changed=dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023),
+        last_updated=dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023),
+    )
+
+    document = document_creator.state_to_document(
+        entity_state,
+        dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023),
+        "Polling",
+        version,
+    )
+
+    assert {
+        "state": state,
+        "entity state": entity_state.as_dict(),
+        "document": document,
+        "version": version,
+    } == snapshot
+
+
+@pytest.mark.asyncio
 async def test_state_to_document_no_tz(
     hass: HomeAssistant, document_creator: DocumentCreator, snapshot
 ):

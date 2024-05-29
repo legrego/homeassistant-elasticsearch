@@ -50,7 +50,7 @@ from .errors import (
     UntrustedCertificate,
 )
 from .es_gateway import Elasticsearch7Gateway
-from .logger import logger
+from .logger import LOGGER
 
 DEFAULT_URL = "http://localhost:9200"
 DEFAULT_ALIAS = "active-hass-index"
@@ -98,10 +98,18 @@ def build_new_options(existing_options: dict = None, user_input: dict = None):
             CONF_ILM_ENABLED,
             existing_options.get(CONF_ILM_ENABLED, DEFAULT_ILM_ENABLED),
         ),
-        CONF_EXCLUDED_DOMAINS: user_input.get(CONF_EXCLUDED_DOMAINS, existing_options.get(CONF_EXCLUDED_DOMAINS, [])),
-        CONF_EXCLUDED_ENTITIES: user_input.get(CONF_EXCLUDED_ENTITIES, existing_options.get(CONF_EXCLUDED_ENTITIES, [])),
-        CONF_INCLUDED_DOMAINS: user_input.get(CONF_INCLUDED_DOMAINS, existing_options.get(CONF_INCLUDED_DOMAINS, [])),
-        CONF_INCLUDED_ENTITIES: user_input.get(CONF_INCLUDED_ENTITIES, existing_options.get(CONF_INCLUDED_ENTITIES, [])),
+        CONF_EXCLUDED_DOMAINS: user_input.get(
+            CONF_EXCLUDED_DOMAINS, existing_options.get(CONF_EXCLUDED_DOMAINS, [])
+        ),
+        CONF_EXCLUDED_ENTITIES: user_input.get(
+            CONF_EXCLUDED_ENTITIES, existing_options.get(CONF_EXCLUDED_ENTITIES, [])
+        ),
+        CONF_INCLUDED_DOMAINS: user_input.get(
+            CONF_INCLUDED_DOMAINS, existing_options.get(CONF_INCLUDED_DOMAINS, [])
+        ),
+        CONF_INCLUDED_ENTITIES: user_input.get(
+            CONF_INCLUDED_ENTITIES, existing_options.get(CONF_INCLUDED_ENTITIES, [])
+        ),
     }
 
     return options
@@ -116,11 +124,18 @@ def build_new_data(existing_data: dict = None, user_input: dict = None):
 
     data = {
         CONF_URL: user_input.get(CONF_URL, existing_data.get(CONF_URL, DEFAULT_URL)),
-        CONF_TIMEOUT: user_input.get(CONF_TIMEOUT, existing_data.get(CONF_TIMEOUT, DEFAULT_TIMEOUT_SECONDS)),
-        CONF_VERIFY_SSL: user_input.get(CONF_VERIFY_SSL, existing_data.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL)),
-        CONF_SSL_CA_PATH: user_input.get(CONF_SSL_CA_PATH, existing_data.get(CONF_SSL_CA_PATH, None)),
-        CONF_INDEX_MODE: user_input.get(CONF_INDEX_MODE, existing_data.get(CONF_INDEX_MODE, DEFAULT_INDEX_MODE)),
-        "use_connection_monitor": existing_data.get("use_connection_monitor", True),
+        CONF_TIMEOUT: user_input.get(
+            CONF_TIMEOUT, existing_data.get(CONF_TIMEOUT, DEFAULT_TIMEOUT_SECONDS)
+        ),
+        CONF_VERIFY_SSL: user_input.get(
+            CONF_VERIFY_SSL, existing_data.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL)
+        ),
+        CONF_SSL_CA_PATH: user_input.get(
+            CONF_SSL_CA_PATH, existing_data.get(CONF_SSL_CA_PATH, None)
+        ),
+        CONF_INDEX_MODE: user_input.get(
+            CONF_INDEX_MODE, existing_data.get(CONF_INDEX_MODE, DEFAULT_INDEX_MODE)
+        ),
     }
     auth = {
         CONF_USERNAME: user_input.get(CONF_USERNAME, existing_data.get(CONF_USERNAME, None)),
@@ -297,17 +312,23 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
     async def async_step_no_auth(self, user_input=map | None):
         """Handle connection to an unsecured Elasticsearch cluster."""
 
-        return await self._handle_auth_flow(user_input=user_input, data=self.init_data, type="no_auth")
+        return await self._handle_auth_flow(
+            user_input=user_input, data=self.init_data, type="no_auth"
+        )
 
     async def async_step_basic_auth(self, user_input=map | None):
         """Handle connection to an unsecured Elasticsearch cluster."""
 
-        return await self._handle_auth_flow(user_input=user_input, data=self.init_data, type="basic_auth")
+        return await self._handle_auth_flow(
+            user_input=user_input, data=self.init_data, type="basic_auth"
+        )
 
     async def async_step_api_key(self, user_input=map | None):
         """Handle connection to an unsecured Elasticsearch cluster."""
 
-        return await self._handle_auth_flow(user_input=user_input, data=self.init_data, type="api_key")
+        return await self._handle_auth_flow(
+            user_input=user_input, data=self.init_data, type="api_key"
+        )
 
     async def async_step_reauth(self, user_input) -> FlowResult:
         """Handle reauthorization."""
@@ -396,7 +417,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         except UnsupportedVersion:
             errors["base"] = "unsupported_version"
         except Exception as ex:  # pylint: disable=broad-except
-            logger.error(
+            LOGGER.error(
                 "Unknown error connecting with Elasticsearch cluster. %s",
                 ex,
             )
@@ -443,7 +464,10 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
         """Publish Options."""
         if user_input is not None:
             self.options.update(user_input)
-            if self.config_entry.data.get(CONF_INDEX_MODE, INDEX_MODE_DATASTREAM) == INDEX_MODE_DATASTREAM:
+            if (
+                self.config_entry.data.get(CONF_INDEX_MODE, INDEX_MODE_DATASTREAM)
+                == INDEX_MODE_DATASTREAM
+            ):
                 return await self._update_options()
             else:
                 return await self.async_step_ilm_options()
@@ -483,11 +507,15 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
 
         current_excluded_domains = self._get_config_value(CONF_EXCLUDED_DOMAINS, [])
         current_included_domains = self._get_config_value(CONF_INCLUDED_DOMAINS, [])
-        domain_options = self._dedup_list(domains + current_excluded_domains + current_included_domains)
+        domain_options = self._dedup_list(
+            domains + current_excluded_domains + current_included_domains
+        )
 
         current_excluded_entities = self._get_config_value(CONF_EXCLUDED_ENTITIES, [])
         current_included_entities = self._get_config_value(CONF_INCLUDED_ENTITIES, [])
-        entity_options = self._dedup_list(entities + current_excluded_entities + current_included_entities)
+        entity_options = self._dedup_list(
+            entities + current_excluded_entities + current_included_entities
+        )
 
         schema = {
             vol.Required(
@@ -536,7 +564,11 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
             ): cv.multi_select(entity_options),
         }
 
-        if self.show_advanced_options and self.config_entry.data.get(CONF_INDEX_MODE, DEFAULT_INDEX_MODE) != INDEX_MODE_DATASTREAM:
+        if (
+            self.show_advanced_options
+            and self.config_entry.data.get(CONF_INDEX_MODE, DEFAULT_INDEX_MODE)
+            != INDEX_MODE_DATASTREAM
+        ):
             schema[
                 vol.Required(
                     CONF_INDEX_FORMAT,
@@ -555,7 +587,9 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
 
     def _build_ilm_options_schema(self):
         schema = {
-            vol.Required(CONF_ILM_ENABLED, default=self._get_config_value(CONF_ILM_ENABLED, True)): bool,
+            vol.Required(
+                CONF_ILM_ENABLED, default=self._get_config_value(CONF_ILM_ENABLED, True)
+            ): bool,
             vol.Required(
                 CONF_ILM_POLICY_NAME,
                 default=self._get_config_value(CONF_ILM_POLICY_NAME, DEFAULT_ILM_POLICY_NAME),

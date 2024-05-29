@@ -1,6 +1,10 @@
 """ES Startup Mocks."""
 
-from elasticsearch.const import DATASTREAM_DATASET_PREFIX, DATASTREAM_METRICS_ILM_POLICY_NAME, DATASTREAM_TYPE
+from elasticsearch.const import (
+    DATASTREAM_DATASET_PREFIX,
+    DATASTREAM_METRICS_ILM_POLICY_NAME,
+    DATASTREAM_TYPE,
+)
 from homeassistant.const import CONF_URL, CONTENT_TYPE_JSON
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 

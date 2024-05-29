@@ -22,17 +22,17 @@ from custom_components.elasticsearch.errors import (
     convert_es_error,
 )
 
-from .logger import logger as base_logger
+from .logger import LOGGER as BASE_LOGGER
 
 
 class ElasticsearchGateway(ABC):
     """Encapsulates Elasticsearch operations."""
 
-    _logger = base_logger
+    _logger = BASE_LOGGER
 
     def __init__(
         self,
-        log=base_logger,
+        log=BASE_LOGGER,
         hass: HomeAssistant = None,
         url: str = None,
         username: str = None,
@@ -97,7 +97,8 @@ class ElasticsearchGateway(ABC):
         def meets_minimum_version(version_info: dict, major: int, minor: int) -> bool:
             """Determine if this version of ES meets the minimum version requirements."""
             return version_info[CAPABILITIES.MAJOR] > major or (
-                version_info[CAPABILITIES.MAJOR] == major and version_info[CAPABILITIES.MINOR] >= minor
+                version_info[CAPABILITIES.MAJOR] == major
+                and version_info[CAPABILITIES.MINOR] >= minor
             )
 
         version_info = {
@@ -110,22 +111,32 @@ class ElasticsearchGateway(ABC):
         capabilities = {
             CAPABILITIES.SERVERLESS: version_info[CAPABILITIES.BUILD_FLAVOR] == "serverless",
             CAPABILITIES.SUPPORTED: meets_minimum_version(version_info, major=7, minor=11),
-            CAPABILITIES.TIMESERIES_DATASTREAM: meets_minimum_version(version_info, major=8, minor=7),
-            CAPABILITIES.IGNORE_MISSING_COMPONENT_TEMPLATES: meets_minimum_version(version_info, major=8, minor=7),
-            CAPABILITIES.DATASTREAM_LIFECYCLE_MANAGEMENT: meets_minimum_version(version_info, major=8, minor=11),
-            CAPABILITIES.MAX_PRIMARY_SHARD_SIZE: meets_minimum_version(version_info, major=7, minor=13),
+            CAPABILITIES.TIMESERIES_DATASTREAM: meets_minimum_version(
+                version_info, major=8, minor=7
+            ),
+            CAPABILITIES.IGNORE_MISSING_COMPONENT_TEMPLATES: meets_minimum_version(
+                version_info, major=8, minor=7
+            ),
+            CAPABILITIES.DATASTREAM_LIFECYCLE_MANAGEMENT: meets_minimum_version(
+                version_info, major=8, minor=11
+            ),
+            CAPABILITIES.MAX_PRIMARY_SHARD_SIZE: meets_minimum_version(
+                version_info, major=7, minor=13
+            ),
         }
 
         return {**version_info, **capabilities}
 
     @classmethod
-    def build_from_config_entry(cls, hass, config_entry):
+    def build_from_config_entry(cls, hass, config_entry) -> "ElasticsearchGateway":
         """Build the Elasticsearch gateway from a config entry."""
         gateway_parameters = cls.build_gateway_parameters(hass, config_entry)
         return cls(**gateway_parameters)
 
     @classmethod
-    def build_gateway_parameters(self, hass, config_entry, minimum_privileges=ES_CHECK_PERMISSIONS_DATASTREAM):
+    def build_gateway_parameters(
+        self, hass, config_entry, minimum_privileges=ES_CHECK_PERMISSIONS_DATASTREAM
+    ) -> dict:
         """Build the parameters for the Elasticsearch gateway."""
         return {
             "hass": hass,
@@ -140,26 +151,26 @@ class ElasticsearchGateway(ABC):
         }
 
     @property
-    def capabilities(self):
+    def capabilities(self) -> dict:
         """Return the underlying ES Capabilities."""
         return self._capabilities
 
-    def has_capability(self, capability):
+    def has_capability(self, capability) -> bool:
         """Determine if the Elasticsearch instance has the specified capability."""
         return self.capabilities.get(capability, False)
 
     @property
-    def active(self):
+    def active(self) -> bool:
         """Return the state of the connection_monitor."""
         return self._connection_monitor.active
 
     @property
-    def client(self):
+    def client(self) -> AsyncElasticsearch7 | AsyncElasticsearch8:
         """Return the underlying ES Client."""
         return self._client
 
     @property
-    def authentication_type(self):
+    def authentication_type(self) -> str:
         """Return the authentication type."""
         if self.username and self.password:
             return "basic"
@@ -182,11 +193,11 @@ class ElasticsearchGateway(ABC):
 
     # Getter for connection_monitor
     @property
-    def connection_monitor(self):
+    def connection_monitor(self) -> "ConnectionMonitor":
         """Return the connection monitor."""
         return self._connection_monitor
 
-    async def stop(self):
+    async def stop(self) -> None:
         """Stop the ES Gateway."""
         self._logger.warning("Stopping Elasticsearch Gateway")
 
@@ -196,7 +207,7 @@ class ElasticsearchGateway(ABC):
 
         self._logger.warning("Stopped Elasticsearch Gateway")
 
-    async def test(self):
+    async def test(self) -> bool:
         """Test the connection to the Elasticsearch server."""
 
         self._logger.debug("Testing the connection for [%s].", self._url)
@@ -249,17 +260,19 @@ class ElasticsearchGateway(ABC):
             raise convert_es_error("Connection test failed", err) from err
 
     @abstractmethod
-    async def _has_required_privileges(self, required_privileges):
+    async def _has_required_privileges(self, required_privileges) -> bool:
         pass  # pragma: no cover
 
     @classmethod
     @abstractmethod
-    def _new_encoder(self):
+    def _new_encoder(self) -> JSONSerializer7 | JSONSerializer8:
         pass  # pragma: no cover
 
     @classmethod
     @abstractmethod
-    def _create_es_client(self, hosts, username, password, api_key, verify_certs, ca_certs, timeout):
+    def _create_es_client(
+        self, hosts, username, password, api_key, verify_certs, ca_certs, timeout
+    ) -> AsyncElasticsearch7 | AsyncElasticsearch8:
         pass  # pragma: no cover
 
 
@@ -269,12 +282,12 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
     client: AsyncElasticsearch8
 
     @classmethod
-    def _create_es_client(self, **kwargs):
+    def _create_es_client(self, **kwargs) -> AsyncElasticsearch8:
         """Construct an instance of the Elasticsearch client."""
 
         return AsyncElasticsearch8(**kwargs)
 
-    async def _has_required_privileges(self, required_privileges):
+    async def _has_required_privileges(self, required_privileges) -> bool:
         """Enforce the required privileges."""
         try:
             privilege_response = await self.client.security.has_privileges(body=required_privileges)
@@ -288,7 +301,7 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
             raise convert_es_error("Error enforcing privileges", err) from err
 
     @classmethod
-    def _new_encoder(self):
+    def _new_encoder(self) -> JSONSerializer8:
         """Create a new instance of the JSON serializer."""
 
         class SetEncoder(JSONSerializer8):
@@ -312,10 +325,10 @@ class Elasticsearch7Gateway(ElasticsearchGateway):
     client: AsyncElasticsearch7
 
     @classmethod
-    def _create_es_client(self, **kwargs):
+    def _create_es_client(self, **kwargs) -> AsyncElasticsearch7:
         return AsyncElasticsearch7(**kwargs)
 
-    async def _has_required_privileges(self, required_privileges):
+    async def _has_required_privileges(self, required_privileges) -> bool:
         """Enforce the required privileges."""
 
         try:
@@ -330,7 +343,7 @@ class Elasticsearch7Gateway(ElasticsearchGateway):
             raise convert_es_error("Error enforcing privileges", err) from err
 
     @classmethod
-    def _new_encoder(self):
+    def _new_encoder(self) -> JSONSerializer7:
         """Create a new instance of the JSON serializer."""
 
         class SetEncoder(JSONSerializer7):
@@ -351,7 +364,7 @@ class Elasticsearch7Gateway(ElasticsearchGateway):
 class ConnectionMonitor:
     """Connection monitor for Elasticsearch."""
 
-    def __init__(self, gateway: ElasticsearchGateway, log=base_logger):
+    def __init__(self, gateway: ElasticsearchGateway, log=BASE_LOGGER):
         """Initialize the connection monitor."""
         self._logger = log
 
@@ -368,30 +381,27 @@ class ConnectionMonitor:
         await self._connection_monitor_task(single_test=True)
 
     @property
-    def gateway(self):
+    def gateway(self) -> ElasticsearchGateway:
         """Return the Elasticsearch gateway."""
         return self._gateway
 
-    # Getter for active
     @property
-    def active(self):
+    def active(self) -> bool:
         """Return the connection monitor status."""
         return self._active
 
-    # Getter for previous
     @property
-    def previous(self):
+    def previous(self) -> bool:
         """Return the previous connection monitor status."""
         return self._previous
 
-    # Getter for task
-    @property
-    def task(self):
-        """Return the asyncio task for the connection monitor."""
-        return self._task
+    # @property
+    # def task(self) -> asyncio.Task | None:
+    #     """Return the asyncio task for the connection monitor."""
+    #     return self._task
 
     @classmethod
-    def _is_ignorable_error(transport_err):
+    def _is_ignorable_error(transport_err) -> bool:
         """Determine if a transport error is ignorable."""
 
         if isinstance(transport_err, TransportError7 | TransportError8):
@@ -454,6 +464,9 @@ class ConnectionMonitor:
 
     def start(self, config_entry):
         """Start the connection monitor."""
+        if not self._use_connection_monitor:
+            return
+
         self._logger.info("Starting new connection monitor.")
         config_entry.async_create_background_task(
             self.gateway.hass,
@@ -465,7 +478,7 @@ class ConnectionMonitor:
         """Stop the connection monitor."""
         self._logger.warning("Stopping connection monitor.")
 
-        if not self.active:
+        if not self._active:
             self._logger.debug(
                 "Connection monitor did not have an active connection to [%s].",
                 self.gateway.url,
@@ -474,8 +487,8 @@ class ConnectionMonitor:
 
         self._active = False
 
-        if self.task is not None:
-            self._task.cancel()
-            self._task = None
+        # if self._task is not None:
+        #     self._task.cancel()
+        #     self._task = None
 
         self._logger.warning("Connection monitor stopped.")

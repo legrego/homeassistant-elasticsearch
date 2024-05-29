@@ -29,20 +29,20 @@ from .const import (
     LEGACY_TEMPLATE_NAME,
     VERSION_SUFFIX,
 )
-from .logger import logger as base_logger
+from .logger import LOGGER as BASE_LOGGER
 
 
 class IndexManager:
     """Index management facilities."""
 
-    _logger = base_logger
+    _logger = BASE_LOGGER
 
     def __init__(
         self,
         hass: HomeAssistant,
         gateway: ElasticsearchGateway,
         config_entry: ConfigEntry,
-        log=base_logger,
+        log=BASE_LOGGER,
     ):
         """Initialize index management."""
 
@@ -108,7 +108,9 @@ class IndexManager:
             index_template = json.load(json_file)
 
         # Check if the index template already exists
-        matching_templates = await client.indices.get_index_template(name=DATASTREAM_METRICS_INDEX_TEMPLATE_NAME, ignore=[404])
+        matching_templates = await client.indices.get_index_template(
+            name=DATASTREAM_METRICS_INDEX_TEMPLATE_NAME, ignore=[404]
+        )
         matching_templates_count = len(matching_templates.get("index_templates", []))
 
         template_exists = matching_templates and matching_templates_count > 0
@@ -121,32 +123,46 @@ class IndexManager:
             self._logger.debug("Creating index template")
 
         if self._gateway.has_capability(CAPABILITIES.TIMESERIES_DATASTREAM):
-            self._logger.debug("Elasticsearch supports timeseries datastreams, including in template.")
+            self._logger.debug(
+                "Elasticsearch supports timeseries datastreams, including in template."
+            )
 
             index_template["template"]["settings"]["index.mode"] = "time_series"
 
             mappings = index_template["template"]["mappings"]
-            object_id = mappings["properties"]["hass"]["properties"]["entity"]["properties"]["object"]["properties"]["id"]
+            object_id = mappings["properties"]["hass"]["properties"]["entity"]["properties"][
+                "object"
+            ]["properties"]["id"]
 
             object_id["time_series_dimension"] = True
 
         if self._gateway.has_capability(CAPABILITIES.IGNORE_MISSING_COMPONENT_TEMPLATES):
-            self._logger.debug("Elasticsearch supports ignore_missing_component_templates, including in template.")
+            self._logger.debug(
+                "Elasticsearch supports ignore_missing_component_templates, including in template."
+            )
 
             index_template["composed_of"] = ["metrics-homeassistant@custom"]
             index_template["ignore_missing_component_templates"] = ["metrics-homeassistant@custom"]
 
         if self._gateway.has_capability(CAPABILITIES.DATASTREAM_LIFECYCLE_MANAGEMENT):
-            self._logger.debug("Elasticsearch supports Datastream Lifecycle Management, including in template.")
+            self._logger.debug(
+                "Elasticsearch supports Datastream Lifecycle Management, including in template."
+            )
             index_template["template"]["lifecycle"] = {"data_retention": "365d"}
         else:
-            self._logger.debug("Elasticsearch does not support Datastream Lifecycle Management, falling back to Index Lifecycle Management.")
+            self._logger.debug(
+                "Elasticsearch does not support Datastream Lifecycle Management, falling back to Index Lifecycle Management."
+            )
             await self._create_basic_ilm_policy(ilm_policy_name=DATASTREAM_METRICS_ILM_POLICY_NAME)
 
-            index_template["template"]["settings"]["index.lifecycle.name"] = DATASTREAM_METRICS_ILM_POLICY_NAME
+            index_template["template"]["settings"]["index.lifecycle.name"] = (
+                DATASTREAM_METRICS_ILM_POLICY_NAME
+            )
 
         try:
-            await client.indices.put_index_template(name=DATASTREAM_METRICS_INDEX_TEMPLATE_NAME, body=index_template)
+            await client.indices.put_index_template(
+                name=DATASTREAM_METRICS_INDEX_TEMPLATE_NAME, body=index_template
+            )
 
         except ElasticsearchException as err:
             self._logger.exception("Error creating/updating index template: %s", err)
@@ -157,7 +173,9 @@ class IndexManager:
                 ) from err
         try:
             if await self.requires_datastream_ignore_dynamic_fields_migration():
-                self._logger.debug("Performing a one-time migration of datastream write indices to set dynamic=false.")
+                self._logger.debug(
+                    "Performing a one-time migration of datastream write indices to set dynamic=false."
+                )
                 await self.migrate_datastreams_to_ignore_dynamic_fields()
 
         except ElasticsearchException as err:
@@ -169,7 +187,9 @@ class IndexManager:
         self._logger.debug("Initializing legacy index templates")
 
         if self._gateway.has_capability(CAPABILITIES.SERVERLESS):
-            raise ElasticException("Serverless environment detected, legacy index usage not allowed in ES Serverless. Switch to datastreams.")
+            raise ElasticException(
+                "Serverless environment detected, legacy index usage not allowed in ES Serverless. Switch to datastreams."
+            )
 
         client = self._gateway.client
 
@@ -238,7 +258,9 @@ class IndexManager:
             if err.status_code == 404:
                 existing_policy = None
             else:
-                raise convert_es_error("Unexpected return code when checking for existing ILM policy", err) from err
+                raise convert_es_error(
+                    "Unexpected return code when checking for existing ILM policy", err
+                ) from err
         except ElasticsearchException as err:
             raise convert_es_error("Error checking for existing ILM policy", err) from err
 
@@ -263,8 +285,12 @@ class IndexManager:
         }
 
         if self._gateway.has_capability(CAPABILITIES.MAX_PRIMARY_SHARD_SIZE):
-            self._logger.debug("Elasticsearch supports max_primary_shard_size, including in ILM template.")
-            policy["policy"]["phases"]["hot"]["actions"]["rollover"]["max_primary_shard_size"] = "50gb"
+            self._logger.debug(
+                "Elasticsearch supports max_primary_shard_size, including in ILM template."
+            )
+            policy["policy"]["phases"]["hot"]["actions"]["rollover"]["max_primary_shard_size"] = (
+                "50gb"
+            )
 
         self._logger.info("Creating ILM Policy '%s'", ilm_policy_name)
         try:
@@ -280,9 +306,13 @@ class IndexManager:
         client = self._gateway.client
 
         try:
-            mappings = await client.indices.get_mapping(index=DATASTREAM_TYPE + "-" + DATASTREAM_DATASET_PREFIX + ".*")
+            mappings = await client.indices.get_mapping(
+                index=DATASTREAM_TYPE + "-" + DATASTREAM_DATASET_PREFIX + ".*"
+            )
         except ElasticsearchException as err:
-            raise convert_es_error("Error checking datastream mapping for dynamic fields", err) from err
+            raise convert_es_error(
+                "Error checking datastream mapping for dynamic fields", err
+            ) from err
 
         for _index, mapping in mappings.items():
             if mapping["mappings"].get("dynamic") == "strict":
@@ -307,4 +337,6 @@ class IndexManager:
                 write_index_only=True,
             )
         except ElasticsearchException as err:
-            raise convert_es_error("Error migrating datastream to ignore dynamic fields", err) from err
+            raise convert_es_error(
+                "Error migrating datastream to ignore dynamic fields", err
+            ) from err

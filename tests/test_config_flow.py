@@ -371,7 +371,6 @@ async def test_reauth_flow_basic(hass: HomeAssistant, es_aioclient_mock: Aiohttp
         "ssl_ca_path": None,
         "timeout": 30,
         "verify_ssl": True,
-        "use_connection_monitor": False,
     }
 
 
@@ -457,7 +456,6 @@ async def test_reauth_flow_api_key(hass: HomeAssistant, es_aioclient_mock: Aioht
         "ssl_ca_path": None,
         "timeout": 30,
         "verify_ssl": True,
-        "use_connection_monitor": False,
     }
 
 

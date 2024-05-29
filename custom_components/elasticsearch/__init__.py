@@ -5,7 +5,12 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 
-from custom_components.elasticsearch.logger import have_child, logger
+from custom_components.elasticsearch.errors import (
+    AuthenticationRequired,
+    InsufficientPrivileges,
+    UnsupportedVersion,
+)
+from custom_components.elasticsearch.logger import LOGGER, have_child
 
 from .const import (
     CONF_HEALTH_SENSOR_ENABLED,
@@ -17,7 +22,6 @@ from .const import (
     PUBLISH_MODE_ALL,
     PUBLISH_MODE_ANY_CHANGES,
 )
-from .errors import AuthenticationRequired, InsufficientPrivileges, UnsupportedVersion
 from .es_integration import ElasticIntegration
 
 
@@ -29,18 +33,22 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):  
     if config_entry.version == latest_version:
         return True
 
-    migrated_data, migrated_options, migrated_version = migrate_data_and_options_to_version(config_entry, latest_version)
+    migrated_data, migrated_options, migrated_version = migrate_data_and_options_to_version(
+        config_entry, latest_version
+    )
 
     config_entry.version = migrated_version
 
-    return hass.config_entries.async_update_entry(config_entry, data=migrated_data, options=migrated_options)
+    return hass.config_entries.async_update_entry(
+        config_entry, data=migrated_data, options=migrated_options
+    )
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     """Set up integration via config flow."""
 
-    logger.debug("Setting up integration")
-    init = await _async_init_integration(hass=hass, config_entry=config_entry)
+    LOGGER.debug("Setting up integration")
+    init = await _async_init_integration(hass, config_entry)
     config_entry.add_update_listener(async_config_entry_updated)
     return init
 
@@ -49,7 +57,7 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     """Teardown integration."""
     existing_instance = hass.data.get(DOMAIN)
     if isinstance(existing_instance, ElasticIntegration):
-        logger.debug("Shutting down previous integration")
+        LOGGER.debug("Shutting down previous integration")
         await existing_instance.async_shutdown(config_entry)
         hass.data[DOMAIN] = None
     return True
@@ -57,34 +65,34 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
 async def async_config_entry_updated(hass: HomeAssistant, config_entry: ConfigEntry):
     """Respond to config changes."""
-    logger.debug("Configuration change detected")
-    return await _async_init_integration(hass=hass, config_entry=config_entry)
+    LOGGER.debug("Configuration change detected")
+    return await _async_init_integration(hass, config_entry)
 
 
 async def _async_init_integration(hass: HomeAssistant, config_entry: ConfigEntry):
     """Initialize integration."""
     await async_unload_entry(hass=hass, config_entry=config_entry)
 
-    logger = have_child(name=config_entry.title)
-    logger.info(f"Initializing integration for {config_entry.title}")
+    _logger = have_child(name=config_entry.title)
+    _logger.info(f"Initializing integration for {config_entry.title}")
 
     try:
-        integration = ElasticIntegration(hass=hass, config_entry=config_entry, log=logger)
+        integration = ElasticIntegration(hass=hass, config_entry=config_entry, log=_logger)
         await integration.async_init()
     except UnsupportedVersion as err:
         msg = "Unsupported Elasticsearch version detected"
-        logger.error(msg)
+        _logger.error(msg)
         raise ConfigEntryNotReady(msg) from err
     except AuthenticationRequired as err:
         msg = "Missing or invalid credentials"
-        logger.error(msg)
+        _logger.error(msg)
         raise ConfigEntryAuthFailed(msg) from err
     except InsufficientPrivileges as err:
-        logger.error("Account does not have sufficient privileges")
+        _logger.error("Account does not have sufficient privileges")
         raise ConfigEntryAuthFailed from err
     except Exception as err:  # pylint disable=broad-exception-caught
         msg = "Exception during component initialization"
-        logger.error(msg + ": %s", err)
+        _logger.error(msg + ": %s", err)
         raise ConfigEntryNotReady(msg) from err
 
     hass.data[DOMAIN] = integration
@@ -94,7 +102,7 @@ async def _async_init_integration(hass: HomeAssistant, config_entry: ConfigEntry
 
 def migrate_data_and_options_to_version(config_entry: ConfigEntry, desired_version: int):
     """Migrate a config entry from its current version to a desired version."""
-    logger.debug(
+    LOGGER.debug(
         "Migrating config entry from version %s to %s",
         config_entry.version,
         desired_version,
@@ -107,7 +115,9 @@ def migrate_data_and_options_to_version(config_entry: ConfigEntry, desired_versi
 
     if current_version == 1 and desired_version >= 2:
         only_publish_changed = data.get(CONF_ONLY_PUBLISH_CHANGED, False)
-        data[CONF_PUBLISH_MODE] = PUBLISH_MODE_ALL if not only_publish_changed else PUBLISH_MODE_ANY_CHANGES
+        data[CONF_PUBLISH_MODE] = (
+            PUBLISH_MODE_ALL if not only_publish_changed else PUBLISH_MODE_ANY_CHANGES
+        )
 
         if CONF_ONLY_PUBLISH_CHANGED in data:
             del data[CONF_ONLY_PUBLISH_CHANGED]
@@ -177,6 +187,6 @@ def migrate_data_and_options_to_version(config_entry: ConfigEntry, desired_versi
 
     end_version = current_version
 
-    logger.info("Migration from version %s to version %s successful", begin_version, end_version)
+    LOGGER.info("Migration from version %s to version %s successful", begin_version, end_version)
 
     return data, options, end_version

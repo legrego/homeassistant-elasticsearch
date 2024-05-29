@@ -11,7 +11,7 @@ from homeassistant.helpers import (
     label_registry,
 )
 
-from .logger import logger
+from .logger import LOGGER
 
 
 @dataclass
@@ -50,7 +50,7 @@ class EntityDetails:
         # Get the entity
         entity = self.async_get_entity(entity_id)
         if entity is None:
-            logger.debug("Entity not found: %s", entity_id)
+            LOGGER.debug("Entity not found: %s", entity_id)
             return None
 
         entity_labels = self.async_get_entity_labels(entity)
@@ -60,7 +60,7 @@ class EntityDetails:
         # Get the device of the entity
         device = self.async_get_device(entity.device_id)
         if device is None:
-            logger.debug("Device not found for entity: %s", entity_id)
+            LOGGER.debug("Device not found for entity: %s", entity_id)
 
         device_labels = self.async_get_device_labels(device)
         device_area = self.async_get_device_area(device)

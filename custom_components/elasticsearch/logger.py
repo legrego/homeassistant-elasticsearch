@@ -2,13 +2,13 @@
 
 import logging
 
-logger = logging.getLogger("es_integration")
+LOGGER = logging.getLogger("es_integration")
 es_logger = logging.getLogger("elasticsearch")
 es_logger.name = "elasticsearch-library"
 
 # if the logger is already set up, don't change the level
-if logger.level == logging.NOTSET:
-    logger.setLevel(logging.INFO)
+if LOGGER.level == logging.NOTSET:
+    LOGGER.setLevel(logging.INFO)
 
 if es_logger.level == logging.NOTSET:
     es_logger.setLevel(logging.WARNING)

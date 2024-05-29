@@ -40,20 +40,20 @@ from .const import (
     PUBLISH_REASON_STATE_CHANGE,
     VERSION_SUFFIX,
 )
-from .logger import logger as base_logger
+from .logger import LOGGER as BASE_LOGGER
 
 
 class DocumentPublisher:
     """Publishes documents to Elasticsearch."""
 
-    _logger = base_logger
+    _logger = BASE_LOGGER
 
     def __init__(
         self,
         gateway: ElasticsearchGateway,
         hass: HomeAssistant,
         config_entry: ConfigEntry,
-        log=base_logger,
+        log=BASE_LOGGER,
     ):
         """Initialize the publisher."""
 
@@ -113,14 +113,18 @@ class DocumentPublisher:
 
             self.enqueue_state(state, event, reason)
 
-        self.remove_state_change_listener = hass.bus.async_listen(EVENT_STATE_CHANGED, elastic_event_listener)
+        self.remove_state_change_listener = hass.bus.async_listen(
+            EVENT_STATE_CHANGED, elastic_event_listener
+        )
 
         @callback
         def hass_close_event_listener(event: Event):
             self._logger.debug("Detected Home Assistant Close Event.")
             self.stop_publisher()
 
-        self.remove_hass_close_listener = hass.bus.async_listen_once(EVENT_HOMEASSISTANT_CLOSE, hass_close_event_listener)
+        self.remove_hass_close_listener = hass.bus.async_listen_once(
+            EVENT_HOMEASSISTANT_CLOSE, hass_close_event_listener
+        )
 
         self._document_creator = DocumentCreator(log=log, hass=hass, config_entry=config_entry)
 
@@ -143,7 +147,9 @@ class DocumentPublisher:
         self._logger.info("Stopping document publisher")
 
         if not self.publish_active:
-            self._logger.debug("Publisher is stopping but publishing documents was not active before stopping")
+            self._logger.debug(
+                "Publisher is stopping but publishing documents was not active before stopping"
+            )
 
         self.publish_active = False
         if self._publish_timer_ref is not None:
@@ -186,7 +192,9 @@ class DocumentPublisher:
 
     def empty_queue(self):
         """Empty the publish queue."""
-        self.publish_queue = Queue[tuple[State, Event, str]]()  # Initialize a new queue and let the runtime perform garbage collection.
+        self.publish_queue = Queue[
+            tuple[State, Event, str]
+        ]()  # Initialize a new queue and let the runtime perform garbage collection.
 
     async def async_do_publish(self):
         """Publish all queued documents to the Elasticsearch cluster."""
@@ -215,8 +223,13 @@ class DocumentPublisher:
             all_states = self._hass.states.async_all()
             reason = PUBLISH_REASON_POLLING
             for state in all_states:
-                if state.entity_id not in entity_counts and self._should_publish_entity_passes_filter(state.entity_id):
-                    actions.append(self._state_to_bulk_action(state, self._last_publish_time, reason))
+                if (
+                    state.entity_id not in entity_counts
+                    and self._should_publish_entity_passes_filter(state.entity_id)
+                ):
+                    actions.append(
+                        self._state_to_bulk_action(state, self._last_publish_time, reason)
+                    )
 
         # Check for duplicate entries
         # The timestamp and object_id field are combined to generate the Elasticsearch document ID
@@ -270,7 +283,10 @@ class DocumentPublisher:
         if self._publish_mode != PUBLISH_MODE_STATE_CHANGES:
             return True
 
-        if change_type == PUBLISH_REASON_ATTR_CHANGE and self._publish_mode == PUBLISH_MODE_STATE_CHANGES:
+        if (
+            change_type == PUBLISH_REASON_ATTR_CHANGE
+            and self._publish_mode == PUBLISH_MODE_STATE_CHANGES
+        ):
             self._logger.debug(
                 "Excluding event state change for %s because the value did not change and publish mode is set to state changes only.",
                 entity_id,
@@ -361,7 +377,9 @@ class DocumentPublisher:
     def _start_publish_timer(self):
         """Initialize the publish timer."""
         if self._config_entry:
-            self._publish_timer_ref = self._config_entry.async_create_background_task(self._hass, self._publish_queue_timer(), "publish_queue_timer")
+            self._publish_timer_ref = self._config_entry.async_create_background_task(
+                self._hass, self._publish_queue_timer(), "publish_queue_timer"
+            )
         else:
             self._publish_timer_ref = asyncio.ensure_future(self._publish_queue_timer())
 
@@ -375,7 +393,9 @@ class DocumentPublisher:
 
     @classmethod
     @lru_cache(maxsize=128)
-    def _sanitize_datastream_name(self, dataset: str, type: str = "metrics", namespace: str = "default"):
+    def _sanitize_datastream_name(
+        self, dataset: str, type: str = "metrics", namespace: str = "default"
+    ):
         """Sanitize a datastream name."""
 
         full_datastream_name = f"{type}-{dataset}-{namespace}"
@@ -469,7 +489,9 @@ class DocumentPublisher:
 
                 can_publish = self._gateway.active
 
-                should_publish = self._has_entries_to_publish() or self._publish_mode == PUBLISH_MODE_ALL
+                should_publish = (
+                    self._has_entries_to_publish() or self._publish_mode == PUBLISH_MODE_ALL
+                )
 
                 if time_to_publish and can_publish and should_publish:
                     try:
@@ -495,7 +517,11 @@ class DocumentPublisher:
 
         for action in actions:
             key = (
-                action["_source"]["@timestamp"] + "_" + action["_source"]["hass.entity"]["domain"] + "." + action["_source"]["hass.entity.object_id"]
+                action["_source"]["@timestamp"]
+                + "_"
+                + action["_source"]["hass.entity"]["domain"]
+                + "."
+                + action["_source"]["hass.entity.object_id"]
             )
 
             if key in duplicate_entries:

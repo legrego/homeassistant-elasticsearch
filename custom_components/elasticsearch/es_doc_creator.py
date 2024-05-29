@@ -29,7 +29,7 @@ from custom_components.elasticsearch.const import CONF_TAGS, PUBLISH_REASON_POLL
 from custom_components.elasticsearch.entity_details import EntityDetails
 from custom_components.elasticsearch.system_info import SystemInfo
 
-from .logger import logger as base_logger
+from .logger import LOGGER as BASE_LOGGER
 
 ALLOWED_ATTRIBUTE_TYPES = tuple | dict | set | list | int | float | bool | str | None
 SKIP_ATTRIBUTES = [
@@ -45,9 +45,9 @@ SKIP_ATTRIBUTES = [
 class DocumentCreator:
     """Create ES documents from Home Assistant state change events."""
 
-    _logger = base_logger
+    _logger = BASE_LOGGER
 
-    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry, log=base_logger) -> None:
+    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry, log=BASE_LOGGER) -> None:
         """Initialize."""
         self._logger = log
         self._entity_details = EntityDetails(hass)
@@ -209,7 +209,11 @@ class DocumentCreator:
             "area.name": device_area.name if device_area else None,
         }
 
-        device_additions = {k: str(v) for k, v in device_additions.items() if (v is not None and v != "None" and len(v) != 0)}
+        device_additions = {
+            k: str(v)
+            for k, v in device_additions.items()
+            if (v is not None and v != "None" and len(v) != 0)
+        }
 
         return {**entity_additions, "device": {**device_additions}}
 

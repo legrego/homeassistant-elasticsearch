@@ -9,13 +9,13 @@ from .const import ES_CHECK_PERMISSIONS_DATASTREAM
 from .es_doc_publisher import DocumentPublisher
 from .es_gateway import Elasticsearch7Gateway
 from .es_index_manager import IndexManager
-from .logger import logger as base_logger
+from .logger import LOGGER as BASE_LOGGER
 
 
 class ElasticIntegration:
     """Integration for publishing entity state change events to Elasticsearch."""
 
-    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry, log=base_logger):
+    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry, log=BASE_LOGGER):
         """Integration initialization."""
 
         self._hass = hass
