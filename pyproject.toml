@@ -9,6 +9,7 @@ packages = [{ include = "elasticsearch", from = "custom_components" }]
 
 [tool.poetry.dependencies]
 python = ">=3.12,<3.13"
+elasticsearch8 = "~=8.10.0"
 elasticsearch7 = "~=7.11.0"
 
 [tool.poetry.group.dev.dependencies]
@@ -26,6 +27,7 @@ pytest = ">=7.3.1"
 pytest-asyncio = ">=0.20.3"
 pytest-cov = ">=4.0.0"
 pytest-homeassistant-custom-component = "==0.13.111"
+mock = ">4.0.0"
 jsondiff = "*"
 
 
@@ -53,8 +55,17 @@ addopts = [
   "-vv",
   "-l",
   "--asyncio-mode=auto",
-  "--junitxml=test_results/pytest.xml"
+  "--junitxml=test_results/pytest.xml",
+  "--disable-socket",
+  "--allow-unix-socket"
 ]
 filterwarnings = ["ignore:ssl.PROTOCOL_TLS is deprecated:DeprecationWarning"]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+
+[tool.ruff]
+# Allow lines to be as long as 120.
+line-length = 100
+
+[tool.mypy]
+strict = true

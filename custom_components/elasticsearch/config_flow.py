@@ -49,7 +49,7 @@ from .errors import (
     UnsupportedVersion,
     UntrustedCertificate,
 )
-from .es_gateway import ElasticsearchGateway
+from .es_gateway import Elasticsearch7Gateway
 from .logger import LOGGER
 
 DEFAULT_URL = "http://localhost:9200"
@@ -85,9 +85,7 @@ def build_new_options(existing_options: dict = None, user_input: dict = None):
             CONF_PUBLISH_MODE,
             existing_options.get(CONF_PUBLISH_MODE, DEFAULT_PUBLISH_MODE),
         ),
-        CONF_ALIAS: user_input.get(
-            CONF_ALIAS, existing_options.get(CONF_ALIAS, DEFAULT_ALIAS)
-        ),
+        CONF_ALIAS: user_input.get(CONF_ALIAS, existing_options.get(CONF_ALIAS, DEFAULT_ALIAS)),
         CONF_INDEX_FORMAT: user_input.get(
             CONF_INDEX_FORMAT,
             existing_options.get(CONF_INDEX_FORMAT, DEFAULT_INDEX_FORMAT),
@@ -140,15 +138,9 @@ def build_new_data(existing_data: dict = None, user_input: dict = None):
         ),
     }
     auth = {
-        CONF_USERNAME: user_input.get(
-            CONF_USERNAME, existing_data.get(CONF_USERNAME, None)
-        ),
-        CONF_PASSWORD: user_input.get(
-            CONF_PASSWORD, existing_data.get(CONF_PASSWORD, None)
-        ),
-        CONF_API_KEY: user_input.get(
-            CONF_API_KEY, existing_data.get(CONF_API_KEY, None)
-        ),
+        CONF_USERNAME: user_input.get(CONF_USERNAME, existing_data.get(CONF_USERNAME, None)),
+        CONF_PASSWORD: user_input.get(CONF_PASSWORD, existing_data.get(CONF_PASSWORD, None)),
+        CONF_API_KEY: user_input.get(CONF_API_KEY, existing_data.get(CONF_API_KEY, None)),
     }
 
     # Set auth method based on the user input provided, only save relevant params
@@ -192,8 +184,6 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
     # Build the first step of the flow
     async def async_step_user(self, user_input=None):
         """Handle a flow initialized by the user."""
-        if self._async_current_entries():
-            return self.async_abort(reason="single_instance_allowed")
 
         return self.async_show_menu(
             step_id="user",
@@ -242,21 +232,15 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             if type == "basic_auth":
                 schema.update(
                     {
-                        vol.Required(
-                            CONF_USERNAME, default=data.get(CONF_USERNAME, "")
-                        ): str,
-                        vol.Required(
-                            CONF_PASSWORD, default=data.get(CONF_PASSWORD, "")
-                        ): str,
+                        vol.Required(CONF_USERNAME, default=data.get(CONF_USERNAME, "")): str,
+                        vol.Required(CONF_PASSWORD, default=data.get(CONF_PASSWORD, "")): str,
                     }
                 )
 
             if type == "api_key":
                 schema.update(
                     {
-                        vol.Required(
-                            CONF_API_KEY, default=data.get(CONF_API_KEY, "")
-                        ): str,
+                        vol.Required(CONF_API_KEY, default=data.get(CONF_API_KEY, "")): str,
                     }
                 )
 
@@ -328,17 +312,23 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
     async def async_step_no_auth(self, user_input=map | None):
         """Handle connection to an unsecured Elasticsearch cluster."""
 
-        return await self._handle_auth_flow(user_input=user_input, type="no_auth")
+        return await self._handle_auth_flow(
+            user_input=user_input, data=self.init_data, type="no_auth"
+        )
 
     async def async_step_basic_auth(self, user_input=map | None):
         """Handle connection to an unsecured Elasticsearch cluster."""
 
-        return await self._handle_auth_flow(user_input=user_input, type="basic_auth")
+        return await self._handle_auth_flow(
+            user_input=user_input, data=self.init_data, type="basic_auth"
+        )
 
     async def async_step_api_key(self, user_input=map | None):
         """Handle connection to an unsecured Elasticsearch cluster."""
 
-        return await self._handle_auth_flow(user_input=user_input, type="api_key")
+        return await self._handle_auth_flow(
+            user_input=user_input, data=self.init_data, type="api_key"
+        )
 
     async def async_step_reauth(self, user_input) -> FlowResult:
         """Handle reauthorization."""
@@ -373,35 +363,46 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         """Handle connection & authentication to Elasticsearch."""
         errors = {}
 
+        temp_gateway = Elasticsearch7Gateway(
+            hass=self.hass,
+            url=url,
+            username=username,
+            password=password,
+            api_key=api_key,
+            verify_certs=verify_certs,
+            ca_certs=ca_certs,
+            request_timeout=timeout,
+            minimum_privileges=verify_permissions,
+            use_connection_monitor=False,
+        )
+
         try:
-            await ElasticsearchGateway.test_connection(
-                url=url,
-                username=username,
-                password=password,
-                api_key=api_key,
-                verify_certs=verify_certs,
-                ca_certs=ca_certs,
-                timeout=timeout,
-                verify_permissions=verify_permissions,
-            )
+            await temp_gateway.async_init()
 
         except ClientError:
             # For a Client Error, try to initialize without SSL verification, if this works then there is a self-signed certificate being used
             try:
-                await ElasticsearchGateway.test_connection(
+                temp_no_ssl_gateway = Elasticsearch7Gateway(
+                    hass=self.hass,
                     url=url,
                     username=username,
                     password=password,
                     api_key=api_key,
                     verify_certs=False,
                     ca_certs=ca_certs,
-                    timeout=timeout,
-                    verify_permissions=verify_permissions,
+                    request_timeout=timeout,
+                    minimum_privileges=verify_permissions,
+                    use_connection_monitor=False,
                 )
+
+                await temp_no_ssl_gateway.async_init()
 
                 errors["base"] = "untrusted_connection"
             except Exception:
                 errors["base"] = "client_error"
+            finally:
+                if temp_no_ssl_gateway is not None:
+                    await temp_no_ssl_gateway.stop()
         except UntrustedCertificate:
             errors["base"] = "untrusted_connection"
         except AuthenticationRequired:
@@ -421,6 +422,9 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                 ex,
             )
             errors["base"] = "cannot_connect"
+        finally:
+            if temp_gateway is not None:
+                await temp_gateway.stop()
 
         success = not errors
         return ClusterCheckResult(success, errors)
@@ -430,21 +434,17 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
         entries = self.hass.config_entries.async_entries(ELASTIC_DOMAIN)
 
-        if len(entries) == 0:
-            return self.async_create_entry(
-                title=data.get(CONF_URL), data=data, options=options
-            )
+        # look at the entries in entries, look at the data conf_url value and if it matches, update the config entry, if it doesnt, make a new one
 
-        entry = entries[0]
+        for entry in entries:
+            if entry.data.get(CONF_URL) == data.get(CONF_URL):
+                self.hass.config_entries.async_update_entry(entry, data=data, options=options)
 
-        self.hass.config_entries.async_update_entry(entry, data=data, options=options)
+                self.hass.async_create_task(self.hass.config_entries.async_reload(entry.entry_id))
 
-        # Reload the config entry otherwise devices will remain unavailable
-        self.hass.async_create_task(
-            self.hass.config_entries.async_reload(entry.entry_id)
-        )
+                return self.async_abort(reason="updated_entry")
 
-        return self.async_abort(reason="updated_entry")
+        return self.async_create_entry(title=data.get(CONF_URL), data=data, options=options)
 
 
 class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
@@ -520,15 +520,11 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
         schema = {
             vol.Required(
                 CONF_PUBLISH_ENABLED,
-                default=self._get_config_value(
-                    CONF_PUBLISH_ENABLED, DEFAULT_PUBLISH_ENABLED
-                ),
+                default=self._get_config_value(CONF_PUBLISH_ENABLED, DEFAULT_PUBLISH_ENABLED),
             ): bool,
             vol.Required(
                 CONF_PUBLISH_FREQUENCY,
-                default=self._get_config_value(
-                    CONF_PUBLISH_FREQUENCY, DEFAULT_PUBLISH_FREQUENCY
-                ),
+                default=self._get_config_value(CONF_PUBLISH_FREQUENCY, DEFAULT_PUBLISH_FREQUENCY),
             ): int,
             vol.Required(
                 CONF_PUBLISH_MODE,
@@ -576,9 +572,7 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
             schema[
                 vol.Required(
                     CONF_INDEX_FORMAT,
-                    default=self._get_config_value(
-                        CONF_INDEX_FORMAT, DEFAULT_INDEX_FORMAT
-                    ),
+                    default=self._get_config_value(CONF_INDEX_FORMAT, DEFAULT_INDEX_FORMAT),
                 )
             ] = str
 
@@ -598,9 +592,7 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
             ): bool,
             vol.Required(
                 CONF_ILM_POLICY_NAME,
-                default=self._get_config_value(
-                    CONF_ILM_POLICY_NAME, DEFAULT_ILM_POLICY_NAME
-                ),
+                default=self._get_config_value(CONF_ILM_POLICY_NAME, DEFAULT_ILM_POLICY_NAME),
             ): str,
         }
 

@@ -43,7 +43,17 @@
 				"editor.formatOnSave": true,
 				"editor.formatOnType": true,
 				"files.trimTrailingWhitespace": true,
-				"python.experiments.optOutFrom": [
+				"python.testing.pytestArgs": [
+					"tests",
+					"--continue-on-collection-errors"
+				],
+				"python.testing.unittestEnabled": false,
+				"python.testing.pytestEnabled": true,
+				"ruff.format.args": [
+					"--config=./.ruff.toml"
+				],
+				"python.analysis.inlayHints.pytestParameters": true,
+				"python.experiments.optInto": [
 					"pythonTestAdapter"
 				]
 			}

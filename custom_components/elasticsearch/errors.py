@@ -1,4 +1,5 @@
 """Errors for the Elastic component."""
+
 from homeassistant.exceptions import HomeAssistantError
 
 
@@ -48,12 +49,10 @@ def convert_es_error(msg, err):
     )
 
     if isinstance(err, SSLError):
-          return UntrustedCertificate(msg, err)
+        return UntrustedCertificate(msg, err)
 
     if isinstance(err, ESConnectionError):
-        if isinstance(
-            err.info, aiohttp.client_exceptions.ClientConnectorCertificateError
-        ):
+        if isinstance(err.info, aiohttp.client_exceptions.ClientConnectorCertificateError):
             return UntrustedCertificate(msg, err)
 
         if isinstance(err.info, aiohttp.client_exceptions.ClientConnectorError):
@@ -61,10 +60,10 @@ def convert_es_error(msg, err):
         return CannotConnect(msg, err)
 
     if isinstance(err, AuthenticationException):
-         return AuthenticationRequired(msg, err)
+        return AuthenticationRequired(msg, err)
 
     if isinstance(err, AuthorizationException):
-         return InsufficientPrivileges(msg, err)
+        return InsufficientPrivileges(msg, err)
 
     if isinstance(err, ElasticsearchException):
         return ElasticException(msg, err)

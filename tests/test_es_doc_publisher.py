@@ -40,9 +40,10 @@ from custom_components.elasticsearch.errors import ElasticException
 from custom_components.elasticsearch.es_doc_publisher import (
     DocumentPublisher,
 )
-from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
+from custom_components.elasticsearch.es_gateway import Elasticsearch7Gateway, ElasticsearchGateway
 from tests.conftest import MockEntityState
 from tests.const import (
+    CLUSTER_INFO_8DOT0_RESPONSE_BODY,
     MOCK_LOCATION_SERVER,
     MOCK_NOON_APRIL_12TH_2023,
 )
@@ -175,7 +176,7 @@ def config_entry(hass: HomeAssistant, data, options):
 @pytest.fixture()
 def uninitialized_gateway(hass: HomeAssistant, config_entry: MockConfigEntry):
     """Create an uninitialized gateway."""
-    return ElasticsearchGateway(hass=hass, config_entry=config_entry)
+    return Elasticsearch7Gateway(**ElasticsearchGateway.build_gateway_parameters(hass=hass, config_entry=config_entry))
 
 
 @pytest.fixture()
@@ -185,9 +186,7 @@ def uninitialized_publisher(
     hass: HomeAssistant,
 ):
     """Create an uninitialized publisher."""
-    publisher = DocumentPublisher(
-        gateway=uninitialized_gateway, hass=hass, config_entry=config_entry
-    )
+    publisher = DocumentPublisher(gateway=uninitialized_gateway, hass=hass, config_entry=config_entry)
 
     assert publisher.publish_queue.qsize() == 0
 
@@ -201,9 +200,7 @@ async def initialized_publisher(
     hass: HomeAssistant,
 ):
     """Create an uninitialized publisher."""
-    publisher = DocumentPublisher(
-        gateway=initialized_gateway, hass=hass, config_entry=config_entry
-    )
+    publisher = DocumentPublisher(gateway=initialized_gateway, hass=hass, config_entry=config_entry)
 
     await publisher.async_init()
 
@@ -219,15 +216,21 @@ async def initialized_gateway(
     es_aioclient_mock: AiohttpClientMocker,
 ):
     """Create an uninitialized gateway."""
-    gateway = ElasticsearchGateway(hass=hass, config_entry=config_entry)
+    gateway = Elasticsearch7Gateway(
+        **ElasticsearchGateway.build_gateway_parameters(hass=hass, config_entry=config_entry, minimum_privileges=None), use_connection_monitor=False
+    )
 
     mock_es_initialization(es_aioclient_mock, config_entry.data[CONF_URL])
 
-    await gateway.async_init()
+    with (
+        mock.patch.object(gateway, "_get_cluster_info", return_value=CLUSTER_INFO_8DOT0_RESPONSE_BODY),
+        mock.patch.object(gateway, "test", return_value=True),
+    ):
+        await gateway.async_init()
 
     yield gateway
 
-    await gateway.async_stop_gateway()
+    await gateway.stop()
 
 
 @pytest.mark.asyncio
@@ -263,15 +266,9 @@ class Test_Unit_Tests:
 
         if expected is None:
             with pytest.raises(ElasticException):
-                DocumentPublisher._sanitize_datastream_name(
-                    type="metrics", dataset=case, namespace="default"
-                )
+                DocumentPublisher._sanitize_datastream_name(type="metrics", dataset=case, namespace="default")
         else:
-            type, dataset, namespace, full_name = (
-                DocumentPublisher._sanitize_datastream_name(
-                    type="metrics", dataset=case, namespace="default"
-                )
-            )
+            type, dataset, namespace, full_name = DocumentPublisher._sanitize_datastream_name(type="metrics", dataset=case, namespace="default")
 
             assert dataset == expected
             assert {"dataset": case, "sanitized_dataset": dataset} == snapshot
@@ -292,24 +289,16 @@ class Test_Unit_Tests:
 
         if expected is None:
             with pytest.raises(ElasticException):
-                DocumentPublisher._sanitize_datastream_name(
-                    type="metrics", dataset=case, namespace="default"
-                )
+                DocumentPublisher._sanitize_datastream_name(type="metrics", dataset=case, namespace="default")
         else:
-            type, dataset, namespace, full_name = (
-                DocumentPublisher._sanitize_datastream_name(
-                    type="metrics", dataset=case, namespace="default"
-                )
-            )
+            type, dataset, namespace, full_name = DocumentPublisher._sanitize_datastream_name(type="metrics", dataset=case, namespace="default")
             assert dataset == expected
 
     class Test_Change_Mode:
         """Test change mode functions."""
 
         @pytest.mark.asyncio
-        async def test_determine_change_type(
-            self, hass, data, options, uninitialized_publisher: DocumentPublisher
-        ):
+        async def test_determine_change_type(self, hass, data, options, uninitialized_publisher: DocumentPublisher):
             """Test entity change is published."""
             assert (
                 uninitialized_publisher._determine_change_type(
@@ -321,12 +310,8 @@ class Test_Unit_Tests:
 
             assert (
                 uninitialized_publisher._determine_change_type(
-                    new_state=MockEntityState(
-                        hass, entity_id="test.test_1", state="red"
-                    ),
-                    old_state=MockEntityState(
-                        hass, entity_id="test.test_1", state="brown"
-                    ),
+                    new_state=MockEntityState(hass, entity_id="test.test_1", state="red"),
+                    old_state=MockEntityState(hass, entity_id="test.test_1", state="brown"),
                 )
                 == PUBLISH_REASON_STATE_CHANGE
             )

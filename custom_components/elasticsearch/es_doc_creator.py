@@ -6,6 +6,7 @@ from datetime import datetime
 from functools import lru_cache
 from math import isinf
 
+from elasticsearch.es_gateway import Elasticsearch7Gateway
 from homeassistant.components.sun import STATE_ABOVE_HORIZON, STATE_BELOW_HORIZON
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
@@ -26,9 +27,9 @@ from pytz import utc
 
 from custom_components.elasticsearch.const import CONF_TAGS, PUBLISH_REASON_POLLING
 from custom_components.elasticsearch.entity_details import EntityDetails
-from custom_components.elasticsearch.es_serializer import get_serializer
-from custom_components.elasticsearch.logger import LOGGER
 from custom_components.elasticsearch.system_info import SystemInfo
+
+from .logger import LOGGER as BASE_LOGGER
 
 ALLOWED_ATTRIBUTE_TYPES = tuple | dict | set | list | int | float | bool | str | None
 SKIP_ATTRIBUTES = [
@@ -44,12 +45,15 @@ SKIP_ATTRIBUTES = [
 class DocumentCreator:
     """Create ES documents from Home Assistant state change events."""
 
-    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry) -> None:
+    _logger = BASE_LOGGER
+
+    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry, log=BASE_LOGGER) -> None:
         """Initialize."""
+        self._logger = log
         self._entity_details = EntityDetails(hass)
         self._static_v1doc_properties: dict | None = None
         self._static_v2doc_properties: dict | None = None
-        self._serializer = get_serializer()
+        self._serializer = Elasticsearch7Gateway._new_encoder()
         self._system_info: SystemInfo = SystemInfo(hass)
         self._hass = hass
 
@@ -58,7 +62,7 @@ class DocumentCreator:
     async def async_init(self) -> None:
         """Async initialization."""
 
-        LOGGER.debug("async_init: initializing static doc properties")
+        self._logger.debug("async_init: initializing static doc properties")
 
         await self._populate_static_doc_properties()
 
@@ -108,7 +112,7 @@ class DocumentCreator:
             # https://github.com/legrego/homeassistant-elasticsearch/issues/96
             # https://github.com/legrego/homeassistant-elasticsearch/issues/192
             if not orig_key or not isinstance(orig_key, str):
-                LOGGER.debug(
+                self._logger.debug(
                     "Not publishing attribute with unsupported key [%s] from entity [%s].",
                     orig_key if isinstance(orig_key, str) else f"type:{type(orig_key)}",
                     state.entity_id,
@@ -123,7 +127,7 @@ class DocumentCreator:
 
             # coerce set to list. ES does not handle sets natively
             if not isinstance(orig_value, ALLOWED_ATTRIBUTE_TYPES):
-                LOGGER.debug(
+                self._logger.debug(
                     "Not publishing attribute [%s] of disallowed type [%s] from entity [%s].",
                     key,
                     type(orig_value),
@@ -144,15 +148,13 @@ class DocumentCreator:
                 should_serialize = isinstance(value, dict)
 
             if key in attributes:
-                LOGGER.warning(
+                self._logger.warning(
                     "Attribute [%s] shares a key [%s] with another attribute for entity [%s]. Discarding previous attribute value.",
                     orig_key,
                     key,
                     state.entity_id,
                 )
-            attributes[key] = (
-                self._serializer.dumps(value) if should_serialize else value
-            )
+            attributes[key] = self._serializer.dumps(value) if should_serialize else value
 
         return attributes
 
@@ -174,6 +176,7 @@ class DocumentCreator:
         entity = entity_details.entity
         entity_capabilities = entity.capabilities or {}
         entity_area = entity_details.entity_area
+        entity_floor = entity_details.entity_floor
 
         entity_additions = {
             "labels": entity_details.entity_labels,
@@ -181,16 +184,14 @@ class DocumentCreator:
             "friendly_name": state.name,
             "platform": entity.platform,
             "unit_of_measurement": str(entity.unit_of_measurement),
+            "area.floor.id": entity_floor.floor_id if entity_floor else None,
+            "area.floor.name": entity_floor.name if entity_floor else None,
             "area.id": entity_area.id if entity_area else None,
             "area.name": entity_area.name if entity_area else None,
-            "class": entity_capabilities.get("state_class"),
+            "state.class": entity_capabilities.get("state_class"),
         }
 
-        entity_additions = {
-            k: str(v)
-            for k, v in entity_additions.items()
-            if (v is not None and v != "None")
-        }
+        entity_additions = {k: str(v) for k, v in entity_additions.items() if (v is not None and v != "None" and len(v) != 0)}
 
         device = entity_details.device
         device_floor = entity_details.device_floor
@@ -202,8 +203,8 @@ class DocumentCreator:
             "labels": entity_details.device_labels,
             "name": (device.name if device else None),
             "friendly_name": (device.name_by_user if device else None),
-            "floor.id": device_floor.floor_id if device_floor else None,
-            "floor.name": device_floor.name if device_floor else None,
+            "area.floor.id": device_floor.floor_id if device_floor else None,
+            "area.floor.name": device_floor.name if device_floor else None,
             "area.id": device_area.id if device_area else None,
             "area.name": device_area.name if device_area else None,
         }
@@ -211,7 +212,7 @@ class DocumentCreator:
         device_additions = {
             k: str(v)
             for k, v in device_additions.items()
-            if (v is not None and v != "None")
+            if (v is not None and v != "None" and len(v) != 0)
         }
 
         return {**entity_additions, "device": {**device_additions}}
@@ -251,11 +252,7 @@ class DocumentCreator:
         if isinstance(_state, str) and self.try_state_as_boolean(state):
             additions["valueas"]["boolean"] = self.state_as_boolean(state)
 
-        elif (
-            isinstance(_state, str)
-            and self.try_state_as_number(state)
-            and self.is_valid_number(state_helper.state_as_number(state))
-        ):
+        elif isinstance(_state, str) and self.try_state_as_number(state) and self.is_valid_number(state_helper.state_as_number(state)):
             additions["valueas"]["float"] = state_helper.state_as_number(state)
 
         elif isinstance(_state, str) and self.try_state_as_datetime(state):
@@ -277,6 +274,7 @@ class DocumentCreator:
         """Convert entity state to Legacy ES document format."""
         additions = {
             "hass.domain": state.domain,
+            "hass.object_id": state.object_id,
             "hass.object_id_lower": state.object_id.lower(),
             "hass.entity_id": state.entity_id,
             "hass.entity_id_lower": state.entity_id.lower(),
@@ -298,7 +296,10 @@ class DocumentCreator:
 
     def _state_to_document_v2(self, state: State, entity: dict, time: datetime) -> dict:
         """Convert entity state to modern ES document format."""
-        additions = {"hass.entity": entity}
+        additions = {
+            "hass.entity": entity,
+            "hass.entity.object.id": state.object_id,
+        }
 
         additions["hass.entity"].update(self._state_to_value_v2(state))
 
@@ -316,9 +317,7 @@ class DocumentCreator:
 
         return additions
 
-    def state_to_document(
-        self, state: State, time: datetime, reason: str, version: int = 2
-    ) -> dict:
+    def state_to_document(self, state: State, time: datetime, reason: str, version: int = 2) -> dict:
         """Convert entity state to ES document."""
 
         if time.tzinfo is None:
@@ -340,7 +339,7 @@ class DocumentCreator:
 
         """
         # log the python type of 'value' for debugging purposes
-        LOGGER.debug(
+        self._logger.debug(
             "Entity [%s] has value [%s] of type [%s]",
             state.entity_id,
             _state,
@@ -354,7 +353,6 @@ class DocumentCreator:
 
         document_body = {
             "@timestamp": time_tz.isoformat(),
-            "hass.object_id": state.object_id,
             "event": {
                 "action": reason,
                 "type": updateType,
@@ -362,11 +360,8 @@ class DocumentCreator:
             },
         }
 
-        if (
-            self._static_v1doc_properties is None
-            or self._static_v2doc_properties is None
-        ):
-            LOGGER.warning(
+        if self._static_v1doc_properties is None or self._static_v2doc_properties is None:
+            self._logger.warning(
                 "Event for entity [%s] is missing static doc properties. This is a bug.",
                 state.entity_id,
             )
@@ -391,11 +386,7 @@ class DocumentCreator:
     def normalize_attribute_name(self, attribute_name: str) -> str:
         """Create an ECS-compliant version of the provided attribute name."""
         # Normalize to closest ASCII equivalent where possible
-        normalized_string = (
-            unicodedata.normalize("NFKD", attribute_name)
-            .encode("ascii", "ignore")
-            .decode()
-        )
+        normalized_string = unicodedata.normalize("NFKD", attribute_name).encode("ascii", "ignore").decode()
 
         # Replace all non-word characters with an underscore
         replaced_string = re.sub(r"[\W]+", "_", normalized_string)

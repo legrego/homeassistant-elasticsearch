@@ -31,7 +31,7 @@
           "float": 0.0
         }
       },
-      "hass.object_id": "test_1",
+      "hass.entity.object.id": "test_1",
       "host.architecture": "Test Arch",
       "host.geo.location": {
         "lat": 99.0,

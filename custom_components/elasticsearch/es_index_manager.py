@@ -13,6 +13,7 @@ from custom_components.elasticsearch.errors import ElasticException, convert_es_
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 
 from .const import (
+    CAPABILITIES,
     CONF_ILM_ENABLED,
     CONF_ILM_POLICY_NAME,
     CONF_INDEX_FORMAT,
@@ -28,23 +29,27 @@ from .const import (
     LEGACY_TEMPLATE_NAME,
     VERSION_SUFFIX,
 )
-from .logger import LOGGER
+from .logger import LOGGER as BASE_LOGGER
 
 
 class IndexManager:
     """Index management facilities."""
+
+    _logger = BASE_LOGGER
 
     def __init__(
         self,
         hass: HomeAssistant,
         gateway: ElasticsearchGateway,
         config_entry: ConfigEntry,
+        log=BASE_LOGGER,
     ):
         """Initialize index management."""
 
         if not config_entry.options.get(CONF_PUBLISH_ENABLED):
             return
 
+        self._logger = log
         self._hass = hass
         self._gateway: ElasticsearchGateway = gateway
 
@@ -54,9 +59,7 @@ class IndexManager:
         if self.index_mode == INDEX_MODE_LEGACY:
             self.index_alias = config_entry.options.get(CONF_ALIAS) + VERSION_SUFFIX
             self.ilm_policy_name = config_entry.options.get(CONF_ILM_POLICY_NAME)
-            self.index_format = (
-                config_entry.options.get(CONF_INDEX_FORMAT) + VERSION_SUFFIX
-            )
+            self.index_format = config_entry.options.get(CONF_INDEX_FORMAT) + VERSION_SUFFIX
             self._using_ilm = config_entry.options.get(CONF_ILM_ENABLED)
 
             ir.async_create_issue(
@@ -89,19 +92,17 @@ class IndexManager:
         else:
             await self._create_index_template()
 
-        LOGGER.debug("Index Manager initialized")
+        self._logger.debug("Index Manager initialized")
 
     async def _create_index_template(self):
         """Initialize the Elasticsearch cluster with an index template, initial index, and alias."""
-        LOGGER.debug("Initializing modern index templates")
+        self._logger.debug("Initializing modern index templates")
 
-        client = self._gateway.get_client()
+        client = self._gateway.client
 
         # Open datastreams/index_template.json and load the ES modern index template
         with open(
-            os.path.join(
-                os.path.dirname(__file__), "datastreams", "index_template.json"
-            ),
+            os.path.join(os.path.dirname(__file__), "datastreams", "index_template.json"),
             encoding="utf-8",
         ) as json_file:
             index_template = json.load(json_file)
@@ -114,47 +115,45 @@ class IndexManager:
 
         template_exists = matching_templates and matching_templates_count > 0
 
-        LOGGER.debug("got template response: " + str(template_exists))
+        self._logger.debug("got template response: " + str(template_exists))
 
         if template_exists:
-            LOGGER.debug("Updating index template")
+            self._logger.debug("Updating index template")
         else:
-            LOGGER.debug("Creating index template")
+            self._logger.debug("Creating index template")
 
-        if self._gateway.es_version.supports_timeseries_datastream():
-            LOGGER.debug(
+        if self._gateway.has_capability(CAPABILITIES.TIMESERIES_DATASTREAM):
+            self._logger.debug(
                 "Elasticsearch supports timeseries datastreams, including in template."
             )
 
             index_template["template"]["settings"]["index.mode"] = "time_series"
 
             mappings = index_template["template"]["mappings"]
-            object_id = mappings["properties"]["hass"]["properties"]["object_id"]
+            object_id = mappings["properties"]["hass"]["properties"]["entity"]["properties"][
+                "object"
+            ]["properties"]["id"]
 
             object_id["time_series_dimension"] = True
 
-        if self._gateway.es_version.supports_ignore_missing_component_templates():
-            LOGGER.debug(
+        if self._gateway.has_capability(CAPABILITIES.IGNORE_MISSING_COMPONENT_TEMPLATES):
+            self._logger.debug(
                 "Elasticsearch supports ignore_missing_component_templates, including in template."
             )
 
             index_template["composed_of"] = ["metrics-homeassistant@custom"]
-            index_template["ignore_missing_component_templates"] = [
-                "metrics-homeassistant@custom"
-            ]
+            index_template["ignore_missing_component_templates"] = ["metrics-homeassistant@custom"]
 
-        if self._gateway.es_version.supports_datastream_lifecycle_management():
-            LOGGER.debug(
+        if self._gateway.has_capability(CAPABILITIES.DATASTREAM_LIFECYCLE_MANAGEMENT):
+            self._logger.debug(
                 "Elasticsearch supports Datastream Lifecycle Management, including in template."
             )
             index_template["template"]["lifecycle"] = {"data_retention": "365d"}
         else:
-            LOGGER.debug(
+            self._logger.debug(
                 "Elasticsearch does not support Datastream Lifecycle Management, falling back to Index Lifecycle Management."
             )
-            await self._create_basic_ilm_policy(
-                ilm_policy_name=DATASTREAM_METRICS_ILM_POLICY_NAME
-            )
+            await self._create_basic_ilm_policy(ilm_policy_name=DATASTREAM_METRICS_ILM_POLICY_NAME)
 
             index_template["template"]["settings"]["index.lifecycle.name"] = (
                 DATASTREAM_METRICS_ILM_POLICY_NAME
@@ -166,7 +165,7 @@ class IndexManager:
             )
 
         except ElasticsearchException as err:
-            LOGGER.exception("Error creating/updating index template: %s", err)
+            self._logger.exception("Error creating/updating index template: %s", err)
             if not template_exists:
                 raise convert_es_error(
                     "No index template present in Elasticsearch and failed to create one",
@@ -174,7 +173,7 @@ class IndexManager:
                 ) from err
         try:
             if await self.requires_datastream_ignore_dynamic_fields_migration():
-                LOGGER.debug(
+                self._logger.debug(
                     "Performing a one-time migration of datastream write indices to set dynamic=false."
                 )
                 await self.migrate_datastreams_to_ignore_dynamic_fields()
@@ -185,14 +184,14 @@ class IndexManager:
     async def _create_legacy_template(self):
         """Initialize the Elasticsearch cluster with an index template, initial index, and alias."""
 
-        LOGGER.debug("Initializing legacy index templates")
+        self._logger.debug("Initializing legacy index templates")
 
-        if self._gateway.es_version.is_serverless():
+        if self._gateway.has_capability(CAPABILITIES.SERVERLESS):
             raise ElasticException(
                 "Serverless environment detected, legacy index usage not allowed in ES Serverless. Switch to datastreams."
             )
 
-        client = self._gateway.get_client()
+        client = self._gateway.client
 
         # For Legacy mode we offer flexible configuration of the ILM policy
         await self._create_basic_ilm_policy(ilm_policy_name=self.ilm_policy_name)
@@ -203,17 +202,15 @@ class IndexManager:
         ) as json_file:
             mapping = json.load(json_file)
 
-        LOGGER.debug("checking if template exists")
+        self._logger.debug("checking if template exists")
 
-        template = await client.indices.get_template(
-            name=LEGACY_TEMPLATE_NAME, ignore=[404]
-        )
+        template = await client.indices.get_template(name=LEGACY_TEMPLATE_NAME, ignore=[404])
 
-        LOGGER.debug("got template response: " + str(template))
+        self._logger.debug("got template response: " + str(template))
         template_exists = template and LEGACY_TEMPLATE_NAME in template
 
         if not template_exists:
-            LOGGER.debug("Creating index template")
+            self._logger.debug("Creating index template")
 
             index_template = {
                 "index_patterns": [self.index_format + "*"],
@@ -226,17 +223,11 @@ class IndexManager:
                 "aliases": {"all-hass-events": {}},
             }
             if self._using_ilm:
-                index_template["settings"]["index.lifecycle.name"] = (
-                    self.ilm_policy_name
-                )
-                index_template["settings"]["index.lifecycle.rollover_alias"] = (
-                    self.index_alias
-                )
+                index_template["settings"]["index.lifecycle.name"] = self.ilm_policy_name
+                index_template["settings"]["index.lifecycle.rollover_alias"] = self.index_alias
 
             try:
-                await client.indices.put_template(
-                    name=LEGACY_TEMPLATE_NAME, body=index_template
-                )
+                await client.indices.put_template(name=LEGACY_TEMPLATE_NAME, body=index_template)
             except ElasticsearchException as err:
                 raise convert_es_error(
                     "No index template present in Elasticsearch and failed to create one",
@@ -246,20 +237,20 @@ class IndexManager:
         alias = await client.indices.get_alias(name=self.index_alias, ignore=[404])
         alias_exists = alias and not alias.get("error")
         if not alias_exists:
-            LOGGER.debug("Creating initial index and alias")
+            self._logger.debug("Creating initial index and alias")
             try:
                 await client.indices.create(
                     index=self.index_format + "-000001",
                     body={"aliases": {self.index_alias: {"is_write_index": True}}},
                 )
             except ElasticsearchException as err:
-                LOGGER.exception("Error creating initial index/alias: %s", err)
+                self._logger.exception("Error creating initial index/alias: %s", err)
 
     async def _create_basic_ilm_policy(self, ilm_policy_name):
         """Create the index lifecycle management policy."""
         from elasticsearch7.exceptions import TransportError
 
-        client = self._gateway.get_client()
+        client = self._gateway.client
 
         try:
             existing_policy = await client.ilm.get_lifecycle(ilm_policy_name)
@@ -271,12 +262,10 @@ class IndexManager:
                     "Unexpected return code when checking for existing ILM policy", err
                 ) from err
         except ElasticsearchException as err:
-            raise convert_es_error(
-                "Error checking for existing ILM policy", err
-            ) from err
+            raise convert_es_error("Error checking for existing ILM policy", err) from err
 
         if existing_policy:
-            LOGGER.info("Found existing ILM Policy, do nothing '%s'", ilm_policy_name)
+            self._logger.info("Found existing ILM Policy, do nothing '%s'", ilm_policy_name)
             return
 
         policy = {
@@ -295,15 +284,15 @@ class IndexManager:
             }
         }
 
-        if self._gateway.es_version.supports_max_primary_shard_size():
-            LOGGER.debug(
+        if self._gateway.has_capability(CAPABILITIES.MAX_PRIMARY_SHARD_SIZE):
+            self._logger.debug(
                 "Elasticsearch supports max_primary_shard_size, including in ILM template."
             )
-            policy["policy"]["phases"]["hot"]["actions"]["rollover"][
-                "max_primary_shard_size"
-            ] = "50gb"
+            policy["policy"]["phases"]["hot"]["actions"]["rollover"]["max_primary_shard_size"] = (
+                "50gb"
+            )
 
-        LOGGER.info("Creating ILM Policy '%s'", ilm_policy_name)
+        self._logger.info("Creating ILM Policy '%s'", ilm_policy_name)
         try:
             await client.ilm.put_lifecycle(ilm_policy_name, policy)
         except ElasticsearchException as err:
@@ -314,7 +303,7 @@ class IndexManager:
         if self.index_mode != INDEX_MODE_DATASTREAM:
             return False
 
-        client = self._gateway.get_client()
+        client = self._gateway.client
 
         try:
             mappings = await client.indices.get_mapping(
@@ -336,7 +325,7 @@ class IndexManager:
         if self.index_mode != INDEX_MODE_DATASTREAM:
             return
 
-        client = self._gateway.get_client()
+        client = self._gateway.client
 
         try:
             await client.indices.put_mapping(

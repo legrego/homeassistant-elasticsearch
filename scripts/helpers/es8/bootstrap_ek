@@ -75,6 +75,9 @@ echo "- Creating a user for Home Assistant"
 echo "- Creating an API Key for Home Assistant"
 apikey=$(/bin/bash "$dir/../shared/create_hass_writer_apikey_es" "https://host.docker.internal:9200" "elastic" "$espwd")
 
+echo "- Creating a dataview in Kibana"
+apikey=$(/bin/bash "$dir/../shared/new_kb_dataview" "https://host.docker.internal:5601" "elastic" "$espwd")
+
 end=$(date +%s)
 
 echo
@@ -99,3 +102,12 @@ echo "  Setup Code:" "$kbcode"
 echo "  Enrollment Token:" "$enrolltoken"
 echo "  Containers: $escontainer $kbcontainer"
 echo "  Duration: $((end - start)) seconds"
+echo "  Credential File: ../../es_cluster.creds"
+
+# Save a file with the credentials in the scripts directory which is 2 directories up
+echo "elastic:$espwd" > "$dir/../../es_cluster.creds"
+echo "hass_writer:changeme" >> "$dir/../../es_cluster.creds"
+echo "hass_writer:$apikey" >> "$dir/../../es_cluster.creds"
+
+
+

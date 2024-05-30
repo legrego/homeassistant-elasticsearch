@@ -1,6 +1,10 @@
 """ES Startup Mocks."""
 
-from elasticsearch.const import DATASTREAM_DATASET_PREFIX, DATASTREAM_TYPE
+from elasticsearch.const import (
+    DATASTREAM_DATASET_PREFIX,
+    DATASTREAM_METRICS_ILM_POLICY_NAME,
+    DATASTREAM_TYPE,
+)
 from homeassistant.const import CONF_URL, CONTENT_TYPE_JSON
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
@@ -37,6 +41,7 @@ def mock_es_initialization(
     mock_index_creation=True,
     mock_health_check=True,
     mock_ilm_setup=True,
+    mock_ilm_update=False,
     mock_mapping_dynamic_strict=False,
     mock_mapping_dynamic_false=False,
     mock_serverless_version=False,
@@ -58,22 +63,29 @@ def mock_es_initialization(
 
     if mock_serverless_version:
         aioclient_mock.get(url, status=200, json=CLUSTER_INFO_SERVERLESS_RESPONSE_BODY)
+        aioclient_mock.request(url=url, method="HEAD", status=200)
     elif mock_unsupported_version:
         aioclient_mock.get(url, status=200, json=CLUSTER_INFO_UNSUPPORTED_RESPONSE_BODY)
+        aioclient_mock.request(url=url, method="HEAD", status=200)
     elif mock_authentication_error:
         aioclient_mock.get(url, status=401, json={"error": "unauthorized"})
     elif mock_connection_error:
         aioclient_mock.get(url, status=500, json={"error": "idk"})
     elif mock_v811_cluster:
         aioclient_mock.get(url, status=200, json=CLUSTER_INFO_8DOT11_RESPONSE_BODY)
+        aioclient_mock.request(url=url, method="HEAD", status=200)
     elif mock_v88_cluster:
         aioclient_mock.get(url, status=200, json=CLUSTER_INFO_8DOT8_RESPONSE_BODY)
+        aioclient_mock.request(url=url, method="HEAD", status=200)
     elif mock_v80_cluster:
         aioclient_mock.get(url, status=200, json=CLUSTER_INFO_8DOT0_RESPONSE_BODY)
+        aioclient_mock.request(url=url, method="HEAD", status=200)
     elif mock_v711_cluster:
         aioclient_mock.get(url, status=200, json=CLUSTER_INFO_7DOT11_RESPONSE_BODY)
+        aioclient_mock.request(url=url, method="HEAD", status=200)
     elif mock_v717_cluster:
         aioclient_mock.get(url, status=200, json=CLUSTER_INFO_7DOT17_RESPONSE_BODY)
+        aioclient_mock.request(url=url, method="HEAD", status=200)
     else:
         aioclient_mock.get(url, status=200, json=CLUSTER_INFO_RESPONSE_BODY)
 
@@ -313,10 +325,35 @@ def mock_es_initialization(
             json=[{"hi": "need dummy content"}],
         )
 
+        aioclient_mock.get(
+            url + f"/_ilm/policy/{DATASTREAM_METRICS_ILM_POLICY_NAME}",
+            status=404,
+            headers={"content-type": CONTENT_TYPE_JSON},
+            json={"error": "policy missing"},
+        )
+        aioclient_mock.put(
+            url + f"/_ilm/policy/{DATASTREAM_METRICS_ILM_POLICY_NAME}",
+            status=200,
+            headers={"content-type": CONTENT_TYPE_JSON},
+            json={"hi": "need dummy content"},
+        )
+
+    if mock_ilm_update:
+        aioclient_mock.get(
+            url + f"/_ilm/policy/{ilm_policy_name}",
+            status=200,
+            headers={"content-type": CONTENT_TYPE_JSON},
+            json={"hi": "need dummy content"},
+        )
+        aioclient_mock.get(
+            url + f"/_ilm/policy/{DATASTREAM_METRICS_ILM_POLICY_NAME}",
+            status=200,
+            headers={"content-type": CONTENT_TYPE_JSON},
+            json={"hi": "need dummy content"},
+        )
     if mock_mapping_dynamic_strict:
         aioclient_mock.get(
-            url
-            + f"/{DATASTREAM_TYPE + "-" + DATASTREAM_DATASET_PREFIX + ".*" + "/_mapping"}",
+            url + f"/{DATASTREAM_TYPE + "-" + DATASTREAM_DATASET_PREFIX + ".*" + "/_mapping"}",
             status=200,
             headers={"content-type": CONTENT_TYPE_JSON},
             json={
@@ -328,16 +365,14 @@ def mock_es_initialization(
             },
         )
         aioclient_mock.put(
-            url
-            + f"/{DATASTREAM_TYPE + "-" + DATASTREAM_DATASET_PREFIX + ".*" + "/_mapping"}",
+            url + f"/{DATASTREAM_TYPE + "-" + DATASTREAM_DATASET_PREFIX + ".*" + "/_mapping"}",
             status=200,
             headers={"content-type": CONTENT_TYPE_JSON},
             json={"hi": "need dummy content"},
         )
     if mock_mapping_dynamic_false:
         aioclient_mock.get(
-            url
-            + f"/{DATASTREAM_TYPE + "-" + DATASTREAM_DATASET_PREFIX + ".*" + "/_mapping"}",
+            url + f"/{DATASTREAM_TYPE + "-" + DATASTREAM_DATASET_PREFIX + ".*" + "/_mapping"}",
             status=200,
             headers={"content-type": CONTENT_TYPE_JSON},
             json={
