@@ -34,16 +34,16 @@ class ElasticsearchGateway(ABC):
         self,
         log=BASE_LOGGER,
         hass: HomeAssistant = None,
-        url: str = None,
-        username: str = None,
-        password: str = None,
-        api_key: str = None,
+        url: str | None = None,
+        username: str | None = None,
+        password: str | None = None,
+        api_key: str | None = None,
         verify_certs: bool = True,
-        ca_certs: str = None,
+        ca_certs: str | None = None,
         request_timeout: int = 30,
-        minimum_privileges: dict = None,
+        minimum_privileges: dict | None = None,
         use_connection_monitor=True,
-    ):
+    ) -> None:
         """Non-I/O bound init."""
 
         self._logger = log
@@ -65,28 +65,29 @@ class ElasticsearchGateway(ABC):
         self._capabilities = None
         self._use_connection_monitor = use_connection_monitor
 
-    async def async_init(self):
+    async def async_init(self) -> None:
         """I/O bound init."""
 
         # Test the connection
         self._info = await self._get_cluster_info()
 
         if not await self.test():
-            raise ConnectionError("Connection test failed.")
+            msg = "Connection test failed."
+            raise ConnectionError(msg)
 
         # Obtain the capabilities of the Elasticsearch instance
         self._capabilities = self._build_capabilities()
 
         # Enforce minimum version
         if self.has_capability(CAPABILITIES.SUPPORTED) is False:
-            raise UnsupportedVersion()
+            raise UnsupportedVersion
 
         # if we have minimum privileges, enforce them
         if self._minimum_privileges is not None:
             has_all_privileges = await self._has_required_privileges(self._minimum_privileges)
 
             if not has_all_privileges:
-                raise InsufficientPrivileges()
+                raise InsufficientPrivileges
 
         if self._use_connection_monitor:
             # Start a new connection monitor
@@ -134,7 +135,7 @@ class ElasticsearchGateway(ABC):
 
     @classmethod
     def build_gateway_parameters(
-        self,
+        cls,
         hass,
         config_entry,
         minimum_privileges=ES_CHECK_PERMISSIONS_DATASTREAM,
@@ -219,18 +220,18 @@ class ElasticsearchGateway(ABC):
             self._logger.debug("Connection test to [%s] was successful.", self._url)
             return True
         except Exception as err:
-            self._logger.error("Connection test to [%s] failed: %s", self._url, err)
+            self._logger.exception("Connection test to [%s] failed: %s", self._url, err)
             return False
 
     @classmethod
     def _create_es_client_args(
-        self,
+        cls,
         url: str,
-        username: str = None,
-        password: str = None,
-        api_key: str = None,
+        username: str | None = None,
+        password: str | None = None,
+        api_key: str | None = None,
         verify_certs: bool = True,
-        ca_certs: str = None,
+        ca_certs: str | None = None,
         request_timeout: int = 30,
     ):
         """Construct the arguments for the Elasticsearch client."""
@@ -239,7 +240,7 @@ class ElasticsearchGateway(ABC):
 
         args = {
             "hosts": [url],
-            "serializer": self._new_encoder(),
+            "serializer": cls._new_encoder(),
             "verify_certs": verify_certs,
             "ssl_show_warn": verify_certs,
             "ca_certs": ca_certs,
@@ -259,7 +260,8 @@ class ElasticsearchGateway(ABC):
         try:
             return await self._client.info()
         except Exception as err:
-            raise convert_es_error("Connection test failed", err) from err
+            msg = "Connection test failed"
+            raise convert_es_error(msg, err) from err
 
     @abstractmethod
     async def _has_required_privileges(self, required_privileges) -> bool:
@@ -267,13 +269,13 @@ class ElasticsearchGateway(ABC):
 
     @classmethod
     @abstractmethod
-    def _new_encoder(self) -> JSONSerializer7 | JSONSerializer8:
+    def _new_encoder(cls) -> JSONSerializer7 | JSONSerializer8:
         pass  # pragma: no cover
 
     @classmethod
     @abstractmethod
     def _create_es_client(
-        self,
+        cls,
         hosts,
         username,
         password,
@@ -291,7 +293,7 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
     client: AsyncElasticsearch8
 
     @classmethod
-    def _create_es_client(self, **kwargs) -> AsyncElasticsearch8:
+    def _create_es_client(cls, **kwargs) -> AsyncElasticsearch8:
         """Construct an instance of the Elasticsearch client."""
 
         return AsyncElasticsearch8(**kwargs)
@@ -303,14 +305,15 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
 
             if not privilege_response.get("has_all_requested"):
                 self._logger.error("Required privileges are missing.")
-                raise InsufficientPrivileges()
+                raise InsufficientPrivileges
 
             return privilege_response
         except Exception as err:
-            raise convert_es_error("Error enforcing privileges", err) from err
+            msg = "Error enforcing privileges"
+            raise convert_es_error(msg, err) from err
 
     @classmethod
-    def _new_encoder(self) -> JSONSerializer8:
+    def _new_encoder(cls) -> JSONSerializer8:
         """Create a new instance of the JSON serializer."""
 
         class SetEncoder(JSONSerializer8):
@@ -334,7 +337,7 @@ class Elasticsearch7Gateway(ElasticsearchGateway):
     client: AsyncElasticsearch7
 
     @classmethod
-    def _create_es_client(self, **kwargs) -> AsyncElasticsearch7:
+    def _create_es_client(cls, **kwargs) -> AsyncElasticsearch7:
         return AsyncElasticsearch7(**kwargs)
 
     async def _has_required_privileges(self, required_privileges) -> bool:
@@ -345,14 +348,15 @@ class Elasticsearch7Gateway(ElasticsearchGateway):
 
             if not privilege_response.get("has_all_requested"):
                 self._logger.error("Required privileges are missing.")
-                raise InsufficientPrivileges()
+                raise InsufficientPrivileges
 
             return privilege_response
         except Exception as err:
-            raise convert_es_error("Error enforcing privileges", err) from err
+            msg = "Error enforcing privileges"
+            raise convert_es_error(msg, err) from err
 
     @classmethod
-    def _new_encoder(self) -> JSONSerializer7:
+    def _new_encoder(cls) -> JSONSerializer7:
         """Create a new instance of the JSON serializer."""
 
         class SetEncoder(JSONSerializer7):
@@ -373,7 +377,7 @@ class Elasticsearch7Gateway(ElasticsearchGateway):
 class ConnectionMonitor:
     """Connection monitor for Elasticsearch."""
 
-    def __init__(self, gateway: ElasticsearchGateway, log=BASE_LOGGER):
+    def __init__(self, gateway: ElasticsearchGateway, log=BASE_LOGGER) -> None:
         """Initialize the connection monitor."""
         self._logger = log
 
@@ -383,7 +387,7 @@ class ConnectionMonitor:
         self._task: asyncio.Task = None
         self._next_test: float = None
 
-    async def async_init(self):
+    async def async_init(self) -> None:
         """Start the connection monitor."""
 
         # Ensure our connection is active
@@ -410,11 +414,11 @@ class ConnectionMonitor:
     #     return self._task
 
     @classmethod
-    def _is_ignorable_error(transport_err) -> bool:
+    def _is_ignorable_error(cls) -> bool:
         """Determine if a transport error is ignorable."""
 
-        if isinstance(transport_err, TransportError7 | TransportError8):
-            return isinstance(transport_err.status_code, int) and transport_err.status_code <= 403
+        if isinstance(cls, TransportError7 | TransportError8):
+            return isinstance(cls.status_code, int) and cls.status_code <= 403
 
         return False
 
@@ -430,7 +434,7 @@ class ConnectionMonitor:
         """Spin the event loop."""
         await asyncio.sleep(1)
 
-    async def _connection_monitor_task(self, single_test: bool = False):
+    async def _connection_monitor_task(self, single_test: bool = False) -> None:
         """Perform tasks required for connection monitoring."""
 
         # Connection monitor event loop
@@ -471,7 +475,7 @@ class ConnectionMonitor:
 
         return await self._gateway.test()
 
-    def start(self, config_entry):
+    def start(self, config_entry) -> None:
         """Start the connection monitor."""
         if not self._use_connection_monitor:
             return

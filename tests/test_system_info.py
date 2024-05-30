@@ -1,5 +1,6 @@
 """Test Entity Details."""
 
+from typing import Never
 from unittest import mock
 
 import pytest
@@ -30,8 +31,9 @@ async def test_success(hass: HomeAssistant):
 async def test_error_handling(hass: HomeAssistant):
     """Verify unexpected errors return empty object."""
 
-    def mock_get_system_info():
-        raise HomeAssistantError("Something bad happened")
+    def mock_get_system_info() -> Never:
+        msg = "Something bad happened"
+        raise HomeAssistantError(msg)
 
     with mock.patch(
         "homeassistant.helpers.system_info.async_get_system_info",

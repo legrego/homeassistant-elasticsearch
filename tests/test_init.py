@@ -32,9 +32,8 @@ async def _setup_config_entry(hass: HomeAssistant, mock_entry: MockConfigEntry):
 
     config_entries = hass.config_entries.async_entries(ELASTIC_DOMAIN)
     assert len(config_entries) == 1
-    entry = config_entries[0]
+    return config_entries[0]
 
-    return entry
 
 
 def _test_config_data_options_migration_to_version(
@@ -45,7 +44,7 @@ def _test_config_data_options_migration_to_version(
     after_data,
     after_options,
     snapshot,
-):
+) -> bool:
     mock_entry = MockConfigEntry(
         unique_id="mock migration",
         domain=ELASTIC_DOMAIN,

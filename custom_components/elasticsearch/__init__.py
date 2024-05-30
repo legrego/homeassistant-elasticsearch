@@ -52,7 +52,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     return init
 
 
-async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry):
+async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Teardown integration."""
     existing_instance = hass.data.get(DOMAIN)
     if isinstance(existing_instance, ElasticIntegration):
@@ -68,7 +68,7 @@ async def async_config_entry_updated(hass: HomeAssistant, config_entry: ConfigEn
     return await _async_init_integration(hass, config_entry)
 
 
-async def _async_init_integration(hass: HomeAssistant, config_entry: ConfigEntry):
+async def _async_init_integration(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Initialize integration."""
     await async_unload_entry(hass=hass, config_entry=config_entry)
 
@@ -80,18 +80,18 @@ async def _async_init_integration(hass: HomeAssistant, config_entry: ConfigEntry
         await integration.async_init()
     except UnsupportedVersion as err:
         msg = "Unsupported Elasticsearch version detected"
-        _logger.error(msg)
+        _logger.exception(msg)
         raise ConfigEntryNotReady(msg) from err
     except AuthenticationRequired as err:
         msg = "Missing or invalid credentials"
-        _logger.error(msg)
+        _logger.exception(msg)
         raise ConfigEntryAuthFailed(msg) from err
     except InsufficientPrivileges as err:
-        _logger.error("Account does not have sufficient privileges")
+        _logger.exception("Account does not have sufficient privileges")
         raise ConfigEntryAuthFailed from err
     except Exception as err:  # pylint disable=broad-exception-caught
         msg = "Exception during component initialization"
-        _logger.error(msg + ": %s", err)
+        _logger.exception(msg + ": %s", err)
         raise ConfigEntryNotReady(msg) from err
 
     hass.data[DOMAIN] = integration

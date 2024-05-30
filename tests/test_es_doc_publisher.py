@@ -138,9 +138,11 @@ def freeze_time(freezer: FrozenDateTimeFactory):
 def standard_entity_state(
     hass,
     state,
-    attributes={},
+    attributes=None,
 ):
     """Create a standard entity state for testing."""
+    if attributes is None:
+        attributes = {}
     return MockEntityState(
         hass=hass,
         entity_id="counter.test_1",
@@ -151,7 +153,7 @@ def standard_entity_state(
     )
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def config_entry(hass: HomeAssistant, data, options):
     """Create a mock config entry."""
     es_url = "http://localhost:9200"
@@ -246,7 +248,7 @@ class Test_Unit_Tests:
 
     @pytest.mark.asyncio()
     @pytest.mark.parametrize(
-        "case,expected",
+        ("case", "expected"),
         [
             ("a_test_name", "a_test_name"),
             ("test-name", "test-name"),
@@ -286,7 +288,7 @@ class Test_Unit_Tests:
 
     @pytest.mark.asyncio()
     @pytest.mark.parametrize(
-        "case,expected",
+        ("case", "expected"),
         [("a" * 256, "a" * 239)],
     )
     async def test_sanitize_long_datastream_name(
@@ -459,7 +461,7 @@ class Test_Unit_Tests:
 
         @pytest.mark.asyncio()  # fmt: skip
         @pytest.mark.parametrize(
-            "data, options, entity_id, expected",
+            ("data", "options", "entity_id", "expected"),
             [
                 ({CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"]}, "test.test_1", True),
                 ({CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"]}, "counter.test_1", False),
@@ -487,7 +489,6 @@ class Test_Unit_Tests:
                 ( {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_2"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_1", True),
                 ( {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_2"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_2", False),
                 ( {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_2"], CONF_EXCLUDED_DOMAINS: ["test"]}, "counter.test_1", False),
-                ( {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_2"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_2", False),
             ],
 
         )  # fmt: off
@@ -512,7 +513,7 @@ class Test_Unit_Tests:
 
         @pytest.mark.asyncio()  # fmt: skip
         @pytest.mark.parametrize(
-            "data, options, entity_id, expected",
+            ("data", "options", "entity_id", "expected"),
             [
                 ({CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_DOMAINS: ["test"]}, "test.test_1", True),
                 ({CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", True),
@@ -536,7 +537,7 @@ class Test_Unit_Tests:
 
         )  # fmt: off
         async def test_publishing_legacy_filters(
-            hass: HomeAssistant,
+            self: HomeAssistant,
             uninitialized_publisher: DocumentPublisher,
             entity_id: str,
             expected: bool,
@@ -564,7 +565,7 @@ class Test_Unit_Tests:
             ],
         )
         @pytest.mark.parametrize(
-            "order,state,state_type,attributes,reason",
+            ("order", "state", "state_type", "attributes", "reason"),
             [
                 (0, 0.0, "float", {}, PUBLISH_REASON_ATTR_CHANGE),
                 (1, 0.0, "float", {}, PUBLISH_REASON_ATTR_CHANGE),
@@ -607,7 +608,7 @@ class Test_Unit_Tests:
             ],
         )
         @pytest.mark.parametrize(
-            "order,state,state_type,attributes,reason",
+            ("order", "state", "state_type", "attributes", "reason"),
             [
                 (0, 0.0, "float", {}, PUBLISH_REASON_ATTR_CHANGE),
                 (1, 0.0, "float", {}, PUBLISH_REASON_ATTR_CHANGE),
@@ -646,7 +647,7 @@ class Test_Benchmark_Tests:
     """Benchmark tests for the Elasticsearch Document Publisher."""
 
     @pytest.fixture(autouse=True)
-    def freeze_time(freezer: FrozenDateTimeFactory):
+    def freeze_time(self: FrozenDateTimeFactory):
         """Do not freeze time, override auto-use fixture."""
         return
 
@@ -705,7 +706,7 @@ class Test_Integration_Tests:
             ],
         )
         @pytest.mark.parametrize(
-            "order,state,state_type,attributes,reason",
+            ("order", "state", "state_type", "attributes", "reason"),
             [
                 (0, 0.0, "float", {}, PUBLISH_REASON_STATE_CHANGE),
                 (1, 0.0, "float", {}, PUBLISH_REASON_STATE_CHANGE),

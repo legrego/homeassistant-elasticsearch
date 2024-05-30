@@ -8,7 +8,7 @@ from pytz import utc
 def create_sample_state(**kwargs):
     """Create a sample state object."""
 
-    state = {
+    return {
         "state": "off",
         "entity_id": "switch.sample_entity",
         "domain": "switch",
@@ -19,7 +19,6 @@ def create_sample_state(**kwargs):
         "attributes": kwargs.get("attributes", {"sample_attribute": "sample_attribute_value"}),
     }
 
-    return state
 
 
 sample_state_change_event = {

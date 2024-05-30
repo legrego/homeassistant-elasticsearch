@@ -324,10 +324,7 @@ class DocumentCreator:
     def state_to_document(self, state: State, time: datetime, reason: str, version: int = 2) -> dict:
         """Convert entity state to ES document."""
 
-        if time.tzinfo is None:
-            time_tz = time.astimezone(utc)
-        else:
-            time_tz = time
+        time_tz = time.astimezone(utc) if time.tzinfo is None else time
 
         attributes = self._state_to_attributes(state)
 
@@ -400,45 +397,46 @@ class DocumentCreator:
         return replaced_string.lower()
 
     @classmethod
-    def is_valid_number(self, number) -> bool:
+    def is_valid_number(cls, number) -> bool:
         """Determine if the passed number is valid for Elasticsearch."""
         is_infinity = isinf(number)
         is_nan = number != number  # pylint: disable=comparison-with-itself
         return not is_infinity and not is_nan
 
     @classmethod
-    def try_state_as_number(self, state: State) -> bool:
+    def try_state_as_number(cls, state: State) -> bool:
         """Try to coerce our state to a number and return true if we can, false if we can't."""
 
         try:
-            self.state_as_number(state)
+            cls.state_as_number(state)
             return True
         except ValueError:
             return False
 
     @classmethod
-    def state_as_number(self, state: State) -> bool:
+    def state_as_number(cls, state: State) -> bool:
         """Try to coerce our state to a number."""
 
         number = state_helper.state_as_number(state)
 
-        if not self.is_valid_number(number):
-            raise ValueError("Could not coerce state to a number.")
+        if not cls.is_valid_number(number):
+            msg = "Could not coerce state to a number."
+            raise ValueError(msg)
 
         return number
 
     @classmethod
-    def try_state_as_boolean(self, state: State) -> bool:
+    def try_state_as_boolean(cls, state: State) -> bool:
         """Try to coerce our state to a boolean and return true if we can, false if we can't."""
 
         try:
-            self.state_as_boolean(state)
+            cls.state_as_boolean(state)
             return True
         except ValueError:
             return False
 
     @classmethod
-    def state_as_boolean(self, state: State) -> bool:
+    def state_as_boolean(cls, state: State) -> bool:
         """Try to coerce our state to a boolean."""
         # copied from helper state_as_number function
         if state.state in (
@@ -461,20 +459,21 @@ class DocumentCreator:
         ):
             return False
 
-        raise ValueError("Could not coerce state to a boolean.")
+        msg = "Could not coerce state to a boolean."
+        raise ValueError(msg)
 
     @classmethod
-    def try_state_as_datetime(self, state: State) -> datetime:
+    def try_state_as_datetime(cls, state: State) -> datetime:
         """Try to coerce our state to a datetime and return True if we can, false if we can't."""
 
         try:
-            self.state_as_datetime(state)
+            cls.state_as_datetime(state)
             return True
         except ValueError:
             return False
 
     @classmethod
-    def state_as_datetime(self, state: State) -> datetime:
+    def state_as_datetime(cls, state: State) -> datetime:
         """Try to coerce our state to a datetime."""
 
         parsed = dt_util.parse_datetime(state.state)
@@ -484,6 +483,7 @@ class DocumentCreator:
         # parsed = dt_util.parse_datetime(_state, raise_on_error=True)
 
         if parsed is None:
-            raise ValueError("Could not coerce state to a datetime.")
+            msg = "Could not coerce state to a datetime."
+            raise ValueError(msg)
 
         return parsed

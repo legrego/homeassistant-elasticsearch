@@ -38,9 +38,8 @@ async def _setup_config_entry(hass: HomeAssistant, mock_entry: mock_config_entry
 
     config_entries = hass.config_entries.async_entries(DOMAIN)
     assert len(config_entries) == 1
-    entry = config_entries[0]
+    return config_entries[0]
 
-    return entry
 
 
 @pytest.mark.asyncio()
@@ -139,7 +138,7 @@ async def test_no_auth_flow_with_tls_error(hass: HomeAssistant, es_aioclient_moc
         This is imperfect, but gets the job done for now.
         """
 
-        def __init__(self):
+        def __init__(self) -> None:
             self._conn_key = MagicMock()
             self._certificate_error = Exception("AHHHH")
 

@@ -43,7 +43,7 @@ class IndexManager:
         gateway: ElasticsearchGateway,
         config_entry: ConfigEntry,
         log=BASE_LOGGER,
-    ):
+    ) -> None:
         """Initialize index management."""
 
         if not config_entry.options.get(CONF_PUBLISH_ENABLED):
@@ -77,9 +77,10 @@ class IndexManager:
             pass
 
         else:
-            raise ElasticException("Unexpected index_mode: %s", self.index_mode)
+            msg = "Unexpected index_mode: %s"
+            raise ElasticException(msg, self.index_mode)
 
-    async def async_setup(self):
+    async def async_setup(self) -> None:
         """Perform setup for index management."""
         if not self.publish_enabled:
             return
@@ -94,7 +95,7 @@ class IndexManager:
 
         self._logger.debug("Index Manager initialized")
 
-    async def _create_index_template(self):
+    async def _create_index_template(self) -> None:
         """Initialize the Elasticsearch cluster with an index template, initial index, and alias."""
         self._logger.debug("Initializing modern index templates")
 
@@ -167,8 +168,9 @@ class IndexManager:
         except ElasticsearchException as err:
             self._logger.exception("Error creating/updating index template: %s", err)
             if not template_exists:
+                msg = "No index template present in Elasticsearch and failed to create one"
                 raise convert_es_error(
-                    "No index template present in Elasticsearch and failed to create one",
+                    msg,
                     err,
                 ) from err
         try:
@@ -181,14 +183,15 @@ class IndexManager:
         except ElasticsearchException as err:
             raise convert_es_error(err)
 
-    async def _create_legacy_template(self):
+    async def _create_legacy_template(self) -> None:
         """Initialize the Elasticsearch cluster with an index template, initial index, and alias."""
 
         self._logger.debug("Initializing legacy index templates")
 
         if self._gateway.has_capability(CAPABILITIES.SERVERLESS):
+            msg = "Serverless environment detected, legacy index usage not allowed in ES Serverless. Switch to datastreams."
             raise ElasticException(
-                "Serverless environment detected, legacy index usage not allowed in ES Serverless. Switch to datastreams.",
+                msg,
             )
 
         client = self._gateway.client
@@ -229,8 +232,9 @@ class IndexManager:
             try:
                 await client.indices.put_template(name=LEGACY_TEMPLATE_NAME, body=index_template)
             except ElasticsearchException as err:
+                msg = "No index template present in Elasticsearch and failed to create one"
                 raise convert_es_error(
-                    "No index template present in Elasticsearch and failed to create one",
+                    msg,
                     err,
                 ) from err
 
@@ -246,7 +250,7 @@ class IndexManager:
             except ElasticsearchException as err:
                 self._logger.exception("Error creating initial index/alias: %s", err)
 
-    async def _create_basic_ilm_policy(self, ilm_policy_name):
+    async def _create_basic_ilm_policy(self, ilm_policy_name) -> None:
         """Create the index lifecycle management policy."""
         from elasticsearch7.exceptions import TransportError
 
@@ -258,12 +262,14 @@ class IndexManager:
             if err.status_code == 404:
                 existing_policy = None
             else:
+                msg = "Unexpected return code when checking for existing ILM policy"
                 raise convert_es_error(
-                    "Unexpected return code when checking for existing ILM policy",
+                    msg,
                     err,
                 ) from err
         except ElasticsearchException as err:
-            raise convert_es_error("Error checking for existing ILM policy", err) from err
+            msg = "Error checking for existing ILM policy"
+            raise convert_es_error(msg, err) from err
 
         if existing_policy:
             self._logger.info("Found existing ILM Policy, do nothing '%s'", ilm_policy_name)
@@ -293,9 +299,10 @@ class IndexManager:
         try:
             await client.ilm.put_lifecycle(ilm_policy_name, policy)
         except ElasticsearchException as err:
-            raise convert_es_error("Error creating initial ILM policy", err) from err
+            msg = "Error creating initial ILM policy"
+            raise convert_es_error(msg, err) from err
 
-    async def requires_datastream_ignore_dynamic_fields_migration(self):
+    async def requires_datastream_ignore_dynamic_fields_migration(self) -> bool:
         """Check if datastreams need to be migrated to ignore dynamic fields."""
         if self.index_mode != INDEX_MODE_DATASTREAM:
             return False
@@ -307,15 +314,12 @@ class IndexManager:
                 index=DATASTREAM_TYPE + "-" + DATASTREAM_DATASET_PREFIX + ".*",
             )
         except ElasticsearchException as err:
-            raise convert_es_error("Error checking datastream mapping for dynamic fields", err) from err
+            msg = "Error checking datastream mapping for dynamic fields"
+            raise convert_es_error(msg, err) from err
 
-        for _index, mapping in mappings.items():
-            if mapping["mappings"].get("dynamic") == "strict":
-                return True
+        return any(mapping["mappings"].get("dynamic") == "strict" for _index, mapping in mappings.items())
 
-        return False
-
-    async def migrate_datastreams_to_ignore_dynamic_fields(self):
+    async def migrate_datastreams_to_ignore_dynamic_fields(self) -> None:
         """Migrate datastreams to ignore dynamic fields."""
         if self.index_mode != INDEX_MODE_DATASTREAM:
             return
@@ -332,4 +336,5 @@ class IndexManager:
                 write_index_only=True,
             )
         except ElasticsearchException as err:
-            raise convert_es_error("Error migrating datastream to ignore dynamic fields", err) from err
+            msg = "Error migrating datastream to ignore dynamic fields"
+            raise convert_es_error(msg, err) from err

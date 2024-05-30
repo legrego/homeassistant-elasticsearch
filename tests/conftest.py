@@ -36,9 +36,8 @@ def mock_es_aiohttp_client():
 
     def create_session(*args, **kwargs):
         print(args)
-        session = mocker.create_session(get_running_loop())
+        return mocker.create_session(get_running_loop())
 
-        return session
 
     with mock.patch(
         "elasticsearch7._async.http_aiohttp.aiohttp.ClientSession",
@@ -95,7 +94,7 @@ class MockEntityState(State):
         last_changed: datetime | None = None,
         last_updated: datetime | None = None,
         validate_entity_id: bool | None = False,
-    ):
+    ) -> None:
         """Initialize the mock entity state."""
 
         if last_changed is None:
@@ -154,5 +153,4 @@ class MockEntityState(State):
 def mock_entity_state(hass: HomeAssistant) -> MockEntityState:
     """Mock an entity state in the state machine."""
 
-    state = MockEntityState()
-    return state
+    return MockEntityState()

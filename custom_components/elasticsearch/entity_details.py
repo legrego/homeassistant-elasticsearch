@@ -32,7 +32,7 @@ class FullEntityDetails:
 class EntityDetails:
     """Retrieve details about entities for publishing to ES."""
 
-    def __init__(self, hass: HomeAssistant):
+    def __init__(self, hass: HomeAssistant) -> None:
         """Init EntityDetails."""
         self._hass = hass
 

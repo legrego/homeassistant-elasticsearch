@@ -67,9 +67,8 @@ async def _setup_config_entry(hass: HomeAssistant, mock_entry: mock_config_entry
 
     config_entries = hass.config_entries.async_entries(DOMAIN)
     assert len(config_entries) == 1
-    entry = config_entries[0]
+    return config_entries[0]
 
-    return entry
 
 
 @pytest.fixture
@@ -89,17 +88,16 @@ async def document_creator(hass: HomeAssistant):
         title="ES Config",
     )
 
-    creator = DocumentCreator(hass, mock_entry)
+    return DocumentCreator(hass, mock_entry)
 
     # TODO: Consider initializing the document creator before returning it, requires rewriting tests and initializing the whole integration
     # await creator.async_init()
 
-    return creator
 
 
 @pytest.mark.asyncio()
 @pytest.mark.parametrize(
-    "input,result,success",
+    ("input", "result", "success"),
     [
         (1, 1, True),
         (0, 0, True),
@@ -135,7 +133,7 @@ async def test_state_as_number(
 
 @pytest.mark.asyncio()
 @pytest.mark.parametrize(
-    "input,result,success",
+    ("input", "result", "success"),
     [
         ("true", True, True),
         ("false", False, True),
@@ -168,7 +166,7 @@ async def test_state_as_boolean(
 
 @pytest.mark.asyncio()
 @pytest.mark.parametrize(
-    "input,result,success",
+    ("input", "result", "success"),
     [
         (
             MOCK_NOON_APRIL_12TH_2023,
@@ -402,7 +400,7 @@ async def test_state_to_value_v2(hass: HomeAssistant, document_creator: Document
 @pytest.mark.asyncio()
 @pytest.mark.parametrize("version", [1, 2])
 @pytest.mark.parametrize(
-    "state, attributes",
+    ("state", "attributes"),
     [
         (2, {}),
         (2.0, {}),
@@ -462,7 +460,7 @@ async def test_state_to_document(
 @pytest.mark.asyncio()
 @pytest.mark.parametrize("version", [1, 2])
 @pytest.mark.parametrize(
-    "state, attributes",
+    ("state", "attributes"),
     [(2, {})],
 )
 async def test_state_to_document_polling(

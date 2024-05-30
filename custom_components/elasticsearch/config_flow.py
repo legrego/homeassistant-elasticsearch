@@ -66,13 +66,13 @@ DEFAULT_ILM_POLICY_NAME = "home-assistant"
 DEFAULT_INDEX_MODE = "datastream"
 
 
-def build_new_options(existing_options: dict = None, user_input: dict = None):
+def build_new_options(existing_options: dict | None = None, user_input: dict | None = None):
     """Build the entire options validation schema."""
     if user_input is None:
         user_input = {}
     if existing_options is None:
         existing_options = {}
-    options = {
+    return {
         CONF_PUBLISH_ENABLED: user_input.get(
             CONF_PUBLISH_ENABLED,
             existing_options.get(CONF_PUBLISH_ENABLED, DEFAULT_PUBLISH_ENABLED),
@@ -116,10 +116,9 @@ def build_new_options(existing_options: dict = None, user_input: dict = None):
         ),
     }
 
-    return options
 
 
-def build_new_data(existing_data: dict = None, user_input: dict = None):
+def build_new_data(existing_data: dict | None = None, user_input: dict | None = None):
     """Build the entire data validation schema."""
     if user_input is None:
         user_input = {}
@@ -179,7 +178,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         """Get the options flow for this handler."""
         return ElasticOptionsFlowHandler(config_entry)
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the Elastic flow."""
         self._cluster_check_result: ClusterCheckResult | None = None
 
@@ -350,9 +349,9 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         url: str,
         verify_certs: bool,
         ca_certs: str,
-        username: str = None,
-        password: str = None,
-        api_key: str = None,
+        username: str | None = None,
+        password: str | None = None,
+        api_key: str | None = None,
         timeout: int = 30,
         verify_permissions: dict | None = None,
     ) -> ClusterCheckResult:
@@ -446,7 +445,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
     """Handle Elastic options."""
 
-    def __init__(self, config_entry: ConfigEntry):
+    def __init__(self, config_entry: ConfigEntry) -> None:
         """Initialize Elastic options flow."""
         self.config_entry = config_entry
         self.options = dict(config_entry.options)
@@ -574,7 +573,7 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
         return schema
 
     def _build_ilm_options_schema(self):
-        schema = {
+        return {
             vol.Required(CONF_ILM_ENABLED, default=self._get_config_value(CONF_ILM_ENABLED, True)): bool,
             vol.Required(
                 CONF_ILM_POLICY_NAME,
@@ -582,7 +581,6 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
             ): str,
         }
 
-        return schema
 
     def _dedup_list(self, list_to_dedup):
         return list(dict.fromkeys(list_to_dedup))
