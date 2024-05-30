@@ -1,5 +1,7 @@
 """Support for sending event data to an Elasticsearch cluster."""
 
+from logging import Logger
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
@@ -15,7 +17,7 @@ from .logger import LOGGER as BASE_LOGGER
 class ElasticIntegration:
     """Integration for publishing entity state change events to Elasticsearch."""
 
-    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry, log=BASE_LOGGER) -> None:
+    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry, log: Logger = BASE_LOGGER) -> None:
         """Integration initialization."""
 
         self._hass = hass
@@ -68,7 +70,7 @@ class ElasticIntegration:
         self._logger.debug("async_shutdown: shutdown complete")
         return True
 
-    def build_gateway_parameters(self, config_entry):
+    def build_gateway_parameters(self, config_entry: ConfigEntry) -> dict:
         """Build the parameters for the Elasticsearch gateway."""
         return {
             "hass": self._hass,
@@ -83,7 +85,7 @@ class ElasticIntegration:
             "use_connection_monitor": config_entry.data.get("use_connection_monitor", True),
         }
 
-    def build_index_manager_parameters(self, config_entry):
+    def build_index_manager_parameters(self, config_entry: ConfigEntry) -> dict:
         """Build the parameters for the Elasticsearch index manager."""
         return {
             "hass": self._hass,
@@ -91,6 +93,6 @@ class ElasticIntegration:
             "gateway": self._gateway,
         }
 
-    def build_publisher_parameters(self, config_entry):
+    def build_publisher_parameters(self, config_entry: ConfigEntry) -> dict:
         """Build the parameters for the Elasticsearch document publisher."""
         return {"hass": self._hass, "config_entry": config_entry, "gateway": self._gateway}

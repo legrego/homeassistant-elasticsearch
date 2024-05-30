@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 from homeassistant.core import HomeAssistant
+from syrupy.assertion import SnapshotAssertion
 from syrupy.extensions.json import JSONSnapshotExtension
 
 from custom_components.elasticsearch.es_gateway import (
@@ -28,7 +29,7 @@ from tests.const import (
 
 
 @pytest.fixture(autouse=True)
-def snapshot(snapshot):
+def snapshot(snapshot: SnapshotAssertion):
     """Provide a pre-configured snapshot object."""
 
     return snapshot.with_defaults(extension_class=JSONSnapshotExtension)
@@ -38,9 +39,8 @@ class Test_Elasticsearch_Gateway:
     """Test ElasticsearchGateway."""
 
     @pytest.fixture(autouse=True)
-    def minimum_privileges(self):
+    def minimum_privileges(self) -> None:
         """Provide a default empty minimum_privileges object."""
-
         return
 
     @pytest.fixture(autouse=True)
@@ -54,8 +54,8 @@ class Test_Elasticsearch_Gateway:
         self,
         hass: HomeAssistant,
         request: pytest.FixtureRequest,
-        minimum_privileges,
-        use_connection_monitor,
+        minimum_privileges: dict,
+        use_connection_monitor: bool,
         url: str = "http://localhost:9200",
     ):
         """Return a gateway instance."""
@@ -74,8 +74,8 @@ class Test_Elasticsearch_Gateway:
         self,
         hass: HomeAssistant,
         request: pytest.FixtureRequest,
-        minimum_privileges,
-        use_connection_monitor,
+        minimum_privileges: dict,
+        use_connection_monitor: bool,
         url: str = "http://localhost:9200",
     ):
         """Return a gateway instance."""
@@ -106,8 +106,8 @@ class Test_Elasticsearch_Gateway:
         self,
         hass: HomeAssistant,
         uninitialized_gateway: ElasticsearchGateway,
-        minimum_privileges,
-        use_connection_monitor,
+        minimum_privileges: dict,
+        use_connection_monitor: bool,
     ):
         """Test async_init."""
         with (
@@ -254,7 +254,7 @@ class Test_Elasticsearch_Gateway:
         assert parameters["hass"] == hass
         assert parameters["url"] == "http://localhost:9200"
         assert parameters["username"] == "admin"
-        assert parameters["password"] == "password"
+        assert parameters["password"] == "password"  # noqa: S105
         assert parameters["verify_certs"] is True
         assert parameters["ca_certs"] == "/path/to/ca_certs"
         assert parameters["request_timeout"] == 30
@@ -277,7 +277,7 @@ class Test_Elasticsearch_Gateway:
         uninitialized_gateway: ElasticsearchGateway,
         name: str,
         cluster_info: dict,
-        snapshot,
+        snapshot: SnapshotAssertion,
     ):
         """Test capabilities."""
         with (
@@ -326,7 +326,7 @@ class Test_Elasticsearch_Gateway:
     def test_authentication_type(self, hass: HomeAssistant, uninitialized_gateway: ElasticsearchGateway):
         """Test Getter for authentication_type."""
         uninitialized_gateway.username = "admin"
-        uninitialized_gateway.password = "password"
+        uninitialized_gateway.password = "password"  # noqa: S105
         uninitialized_gateway.api_key = None
 
         assert uninitialized_gateway.authentication_type == "basic"
@@ -368,24 +368,6 @@ class Test_Connection_Monitor:
         yield connection_monitor
 
         connection_monitor.stop()
-
-    # async def test_async_init(self):
-    #     """Test async_init."""
-
-    #     gateway = mock.Mock()
-    #     monitor = ConnectionMonitor(gateway)
-    #     config_entry = mock.Mock()
-
-    #     with (
-    #         mock.patch.object(monitor, "should_test", return_value=True),
-    #         mock.patch.object(monitor, "test", return_value=True),
-    #         mock.patch.object(config_entry, "async_create_background_task", return_value=True),
-    #         mock.patch.object(monitor, "_connection_monitor_task", return_value=True),
-    #     ):
-    #         await monitor.async_init()
-    #         assert monitor.start(config_entry) is True
-
-    #     monitor.stop()
 
     async def test_active(self):
         """Test active."""

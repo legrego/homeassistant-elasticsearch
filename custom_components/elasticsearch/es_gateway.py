@@ -319,7 +319,7 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
         class SetEncoder(JSONSerializer8):
             """JSONSerializer which serializes sets to lists."""
 
-            def default(self, data):
+            def default(self, data: any):
                 """Entry point."""
                 if isinstance(data, set):
                     output = list(data)

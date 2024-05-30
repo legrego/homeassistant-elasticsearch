@@ -250,7 +250,7 @@ async def test_basic_auth_flow(hass: HomeAssistant, es_aioclient_mock: AiohttpCl
     assert result["title"] == es_url
     assert result["data"]["url"] == es_url
     assert result["data"]["username"] == "hass_writer"
-    assert result["data"]["password"] == "changeme"
+    assert result["data"]["password"] == "changeme"  # noqa: S105
     assert result["data"].get("api_key") is None
     assert result["data"]["ssl_ca_path"] is None
     assert result["data"]["verify_ssl"] is True
@@ -597,7 +597,7 @@ async def test_api_key_flow_fails_unauthorized(hass: HomeAssistant, es_aioclient
 
 
 @pytest.mark.asyncio()
-async def test_modern_options_flow(hass: HomeAssistant, es_aioclient_mock) -> None:
+async def test_modern_options_flow(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker) -> None:
     """Test options config flow."""
 
     es_url = "http://localhost:9200"
@@ -642,7 +642,7 @@ async def test_modern_options_flow(hass: HomeAssistant, es_aioclient_mock) -> No
 
 
 @pytest.mark.asyncio()
-async def test_legacy_options_flow(hass: HomeAssistant, es_aioclient_mock) -> None:
+async def test_legacy_options_flow(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker) -> None:
     """Test options config flow."""
 
     es_url = "http://localhost:9200"

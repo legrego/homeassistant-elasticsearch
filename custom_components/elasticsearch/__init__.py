@@ -25,7 +25,7 @@ from .const import (
 from .es_integration import ElasticIntegration
 
 
-async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):  # pylint: disable=unused-argument
+async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:  # pylint: disable=unused-argument
     """Migrate old entry."""
 
     latest_version = ElasticFlowHandler.VERSION
@@ -43,7 +43,7 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):  
     return hass.config_entries.async_update_entry(config_entry, data=migrated_data, options=migrated_options)
 
 
-async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
+async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Set up integration via config flow."""
 
     LOGGER.debug("Setting up integration")

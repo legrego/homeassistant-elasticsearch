@@ -8,6 +8,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
+from syrupy.assertion import SnapshotAssertion
 from syrupy.extensions.json import JSONSnapshotExtension
 
 from custom_components.elasticsearch.const import (
@@ -19,7 +20,7 @@ from tests.test_util.es_startup_mocks import mock_es_initialization
 
 
 @pytest.fixture(autouse=True)
-def snapshot(snapshot):
+def snapshot(snapshot: SnapshotAssertion):
     """Provide a pre-configured snapshot object."""
 
     return snapshot.with_defaults(extension_class=JSONSnapshotExtension)
@@ -36,13 +37,13 @@ async def _setup_config_entry(hass: HomeAssistant, mock_entry: MockConfigEntry):
 
 
 def _test_config_data_options_migration_to_version(
-    before_version,
-    before_data,
-    before_options,
-    after_version,
-    after_data,
-    after_options,
-    snapshot,
+    before_version: int,
+    before_data: dict,
+    before_options: dict,
+    after_version: int,
+    after_data: dict,
+    after_options: dict,
+    snapshot: SnapshotAssertion,
 ) -> bool:
     mock_entry = MockConfigEntry(
         unique_id="mock migration",
@@ -200,7 +201,11 @@ async def test_connection_error(hass: HomeAssistant, es_aioclient_mock: AiohttpC
 
 
 @pytest.mark.asyncio()
-async def test_config_migration_v1tov2(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, snapshot):
+async def test_config_migration_v1tov2(
+    hass: HomeAssistant,
+    es_aioclient_mock: AiohttpClientMocker,
+    snapshot: SnapshotAssertion,
+):
     """Test config migration from v1."""
 
     assert _test_config_data_options_migration_to_version(
@@ -221,7 +226,11 @@ async def test_config_migration_v1tov2(hass: HomeAssistant, es_aioclient_mock: A
 
 
 @pytest.mark.asyncio()
-async def test_config_migration_v2tov3(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, snapshot):
+async def test_config_migration_v2tov3(
+    hass: HomeAssistant,
+    es_aioclient_mock: AiohttpClientMocker,
+    snapshot: SnapshotAssertion,
+):
     """Test config migration from v2."""
 
     assert _test_config_data_options_migration_to_version(
@@ -239,7 +248,11 @@ async def test_config_migration_v2tov3(hass: HomeAssistant, es_aioclient_mock: A
 
 
 @pytest.mark.asyncio()
-async def test_config_migration_v3tov4(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, snapshot):
+async def test_config_migration_v3tov4(
+    hass: HomeAssistant,
+    es_aioclient_mock: AiohttpClientMocker,
+    snapshot: SnapshotAssertion,
+):
     """Test config migration from v3."""
 
     assert _test_config_data_options_migration_to_version(
@@ -261,7 +274,11 @@ async def test_config_migration_v3tov4(hass: HomeAssistant, es_aioclient_mock: A
 
 
 @pytest.mark.asyncio()
-async def test_config_migration_v4tov5(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, snapshot):
+async def test_config_migration_v4tov5(
+    hass: HomeAssistant,
+    es_aioclient_mock: AiohttpClientMocker,
+    snapshot: SnapshotAssertion,
+):
     """Test config migration from v4."""
 
     assert _test_config_data_options_migration_to_version(
@@ -298,7 +315,11 @@ async def test_config_migration_v4tov5(hass: HomeAssistant, es_aioclient_mock: A
 
 
 @pytest.mark.asyncio()
-async def test_config_migration_v1tov5(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, snapshot):
+async def test_config_migration_v1tov5(
+    hass: HomeAssistant,
+    es_aioclient_mock: AiohttpClientMocker,
+    snapshot: SnapshotAssertion,
+):
     """Test config migration from v1."""
 
     assert _test_config_data_options_migration_to_version(

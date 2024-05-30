@@ -423,7 +423,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         success = not errors
         return ClusterCheckResult(success, errors)
 
-    async def _async_create_entry(self, data, options):
+    async def _async_create_entry(self, data: dict, options: dict):
         """Create the config entry."""
 
         entries = self.hass.config_entries.async_entries(ELASTIC_DOMAIN)

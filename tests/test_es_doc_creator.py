@@ -7,12 +7,14 @@ import pytest
 from homeassistant.components import (
     counter,
 )
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, State
 from homeassistant.helpers import area_registry, device_registry, entity_registry
 from homeassistant.setup import async_setup_component
 from homeassistant.util import dt as dt_util
 from jsondiff import diff
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+from syrupy.assertion import SnapshotAssertion
 from syrupy.extensions.json import JSONSnapshotExtension
 
 from custom_components.elasticsearch.config_flow import (
@@ -34,7 +36,7 @@ from tests.const import (
 
 
 @pytest.fixture(autouse=True)
-def snapshot(snapshot):
+def snapshot(snapshot: SnapshotAssertion):
     """Provide a pre-configured snapshot object."""
 
     return snapshot.with_defaults(extension_class=JSONSnapshotExtension)
@@ -44,7 +46,7 @@ def snapshot(snapshot):
 def mock_system_info():
     """Fixture to skip returning system info."""
 
-    async def get_system_info():
+    async def get_system_info() -> SystemInfoResult:
         return SystemInfoResult(
             version="2099.1.2",
             arch="Test Arch",
@@ -60,7 +62,7 @@ def mock_system_info():
         yield None
 
 
-async def _setup_config_entry(hass: HomeAssistant, mock_entry: mock_config_entry):
+async def _setup_config_entry(hass: HomeAssistant, mock_entry: mock_config_entry) -> ConfigEntry:
     mock_entry.add_to_hass(hass)
     assert await async_setup_component(hass, DOMAIN, {}) is True
     await hass.async_block_till_done()
@@ -89,13 +91,12 @@ async def document_creator(hass: HomeAssistant):
 
     return DocumentCreator(hass, mock_entry)
 
-    # TODO: Consider initializing the document creator before returning it, requires rewriting tests and initializing the whole integration
-    # await creator.async_init()
+    # TODO: Consider initializing the document creator before returning it, requires rewriting tests and initializing the whole integration await creator.async_init()
 
 
 @pytest.mark.asyncio()
 @pytest.mark.parametrize(
-    ("input", "result", "success"),
+    ("state", "result", "success"),
     [
         (1, 1, True),
         (0, 0, True),
@@ -112,21 +113,21 @@ async def document_creator(hass: HomeAssistant):
     ],
 )
 async def test_state_as_number(
-    input: str | float,
+    state: str | float,
     result: float | None,
     success: bool,
 ):
     """Test trying state to float conversion."""
 
     # Test Try First
-    assert DocumentCreator.try_state_as_number(State("domain.entity_id", input)) == success
+    assert DocumentCreator.try_state_as_number(State("domain.entity_id", state)) == success
 
     # Test conversion which should throw an exception when success is False
     if not success:
         with pytest.raises(ValueError):
-            DocumentCreator.state_as_number(State("domain.entity_id", input))
+            DocumentCreator.state_as_number(State("domain.entity_id", state))
     else:
-        assert DocumentCreator.state_as_number(State("domain.entity_id", input)) == result
+        assert DocumentCreator.state_as_number(State("domain.entity_id", state)) == result
 
 
 @pytest.mark.asyncio()
@@ -424,10 +425,10 @@ async def test_state_to_value_v2(hass: HomeAssistant, document_creator: Document
 async def test_state_to_document(
     hass: HomeAssistant,
     document_creator: DocumentCreator,
-    snapshot,
-    state,
-    attributes,
-    version,
+    snapshot: SnapshotAssertion,
+    state: str | float,
+    attributes: dict,
+    version: int,
 ):
     """Test Doc Creation."""
 
@@ -464,10 +465,10 @@ async def test_state_to_document(
 async def test_state_to_document_polling(
     hass: HomeAssistant,
     document_creator: DocumentCreator,
-    snapshot,
-    state,
-    attributes,
-    version,
+    snapshot: SnapshotAssertion,
+    state: str | float,
+    attributes: dict,
+    version: int,
 ):
     """Test Doc Creation."""
 

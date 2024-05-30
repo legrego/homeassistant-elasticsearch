@@ -63,7 +63,7 @@ def freeze_location(hass: HomeAssistant):
 def mock_system_info():
     """Fixture to skip returning system info."""
 
-    async def get_system_info():
+    async def get_system_info() -> SystemInfoResult:
         return SystemInfoResult(
             version="2099.1.2",
             arch="Test Arch",
@@ -122,7 +122,7 @@ def reason():
 
 
 @pytest.fixture(autouse=True)
-def snapshot(snapshot):
+def snapshot(snapshot: SnapshotAssertion):
     """Provide a pre-configured snapshot object."""
 
     return snapshot.with_defaults(extension_class=JSONSnapshotExtension)
@@ -136,9 +136,9 @@ def freeze_time(freezer: FrozenDateTimeFactory):
 
 @pytest.fixture
 def standard_entity_state(
-    hass,
-    state,
-    attributes=None,
+    hass: HomeAssistant,
+    state: str | float,
+    attributes: dict | None = None,
 ):
     """Create a standard entity state for testing."""
     if attributes is None:
@@ -154,7 +154,7 @@ def standard_entity_state(
 
 
 @pytest.fixture
-def config_entry(hass: HomeAssistant, data, options):
+def config_entry(hass: HomeAssistant, data: dict, options: dict):
     """Create a mock config entry."""
     es_url = "http://localhost:9200"
 
@@ -317,9 +317,9 @@ class Test_Unit_Tests:
         @pytest.mark.asyncio()
         async def test_determine_change_type(
             self,
-            hass,
-            data,
-            options,
+            hass: HomeAssistant,
+            data: dict,
+            options: dict,
             uninitialized_publisher: DocumentPublisher,
         ):
             """Test entity change is published."""
@@ -391,8 +391,8 @@ class Test_Unit_Tests:
         async def test_queue_enqueue(
             self,
             data: None,
-            hass,
-            options,
+            hass: HomeAssistant,
+            options: dict,
             uninitialized_publisher: DocumentPublisher,
         ):
             """Test entity change is published."""
@@ -418,7 +418,7 @@ class Test_Unit_Tests:
         @pytest.mark.asyncio()
         async def test_queue_empty(
             self,
-            hass,
+            hass: HomeAssistant,
             uninitialized_publisher: DocumentPublisher,
         ):
             """Test entity change is published."""
@@ -440,7 +440,7 @@ class Test_Unit_Tests:
         @pytest.mark.asyncio()
         async def test_queue_has_entries_to_publish(
             self,
-            hass,
+            hass: HomeAssistant,
             uninitialized_publisher: DocumentPublisher,
         ):
             """Test entity change is published."""
@@ -577,14 +577,14 @@ class Test_Unit_Tests:
         )
         async def test_state_to_bulk_action_via_uninitialized_publisher(
             self,
-            order,
-            data,
-            state,
-            state_type,
-            attributes,
-            reason,
+            order: int,
+            data: dict,
+            state: str | float,
+            state_type: str,
+            attributes: dict,
+            reason: str,
             uninitialized_publisher: DocumentPublisher,
-            standard_entity_state,
+            standard_entity_state: MockEntityState,
             snapshot: SnapshotAssertion,
         ):
             """Test state to bulk action."""
@@ -620,12 +620,12 @@ class Test_Unit_Tests:
         )
         async def test_state_to_bulk_action_via_initialized_publisher(
             self,
-            order,
-            data,
-            state,
-            state_type,
-            attributes,
-            reason,
+            order: int,
+            data: dict,
+            state: str | float,
+            state_type: str,
+            attributes: dict,
+            reason: str,
             initialized_publisher: DocumentPublisher,
             standard_entity_state,
             snapshot: SnapshotAssertion,
@@ -655,7 +655,7 @@ class Test_Benchmark_Tests:
     async def test_publishing_benchmark(
         self,
         hass: HomeAssistant,
-        state,
+        state: str | float,
         initialized_publisher: DocumentPublisher,
         es_aioclient_mock: AiohttpClientMocker,
     ):
@@ -718,13 +718,13 @@ class Test_Integration_Tests:
         )
         async def test_publishing_state_change(
             self,
-            data,
-            options,
-            order,
-            state,
-            state_type,
-            attributes,
-            reason,
+            data: dict,
+            options: dict,
+            order: int,
+            state: str | float,
+            state_type: str,
+            attributes: dict,
+            reason: str,
             initialized_publisher: DocumentPublisher,
             standard_entity_state: MockEntityState,
             es_aioclient_mock: AiohttpClientMocker,
