@@ -1,4 +1,5 @@
 """Sample data for testing."""
+
 from datetime import datetime
 
 from pytz import utc
@@ -15,9 +16,7 @@ def create_sample_state(**kwargs):
         "name": "Sample Entity",
         "last_updated": kwargs.get("last_updated", datetime.now().astimezone(utc)),
         "last_changed": kwargs.get("last_changed", datetime.now().astimezone(utc)),
-        "attributes": kwargs.get(
-            "attributes", {"sample_attribute": "sample_attribute_value"}
-        ),
+        "attributes": kwargs.get("attributes", {"sample_attribute": "sample_attribute_value"}),
     }
 
     return state

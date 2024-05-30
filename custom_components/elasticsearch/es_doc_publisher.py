@@ -113,9 +113,7 @@ class DocumentPublisher:
 
             self.enqueue_state(state, event, reason)
 
-        self.remove_state_change_listener = hass.bus.async_listen(
-            EVENT_STATE_CHANGED, elastic_event_listener
-        )
+        self.remove_state_change_listener = hass.bus.async_listen(EVENT_STATE_CHANGED, elastic_event_listener)
 
         @callback
         def hass_close_event_listener(event: Event):
@@ -223,13 +221,10 @@ class DocumentPublisher:
             all_states = self._hass.states.async_all()
             reason = PUBLISH_REASON_POLLING
             for state in all_states:
-                if (
-                    state.entity_id not in entity_counts
-                    and self._should_publish_entity_passes_filter(state.entity_id)
+                if state.entity_id not in entity_counts and self._should_publish_entity_passes_filter(
+                    state.entity_id
                 ):
-                    actions.append(
-                        self._state_to_bulk_action(state, self._last_publish_time, reason)
-                    )
+                    actions.append(self._state_to_bulk_action(state, self._last_publish_time, reason))
 
         # Check for duplicate entries
         # The timestamp and object_id field are combined to generate the Elasticsearch document ID
@@ -283,10 +278,7 @@ class DocumentPublisher:
         if self._publish_mode != PUBLISH_MODE_STATE_CHANGES:
             return True
 
-        if (
-            change_type == PUBLISH_REASON_ATTR_CHANGE
-            and self._publish_mode == PUBLISH_MODE_STATE_CHANGES
-        ):
+        if change_type == PUBLISH_REASON_ATTR_CHANGE and self._publish_mode == PUBLISH_MODE_STATE_CHANGES:
             self._logger.debug(
                 "Excluding event state change for %s because the value did not change and publish mode is set to state changes only.",
                 entity_id,
@@ -393,9 +385,7 @@ class DocumentPublisher:
 
     @classmethod
     @lru_cache(maxsize=128)
-    def _sanitize_datastream_name(
-        self, dataset: str, type: str = "metrics", namespace: str = "default"
-    ):
+    def _sanitize_datastream_name(self, dataset: str, type: str = "metrics", namespace: str = "default"):
         """Sanitize a datastream name."""
 
         full_datastream_name = f"{type}-{dataset}-{namespace}"
@@ -489,9 +479,7 @@ class DocumentPublisher:
 
                 can_publish = self._gateway.active
 
-                should_publish = (
-                    self._has_entries_to_publish() or self._publish_mode == PUBLISH_MODE_ALL
-                )
+                should_publish = self._has_entries_to_publish() or self._publish_mode == PUBLISH_MODE_ALL
 
                 if time_to_publish and can_publish and should_publish:
                     try:

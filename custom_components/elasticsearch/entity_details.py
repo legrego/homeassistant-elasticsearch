@@ -92,7 +92,9 @@ class EntityDetails:
             return None
         return self._registry_area.async_get_area(entity.area_id)
 
-    def async_get_entity_labels(self, entity: entity_registry.RegistryEntry) -> list[label_registry.LabelEntry]:
+    def async_get_entity_labels(
+        self, entity: entity_registry.RegistryEntry
+    ) -> list[label_registry.LabelEntry]:
         """Retrieve entity label details."""
         return list(entity.labels)
 

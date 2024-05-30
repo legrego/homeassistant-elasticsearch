@@ -130,9 +130,7 @@ class Test_Elasticsearch_Gateway:
     ):
         """Test async_init with insufficient privileges."""
         with (
-            mock.patch.object(
-                uninitialized_gateway, "_has_required_privileges", return_value=False
-            ),
+            mock.patch.object(uninitialized_gateway, "_has_required_privileges", return_value=False),
             mock.patch.object(
                 uninitialized_gateway,
                 "_get_cluster_info",
@@ -213,9 +211,7 @@ class Test_Elasticsearch_Gateway:
         async_test_result.set_result(True)
 
         with (
-            mock.patch.object(
-                initialized_gateway, "_get_cluster_info", return_value=async_test_result
-            ),
+            mock.patch.object(initialized_gateway, "_get_cluster_info", return_value=async_test_result),
         ):
             assert await initialized_gateway.test()
 
@@ -224,9 +220,7 @@ class Test_Elasticsearch_Gateway:
         """Test the gateway connection test function for failure."""
 
         with (
-            mock.patch.object(
-                initialized_gateway, "_get_cluster_info", side_effect=Exception("Info Failed")
-            ),
+            mock.patch.object(initialized_gateway, "_get_cluster_info", side_effect=Exception("Info Failed")),
         ):
             assert not await initialized_gateway.test()
 
@@ -278,9 +272,7 @@ class Test_Elasticsearch_Gateway:
     ):
         """Test capabilities."""
         with (
-            mock.patch.object(
-                uninitialized_gateway, "_get_cluster_info", return_value=cluster_info
-            ),
+            mock.patch.object(uninitialized_gateway, "_get_cluster_info", return_value=cluster_info),
             mock.patch.object(uninitialized_gateway, "test", return_value=True),
         ):
             await uninitialized_gateway.async_init()

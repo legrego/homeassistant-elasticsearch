@@ -55,7 +55,9 @@ def _test_config_data_options_migration_to_version(
         title="ES Config",
     )
 
-    migrated_data, migrated_options, end_version = migrate_data_and_options_to_version(mock_entry, desired_version=after_version)
+    migrated_data, migrated_options, end_version = migrate_data_and_options_to_version(
+        mock_entry, desired_version=after_version
+    )
 
     assert mock_entry
 
@@ -94,7 +96,9 @@ async def test_update_entry(hass: HomeAssistant, es_aioclient_mock: AiohttpClien
 
     entry = await _setup_config_entry(hass, mock_entry)
 
-    assert hass.config_entries.async_update_entry(entry=entry, options={CONF_EXCLUDED_DOMAINS: ["sensor", "weather"]})
+    assert hass.config_entries.async_update_entry(
+        entry=entry, options={CONF_EXCLUDED_DOMAINS: ["sensor", "weather"]}
+    )
 
     await hass.async_block_till_done()
 

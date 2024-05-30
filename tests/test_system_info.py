@@ -26,7 +26,6 @@ async def test_success(hass: HomeAssistant):
     assert result.hostname is not None
 
 
-
 @pytest.mark.asyncio
 async def test_error_handling(hass: HomeAssistant):
     """Verify unexpected errors return empty object."""

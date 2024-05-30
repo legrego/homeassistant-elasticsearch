@@ -41,7 +41,7 @@ include_trailing_comma = true
 force_grid_wrap = 0
 use_parentheses = true
 ensure_newline_before_comments = true
-line_length = 88
+line_length = 110
 
 [tool.coverage.html]
 directory = "test_results/cov_html"
@@ -62,10 +62,6 @@ addopts = [
 filterwarnings = ["ignore:ssl.PROTOCOL_TLS is deprecated:DeprecationWarning"]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-
-[tool.ruff]
-# Allow lines to be as long as 120.
-line-length = 100
 
 [tool.mypy]
 strict = true

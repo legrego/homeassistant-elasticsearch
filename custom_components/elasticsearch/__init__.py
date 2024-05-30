@@ -39,9 +39,7 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):  
 
     config_entry.version = migrated_version
 
-    return hass.config_entries.async_update_entry(
-        config_entry, data=migrated_data, options=migrated_options
-    )
+    return hass.config_entries.async_update_entry(config_entry, data=migrated_data, options=migrated_options)
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
@@ -115,9 +113,7 @@ def migrate_data_and_options_to_version(config_entry: ConfigEntry, desired_versi
 
     if current_version == 1 and desired_version >= 2:
         only_publish_changed = data.get(CONF_ONLY_PUBLISH_CHANGED, False)
-        data[CONF_PUBLISH_MODE] = (
-            PUBLISH_MODE_ALL if not only_publish_changed else PUBLISH_MODE_ANY_CHANGES
-        )
+        data[CONF_PUBLISH_MODE] = PUBLISH_MODE_ALL if not only_publish_changed else PUBLISH_MODE_ANY_CHANGES
 
         if CONF_ONLY_PUBLISH_CHANGED in data:
             del data[CONF_ONLY_PUBLISH_CHANGED]

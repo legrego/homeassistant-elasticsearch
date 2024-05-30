@@ -176,7 +176,9 @@ def config_entry(hass: HomeAssistant, data, options):
 @pytest.fixture()
 def uninitialized_gateway(hass: HomeAssistant, config_entry: MockConfigEntry):
     """Create an uninitialized gateway."""
-    return Elasticsearch7Gateway(**ElasticsearchGateway.build_gateway_parameters(hass=hass, config_entry=config_entry))
+    return Elasticsearch7Gateway(
+        **ElasticsearchGateway.build_gateway_parameters(hass=hass, config_entry=config_entry)
+    )
 
 
 @pytest.fixture()
@@ -217,7 +219,10 @@ async def initialized_gateway(
 ):
     """Create an uninitialized gateway."""
     gateway = Elasticsearch7Gateway(
-        **ElasticsearchGateway.build_gateway_parameters(hass=hass, config_entry=config_entry, minimum_privileges=None), use_connection_monitor=False
+        **ElasticsearchGateway.build_gateway_parameters(
+            hass=hass, config_entry=config_entry, minimum_privileges=None
+        ),
+        use_connection_monitor=False,
     )
 
     mock_es_initialization(es_aioclient_mock, config_entry.data[CONF_URL])
@@ -268,7 +273,9 @@ class Test_Unit_Tests:
             with pytest.raises(ElasticException):
                 DocumentPublisher._sanitize_datastream_name(type="metrics", dataset=case, namespace="default")
         else:
-            type, dataset, namespace, full_name = DocumentPublisher._sanitize_datastream_name(type="metrics", dataset=case, namespace="default")
+            type, dataset, namespace, full_name = DocumentPublisher._sanitize_datastream_name(
+                type="metrics", dataset=case, namespace="default"
+            )
 
             assert dataset == expected
             assert {"dataset": case, "sanitized_dataset": dataset} == snapshot
@@ -291,14 +298,18 @@ class Test_Unit_Tests:
             with pytest.raises(ElasticException):
                 DocumentPublisher._sanitize_datastream_name(type="metrics", dataset=case, namespace="default")
         else:
-            type, dataset, namespace, full_name = DocumentPublisher._sanitize_datastream_name(type="metrics", dataset=case, namespace="default")
+            type, dataset, namespace, full_name = DocumentPublisher._sanitize_datastream_name(
+                type="metrics", dataset=case, namespace="default"
+            )
             assert dataset == expected
 
     class Test_Change_Mode:
         """Test change mode functions."""
 
         @pytest.mark.asyncio
-        async def test_determine_change_type(self, hass, data, options, uninitialized_publisher: DocumentPublisher):
+        async def test_determine_change_type(
+            self, hass, data, options, uninitialized_publisher: DocumentPublisher
+        ):
             """Test entity change is published."""
             assert (
                 uninitialized_publisher._determine_change_type(

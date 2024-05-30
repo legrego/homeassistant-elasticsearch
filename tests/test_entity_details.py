@@ -79,9 +79,7 @@ async def test_entity_with_area(hass: HomeAssistant):
 
 
 @pytest.mark.asyncio
-async def test_entity_with_device(
-    hass: HomeAssistant, mock_config_entry: MockConfigEntry
-):
+async def test_entity_with_device(hass: HomeAssistant, mock_config_entry: MockConfigEntry):
     """Entity with device returns details."""
     entity_area = area_registry.async_get(hass).async_create("entity area")
     device_area = area_registry.async_get(hass).async_create("device area")
@@ -101,9 +99,7 @@ async def test_entity_with_device(
     config = {COUNTER_DOMAIN: {"test_1": {}}}
     assert await async_setup_component(hass, COUNTER_DOMAIN, config)
     entity_id = "counter.test_1"
-    entity_registry.async_get(hass).async_update_entity(
-        entity_id, area_id=entity_area.id, device_id=entry.id
-    )
+    entity_registry.async_get(hass).async_update_entity(entity_id, area_id=entity_area.id, device_id=entry.id)
 
     state = hass.states.get(entity_id)
     assert int(state.state) == 0
@@ -128,19 +124,13 @@ async def test_entity_with_device(
 
 
 @pytest.mark.asyncio
-async def test_entity_with_floor_and_labels(
-    hass: HomeAssistant, mock_config_entry: MockConfigEntry
-):
+async def test_entity_with_floor_and_labels(hass: HomeAssistant, mock_config_entry: MockConfigEntry):
     """Entity with device returns details."""
     device_floor = floor_registry.async_get(hass).async_create("device floor")
     entity_floor = floor_registry.async_get(hass).async_create("entity_floor")
 
-    entity_area = area_registry.async_get(hass).async_create(
-        "entity area", floor_id=entity_floor.floor_id
-    )
-    device_area = area_registry.async_get(hass).async_create(
-        "device area", floor_id=device_floor.floor_id
-    )
+    entity_area = area_registry.async_get(hass).async_create("entity area", floor_id=entity_floor.floor_id)
+    device_area = area_registry.async_get(hass).async_create("device area", floor_id=device_floor.floor_id)
 
     label_registry.async_get(hass).async_create("device label")
     label_registry.async_get(hass).async_create("entity label")

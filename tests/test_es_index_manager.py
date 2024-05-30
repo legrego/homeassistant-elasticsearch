@@ -76,7 +76,10 @@ async def legacy_index_manager(hass: HomeAssistant, data, options):
     mock_entry.add_to_hass(hass)
 
     gateway = Elasticsearch7Gateway(
-        **ElasticsearchGateway.build_gateway_parameters(hass=hass, config_entry=mock_entry, minimum_privileges=None), use_connection_monitor=False
+        **ElasticsearchGateway.build_gateway_parameters(
+            hass=hass, config_entry=mock_entry, minimum_privileges=None
+        ),
+        use_connection_monitor=False,
     )
 
     index_manager = IndexManager(hass=hass, config_entry=mock_entry, gateway=gateway)
@@ -106,7 +109,10 @@ async def modern_index_manager(hass: HomeAssistant, data, options):
     mock_entry.add_to_hass(hass)
 
     gateway = Elasticsearch7Gateway(
-        **ElasticsearchGateway.build_gateway_parameters(hass=hass, config_entry=mock_entry, minimum_privileges=None), use_connection_monitor=False
+        **ElasticsearchGateway.build_gateway_parameters(
+            hass=hass, config_entry=mock_entry, minimum_privileges=None
+        ),
+        use_connection_monitor=False,
     )
 
     index_manager = IndexManager(hass=hass, config_entry=mock_entry, gateway=gateway)
@@ -137,7 +143,11 @@ async def test_esserverless_datastream_setup(
     assert len(extract_es_modern_index_template_requests(es_aioclient_mock)) == 0
 
     with (
-        mock.patch.object(modern_index_manager._gateway, "_get_cluster_info", return_value=CLUSTER_INFO_SERVERLESS_RESPONSE_BODY),
+        mock.patch.object(
+            modern_index_manager._gateway,
+            "_get_cluster_info",
+            return_value=CLUSTER_INFO_SERVERLESS_RESPONSE_BODY,
+        ),
         mock.patch.object(modern_index_manager._gateway, "test", return_value=True),
     ):
         await modern_index_manager._gateway.async_init()
@@ -148,7 +158,9 @@ async def test_esserverless_datastream_setup(
 
     assert len(modern_template_requests) == 1
 
-    assert modern_template_requests[0].url.path == "/_index_template/" + DATASTREAM_METRICS_INDEX_TEMPLATE_NAME
+    assert (
+        modern_template_requests[0].url.path == "/_index_template/" + DATASTREAM_METRICS_INDEX_TEMPLATE_NAME
+    )
 
     assert modern_template_requests[0].method == "PUT"
 
@@ -177,7 +189,11 @@ async def test_es811_datastream_setup(
     assert len(extract_es_modern_index_template_requests(es_aioclient_mock)) == 0
 
     with (
-        mock.patch.object(modern_index_manager._gateway, "_get_cluster_info", return_value=CLUSTER_INFO_8DOT11_RESPONSE_BODY),
+        mock.patch.object(
+            modern_index_manager._gateway,
+            "_get_cluster_info",
+            return_value=CLUSTER_INFO_8DOT11_RESPONSE_BODY,
+        ),
         mock.patch.object(modern_index_manager._gateway, "test", return_value=True),
     ):
         await modern_index_manager._gateway.async_init()
@@ -207,7 +223,9 @@ async def test_es811_datastream_setup(
 
     assert len(modern_template_requests) == 1
 
-    assert modern_template_requests[0].url.path == "/_index_template/" + DATASTREAM_METRICS_INDEX_TEMPLATE_NAME
+    assert (
+        modern_template_requests[0].url.path == "/_index_template/" + DATASTREAM_METRICS_INDEX_TEMPLATE_NAME
+    )
 
     assert modern_template_requests[0].method == "PUT"
 
@@ -239,7 +257,11 @@ async def test_es88_datastream_setup(
     assert len(extract_es_modern_index_template_requests(es_aioclient_mock)) == 0
 
     with (
-        mock.patch.object(modern_index_manager._gateway, "_get_cluster_info", return_value=CLUSTER_INFO_8DOT8_RESPONSE_BODY),
+        mock.patch.object(
+            modern_index_manager._gateway,
+            "_get_cluster_info",
+            return_value=CLUSTER_INFO_8DOT8_RESPONSE_BODY,
+        ),
         mock.patch.object(modern_index_manager._gateway, "test", return_value=True),
     ):
         await modern_index_manager._gateway.async_init()
@@ -269,7 +291,9 @@ async def test_es88_datastream_setup(
 
     assert len(modern_template_requests) == 1
 
-    assert modern_template_requests[0].url.path == "/_index_template/" + DATASTREAM_METRICS_INDEX_TEMPLATE_NAME
+    assert (
+        modern_template_requests[0].url.path == "/_index_template/" + DATASTREAM_METRICS_INDEX_TEMPLATE_NAME
+    )
 
     assert modern_template_requests[0].method == "PUT"
 
@@ -305,7 +329,11 @@ async def test_es80_datastream_setup(
     assert len(extract_es_modern_index_template_requests(es_aioclient_mock)) == 0
 
     with (
-        mock.patch.object(modern_index_manager._gateway, "_get_cluster_info", return_value=CLUSTER_INFO_8DOT0_RESPONSE_BODY),
+        mock.patch.object(
+            modern_index_manager._gateway,
+            "_get_cluster_info",
+            return_value=CLUSTER_INFO_8DOT0_RESPONSE_BODY,
+        ),
         mock.patch.object(modern_index_manager._gateway, "test", return_value=True),
     ):
         await modern_index_manager._gateway.async_init()
@@ -334,7 +362,9 @@ async def test_es80_datastream_setup(
 
     assert len(modern_template_requests) == 1
 
-    assert modern_template_requests[0].url.path == "/_index_template/" + DATASTREAM_METRICS_INDEX_TEMPLATE_NAME
+    assert (
+        modern_template_requests[0].url.path == "/_index_template/" + DATASTREAM_METRICS_INDEX_TEMPLATE_NAME
+    )
 
     assert modern_template_requests[0].method == "PUT"
 
@@ -370,7 +400,11 @@ async def test_es717_datastream_setup(
     assert len(extract_es_modern_index_template_requests(es_aioclient_mock)) == 0
 
     with (
-        mock.patch.object(modern_index_manager._gateway, "_get_cluster_info", return_value=CLUSTER_INFO_7DOT17_RESPONSE_BODY),
+        mock.patch.object(
+            modern_index_manager._gateway,
+            "_get_cluster_info",
+            return_value=CLUSTER_INFO_7DOT17_RESPONSE_BODY,
+        ),
         mock.patch.object(modern_index_manager._gateway, "test", return_value=True),
     ):
         await modern_index_manager._gateway.async_init()
@@ -399,7 +433,9 @@ async def test_es717_datastream_setup(
 
     assert len(modern_template_requests) == 1
 
-    assert modern_template_requests[0].url.path == "/_index_template/" + DATASTREAM_METRICS_INDEX_TEMPLATE_NAME
+    assert (
+        modern_template_requests[0].url.path == "/_index_template/" + DATASTREAM_METRICS_INDEX_TEMPLATE_NAME
+    )
 
     assert modern_template_requests[0].method == "PUT"
 
@@ -413,7 +449,9 @@ async def test_es717_datastream_setup(
 
 
 @pytest.mark.asyncio
-async def test_es711_datastream_setup(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, modern_index_manager):
+async def test_es711_datastream_setup(
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, modern_index_manager
+):
     """Test for modern index mode setup."""
 
     es_url = "http://localhost:9200"
@@ -431,7 +469,11 @@ async def test_es711_datastream_setup(hass: HomeAssistant, es_aioclient_mock: Ai
     assert len(extract_es_modern_index_template_requests(es_aioclient_mock)) == 0
 
     with (
-        mock.patch.object(modern_index_manager._gateway, "_get_cluster_info", return_value=CLUSTER_INFO_7DOT11_RESPONSE_BODY),
+        mock.patch.object(
+            modern_index_manager._gateway,
+            "_get_cluster_info",
+            return_value=CLUSTER_INFO_7DOT11_RESPONSE_BODY,
+        ),
         mock.patch.object(modern_index_manager._gateway, "test", return_value=True),
     ):
         await modern_index_manager._gateway.async_init()
@@ -460,7 +502,9 @@ async def test_es711_datastream_setup(hass: HomeAssistant, es_aioclient_mock: Ai
 
     assert len(modern_template_requests) == 1
 
-    assert modern_template_requests[0].url.path == "/_index_template/" + DATASTREAM_METRICS_INDEX_TEMPLATE_NAME
+    assert (
+        modern_template_requests[0].url.path == "/_index_template/" + DATASTREAM_METRICS_INDEX_TEMPLATE_NAME
+    )
 
     assert modern_template_requests[0].method == "PUT"
 
@@ -474,7 +518,9 @@ async def test_es711_datastream_setup(hass: HomeAssistant, es_aioclient_mock: Ai
 
 
 @pytest.mark.asyncio
-async def test_fail_esserverless_legacy_index_setup(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, legacy_index_manager):
+async def test_fail_esserverless_legacy_index_setup(
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, legacy_index_manager
+):
     """Test for failure of legacy index mode setup on serverless."""
 
     es_url = "http://localhost:9200"
@@ -486,7 +532,11 @@ async def test_fail_esserverless_legacy_index_setup(hass: HomeAssistant, es_aioc
         mock_template_setup=True,
     )
     with (
-        mock.patch.object(legacy_index_manager._gateway, "_get_cluster_info", return_value=CLUSTER_INFO_SERVERLESS_RESPONSE_BODY),
+        mock.patch.object(
+            legacy_index_manager._gateway,
+            "_get_cluster_info",
+            return_value=CLUSTER_INFO_SERVERLESS_RESPONSE_BODY,
+        ),
         mock.patch.object(legacy_index_manager._gateway, "test", return_value=True),
     ):
         await legacy_index_manager._gateway.async_init()
@@ -498,7 +548,9 @@ async def test_fail_esserverless_legacy_index_setup(hass: HomeAssistant, es_aioc
 
 
 @pytest.mark.asyncio
-async def test_es88_legacy_index_setup(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, legacy_index_manager):
+async def test_es88_legacy_index_setup(
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, legacy_index_manager
+):
     """Test for modern index mode setup."""
 
     es_url = "http://localhost:9200"
@@ -513,7 +565,11 @@ async def test_es88_legacy_index_setup(hass: HomeAssistant, es_aioclient_mock: A
 
     assert len(extract_es_legacy_index_template_requests(es_aioclient_mock)) == 0
     with (
-        mock.patch.object(legacy_index_manager._gateway, "_get_cluster_info", return_value=CLUSTER_INFO_8DOT0_RESPONSE_BODY),
+        mock.patch.object(
+            legacy_index_manager._gateway,
+            "_get_cluster_info",
+            return_value=CLUSTER_INFO_8DOT0_RESPONSE_BODY,
+        ),
         mock.patch.object(legacy_index_manager._gateway, "test", return_value=True),
     ):
         await legacy_index_manager._gateway.async_init()
@@ -531,7 +587,9 @@ async def test_es88_legacy_index_setup(hass: HomeAssistant, es_aioclient_mock: A
     assert len(extract_es_ilm_template_requests(es_aioclient_mock)) == 1
 
 
-async def test_es711_legacy_index_setup(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, legacy_index_manager):
+async def test_es711_legacy_index_setup(
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, legacy_index_manager
+):
     """Test for modern index mode setup."""
 
     es_url = "http://localhost:9200"
@@ -544,7 +602,11 @@ async def test_es711_legacy_index_setup(hass: HomeAssistant, es_aioclient_mock: 
 
     assert len(extract_es_legacy_index_template_requests(es_aioclient_mock)) == 0
     with (
-        mock.patch.object(legacy_index_manager._gateway, "_get_cluster_info", return_value=CLUSTER_INFO_8DOT0_RESPONSE_BODY),
+        mock.patch.object(
+            legacy_index_manager._gateway,
+            "_get_cluster_info",
+            return_value=CLUSTER_INFO_8DOT0_RESPONSE_BODY,
+        ),
         mock.patch.object(legacy_index_manager._gateway, "test", return_value=True),
     ):
         await legacy_index_manager._gateway.async_init()
@@ -563,7 +625,9 @@ async def test_es711_legacy_index_setup(hass: HomeAssistant, es_aioclient_mock: 
 
 
 @pytest.mark.asyncio
-async def test_modern_index_mode_update(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, modern_index_manager):
+async def test_modern_index_mode_update(
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, modern_index_manager
+):
     """Test for modern index mode update."""
 
     es_url = "http://localhost:9200"
@@ -580,7 +644,11 @@ async def test_modern_index_mode_update(hass: HomeAssistant, es_aioclient_mock: 
     )
 
     with (
-        mock.patch.object(modern_index_manager._gateway, "_get_cluster_info", return_value=CLUSTER_INFO_8DOT0_RESPONSE_BODY),
+        mock.patch.object(
+            modern_index_manager._gateway,
+            "_get_cluster_info",
+            return_value=CLUSTER_INFO_8DOT0_RESPONSE_BODY,
+        ),
         mock.patch.object(modern_index_manager._gateway, "test", return_value=True),
     ):
         await modern_index_manager._gateway.async_init()
@@ -592,7 +660,9 @@ async def test_modern_index_mode_update(hass: HomeAssistant, es_aioclient_mock: 
 
     assert len(modern_template_requests) == 1
 
-    assert modern_template_requests[0].url.path == "/_index_template/" + DATASTREAM_METRICS_INDEX_TEMPLATE_NAME
+    assert (
+        modern_template_requests[0].url.path == "/_index_template/" + DATASTREAM_METRICS_INDEX_TEMPLATE_NAME
+    )
 
     assert modern_template_requests[0].method == "PUT"
 
@@ -600,7 +670,9 @@ async def test_modern_index_mode_update(hass: HomeAssistant, es_aioclient_mock: 
 
 
 @pytest.mark.asyncio
-async def test_modern_index_mode_error(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, modern_index_manager):
+async def test_modern_index_mode_error(
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, modern_index_manager
+):
     """Test for modern index mode update."""
 
     es_url = "http://localhost:9200"
@@ -614,7 +686,11 @@ async def test_modern_index_mode_error(hass: HomeAssistant, es_aioclient_mock: A
     )
 
     with (
-        mock.patch.object(modern_index_manager._gateway, "_get_cluster_info", return_value=CLUSTER_INFO_8DOT0_RESPONSE_BODY),
+        mock.patch.object(
+            modern_index_manager._gateway,
+            "_get_cluster_info",
+            return_value=CLUSTER_INFO_8DOT0_RESPONSE_BODY,
+        ),
         mock.patch.object(modern_index_manager._gateway, "test", return_value=True),
     ):
         await modern_index_manager._gateway.async_init()
@@ -626,7 +702,9 @@ async def test_modern_index_mode_error(hass: HomeAssistant, es_aioclient_mock: A
     assert len(extract_es_modern_index_template_requests(es_aioclient_mock)) == 1
 
 
-async def test_legacy_index_mode_update(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, legacy_index_manager):
+async def test_legacy_index_mode_update(
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, legacy_index_manager
+):
     """Test for modern index mode update."""
 
     es_url = "http://localhost:9200"
@@ -641,7 +719,11 @@ async def test_legacy_index_mode_update(hass: HomeAssistant, es_aioclient_mock: 
 
     # Index Templates do not get updated in Legacy mode but ILM templates do
     with (
-        mock.patch.object(legacy_index_manager._gateway, "_get_cluster_info", return_value=CLUSTER_INFO_8DOT0_RESPONSE_BODY),
+        mock.patch.object(
+            legacy_index_manager._gateway,
+            "_get_cluster_info",
+            return_value=CLUSTER_INFO_8DOT0_RESPONSE_BODY,
+        ),
         mock.patch.object(legacy_index_manager._gateway, "test", return_value=True),
     ):
         await legacy_index_manager._gateway.async_init()
@@ -652,7 +734,9 @@ async def test_legacy_index_mode_update(hass: HomeAssistant, es_aioclient_mock: 
     assert len(extract_es_ilm_template_requests(es_aioclient_mock)) == 1
 
 
-async def test_legacy_index_mode_error(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, legacy_index_manager):
+async def test_legacy_index_mode_error(
+    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, legacy_index_manager
+):
     """Test for modern index mode update."""
 
     es_url = "http://localhost:9200"
@@ -665,7 +749,11 @@ async def test_legacy_index_mode_error(hass: HomeAssistant, es_aioclient_mock: A
         mock_template_error=True,
     )
     with (
-        mock.patch.object(legacy_index_manager._gateway, "_get_cluster_info", return_value=CLUSTER_INFO_8DOT0_RESPONSE_BODY),
+        mock.patch.object(
+            legacy_index_manager._gateway,
+            "_get_cluster_info",
+            return_value=CLUSTER_INFO_8DOT0_RESPONSE_BODY,
+        ),
         mock.patch.object(legacy_index_manager._gateway, "test", return_value=True),
     ):
         await legacy_index_manager._gateway.async_init()
@@ -702,7 +790,11 @@ async def test_datastream_dynamic_mode_migration(
     assert len(modern_mapping_requests) == 0
 
     with (
-        mock.patch.object(modern_index_manager._gateway, "_get_cluster_info", return_value=CLUSTER_INFO_8DOT0_RESPONSE_BODY),
+        mock.patch.object(
+            modern_index_manager._gateway,
+            "_get_cluster_info",
+            return_value=CLUSTER_INFO_8DOT0_RESPONSE_BODY,
+        ),
         mock.patch.object(modern_index_manager._gateway, "test", return_value=True),
     ):
         await modern_index_manager._gateway.async_init()
@@ -741,7 +833,11 @@ async def test_datastream_dynamic_mode_migration_skip(
     assert len(modern_mapping_requests) == 0
 
     with (
-        mock.patch.object(modern_index_manager._gateway, "_get_cluster_info", return_value=CLUSTER_INFO_8DOT0_RESPONSE_BODY),
+        mock.patch.object(
+            modern_index_manager._gateway,
+            "_get_cluster_info",
+            return_value=CLUSTER_INFO_8DOT0_RESPONSE_BODY,
+        ),
         mock.patch.object(modern_index_manager._gateway, "test", return_value=True),
     ):
         await modern_index_manager._gateway.async_init()

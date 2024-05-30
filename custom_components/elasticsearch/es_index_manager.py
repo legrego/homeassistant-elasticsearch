@@ -123,16 +123,14 @@ class IndexManager:
             self._logger.debug("Creating index template")
 
         if self._gateway.has_capability(CAPABILITIES.TIMESERIES_DATASTREAM):
-            self._logger.debug(
-                "Elasticsearch supports timeseries datastreams, including in template."
-            )
+            self._logger.debug("Elasticsearch supports timeseries datastreams, including in template.")
 
             index_template["template"]["settings"]["index.mode"] = "time_series"
 
             mappings = index_template["template"]["mappings"]
-            object_id = mappings["properties"]["hass"]["properties"]["entity"]["properties"][
-                "object"
-            ]["properties"]["id"]
+            object_id = mappings["properties"]["hass"]["properties"]["entity"]["properties"]["object"][
+                "properties"
+            ]["id"]
 
             object_id["time_series_dimension"] = True
 
@@ -285,12 +283,8 @@ class IndexManager:
         }
 
         if self._gateway.has_capability(CAPABILITIES.MAX_PRIMARY_SHARD_SIZE):
-            self._logger.debug(
-                "Elasticsearch supports max_primary_shard_size, including in ILM template."
-            )
-            policy["policy"]["phases"]["hot"]["actions"]["rollover"]["max_primary_shard_size"] = (
-                "50gb"
-            )
+            self._logger.debug("Elasticsearch supports max_primary_shard_size, including in ILM template.")
+            policy["policy"]["phases"]["hot"]["actions"]["rollover"]["max_primary_shard_size"] = "50gb"
 
         self._logger.info("Creating ILM Policy '%s'", ilm_policy_name)
         try:
@@ -310,9 +304,7 @@ class IndexManager:
                 index=DATASTREAM_TYPE + "-" + DATASTREAM_DATASET_PREFIX + ".*"
             )
         except ElasticsearchException as err:
-            raise convert_es_error(
-                "Error checking datastream mapping for dynamic fields", err
-            ) from err
+            raise convert_es_error("Error checking datastream mapping for dynamic fields", err) from err
 
         for _index, mapping in mappings.items():
             if mapping["mappings"].get("dynamic") == "strict":
@@ -337,6 +329,4 @@ class IndexManager:
                 write_index_only=True,
             )
         except ElasticsearchException as err:
-            raise convert_es_error(
-                "Error migrating datastream to ignore dynamic fields", err
-            ) from err
+            raise convert_es_error("Error migrating datastream to ignore dynamic fields", err) from err

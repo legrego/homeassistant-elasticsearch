@@ -97,8 +97,7 @@ class ElasticsearchGateway(ABC):
         def meets_minimum_version(version_info: dict, major: int, minor: int) -> bool:
             """Determine if this version of ES meets the minimum version requirements."""
             return version_info[CAPABILITIES.MAJOR] > major or (
-                version_info[CAPABILITIES.MAJOR] == major
-                and version_info[CAPABILITIES.MINOR] >= minor
+                version_info[CAPABILITIES.MAJOR] == major and version_info[CAPABILITIES.MINOR] >= minor
             )
 
         version_info = {
@@ -111,18 +110,14 @@ class ElasticsearchGateway(ABC):
         capabilities = {
             CAPABILITIES.SERVERLESS: version_info[CAPABILITIES.BUILD_FLAVOR] == "serverless",
             CAPABILITIES.SUPPORTED: meets_minimum_version(version_info, major=7, minor=11),
-            CAPABILITIES.TIMESERIES_DATASTREAM: meets_minimum_version(
-                version_info, major=8, minor=7
-            ),
+            CAPABILITIES.TIMESERIES_DATASTREAM: meets_minimum_version(version_info, major=8, minor=7),
             CAPABILITIES.IGNORE_MISSING_COMPONENT_TEMPLATES: meets_minimum_version(
                 version_info, major=8, minor=7
             ),
             CAPABILITIES.DATASTREAM_LIFECYCLE_MANAGEMENT: meets_minimum_version(
                 version_info, major=8, minor=11
             ),
-            CAPABILITIES.MAX_PRIMARY_SHARD_SIZE: meets_minimum_version(
-                version_info, major=7, minor=13
-            ),
+            CAPABILITIES.MAX_PRIMARY_SHARD_SIZE: meets_minimum_version(version_info, major=7, minor=13),
         }
 
         return {**version_info, **capabilities}

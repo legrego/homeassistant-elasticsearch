@@ -191,7 +191,9 @@ class DocumentCreator:
             "state.class": entity_capabilities.get("state_class"),
         }
 
-        entity_additions = {k: str(v) for k, v in entity_additions.items() if (v is not None and v != "None" and len(v) != 0)}
+        entity_additions = {
+            k: str(v) for k, v in entity_additions.items() if (v is not None and v != "None" and len(v) != 0)
+        }
 
         device = entity_details.device
         device_floor = entity_details.device_floor
@@ -210,9 +212,7 @@ class DocumentCreator:
         }
 
         device_additions = {
-            k: str(v)
-            for k, v in device_additions.items()
-            if (v is not None and v != "None" and len(v) != 0)
+            k: str(v) for k, v in device_additions.items() if (v is not None and v != "None" and len(v) != 0)
         }
 
         return {**entity_additions, "device": {**device_additions}}
@@ -252,7 +252,11 @@ class DocumentCreator:
         if isinstance(_state, str) and self.try_state_as_boolean(state):
             additions["valueas"]["boolean"] = self.state_as_boolean(state)
 
-        elif isinstance(_state, str) and self.try_state_as_number(state) and self.is_valid_number(state_helper.state_as_number(state)):
+        elif (
+            isinstance(_state, str)
+            and self.try_state_as_number(state)
+            and self.is_valid_number(state_helper.state_as_number(state))
+        ):
             additions["valueas"]["float"] = state_helper.state_as_number(state)
 
         elif isinstance(_state, str) and self.try_state_as_datetime(state):
