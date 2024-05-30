@@ -38,7 +38,6 @@ def mock_es_aiohttp_client():
         print(args)
         return mocker.create_session(get_running_loop())
 
-
     with mock.patch(
         "elasticsearch7._async.http_aiohttp.aiohttp.ClientSession",
         side_effect=create_session,

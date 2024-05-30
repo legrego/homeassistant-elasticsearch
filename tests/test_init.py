@@ -35,7 +35,6 @@ async def _setup_config_entry(hass: HomeAssistant, mock_entry: MockConfigEntry):
     return config_entries[0]
 
 
-
 def _test_config_data_options_migration_to_version(
     before_version,
     before_data,

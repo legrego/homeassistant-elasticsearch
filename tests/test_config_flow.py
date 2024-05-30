@@ -41,7 +41,6 @@ async def _setup_config_entry(hass: HomeAssistant, mock_entry: mock_config_entry
     return config_entries[0]
 
 
-
 @pytest.mark.asyncio()
 async def test_no_auth_flow_isolate(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker):
     """Test user config flow with minimum fields."""

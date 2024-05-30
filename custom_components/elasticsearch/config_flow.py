@@ -117,7 +117,6 @@ def build_new_options(existing_options: dict | None = None, user_input: dict | N
     }
 
 
-
 def build_new_data(existing_data: dict | None = None, user_input: dict | None = None):
     """Build the entire data validation schema."""
     if user_input is None:
@@ -580,7 +579,6 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
                 default=self._get_config_value(CONF_ILM_POLICY_NAME, DEFAULT_ILM_POLICY_NAME),
             ): str,
         }
-
 
     def _dedup_list(self, list_to_dedup):
         return list(dict.fromkeys(list_to_dedup))

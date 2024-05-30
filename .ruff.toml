@@ -41,6 +41,12 @@ lint.ignore = [
     "E501", # line too long
     "E731", # do not assign a lambda expression, use a def
     "T201", # `print` found
+    "FIX002",
+    "TD004",
+    "TD002",
+    "PLR0913",
+    "ANN101",
+    "ANN102"
 ]
 
 [lint.per-file-ignores]
@@ -56,7 +62,8 @@ lint.ignore = [
     "TRY003",
     "ANN201",
     "PLR0913",
-    "ANN101"
+    "ANN101",
+    "N801"
 ]
 
 [lint.flake8-pytest-style]

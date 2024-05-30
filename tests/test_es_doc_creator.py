@@ -70,7 +70,6 @@ async def _setup_config_entry(hass: HomeAssistant, mock_entry: mock_config_entry
     return config_entries[0]
 
 
-
 @pytest.fixture
 async def document_creator(hass: HomeAssistant):
     """Fixture to create a DocumentCreator instance."""
@@ -92,7 +91,6 @@ async def document_creator(hass: HomeAssistant):
 
     # TODO: Consider initializing the document creator before returning it, requires rewriting tests and initializing the whole integration
     # await creator.async_init()
-
 
 
 @pytest.mark.asyncio()

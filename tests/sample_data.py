@@ -20,7 +20,6 @@ def create_sample_state(**kwargs):
     }
 
 
-
 sample_state_change_event = {
     "entity_id": "switch.sample_entity",
     "old_state": create_sample_state(),
