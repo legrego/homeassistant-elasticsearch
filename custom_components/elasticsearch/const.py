@@ -64,7 +64,7 @@ ES_CHECK_PERMISSIONS_DATASTREAM = {
                 "create_index",
                 "create",
             ],
-        }
+        },
     ],
 }
 

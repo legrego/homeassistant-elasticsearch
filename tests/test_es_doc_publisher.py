@@ -134,7 +134,7 @@ def freeze_time(freezer: FrozenDateTimeFactory):
     freezer.move_to(datetime(2023, 4, 12, 12, tzinfo=UTC))  # Monday
 
 
-@pytest.fixture()
+@pytest.fixture
 def standard_entity_state(
     hass,
     state,
@@ -173,15 +173,15 @@ def config_entry(hass: HomeAssistant, data, options):
     return entry
 
 
-@pytest.fixture()
+@pytest.fixture
 def uninitialized_gateway(hass: HomeAssistant, config_entry: MockConfigEntry):
     """Create an uninitialized gateway."""
     return Elasticsearch7Gateway(
-        **ElasticsearchGateway.build_gateway_parameters(hass=hass, config_entry=config_entry)
+        **ElasticsearchGateway.build_gateway_parameters(hass=hass, config_entry=config_entry),
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def uninitialized_publisher(
     config_entry: MockConfigEntry,
     uninitialized_gateway: ElasticsearchGateway,
@@ -195,7 +195,7 @@ def uninitialized_publisher(
     return publisher
 
 
-@pytest.fixture()
+@pytest.fixture
 async def initialized_publisher(
     config_entry: MockConfigEntry,
     initialized_gateway: ElasticsearchGateway,
@@ -211,7 +211,7 @@ async def initialized_publisher(
     publisher.stop_publisher()
 
 
-@pytest.fixture()
+@pytest.fixture
 async def initialized_gateway(
     hass: HomeAssistant,
     config_entry: MockConfigEntry,
@@ -220,7 +220,9 @@ async def initialized_gateway(
     """Create an uninitialized gateway."""
     gateway = Elasticsearch7Gateway(
         **ElasticsearchGateway.build_gateway_parameters(
-            hass=hass, config_entry=config_entry, minimum_privileges=None
+            hass=hass,
+            config_entry=config_entry,
+            minimum_privileges=None,
         ),
         use_connection_monitor=False,
     )
@@ -238,11 +240,11 @@ async def initialized_gateway(
     await gateway.stop()
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 class Test_Unit_Tests:
     """Unit tests for the Elasticsearch Document Publisher."""
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio()
     @pytest.mark.parametrize(
         "case,expected",
         [
@@ -274,13 +276,15 @@ class Test_Unit_Tests:
                 DocumentPublisher._sanitize_datastream_name(type="metrics", dataset=case, namespace="default")
         else:
             type, dataset, namespace, full_name = DocumentPublisher._sanitize_datastream_name(
-                type="metrics", dataset=case, namespace="default"
+                type="metrics",
+                dataset=case,
+                namespace="default",
             )
 
             assert dataset == expected
             assert {"dataset": case, "sanitized_dataset": dataset} == snapshot
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio()
     @pytest.mark.parametrize(
         "case,expected",
         [("a" * 256, "a" * 239)],
@@ -299,16 +303,22 @@ class Test_Unit_Tests:
                 DocumentPublisher._sanitize_datastream_name(type="metrics", dataset=case, namespace="default")
         else:
             type, dataset, namespace, full_name = DocumentPublisher._sanitize_datastream_name(
-                type="metrics", dataset=case, namespace="default"
+                type="metrics",
+                dataset=case,
+                namespace="default",
             )
             assert dataset == expected
 
     class Test_Change_Mode:
         """Test change mode functions."""
 
-        @pytest.mark.asyncio
+        @pytest.mark.asyncio()
         async def test_determine_change_type(
-            self, hass, data, options, uninitialized_publisher: DocumentPublisher
+            self,
+            hass,
+            data,
+            options,
+            uninitialized_publisher: DocumentPublisher,
         ):
             """Test entity change is published."""
             assert (
@@ -375,7 +385,7 @@ class Test_Unit_Tests:
         #     uninitialized_publisher: DocumentPublisher,
         # ):
 
-        @pytest.mark.asyncio
+        @pytest.mark.asyncio()
         async def test_queue_enqueue(
             self,
             data: None,
@@ -403,7 +413,7 @@ class Test_Unit_Tests:
             assert not uninitialized_publisher._has_entries_to_publish()
             assert uninitialized_publisher.queue_size() == 0
 
-        @pytest.mark.asyncio
+        @pytest.mark.asyncio()
         async def test_queue_empty(
             self,
             hass,
@@ -425,7 +435,7 @@ class Test_Unit_Tests:
 
             assert uninitialized_publisher.publish_queue.qsize() == 0
 
-        @pytest.mark.asyncio
+        @pytest.mark.asyncio()
         async def test_queue_has_entries_to_publish(
             self,
             hass,
@@ -447,7 +457,7 @@ class Test_Unit_Tests:
     class Test_Publishing_Filters:
         """Test publishing functions."""
 
-        @pytest.mark.asyncio  # fmt: skip
+        @pytest.mark.asyncio()  # fmt: skip
         @pytest.mark.parametrize(
             "data, options, entity_id, expected",
             [
@@ -478,7 +488,7 @@ class Test_Unit_Tests:
                 ( {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_2"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_2", False),
                 ( {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_2"], CONF_EXCLUDED_DOMAINS: ["test"]}, "counter.test_1", False),
                 ( {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_2"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_2", False),
-            ]
+            ],
 
         )  # fmt: off
         async def test_publishing_datastream_filters(
@@ -500,7 +510,7 @@ class Test_Unit_Tests:
                 "should_publish": result,
             } == snapshot
 
-        @pytest.mark.asyncio  # fmt: skip
+        @pytest.mark.asyncio()  # fmt: skip
         @pytest.mark.parametrize(
             "data, options, entity_id, expected",
             [
@@ -522,7 +532,7 @@ class Test_Unit_Tests:
                 ( {CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_1", False),
                 ( {CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_2"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_1", True),
                 ( {CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_2"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_2", False),
-            ]
+            ],
 
         )  # fmt: off
         async def test_publishing_legacy_filters(
@@ -545,7 +555,7 @@ class Test_Unit_Tests:
     class Test_Publisher_Document_Creation:
         """Test document creation functions."""
 
-        @pytest.mark.asyncio
+        @pytest.mark.asyncio()
         @pytest.mark.parametrize(
             "data",
             [
@@ -588,7 +598,7 @@ class Test_Unit_Tests:
                 "_bulk": result,
             } == snapshot
 
-        @pytest.mark.asyncio
+        @pytest.mark.asyncio()
         @pytest.mark.parametrize(
             "data",
             [
@@ -640,7 +650,7 @@ class Test_Benchmark_Tests:
         """Do not freeze time, override auto-use fixture."""
         return
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio()
     async def test_publishing_benchmark(
         self,
         hass: HomeAssistant,
@@ -679,7 +689,7 @@ class Test_Integration_Tests:
         """Test publishing functions."""
 
         # These are e2e tests, so we will need to mock the Elasticsearch Gateway and test the Document Publisher with it
-        @pytest.mark.asyncio
+        @pytest.mark.asyncio()
         @pytest.mark.parametrize(
             "options",
             [

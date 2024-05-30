@@ -121,7 +121,8 @@ class DocumentPublisher:
             self.stop_publisher()
 
         self.remove_hass_close_listener = hass.bus.async_listen_once(
-            EVENT_HOMEASSISTANT_CLOSE, hass_close_event_listener
+            EVENT_HOMEASSISTANT_CLOSE,
+            hass_close_event_listener,
         )
 
         self._document_creator = DocumentCreator(log=log, hass=hass, config_entry=config_entry)
@@ -146,7 +147,7 @@ class DocumentPublisher:
 
         if not self.publish_active:
             self._logger.debug(
-                "Publisher is stopping but publishing documents was not active before stopping"
+                "Publisher is stopping but publishing documents was not active before stopping",
             )
 
         self.publish_active = False
@@ -173,10 +174,10 @@ class DocumentPublisher:
         entity_id = state.entity_id
 
         if not self._should_publish_entity_passes_filter(entity_id):
-            return
+            return None
 
         if not self._should_publish_state_change_matches_mode(reason, state.entity_id):
-            return
+            return None
 
         if not self.publish_enabled:
             self._logger.warning(
@@ -222,7 +223,7 @@ class DocumentPublisher:
             reason = PUBLISH_REASON_POLLING
             for state in all_states:
                 if state.entity_id not in entity_counts and self._should_publish_entity_passes_filter(
-                    state.entity_id
+                    state.entity_id,
                 ):
                     actions.append(self._state_to_bulk_action(state, self._last_publish_time, reason))
 
@@ -257,7 +258,7 @@ class DocumentPublisher:
 
     def _determine_change_type(self, new_state: State, old_state: State = None):
         if new_state is None:
-            return
+            return None
 
         elif old_state is None:
             reason = PUBLISH_REASON_STATE_CHANGE
@@ -370,7 +371,9 @@ class DocumentPublisher:
         """Initialize the publish timer."""
         if self._config_entry:
             self._publish_timer_ref = self._config_entry.async_create_background_task(
-                self._hass, self._publish_queue_timer(), "publish_queue_timer"
+                self._hass,
+                self._publish_queue_timer(),
+                "publish_queue_timer",
             )
         else:
             self._publish_timer_ref = asyncio.ensure_future(self._publish_queue_timer())

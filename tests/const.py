@@ -69,9 +69,9 @@ CLUSTER_INFO_MISSING_CREDENTIALS_RESPONSE_BODY = {
                         'Basic realm="security" charset="UTF-8"',
                         'Bearer realm="security"',
                         "ApiKey",
-                    ]
+                    ],
                 },
-            }
+            },
         ],
         "type": "security_exception",
         "reason": "missing authentication credentials for REST request [/?pretty]",
@@ -80,7 +80,7 @@ CLUSTER_INFO_MISSING_CREDENTIALS_RESPONSE_BODY = {
                 'Basic realm="security" charset="UTF-8"',
                 'Bearer realm="security"',
                 "ApiKey",
-            ]
+            ],
         },
     },
     "status": 401,

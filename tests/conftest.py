@@ -59,7 +59,7 @@ def es_aioclient_mock():
 @pytest.fixture(autouse=True)
 def auto_enable_custom_integrations(enable_custom_integrations):
     """Auto enable custom integrations."""
-    yield
+    return
 
 
 # This fixture is used to prevent HomeAssistant from attempting to create and dismiss persistent
@@ -75,7 +75,7 @@ def skip_notifications_fixture():
         yield
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_config_entry(hass: HomeAssistant) -> MockConfigEntry:
     """Create a mock config entry and add it to hass."""
     entry = MockConfigEntry(title=None)

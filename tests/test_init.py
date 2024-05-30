@@ -56,7 +56,8 @@ def _test_config_data_options_migration_to_version(
     )
 
     migrated_data, migrated_options, end_version = migrate_data_and_options_to_version(
-        mock_entry, desired_version=after_version
+        mock_entry,
+        desired_version=after_version,
     )
 
     assert mock_entry
@@ -78,7 +79,7 @@ def _test_config_data_options_migration_to_version(
     return True
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_update_entry(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker) -> None:
     """Test component entry update."""
 
@@ -97,7 +98,8 @@ async def test_update_entry(hass: HomeAssistant, es_aioclient_mock: AiohttpClien
     entry = await _setup_config_entry(hass, mock_entry)
 
     assert hass.config_entries.async_update_entry(
-        entry=entry, options={CONF_EXCLUDED_DOMAINS: ["sensor", "weather"]}
+        entry=entry,
+        options={CONF_EXCLUDED_DOMAINS: ["sensor", "weather"]},
     )
 
     await hass.async_block_till_done()
@@ -118,7 +120,7 @@ async def test_update_entry(hass: HomeAssistant, es_aioclient_mock: AiohttpClien
     assert merged_config == expected_config
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_unsupported_version(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker) -> None:
     """Test component setup with an unsupported version."""
     es_url = "http://unsupported-version:9200"
@@ -140,7 +142,7 @@ async def test_unsupported_version(hass: HomeAssistant, es_aioclient_mock: Aioht
     assert entry.reason == "Unsupported Elasticsearch version detected"
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_reauth_setup_entry(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker) -> None:
     """Test reauth flow triggered by setup entry."""
 
@@ -178,7 +180,7 @@ async def test_reauth_setup_entry(hass: HomeAssistant, es_aioclient_mock: Aiohtt
     assert flow["context"].get("entry_id") == entry.entry_id
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_connection_error(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker) -> None:
     """Test component setup with an unsupported version."""
     es_url = "http://connection-error:9200"
@@ -199,7 +201,7 @@ async def test_connection_error(hass: HomeAssistant, es_aioclient_mock: AiohttpC
     assert entry.reason == "Exception during component initialization"
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_config_migration_v1tov2(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, snapshot):
     """Test config migration from v1."""
 
@@ -220,7 +222,7 @@ async def test_config_migration_v1tov2(hass: HomeAssistant, es_aioclient_mock: A
     )
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_config_migration_v2tov3(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, snapshot):
     """Test config migration from v2."""
 
@@ -238,7 +240,7 @@ async def test_config_migration_v2tov3(hass: HomeAssistant, es_aioclient_mock: A
     )
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_config_migration_v3tov4(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, snapshot):
     """Test config migration from v3."""
 
@@ -260,7 +262,7 @@ async def test_config_migration_v3tov4(hass: HomeAssistant, es_aioclient_mock: A
     )
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_config_migration_v4tov5(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, snapshot):
     """Test config migration from v4."""
 
@@ -297,7 +299,7 @@ async def test_config_migration_v4tov5(hass: HomeAssistant, es_aioclient_mock: A
     )
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_config_migration_v1tov5(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, snapshot):
     """Test config migration from v1."""
 

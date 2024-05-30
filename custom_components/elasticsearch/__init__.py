@@ -34,7 +34,8 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry):  
         return True
 
     migrated_data, migrated_options, migrated_version = migrate_data_and_options_to_version(
-        config_entry, latest_version
+        config_entry,
+        latest_version,
     )
 
     config_entry.version = migrated_version

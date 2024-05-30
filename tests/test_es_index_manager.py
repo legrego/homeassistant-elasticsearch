@@ -56,7 +56,7 @@ def options():
     return {}
 
 
-@pytest.fixture()
+@pytest.fixture
 async def legacy_index_manager(hass: HomeAssistant, data, options):
     """Create a mock config entry."""
     es_url = "http://localhost:9200"
@@ -77,7 +77,9 @@ async def legacy_index_manager(hass: HomeAssistant, data, options):
 
     gateway = Elasticsearch7Gateway(
         **ElasticsearchGateway.build_gateway_parameters(
-            hass=hass, config_entry=mock_entry, minimum_privileges=None
+            hass=hass,
+            config_entry=mock_entry,
+            minimum_privileges=None,
         ),
         use_connection_monitor=False,
     )
@@ -89,7 +91,7 @@ async def legacy_index_manager(hass: HomeAssistant, data, options):
     await gateway.stop()
 
 
-@pytest.fixture()
+@pytest.fixture
 async def modern_index_manager(hass: HomeAssistant, data, options):
     """Create a mock config entry."""
     es_url = "http://localhost:9200"
@@ -110,7 +112,9 @@ async def modern_index_manager(hass: HomeAssistant, data, options):
 
     gateway = Elasticsearch7Gateway(
         **ElasticsearchGateway.build_gateway_parameters(
-            hass=hass, config_entry=mock_entry, minimum_privileges=None
+            hass=hass,
+            config_entry=mock_entry,
+            minimum_privileges=None,
         ),
         use_connection_monitor=False,
     )
@@ -122,7 +126,7 @@ async def modern_index_manager(hass: HomeAssistant, data, options):
     await gateway.stop()
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_esserverless_datastream_setup(
     hass: HomeAssistant,
     es_aioclient_mock: AiohttpClientMocker,
@@ -167,7 +171,7 @@ async def test_esserverless_datastream_setup(
     assert len(extract_es_ilm_template_requests(es_aioclient_mock)) == 0
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_es811_datastream_setup(
     hass: HomeAssistant,
     es_aioclient_mock: AiohttpClientMocker,
@@ -234,7 +238,7 @@ async def test_es811_datastream_setup(
     assert len(ilm_requests) == 0
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_es88_datastream_setup(
     hass: HomeAssistant,
     es_aioclient_mock: AiohttpClientMocker,
@@ -306,7 +310,7 @@ async def test_es88_datastream_setup(
     assert len(ilm_requests) == 1
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_es80_datastream_setup(
     hass: HomeAssistant,
     es_aioclient_mock: AiohttpClientMocker,
@@ -377,7 +381,7 @@ async def test_es80_datastream_setup(
     assert len(ilm_requests) == 1
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_es717_datastream_setup(
     hass: HomeAssistant,
     es_aioclient_mock: AiohttpClientMocker,
@@ -448,9 +452,11 @@ async def test_es717_datastream_setup(
     assert len(ilm_requests) == 1
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_es711_datastream_setup(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, modern_index_manager
+    hass: HomeAssistant,
+    es_aioclient_mock: AiohttpClientMocker,
+    modern_index_manager,
 ):
     """Test for modern index mode setup."""
 
@@ -517,9 +523,11 @@ async def test_es711_datastream_setup(
     assert len(ilm_requests) == 1
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_fail_esserverless_legacy_index_setup(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, legacy_index_manager
+    hass: HomeAssistant,
+    es_aioclient_mock: AiohttpClientMocker,
+    legacy_index_manager,
 ):
     """Test for failure of legacy index mode setup on serverless."""
 
@@ -547,9 +555,11 @@ async def test_fail_esserverless_legacy_index_setup(
         await legacy_index_manager.async_setup()
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_es88_legacy_index_setup(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, legacy_index_manager
+    hass: HomeAssistant,
+    es_aioclient_mock: AiohttpClientMocker,
+    legacy_index_manager,
 ):
     """Test for modern index mode setup."""
 
@@ -588,7 +598,9 @@ async def test_es88_legacy_index_setup(
 
 
 async def test_es711_legacy_index_setup(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, legacy_index_manager
+    hass: HomeAssistant,
+    es_aioclient_mock: AiohttpClientMocker,
+    legacy_index_manager,
 ):
     """Test for modern index mode setup."""
 
@@ -624,9 +636,11 @@ async def test_es711_legacy_index_setup(
     assert len(extract_es_ilm_template_requests(es_aioclient_mock)) == 1
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_modern_index_mode_update(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, modern_index_manager
+    hass: HomeAssistant,
+    es_aioclient_mock: AiohttpClientMocker,
+    modern_index_manager,
 ):
     """Test for modern index mode update."""
 
@@ -669,9 +683,11 @@ async def test_modern_index_mode_update(
     assert len(extract_es_ilm_template_requests(es_aioclient_mock)) == 0
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_modern_index_mode_error(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, modern_index_manager
+    hass: HomeAssistant,
+    es_aioclient_mock: AiohttpClientMocker,
+    modern_index_manager,
 ):
     """Test for modern index mode update."""
 
@@ -703,7 +719,9 @@ async def test_modern_index_mode_error(
 
 
 async def test_legacy_index_mode_update(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, legacy_index_manager
+    hass: HomeAssistant,
+    es_aioclient_mock: AiohttpClientMocker,
+    legacy_index_manager,
 ):
     """Test for modern index mode update."""
 
@@ -735,7 +753,9 @@ async def test_legacy_index_mode_update(
 
 
 async def test_legacy_index_mode_error(
-    hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker, legacy_index_manager
+    hass: HomeAssistant,
+    es_aioclient_mock: AiohttpClientMocker,
+    legacy_index_manager,
 ):
     """Test for modern index mode update."""
 
@@ -767,7 +787,7 @@ async def test_legacy_index_mode_error(
     assert len(extract_es_ilm_template_requests(es_aioclient_mock)) == 1
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_datastream_dynamic_mode_migration(
     hass: HomeAssistant,
     es_aioclient_mock: AiohttpClientMocker,
@@ -810,7 +830,7 @@ async def test_datastream_dynamic_mode_migration(
     assert modern_mapping_requests[0].data == [{"dynamic": "false"}]
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_datastream_dynamic_mode_migration_skip(
     hass: HomeAssistant,
     es_aioclient_mock: AiohttpClientMocker,

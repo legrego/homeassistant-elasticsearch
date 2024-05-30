@@ -109,7 +109,8 @@ class IndexManager:
 
         # Check if the index template already exists
         matching_templates = await client.indices.get_index_template(
-            name=DATASTREAM_METRICS_INDEX_TEMPLATE_NAME, ignore=[404]
+            name=DATASTREAM_METRICS_INDEX_TEMPLATE_NAME,
+            ignore=[404],
         )
         matching_templates_count = len(matching_templates.get("index_templates", []))
 
@@ -136,7 +137,7 @@ class IndexManager:
 
         if self._gateway.has_capability(CAPABILITIES.IGNORE_MISSING_COMPONENT_TEMPLATES):
             self._logger.debug(
-                "Elasticsearch supports ignore_missing_component_templates, including in template."
+                "Elasticsearch supports ignore_missing_component_templates, including in template.",
             )
 
             index_template["composed_of"] = ["metrics-homeassistant@custom"]
@@ -144,12 +145,12 @@ class IndexManager:
 
         if self._gateway.has_capability(CAPABILITIES.DATASTREAM_LIFECYCLE_MANAGEMENT):
             self._logger.debug(
-                "Elasticsearch supports Datastream Lifecycle Management, including in template."
+                "Elasticsearch supports Datastream Lifecycle Management, including in template.",
             )
             index_template["template"]["lifecycle"] = {"data_retention": "365d"}
         else:
             self._logger.debug(
-                "Elasticsearch does not support Datastream Lifecycle Management, falling back to Index Lifecycle Management."
+                "Elasticsearch does not support Datastream Lifecycle Management, falling back to Index Lifecycle Management.",
             )
             await self._create_basic_ilm_policy(ilm_policy_name=DATASTREAM_METRICS_ILM_POLICY_NAME)
 
@@ -159,7 +160,8 @@ class IndexManager:
 
         try:
             await client.indices.put_index_template(
-                name=DATASTREAM_METRICS_INDEX_TEMPLATE_NAME, body=index_template
+                name=DATASTREAM_METRICS_INDEX_TEMPLATE_NAME,
+                body=index_template,
             )
 
         except ElasticsearchException as err:
@@ -172,7 +174,7 @@ class IndexManager:
         try:
             if await self.requires_datastream_ignore_dynamic_fields_migration():
                 self._logger.debug(
-                    "Performing a one-time migration of datastream write indices to set dynamic=false."
+                    "Performing a one-time migration of datastream write indices to set dynamic=false.",
                 )
                 await self.migrate_datastreams_to_ignore_dynamic_fields()
 
@@ -186,7 +188,7 @@ class IndexManager:
 
         if self._gateway.has_capability(CAPABILITIES.SERVERLESS):
             raise ElasticException(
-                "Serverless environment detected, legacy index usage not allowed in ES Serverless. Switch to datastreams."
+                "Serverless environment detected, legacy index usage not allowed in ES Serverless. Switch to datastreams.",
             )
 
         client = self._gateway.client
@@ -257,7 +259,8 @@ class IndexManager:
                 existing_policy = None
             else:
                 raise convert_es_error(
-                    "Unexpected return code when checking for existing ILM policy", err
+                    "Unexpected return code when checking for existing ILM policy",
+                    err,
                 ) from err
         except ElasticsearchException as err:
             raise convert_es_error("Error checking for existing ILM policy", err) from err
@@ -278,8 +281,8 @@ class IndexManager:
                         },
                     },
                     "delete": {"min_age": "365d", "actions": {"delete": {}}},
-                }
-            }
+                },
+            },
         }
 
         if self._gateway.has_capability(CAPABILITIES.MAX_PRIMARY_SHARD_SIZE):
@@ -301,7 +304,7 @@ class IndexManager:
 
         try:
             mappings = await client.indices.get_mapping(
-                index=DATASTREAM_TYPE + "-" + DATASTREAM_DATASET_PREFIX + ".*"
+                index=DATASTREAM_TYPE + "-" + DATASTREAM_DATASET_PREFIX + ".*",
             )
         except ElasticsearchException as err:
             raise convert_es_error("Error checking datastream mapping for dynamic fields", err) from err

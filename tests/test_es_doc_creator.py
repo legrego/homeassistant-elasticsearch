@@ -72,7 +72,7 @@ async def _setup_config_entry(hass: HomeAssistant, mock_entry: mock_config_entry
     return entry
 
 
-@pytest.fixture()
+@pytest.fixture
 async def document_creator(hass: HomeAssistant):
     """Fixture to create a DocumentCreator instance."""
 
@@ -94,10 +94,10 @@ async def document_creator(hass: HomeAssistant):
     # TODO: Consider initializing the document creator before returning it, requires rewriting tests and initializing the whole integration
     # await creator.async_init()
 
-    yield creator
+    return creator
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 @pytest.mark.parametrize(
     "input,result,success",
     [
@@ -133,7 +133,7 @@ async def test_state_as_number(
         assert DocumentCreator.state_as_number(State("domain.entity_id", input)) == result
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 @pytest.mark.parametrize(
     "input,result,success",
     [
@@ -166,7 +166,7 @@ async def test_state_as_boolean(
         assert DocumentCreator.state_as_boolean(State("domain.entity_id", input)) == result
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 @pytest.mark.parametrize(
     "input,result,success",
     [
@@ -235,7 +235,10 @@ async def test_state_to_entity_details(hass: HomeAssistant, snapshot: snapshot):
     entity_id = "counter.test_1"
     entity_name = "My Test Counter"
     entity_registry.async_get(hass).async_update_entity(
-        entity_id, area_id=entity_area.id, device_id=device.id, name=entity_name
+        entity_id,
+        area_id=entity_area.id,
+        device_id=device.id,
+        name=entity_name,
     )
 
     creator = DocumentCreator(hass, mock_entry)
@@ -248,14 +251,13 @@ async def test_state_to_entity_details(hass: HomeAssistant, snapshot: snapshot):
     assert document == snapshot
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_state_to_attributes(hass: HomeAssistant, document_creator: DocumentCreator):
     """Test state to attribute doc component creation."""
 
     class CustomAttributeClass:
         def __init__(self) -> None:
             self.field = "This class should be skipped, as it cannot be serialized."
-            pass
 
     testAttributes = {
         "string": "abc123",
@@ -267,7 +269,7 @@ async def test_state_to_attributes(hass: HomeAssistant, document_creator: Docume
             "float": 123.456,
         },
         "list": [1, 2, 3, 4],
-        "set": {5, 5},
+        "set": {5},
         "none": None,
         "Collision Test": "first value",
         "collision_test": "second value",
@@ -301,14 +303,13 @@ async def test_state_to_attributes(hass: HomeAssistant, document_creator: Docume
     assert diff(attributes, expected) == {}
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_state_to_attributes_skipping(hass: HomeAssistant, document_creator: DocumentCreator):
     """Test state to attribute doc component creation."""
 
     class CustomAttributeClass:
         def __init__(self) -> None:
             self.field = "This class should be skipped, as it cannot be serialized."
-            pass
 
     testAttributes = {
         "string": "abc123",
@@ -331,7 +332,7 @@ async def test_state_to_attributes_skipping(hass: HomeAssistant, document_creato
     assert diff(attributes, expected) == {}
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_state_to_value_v1(hass: HomeAssistant, document_creator: DocumentCreator):
     """Test state to value doc component creation."""
 
@@ -350,7 +351,7 @@ async def test_state_to_value_v1(hass: HomeAssistant, document_creator: Document
     assert document_creator._state_to_value_v1(State("sensor.test_1", "false")) == "false"
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_state_to_value_v2(hass: HomeAssistant, document_creator: DocumentCreator):
     """Test state to value v2 doc component creation."""
     assert document_creator._state_to_value_v2(State("sensor.test_1", "2")) == {
@@ -398,7 +399,7 @@ async def test_state_to_value_v2(hass: HomeAssistant, document_creator: Document
     }
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 @pytest.mark.parametrize("version", [1, 2])
 @pytest.mark.parametrize(
     "state, attributes",
@@ -458,7 +459,7 @@ async def test_state_to_document(
     } == snapshot
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 @pytest.mark.parametrize("version", [1, 2])
 @pytest.mark.parametrize(
     "state, attributes",
@@ -498,7 +499,7 @@ async def test_state_to_document_polling(
     } == snapshot
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_state_to_document_no_tz(hass: HomeAssistant, document_creator: DocumentCreator, snapshot):
     """Test Doc Creation."""
 

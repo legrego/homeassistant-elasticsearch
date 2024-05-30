@@ -240,7 +240,7 @@ def mock_es_initialization(
                         {
                             "type": "resource_not_found_exception",
                             "reason": "index template matching [metrics-homeassistant] not found",
-                        }
+                        },
                     ],
                     "type": "resource_not_found_exception",
                     "reason": "index template matching [metrics-homeassistant] not found",
@@ -361,7 +361,7 @@ def mock_es_initialization(
                     "mappings": {
                         "dynamic": "strict",
                     },
-                }
+                },
             },
         )
         aioclient_mock.put(
@@ -380,6 +380,6 @@ def mock_es_initialization(
                     "mappings": {
                         "dynamic": "false",
                     },
-                }
+                },
             },
         )

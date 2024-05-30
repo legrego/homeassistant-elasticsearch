@@ -99,16 +99,20 @@ def build_new_options(existing_options: dict = None, user_input: dict = None):
             existing_options.get(CONF_ILM_ENABLED, DEFAULT_ILM_ENABLED),
         ),
         CONF_EXCLUDED_DOMAINS: user_input.get(
-            CONF_EXCLUDED_DOMAINS, existing_options.get(CONF_EXCLUDED_DOMAINS, [])
+            CONF_EXCLUDED_DOMAINS,
+            existing_options.get(CONF_EXCLUDED_DOMAINS, []),
         ),
         CONF_EXCLUDED_ENTITIES: user_input.get(
-            CONF_EXCLUDED_ENTITIES, existing_options.get(CONF_EXCLUDED_ENTITIES, [])
+            CONF_EXCLUDED_ENTITIES,
+            existing_options.get(CONF_EXCLUDED_ENTITIES, []),
         ),
         CONF_INCLUDED_DOMAINS: user_input.get(
-            CONF_INCLUDED_DOMAINS, existing_options.get(CONF_INCLUDED_DOMAINS, [])
+            CONF_INCLUDED_DOMAINS,
+            existing_options.get(CONF_INCLUDED_DOMAINS, []),
         ),
         CONF_INCLUDED_ENTITIES: user_input.get(
-            CONF_INCLUDED_ENTITIES, existing_options.get(CONF_INCLUDED_ENTITIES, [])
+            CONF_INCLUDED_ENTITIES,
+            existing_options.get(CONF_INCLUDED_ENTITIES, []),
         ),
     }
 
@@ -126,11 +130,13 @@ def build_new_data(existing_data: dict = None, user_input: dict = None):
         CONF_URL: user_input.get(CONF_URL, existing_data.get(CONF_URL, DEFAULT_URL)),
         CONF_TIMEOUT: user_input.get(CONF_TIMEOUT, existing_data.get(CONF_TIMEOUT, DEFAULT_TIMEOUT_SECONDS)),
         CONF_VERIFY_SSL: user_input.get(
-            CONF_VERIFY_SSL, existing_data.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL)
+            CONF_VERIFY_SSL,
+            existing_data.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL),
         ),
         CONF_SSL_CA_PATH: user_input.get(CONF_SSL_CA_PATH, existing_data.get(CONF_SSL_CA_PATH, None)),
         CONF_INDEX_MODE: user_input.get(
-            CONF_INDEX_MODE, existing_data.get(CONF_INDEX_MODE, DEFAULT_INDEX_MODE)
+            CONF_INDEX_MODE,
+            existing_data.get(CONF_INDEX_MODE, DEFAULT_INDEX_MODE),
         ),
     }
     auth = {
@@ -211,7 +217,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                             CONF_URL,
                             default=data.get(CONF_URL, "http://localhost:9200"),
                         ): str,
-                    }
+                    },
                 )
 
             if errors and errors["base"] == "untrusted_connection":
@@ -222,7 +228,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                             default=data.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL),
                         ): bool,
                         vol.Optional(CONF_SSL_CA_PATH): str,
-                    }
+                    },
                 )
 
             if type == "basic_auth":
@@ -230,14 +236,14 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                     {
                         vol.Required(CONF_USERNAME, default=data.get(CONF_USERNAME, "")): str,
                         vol.Required(CONF_PASSWORD, default=data.get(CONF_PASSWORD, "")): str,
-                    }
+                    },
                 )
 
             if type == "api_key":
                 schema.update(
                     {
                         vol.Required(CONF_API_KEY, default=data.get(CONF_API_KEY, "")): str,
-                    }
+                    },
                 )
 
             if type == "no_auth":
@@ -256,7 +262,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                         type=type,
                         data=effective_data,
                         errors=None,
-                    )
+                    ),
                 ),
             )
 
@@ -298,7 +304,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                         type=type,
                         data=effective_data,
                         errors=result.errors,
-                    )
+                    ),
                 ),
                 errors=result.errors,
             )
@@ -525,9 +531,9 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
                                 "label": "Entities with state or attribute changes",
                                 "value": PUBLISH_MODE_ANY_CHANGES,
                             },
-                        ]
-                    }
-                }
+                        ],
+                    },
+                },
             ),
             vol.Required(
                 CONF_EXCLUDED_DOMAINS,

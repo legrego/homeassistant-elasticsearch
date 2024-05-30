@@ -112,10 +112,14 @@ class ElasticsearchGateway(ABC):
             CAPABILITIES.SUPPORTED: meets_minimum_version(version_info, major=7, minor=11),
             CAPABILITIES.TIMESERIES_DATASTREAM: meets_minimum_version(version_info, major=8, minor=7),
             CAPABILITIES.IGNORE_MISSING_COMPONENT_TEMPLATES: meets_minimum_version(
-                version_info, major=8, minor=7
+                version_info,
+                major=8,
+                minor=7,
             ),
             CAPABILITIES.DATASTREAM_LIFECYCLE_MANAGEMENT: meets_minimum_version(
-                version_info, major=8, minor=11
+                version_info,
+                major=8,
+                minor=11,
             ),
             CAPABILITIES.MAX_PRIMARY_SHARD_SIZE: meets_minimum_version(version_info, major=7, minor=13),
         }
@@ -130,7 +134,10 @@ class ElasticsearchGateway(ABC):
 
     @classmethod
     def build_gateway_parameters(
-        self, hass, config_entry, minimum_privileges=ES_CHECK_PERMISSIONS_DATASTREAM
+        self,
+        hass,
+        config_entry,
+        minimum_privileges=ES_CHECK_PERMISSIONS_DATASTREAM,
     ) -> dict:
         """Build the parameters for the Elasticsearch gateway."""
         return {
@@ -266,7 +273,14 @@ class ElasticsearchGateway(ABC):
     @classmethod
     @abstractmethod
     def _create_es_client(
-        self, hosts, username, password, api_key, verify_certs, ca_certs, timeout
+        self,
+        hosts,
+        username,
+        password,
+        api_key,
+        verify_certs,
+        ca_certs,
+        timeout,
     ) -> AsyncElasticsearch7 | AsyncElasticsearch8:
         pass  # pragma: no cover
 

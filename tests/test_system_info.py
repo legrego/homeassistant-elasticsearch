@@ -10,7 +10,7 @@ from homeassistant.exceptions import HomeAssistantError
 from custom_components.elasticsearch.system_info import SystemInfo, SystemInfoResult
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_success(hass: HomeAssistant):
     """Verify system info can be returned."""
     # Test adapted from:
@@ -26,7 +26,7 @@ async def test_success(hass: HomeAssistant):
     assert result.hostname is not None
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_error_handling(hass: HomeAssistant):
     """Verify unexpected errors return empty object."""
 
