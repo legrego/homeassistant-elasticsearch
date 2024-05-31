@@ -15,7 +15,7 @@ from homeassistant.const import (
     CONF_USERNAME,
     CONF_VERIFY_SSL,
 )
-from homeassistant.core import callback
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.selector import selector
 
@@ -182,7 +182,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         self._cluster_check_result: ClusterCheckResult | None = None
 
     # Build the first step of the flow
-    async def async_step_user(self, user_input=None):
+    async def async_step_user(self, user_input: dict | None = None):
         """Handle a flow initialized by the user."""
 
         return self.async_show_menu(
@@ -200,11 +200,16 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         user_input: dict | None,
         data: dict | None = None,
         options: dict | None = None,
-        retry=True,
+        retry: bool = True,
     ):
         # Combines the logic from all the async_step_*_auth methods into a single method
 
-        def build_auth_schema(data, type: str, errors=None, skip_common=False):
+        def build_auth_schema(
+            data: dict,
+            type: str,
+            errors: dict | None = None,
+            skip_common: dict | None = False,
+        ):
             """Build the authentication schema."""
 
             schema = {}
@@ -309,22 +314,22 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         else:
             return self.async_abort(reason="cannot_connect")
 
-    async def async_step_no_auth(self, user_input=map | None):
+    async def async_step_no_auth(self, user_input: map | None) -> FlowResult:
         """Handle connection to an unsecured Elasticsearch cluster."""
 
         return await self._handle_auth_flow(user_input=user_input, data=self.init_data, type="no_auth")
 
-    async def async_step_basic_auth(self, user_input=map | None):
+    async def async_step_basic_auth(self, user_input: map | None) -> FlowResult:
         """Handle connection to an unsecured Elasticsearch cluster."""
 
         return await self._handle_auth_flow(user_input=user_input, data=self.init_data, type="basic_auth")
 
-    async def async_step_api_key(self, user_input=map | None):
+    async def async_step_api_key(self, user_input: map | None) -> FlowResult:
         """Handle connection to an unsecured Elasticsearch cluster."""
 
         return await self._handle_auth_flow(user_input=user_input, data=self.init_data, type="api_key")
 
-    async def async_step_reauth(self, user_input) -> FlowResult:
+    async def async_step_reauth(self, user_input: map | None) -> FlowResult:
         """Handle reauthorization."""
         entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
         assert entry is not None
@@ -392,7 +397,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                 await temp_no_ssl_gateway.async_init()
 
                 errors["base"] = "untrusted_connection"
-            except Exception:
+            except Exception:  # pylint: disable=broad-except  # noqa: BLE001
                 errors["base"] = "client_error"
             finally:
                 if temp_no_ssl_gateway is not None:
@@ -410,7 +415,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             errors["base"] = "cannot_connect"
         except UnsupportedVersion:
             errors["base"] = "unsupported_version"
-        except Exception as ex:  # pylint: disable=broad-except
+        except Exception as ex:  # pylint: disable=broad-except  # noqa: BLE001
             LOGGER.error(
                 "Unknown error connecting with Elasticsearch cluster. %s",
                 ex,
@@ -449,12 +454,12 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
         self.config_entry = config_entry
         self.options = dict(config_entry.options)
 
-    async def async_step_init(self, hass):  # pylint disable=unused-argument
+    async def async_step_init(self, hass: HomeAssistant):  # pylint disable=unused-argument
         """Manage the Elastic options."""
 
         return await self.async_step_publish_options()
 
-    async def async_step_publish_options(self, user_input=None):
+    async def async_step_publish_options(self, user_input: dict | None = None):
         """Publish Options."""
         if user_input is not None:
             self.options.update(user_input)
@@ -468,7 +473,7 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
             data_schema=vol.Schema(await self.async_build_publish_options_schema()),
         )
 
-    async def async_step_ilm_options(self, user_input=None):
+    async def async_step_ilm_options(self, user_input: dict = None):
         """ILM Options."""
         errors = {}
 
@@ -482,17 +487,17 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
             errors=errors,
         )
 
-    async def _update_options(self):
+    async def _update_options(self) -> FlowResult:
         """Update config entry options."""
         return self.async_create_entry(title="", data=self.options)
 
-    def _get_config_value(self, key, default):
+    def _get_config_value(self, key: str, default: any) -> any:
         current = self.options.get(key, default)
         if current is None:
             return default
         return current
 
-    async def async_build_publish_options_schema(self):
+    async def async_build_publish_options_schema(self) -> dict:
         """Build the schema for publish options."""
         domains, entities = await self._async_get_domains_and_entities()
 

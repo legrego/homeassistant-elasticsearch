@@ -48,7 +48,10 @@ lint.ignore = [
     "ANN101",
     "ANN102",
     "ANN003",
-    "ANN002"
+    "ANN002",
+    "FBT001",
+    "FBT002",
+    "RET505"
 ]
 
 [lint.per-file-ignores]

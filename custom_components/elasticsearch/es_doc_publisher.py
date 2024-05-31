@@ -4,6 +4,7 @@ import asyncio
 import time
 from datetime import datetime
 from functools import lru_cache
+from logging import Logger
 from queue import Queue
 
 from homeassistant.config_entries import ConfigEntry
@@ -53,7 +54,7 @@ class DocumentPublisher:
         gateway: ElasticsearchGateway,
         hass: HomeAssistant,
         config_entry: ConfigEntry,
-        log=BASE_LOGGER,
+        log: Logger = BASE_LOGGER,
     ) -> None:
         """Initialize the publisher."""
 
@@ -63,6 +64,7 @@ class DocumentPublisher:
         self.publish_enabled = config_entry.options.get(CONF_PUBLISH_ENABLED)
         self.publish_active = False
         self.remove_state_change_listener = None
+        self._publish_timer_ref = None
 
         self.publish_queue = None
 
@@ -84,7 +86,6 @@ class DocumentPublisher:
 
         self._publish_frequency = config_entry.options.get(CONF_PUBLISH_FREQUENCY)
         self._publish_mode = config_entry.options.get(CONF_PUBLISH_MODE)
-        self._publish_timer_ref = None
         self._tags = config_entry.options.get(CONF_TAGS)
 
         self._excluded_domains = config_entry.options.get(CONF_EXCLUDED_DOMAINS)

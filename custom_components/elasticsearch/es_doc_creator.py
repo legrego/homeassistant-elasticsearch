@@ -348,15 +348,15 @@ class DocumentCreator:
         )
         """
 
-        updateType = "change"
+        update_type = "change"
         if reason == PUBLISH_REASON_POLLING:
-            updateType = "info"
+            update_type = "info"
 
         document_body = {
             "@timestamp": time_tz.isoformat(),
             "event": {
                 "action": reason,
-                "type": updateType,
+                "type": update_type,
                 "kind": "event",
             },
         }
@@ -397,10 +397,10 @@ class DocumentCreator:
         return replaced_string.lower()
 
     @classmethod
-    def is_valid_number(cls, number) -> bool:
+    def is_valid_number(cls, number: float) -> bool:
         """Determine if the passed number is valid for Elasticsearch."""
         is_infinity = isinf(number)
-        is_nan = number != number  # pylint: disable=comparison-with-itself
+        is_nan = number != number  # pylint: disable=comparison-with-itself  # noqa: PLR0124
         return not is_infinity and not is_nan
 
     @classmethod

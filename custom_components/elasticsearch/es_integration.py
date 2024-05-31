@@ -40,8 +40,6 @@ class ElasticIntegration:
     async def async_init(self) -> None:
         """Async init procedure."""
 
-        # Include the title of the config_entry we are running under
-
         try:
             await self._gateway.async_init()
             self._gateway.connection_monitor.start(config_entry=self._config_entry)
@@ -50,19 +48,19 @@ class ElasticIntegration:
             await self._publisher.async_init()
 
         except Exception as err:
+            self._logger.exception("Error initializing integration")
             try:
                 self._publisher.stop_publisher()
                 await self._gateway.stop()
-            except Exception as shutdown_err:
+            except Exception:
                 self._logger.exception(
                     "Error shutting down gateway following failed initialization",
-                    shutdown_err,
                 )
 
             msg = "Failed to initialize integration"
             raise convert_es_error(msg, err) from err
 
-    async def async_shutdown(self, config_entry: ConfigEntry) -> bool:  # pylint disable=unused-argument
+    async def async_shutdown(self) -> bool:  # pylint disable=unused-argument
         """Async shutdown procedure."""
         self._logger.debug("async_shutdown: starting shutdown")
         self._publisher.stop_publisher()

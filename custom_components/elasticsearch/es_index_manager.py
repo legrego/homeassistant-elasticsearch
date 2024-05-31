@@ -2,6 +2,7 @@
 
 import json
 import os
+from logging import Logger
 
 from elasticsearch7 import ElasticsearchException
 from homeassistant.config_entries import ConfigEntry
@@ -42,7 +43,7 @@ class IndexManager:
         hass: HomeAssistant,
         gateway: ElasticsearchGateway,
         config_entry: ConfigEntry,
-        log=BASE_LOGGER,
+        log: Logger = BASE_LOGGER,
     ) -> None:
         """Initialize index management."""
 

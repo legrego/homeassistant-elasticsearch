@@ -62,7 +62,7 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
     return True
 
 
-async def async_config_entry_updated(hass: HomeAssistant, config_entry: ConfigEntry):
+async def async_config_entry_updated(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Respond to config changes."""
     LOGGER.debug("Configuration change detected")
     return await _async_init_integration(hass, config_entry)
@@ -73,7 +73,7 @@ async def _async_init_integration(hass: HomeAssistant, config_entry: ConfigEntry
     await async_unload_entry(hass=hass, config_entry=config_entry)
 
     _logger = have_child(name=config_entry.title)
-    _logger.info(f"Initializing integration for {config_entry.title}")
+    _logger.info("Initializing integration for %s", config_entry.title)
 
     try:
         integration = ElasticIntegration(hass=hass, config_entry=config_entry, log=_logger)
@@ -87,11 +87,16 @@ async def _async_init_integration(hass: HomeAssistant, config_entry: ConfigEntry
         _logger.exception(msg)
         raise ConfigEntryAuthFailed(msg) from err
     except InsufficientPrivileges as err:
-        _logger.exception("Account does not have sufficient privileges")
+        msg = "Account does not have sufficient privileges"
+        _logger.exception(msg)
         raise ConfigEntryAuthFailed from err
+    except ConnectionError as err:
+        msg = "Error connecting to Elasticsearch"
+        _logger.exception(msg)
+        raise ConfigEntryNotReady(msg) from err
     except Exception as err:  # pylint disable=broad-exception-caught
         msg = "Exception during component initialization"
-        _logger.exception(msg + ": %s", err)
+        _logger.exception(msg)
         raise ConfigEntryNotReady(msg) from err
 
     hass.data[DOMAIN] = integration
@@ -99,7 +104,10 @@ async def _async_init_integration(hass: HomeAssistant, config_entry: ConfigEntry
     return True
 
 
-def migrate_data_and_options_to_version(config_entry: ConfigEntry, desired_version: int):
+def migrate_data_and_options_to_version(
+    config_entry: ConfigEntry,
+    desired_version: int,
+) -> tuple[dict, dict, int]:
     """Migrate a config entry from its current version to a desired version."""
     LOGGER.debug(
         "Migrating config entry from version %s to %s",
@@ -112,78 +120,91 @@ def migrate_data_and_options_to_version(config_entry: ConfigEntry, desired_versi
     begin_version = config_entry.version
     current_version = begin_version
 
-    if current_version == 1 and desired_version >= 2:
-        only_publish_changed = data.get(CONF_ONLY_PUBLISH_CHANGED, False)
-        data[CONF_PUBLISH_MODE] = PUBLISH_MODE_ALL if not only_publish_changed else PUBLISH_MODE_ANY_CHANGES
-
-        if CONF_ONLY_PUBLISH_CHANGED in data:
-            del data[CONF_ONLY_PUBLISH_CHANGED]
-
-        current_version = 2
-
-    if current_version == 2 and desired_version >= 3:
-        if CONF_HEALTH_SENSOR_ENABLED in data:
-            del data[CONF_HEALTH_SENSOR_ENABLED]
-
-        current_version = 3
-
-    if current_version == 3 and desired_version >= 4:
-        # Check the configured options for the index_mode
-        if CONF_INDEX_MODE not in data:
-            data[CONF_INDEX_MODE] = INDEX_MODE_LEGACY
-
-        CONF_ILM_MAX_SIZE = "ilm_max_size"
-        if CONF_ILM_MAX_SIZE in data:
-            del data[CONF_ILM_MAX_SIZE]
-
-        CONF_ILM_DELETE_AFTER = "ilm_delete_after"
-        if CONF_ILM_DELETE_AFTER in data:
-            del data[CONF_ILM_DELETE_AFTER]
-
-        current_version = 4
-
-    if current_version == 4 and desired_version >= 5:
-        keys_to_remove = [
-            "datastream_type",
-            "datastream_name_prefix",
-            "datastream_namespace",
-        ]
-
-        for key in keys_to_remove:
-            if key in data:
-                del data[key]
-
-        keys_to_migrate = [
-            "publish_enabled",
-            "publish_frequency",
-            "publish_mode",
-            "excluded_domains",
-            "excluded_entities",
-            "included_domains",
-            "included_entities",
-        ]
-
-        for key in keys_to_migrate:
-            if key not in options and key in data:
-                options[key] = data[key]
-            if key in data:
-                del data[key]
-
-        # Check for the auth parameters and set the auth_method config based on which values are populated
-        remove_keys_if_empty = [
-            "username",
-            "password",
-            "api_key",
-        ]
-
-        for key in remove_keys_if_empty:
-            if key in data and data[key] == "":
-                del data[key]
-
-        current_version = 5
+    if current_version < desired_version:
+        for version in range(current_version + 1, desired_version + 1):
+            migration_func = globals().get(f"migrate_to_version_{version}")
+            if migration_func:
+                data, options = migration_func(data, options)
+                current_version = version
 
     end_version = current_version
 
     LOGGER.info("Migration from version %s to version %s successful", begin_version, end_version)
 
     return data, options, end_version
+
+
+def migrate_to_version_2(data: dict, options: dict) -> tuple[dict, dict]:
+    """Migrate config to version 2."""
+    only_publish_changed = data.get(CONF_ONLY_PUBLISH_CHANGED, False)
+    data[CONF_PUBLISH_MODE] = PUBLISH_MODE_ALL if not only_publish_changed else PUBLISH_MODE_ANY_CHANGES
+
+    if CONF_ONLY_PUBLISH_CHANGED in data:
+        del data[CONF_ONLY_PUBLISH_CHANGED]
+
+    return data, options
+
+
+def migrate_to_version_3(data: dict, options: dict) -> tuple[dict, dict]:
+    """Migrate config to version 3."""
+    if CONF_HEALTH_SENSOR_ENABLED in data:
+        del data[CONF_HEALTH_SENSOR_ENABLED]
+
+    return data, options
+
+
+def migrate_to_version_4(data: dict, options: dict) -> tuple[dict, dict]:
+    """Migrate config to version 4."""
+    if CONF_INDEX_MODE not in data:
+        data[CONF_INDEX_MODE] = INDEX_MODE_LEGACY
+
+    conf_ilm_max_size = "ilm_max_size"
+    if conf_ilm_max_size in data:
+        del data[conf_ilm_max_size]
+
+    conf_ilm_delete_after = "ilm_delete_after"
+    if conf_ilm_delete_after in data:
+        del data[conf_ilm_delete_after]
+
+    return data, options
+
+
+def migrate_to_version_5(data: dict, options: dict) -> tuple[dict, dict]:
+    """Migrate config to version 5."""
+    keys_to_remove = [
+        "datastream_type",
+        "datastream_name_prefix",
+        "datastream_namespace",
+    ]
+
+    for key in keys_to_remove:
+        if key in data:
+            del data[key]
+
+    keys_to_migrate = [
+        "publish_enabled",
+        "publish_frequency",
+        "publish_mode",
+        "excluded_domains",
+        "excluded_entities",
+        "included_domains",
+        "included_entities",
+    ]
+
+    for key in keys_to_migrate:
+        if key not in options and key in data:
+            options[key] = data[key]
+        if key in data:
+            del data[key]
+
+    remove_keys_if_empty = [
+        "username",
+        "password",
+        "api_key",
+    ]
+
+    for key in remove_keys_if_empty:
+        if key in data and data[key] == "":
+            del data[key]
+
+    return data, options

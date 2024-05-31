@@ -3,6 +3,7 @@
 import asyncio
 import time
 from abc import ABC, abstractmethod
+from logging import Logger
 
 from elasticsearch7 import TransportError as TransportError7
 from elasticsearch7._async.client import AsyncElasticsearch as AsyncElasticsearch7
@@ -10,6 +11,7 @@ from elasticsearch7.serializer import JSONSerializer as JSONSerializer7
 from elasticsearch8 import TransportError as TransportError8
 from elasticsearch8._async.client import AsyncElasticsearch as AsyncElasticsearch8
 from elasticsearch8.serializer import JSONSerializer as JSONSerializer8
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 from custom_components.elasticsearch.const import (
@@ -32,7 +34,7 @@ class ElasticsearchGateway(ABC):
 
     def __init__(
         self,
-        log=BASE_LOGGER,
+        log: Logger = BASE_LOGGER,
         hass: HomeAssistant = None,
         url: str | None = None,
         username: str | None = None,
@@ -42,7 +44,7 @@ class ElasticsearchGateway(ABC):
         ca_certs: str | None = None,
         request_timeout: int = 30,
         minimum_privileges: dict | None = None,
-        use_connection_monitor=True,
+        use_connection_monitor: bool = True,
     ) -> None:
         """Non-I/O bound init."""
 
@@ -68,12 +70,17 @@ class ElasticsearchGateway(ABC):
     async def async_init(self) -> None:
         """I/O bound init."""
 
+        # if not await self.test():
+        #     msg = "Connection test failed."
+        #     raise convert_es_error(msg, ConnectionError)
+
         # Test the connection
         self._info = await self._get_cluster_info()
 
         if not await self.test():
             msg = "Connection test failed."
             raise ConnectionError(msg)
+
 
         # Obtain the capabilities of the Elasticsearch instance
         self._capabilities = self._build_capabilities()
@@ -128,7 +135,11 @@ class ElasticsearchGateway(ABC):
         return {**version_info, **capabilities}
 
     @classmethod
-    def build_from_config_entry(cls, hass, config_entry) -> "ElasticsearchGateway":
+    def build_from_config_entry(
+        cls,
+        hass: HomeAssistant,
+        config_entry: ConfigEntry,
+    ) -> "ElasticsearchGateway":
         """Build the Elasticsearch gateway from a config entry."""
         gateway_parameters = cls.build_gateway_parameters(hass, config_entry)
         return cls(**gateway_parameters)
@@ -136,9 +147,9 @@ class ElasticsearchGateway(ABC):
     @classmethod
     def build_gateway_parameters(
         cls,
-        hass,
-        config_entry,
-        minimum_privileges=ES_CHECK_PERMISSIONS_DATASTREAM,
+        hass: HomeAssistant,
+        config_entry: ConfigEntry,
+        minimum_privileges: dict = ES_CHECK_PERMISSIONS_DATASTREAM,
     ) -> dict:
         """Build the parameters for the Elasticsearch gateway."""
         return {
@@ -158,7 +169,7 @@ class ElasticsearchGateway(ABC):
         """Return the underlying ES Capabilities."""
         return self._capabilities
 
-    def has_capability(self, capability) -> bool:
+    def has_capability(self, capability: str) -> bool:
         """Determine if the Elasticsearch instance has the specified capability."""
         return self.capabilities.get(capability, False)
 
@@ -233,7 +244,7 @@ class ElasticsearchGateway(ABC):
         verify_certs: bool = True,
         ca_certs: str | None = None,
         request_timeout: int = 30,
-    ):
+    ) -> dict:
         """Construct the arguments for the Elasticsearch client."""
         use_basic_auth = username is not None and password is not None
         use_api_key = api_key is not None
@@ -263,8 +274,10 @@ class ElasticsearchGateway(ABC):
             msg = "Connection test failed"
             raise convert_es_error(msg, err) from err
 
+        # return await self._client.info()
+
     @abstractmethod
-    async def _has_required_privileges(self, required_privileges) -> bool:
+    async def _has_required_privileges(self, required_privileges: dict) -> bool:
         pass  # pragma: no cover
 
     @classmethod
@@ -276,13 +289,13 @@ class ElasticsearchGateway(ABC):
     @abstractmethod
     def _create_es_client(
         cls,
-        hosts,
-        username,
-        password,
-        api_key,
-        verify_certs,
-        ca_certs,
-        timeout,
+        hosts: str,
+        username: str | None = None,
+        password: str | None = None,
+        api_key: str | None = None,
+        verify_certs: bool = True,
+        ca_certs: str | None = None,
+        request_timeout: int = 30,
     ) -> AsyncElasticsearch7 | AsyncElasticsearch8:
         pass  # pragma: no cover
 
@@ -298,7 +311,7 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
 
         return AsyncElasticsearch8(**kwargs)
 
-    async def _has_required_privileges(self, required_privileges) -> bool:
+    async def _has_required_privileges(self, required_privileges: dict) -> bool:
         """Enforce the required privileges."""
         try:
             privilege_response = await self.client.security.has_privileges(body=required_privileges)
@@ -340,7 +353,7 @@ class Elasticsearch7Gateway(ElasticsearchGateway):
     def _create_es_client(cls, **kwargs) -> AsyncElasticsearch7:
         return AsyncElasticsearch7(**kwargs)
 
-    async def _has_required_privileges(self, required_privileges) -> bool:
+    async def _has_required_privileges(self, required_privileges: dict) -> bool:
         """Enforce the required privileges."""
 
         try:
@@ -377,7 +390,7 @@ class Elasticsearch7Gateway(ElasticsearchGateway):
 class ConnectionMonitor:
     """Connection monitor for Elasticsearch."""
 
-    def __init__(self, gateway: ElasticsearchGateway, log=BASE_LOGGER) -> None:
+    def __init__(self, gateway: ElasticsearchGateway, log: Logger = BASE_LOGGER) -> None:
         """Initialize the connection monitor."""
         self._logger = log
 
@@ -414,11 +427,11 @@ class ConnectionMonitor:
     #     return self._task
 
     @classmethod
-    def _is_ignorable_error(cls) -> bool:
+    def _is_ignorable_error(cls, err) -> bool:
         """Determine if a transport error is ignorable."""
 
-        if isinstance(cls, TransportError7 | TransportError8):
-            return isinstance(cls.status_code, int) and cls.status_code <= 403
+        if isinstance(err, TransportError7 | TransportError8):
+            return isinstance(err.status_code, int) and cls.status_code <= 403
 
         return False
 
@@ -426,7 +439,7 @@ class ConnectionMonitor:
         """Schedule the next connection test."""
         self._next_test = time.monotonic() + 30
 
-    def should_test(self):
+    def should_test(self) -> bool:
         """Determine if a test should be run."""
         return self._next_test is None or self._next_test <= time.monotonic()
 
@@ -454,7 +467,9 @@ class ConnectionMonitor:
             try:
                 self._active = await self.test()
             except err as err:
-                self._logger.exception("Connection test to [%s] failed: %s", self.gateway.url, err)
+                if not self._is_ignorable_error(err):
+                    self._logger.exception("Connection test to [%s] failed", self.gateway.url)
+                    self._active = False
 
             self.schedule_next_test()
 
@@ -475,9 +490,9 @@ class ConnectionMonitor:
 
         return await self._gateway.test()
 
-    def start(self, config_entry) -> None:
+    def start(self, config_entry: ConfigEntry) -> None:
         """Start the connection monitor."""
-        if not self._use_connection_monitor:
+        if not self._gateway._use_connection_monitor:
             return
 
         self._logger.info("Starting new connection monitor.")

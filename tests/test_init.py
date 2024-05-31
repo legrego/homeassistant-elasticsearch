@@ -1,9 +1,7 @@
 """Tests for Elastic init."""
 
 import pytest
-from elasticsearch import migrate_data_and_options_to_version
-from elasticsearch.config_flow import build_new_options
-from homeassistant.config_entries import SOURCE_REAUTH, ConfigEntryState
+from homeassistant.config_entries import SOURCE_REAUTH, ConfigEntry, ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -11,6 +9,8 @@ from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClien
 from syrupy.assertion import SnapshotAssertion
 from syrupy.extensions.json import JSONSnapshotExtension
 
+from custom_components.elasticsearch import migrate_data_and_options_to_version
+from custom_components.elasticsearch.config_flow import build_new_options
 from custom_components.elasticsearch.const import (
     CONF_EXCLUDED_DOMAINS,
 )
@@ -26,7 +26,7 @@ def snapshot(snapshot: SnapshotAssertion):
     return snapshot.with_defaults(extension_class=JSONSnapshotExtension)
 
 
-async def _setup_config_entry(hass: HomeAssistant, mock_entry: MockConfigEntry):
+async def _setup_config_entry(hass: HomeAssistant, mock_entry: MockConfigEntry) -> ConfigEntry:
     mock_entry.add_to_hass(hass)
     assert await async_setup_component(hass, ELASTIC_DOMAIN, {}) is True
     await hass.async_block_till_done()
@@ -141,13 +141,16 @@ async def test_unsupported_version(hass: HomeAssistant, es_aioclient_mock: Aioht
     assert entry.reason == "Unsupported Elasticsearch version detected"
 
 
-@pytest.mark.asyncio()
 async def test_reauth_setup_entry(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker) -> None:
     """Test reauth flow triggered by setup entry."""
 
     es_url = "http://authentication-error:9200"
 
-    mock_es_initialization(es_aioclient_mock, url=es_url, mock_authentication_error=True)
+    mock_es_initialization(
+        es_aioclient_mock,
+        url=es_url,
+        mock_authentication_error=True,
+    )
 
     mock_entry = MockConfigEntry(
         unique_id="test_authentication_error",
@@ -189,7 +192,7 @@ async def test_connection_error(hass: HomeAssistant, es_aioclient_mock: AiohttpC
     mock_entry = MockConfigEntry(
         unique_id="test_connection_error",
         domain=ELASTIC_DOMAIN,
-        version=3,
+        version=5,
         data={"url": es_url, "use_connection_monitor": False},
         title="ES Config",
     )
