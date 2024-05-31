@@ -117,7 +117,7 @@ class DocumentPublisher:
         self.remove_state_change_listener = hass.bus.async_listen(EVENT_STATE_CHANGED, elastic_event_listener)
 
         @callback
-        def hass_close_event_listener(event: Event) -> None:
+        def hass_close_event_listener() -> None:
             self._logger.debug("Detected Home Assistant Close Event.")
             self.stop_publisher()
 

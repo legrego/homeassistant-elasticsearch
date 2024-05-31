@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from homeassistant import config_entries
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import ConfigEntry, ConfigFlowResult
 from homeassistant.const import (
     CONF_ALIAS,
     CONF_API_KEY,
@@ -66,7 +66,7 @@ DEFAULT_ILM_POLICY_NAME = "home-assistant"
 DEFAULT_INDEX_MODE = "datastream"
 
 
-def build_new_options(existing_options: dict | None = None, user_input: dict | None = None):
+def build_new_options(existing_options: dict | None = None, user_input: dict | None = None) -> dict:
     """Build the entire options validation schema."""
     if user_input is None:
         user_input = {}
@@ -117,7 +117,7 @@ def build_new_options(existing_options: dict | None = None, user_input: dict | N
     }
 
 
-def build_new_data(existing_data: dict | None = None, user_input: dict | None = None):
+def build_new_data(existing_data: dict | None = None, user_input: dict | None = None) -> dict:
     """Build the entire data validation schema."""
     if user_input is None:
         user_input = {}
@@ -173,7 +173,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
     @staticmethod
     @callback
-    def async_get_options_flow(config_entry):
+    def async_get_options_flow(config_entry: ConfigEntry) -> config_entries.OptionsFlow:
         """Get the options flow for this handler."""
         return ElasticOptionsFlowHandler(config_entry)
 
@@ -182,7 +182,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         self._cluster_check_result: ClusterCheckResult | None = None
 
     # Build the first step of the flow
-    async def async_step_user(self, user_input: dict | None = None):
+    async def async_step_user(self, user_input: dict | None = None):  # noqa: ARG002
         """Handle a flow initialized by the user."""
 
         return self.async_show_menu(
@@ -196,20 +196,20 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
     async def _handle_auth_flow(
         self,
-        type: str,
+        auth_type: str,
         user_input: dict | None,
         data: dict | None = None,
         options: dict | None = None,
         retry: bool = True,
-    ):
+    ) -> ConfigFlowResult:
         # Combines the logic from all the async_step_*_auth methods into a single method
 
         def build_auth_schema(
             data: dict,
-            type: str,
+            auth_type: str,
             errors: dict | None = None,
             skip_common: dict | None = False,
-        ):
+        ) -> dict:
             """Build the authentication schema."""
 
             schema = {}
@@ -234,7 +234,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                     },
                 )
 
-            if type == "basic_auth":
+            if auth_type == "basic_auth":
                 schema.update(
                     {
                         vol.Required(CONF_USERNAME, default=data.get(CONF_USERNAME, "")): str,
@@ -242,14 +242,14 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                     },
                 )
 
-            if type == "api_key":
+            if auth_type == "api_key":
                 schema.update(
                     {
                         vol.Required(CONF_API_KEY, default=data.get(CONF_API_KEY, "")): str,
                     },
                 )
 
-            if type == "no_auth":
+            if auth_type == "no_auth":
                 pass
 
             return schema
@@ -259,10 +259,10 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         # Handle initial view of form
         if user_input is None:
             return self.async_show_form(
-                step_id=type,
+                step_id=auth_type,
                 data_schema=vol.Schema(
                     build_auth_schema(
-                        type=type,
+                        auth_type=auth_type,
                         data=effective_data,
                         errors=None,
                     ),
@@ -283,10 +283,10 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         }
 
         # Handle testing various authentication methods
-        if type == "basic_auth":
+        if auth_type == "basic_auth":
             params[CONF_USERNAME] = user_input.get(CONF_USERNAME)
             params[CONF_PASSWORD] = user_input.get(CONF_PASSWORD)
-        if type == "api_key":
+        if auth_type == "api_key":
             params[CONF_API_KEY] = user_input.get(CONF_API_KEY)
 
         result = await self._async_elasticsearch_login(**params)
@@ -301,10 +301,10 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         if retry:
             # Connection was not successful, reshow this form showing the previous connection error, retaining any user input
             return self.async_show_form(
-                step_id=type,
+                step_id=auth_type,
                 data_schema=vol.Schema(
                     build_auth_schema(
-                        type=type,
+                        auth_type=auth_type,
                         data=effective_data,
                         errors=result.errors,
                     ),
@@ -317,35 +317,38 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
     async def async_step_no_auth(self, user_input: map | None) -> FlowResult:
         """Handle connection to an unsecured Elasticsearch cluster."""
 
-        return await self._handle_auth_flow(user_input=user_input, data=self.init_data, type="no_auth")
+        return await self._handle_auth_flow(user_input=user_input, data=self.init_data, auth_type="no_auth")
 
     async def async_step_basic_auth(self, user_input: map | None) -> FlowResult:
         """Handle connection to an unsecured Elasticsearch cluster."""
 
-        return await self._handle_auth_flow(user_input=user_input, data=self.init_data, type="basic_auth")
+        return await self._handle_auth_flow(
+            user_input=user_input,
+            data=self.init_data,
+            auth_type="basic_auth",
+        )
 
     async def async_step_api_key(self, user_input: map | None) -> FlowResult:
         """Handle connection to an unsecured Elasticsearch cluster."""
 
-        return await self._handle_auth_flow(user_input=user_input, data=self.init_data, type="api_key")
+        return await self._handle_auth_flow(user_input=user_input, data=self.init_data, auth_type="api_key")
 
     async def async_step_reauth(self, user_input: map | None) -> FlowResult:
         """Handle reauthorization."""
         entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
-        assert entry is not None
 
-        auth_method = "no_auth"
+        auth_type = "no_auth"
         if entry.data.get(CONF_USERNAME):
-            auth_method = "basic_auth"
+            auth_type = "basic_auth"
 
         if entry.data.get(CONF_API_KEY):
-            auth_method = "api_key"
+            auth_type = "api_key"
 
         return await self._handle_auth_flow(
             data=entry.data,
             user_input=user_input,
             options=entry.options,
-            type=auth_method,
+            auth_type=auth_type,
         )
 
     async def _async_elasticsearch_login(
@@ -428,7 +431,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         success = not errors
         return ClusterCheckResult(success, errors)
 
-    async def _async_create_entry(self, data: dict, options: dict):
+    async def _async_create_entry(self, data: dict, options: dict) -> ConfigFlowResult:
         """Create the config entry."""
 
         entries = self.hass.config_entries.async_entries(ELASTIC_DOMAIN)
@@ -454,7 +457,10 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
         self.config_entry = config_entry
         self.options = dict(config_entry.options)
 
-    async def async_step_init(self, hass: HomeAssistant):  # pylint disable=unused-argument
+    async def async_step_init(
+        self,
+        hass: HomeAssistant,  # noqa: ARG002
+    ) -> ConfigFlowResult:  # pylint disable=unused-argument
         """Manage the Elastic options."""
 
         return await self.async_step_publish_options()
@@ -473,7 +479,7 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
             data_schema=vol.Schema(await self.async_build_publish_options_schema()),
         )
 
-    async def async_step_ilm_options(self, user_input: dict = None):
+    async def async_step_ilm_options(self, user_input: dict | None = None) -> FlowResult:
         """ILM Options."""
         errors = {}
 
@@ -576,20 +582,22 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
 
         return schema
 
-    def _build_ilm_options_schema(self):
+    def _build_ilm_options_schema(self) -> dict:
         return {
-            vol.Required(CONF_ILM_ENABLED, default=self._get_config_value(CONF_ILM_ENABLED, True)): bool,
+            vol.Required(
+                CONF_ILM_ENABLED, default=self._get_config_value(CONF_ILM_ENABLED, default=True),
+            ): bool,
             vol.Required(
                 CONF_ILM_POLICY_NAME,
                 default=self._get_config_value(CONF_ILM_POLICY_NAME, DEFAULT_ILM_POLICY_NAME),
             ): str,
         }
 
-    def _dedup_list(self, list_to_dedup):
+    def _dedup_list(self, list_to_dedup: list) -> list:
         return list(dict.fromkeys(list_to_dedup))
 
     @callback
-    async def _async_get_domains_and_entities(self):
+    async def _async_get_domains_and_entities(self) -> tuple[list, list]:
         states = self.hass.states.async_all()
         domains = set()
         entity_ids = []
