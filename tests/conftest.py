@@ -97,10 +97,10 @@ class MockEntityState(State):
         """Initialize the mock entity state."""
 
         if last_changed is None:
-            last_changed = datetime.now()
+            last_changed = datetime.now()  # noqa: DTZ005
 
         if last_updated is None:
-            last_updated = datetime.now()
+            last_updated = datetime.now()  # noqa: DTZ005
 
         self.hass = hass
 

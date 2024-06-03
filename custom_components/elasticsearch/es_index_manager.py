@@ -167,7 +167,7 @@ class IndexManager:
             )
 
         except ElasticsearchException as err:
-            self._logger.exception("Error creating/updating index template: %s", err)
+            self._logger.exception("Error creating/updating index template")
             if not template_exists:
                 msg = "No index template present in Elasticsearch and failed to create one"
                 raise convert_es_error(
@@ -210,7 +210,7 @@ class IndexManager:
 
         template = await client.indices.get_template(name=LEGACY_TEMPLATE_NAME, ignore=[404])
 
-        self._logger.debug("got template response: " + str(template))
+        self._logger.debug("got template response: %s", str(template))
         template_exists = template and LEGACY_TEMPLATE_NAME in template
 
         if not template_exists:
@@ -248,8 +248,8 @@ class IndexManager:
                     index=self.index_format + "-000001",
                     body={"aliases": {self.index_alias: {"is_write_index": True}}},
                 )
-            except ElasticsearchException as err:
-                self._logger.exception("Error creating initial index/alias: %s", err)
+            except ElasticsearchException:
+                self._logger.exception("Error creating initial index/alias: %s")
 
     async def _create_basic_ilm_policy(self, ilm_policy_name) -> None:
         """Create the index lifecycle management policy."""

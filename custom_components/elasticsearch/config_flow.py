@@ -182,7 +182,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         self._cluster_check_result: ClusterCheckResult | None = None
 
     # Build the first step of the flow
-    async def async_step_user(self, user_input: dict | None = None):  # noqa: ARG002
+    async def async_step_user(self, user_input: dict | None = None) -> ConfigFlowResult:  # noqa: ARG002
         """Handle a flow initialized by the user."""
 
         return self.async_show_menu(
@@ -351,6 +351,23 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             auth_type=auth_type,
         )
 
+    async def _async_create_entry(self, data: dict, options: dict) -> ConfigFlowResult:
+        """Create the config entry."""
+
+        entries = self.hass.config_entries.async_entries(ELASTIC_DOMAIN)
+
+        # look at the entries in entries, look at the data conf_url value and if it matches, update the config entry, if it doesnt, make a new one
+
+        for entry in entries:
+            if entry.data.get(CONF_URL) == data.get(CONF_URL):
+                self.hass.config_entries.async_update_entry(entry, data=data, options=options)
+
+                self.hass.async_create_task(self.hass.config_entries.async_reload(entry.entry_id))
+
+                return self.async_abort(reason="updated_entry")
+
+        return self.async_create_entry(title=data.get(CONF_URL), data=data, options=options)
+
     async def _async_elasticsearch_login(
         self,
         url: str,
@@ -382,36 +399,19 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             await temp_gateway.async_init()
 
         except ClientError:
-            # For a Client Error, try to initialize without SSL verification, if this works then there is a self-signed certificate being used
-            try:
-                temp_no_ssl_gateway = Elasticsearch7Gateway(
-                    hass=self.hass,
-                    url=url,
-                    username=username,
-                    password=password,
-                    api_key=api_key,
-                    verify_certs=False,
-                    ca_certs=ca_certs,
-                    request_timeout=timeout,
-                    minimum_privileges=verify_permissions,
-                    use_connection_monitor=False,
-                )
-
-                await temp_no_ssl_gateway.async_init()
-
-                errors["base"] = "untrusted_connection"
-            except Exception:  # pylint: disable=broad-except  # noqa: BLE001
-                errors["base"] = "client_error"
-            finally:
-                if temp_no_ssl_gateway is not None:
-                    await temp_no_ssl_gateway.stop()
+            errors = await self._handle_client_error(
+                url,
+                ca_certs,
+                username,
+                password,
+                api_key,
+                timeout,
+                verify_permissions,
+            )
         except UntrustedCertificate:
             errors["base"] = "untrusted_connection"
         except AuthenticationRequired:
-            if api_key is not None:
-                errors["base"] = "invalid_api_key"
-            else:
-                errors["base"] = "invalid_basic_auth"
+            errors = await self._handle_authentication_required(api_key)
         except InsufficientPrivileges:
             errors["base"] = "insufficient_privileges"
         except CannotConnect:
@@ -431,22 +431,58 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         success = not errors
         return ClusterCheckResult(success, errors)
 
-    async def _async_create_entry(self, data: dict, options: dict) -> ConfigFlowResult:
-        """Create the config entry."""
+    async def _handle_client_error(
+        self,
+        url: str,
+        ca_certs: str,
+        username: str | None,
+        password: str | None,
+        api_key: str | None,
+        timeout: int,
+        verify_permissions: dict | None,
+    ) -> dict:
+        """Handle client error when connecting to Elasticsearch."""
+        errors = {}
 
-        entries = self.hass.config_entries.async_entries(ELASTIC_DOMAIN)
+        # Try to initialize without SSL verification, if this works then there is a self-signed certificate being used
+        try:
+            temp_no_ssl_gateway = Elasticsearch7Gateway(
+                hass=self.hass,
+                url=url,
+                username=username,
+                password=password,
+                api_key=api_key,
+                verify_certs=False,
+                ca_certs=ca_certs,
+                request_timeout=timeout,
+                minimum_privileges=verify_permissions,
+                use_connection_monitor=False,
+            )
 
-        # look at the entries in entries, look at the data conf_url value and if it matches, update the config entry, if it doesnt, make a new one
+            await temp_no_ssl_gateway.async_init()
 
-        for entry in entries:
-            if entry.data.get(CONF_URL) == data.get(CONF_URL):
-                self.hass.config_entries.async_update_entry(entry, data=data, options=options)
+            errors["base"] = "untrusted_connection"
+        except Exception:  # pylint: disable=broad-except  # noqa: BLE001
+            errors["base"] = "client_error"
+        finally:
+            if temp_no_ssl_gateway is not None:
+                await temp_no_ssl_gateway.stop()
 
-                self.hass.async_create_task(self.hass.config_entries.async_reload(entry.entry_id))
+        return errors
 
-                return self.async_abort(reason="updated_entry")
+    async def _handle_authentication_required(
+        self,
+        api_key: str | None,
+    ) -> dict:
+        """Handle authentication required when connecting to Elasticsearch."""
+        errors = {}
 
-        return self.async_create_entry(title=data.get(CONF_URL), data=data, options=options)
+        if api_key is not None:
+            errors["base"] = "invalid_api_key"
+        else:
+            errors["base"] = "invalid_basic_auth"
+
+        return errors
 
 
 class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
@@ -465,7 +501,10 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
 
         return await self.async_step_publish_options()
 
-    async def async_step_publish_options(self, user_input: dict | None = None):
+    async def async_step_publish_options(
+        self,
+        user_input: dict | None = None,
+    ) -> FlowResult | ConfigFlowResult:
         """Publish Options."""
         if user_input is not None:
             self.options.update(user_input)

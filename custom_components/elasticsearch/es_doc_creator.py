@@ -53,7 +53,7 @@ class DocumentCreator:
         self._entity_details = EntityDetails(hass)
         self._static_v1doc_properties: dict | None = None
         self._static_v2doc_properties: dict | None = None
-        self._serializer = Elasticsearch7Gateway._new_encoder()
+        self._serializer = Elasticsearch7Gateway.new_encoder()
         self._system_info: SystemInfo = SystemInfo(hass)
         self._hass = hass
 
@@ -260,11 +260,11 @@ class DocumentCreator:
             additions["valueas"]["float"] = state_helper.state_as_number(state)
 
         elif isinstance(_state, str) and self.try_state_as_datetime(state):
-            _tempState = self.state_as_datetime(state)
+            _temp_state = self.state_as_datetime(state)
 
-            additions["valueas"]["datetime"] = _tempState.isoformat()
-            additions["valueas"]["date"] = _tempState.date().isoformat()
-            additions["valueas"]["time"] = _tempState.time().isoformat()
+            additions["valueas"]["datetime"] = _temp_state.isoformat()
+            additions["valueas"]["date"] = _temp_state.date().isoformat()
+            additions["valueas"]["time"] = _temp_state.time().isoformat()
 
         else:
             additions["valueas"]["string"] = _state
@@ -468,9 +468,10 @@ class DocumentCreator:
 
         try:
             cls.state_as_datetime(state)
-            return True
         except ValueError:
             return False
+        else:
+            return True
 
     @classmethod
     def state_as_datetime(cls, state: State) -> datetime:

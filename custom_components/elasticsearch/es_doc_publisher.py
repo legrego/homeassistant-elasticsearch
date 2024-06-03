@@ -164,7 +164,7 @@ class DocumentPublisher:
 
         self._logger.info("Stopped document publisher")
 
-    def queue_size(self):
+    def queue_size(self) -> int:
         """Return the approximate queue size."""
         return self.publish_queue.qsize()
 
@@ -228,11 +228,6 @@ class DocumentPublisher:
                     state.entity_id,
                 ):
                     actions.append(self._state_to_bulk_action(state, self._last_publish_time, reason))
-
-        # Check for duplicate entries
-        # The timestamp and object_id field are combined to generate the Elasticsearch document ID
-        # so we check and log warnings for duplicates
-        # self.check_duplicate_entries(actions)
 
         self._logger.info("Publishing %i documents to Elasticsearch", len(actions))
 

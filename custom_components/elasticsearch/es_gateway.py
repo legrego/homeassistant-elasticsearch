@@ -71,8 +71,8 @@ class ElasticsearchGateway(ABC):
         """I/O bound init."""
 
         # if not await self.test():
-        #     msg = "Connection test failed."
-        #     raise convert_es_error(msg, ConnectionError)
+        #     msg = "Connection test failed."  # noqa: ERA001
+        #     raise convert_es_error(msg, ConnectionError)  # noqa: ERA001
 
         # Test the connection
         self._info = await self._get_cluster_info()
@@ -229,10 +229,11 @@ class ElasticsearchGateway(ABC):
         try:
             await self._get_cluster_info()
             self._logger.debug("Connection test to [%s] was successful.", self._url)
-            return True
-        except Exception as err:
-            self._logger.exception("Connection test to [%s] failed: %s", self._url, err)
+        except Exception:
+            self._logger.exception("Connection test to [%s] failed.", self._url)
             return False
+        else:
+            return True
 
     @classmethod
     def _create_es_client_args(
@@ -251,7 +252,7 @@ class ElasticsearchGateway(ABC):
 
         args = {
             "hosts": [url],
-            "serializer": cls._new_encoder(),
+            "serializer": cls.new_encoder(),
             "verify_certs": verify_certs,
             "ssl_show_warn": verify_certs,
             "ca_certs": ca_certs,
@@ -274,16 +275,15 @@ class ElasticsearchGateway(ABC):
             msg = "Connection test failed"
             raise convert_es_error(msg, err) from err
 
-        # return await self._client.info()
-
     @abstractmethod
     async def _has_required_privileges(self, required_privileges: dict) -> bool:
         pass  # pragma: no cover
 
     @classmethod
     @abstractmethod
-    def _new_encoder(cls) -> JSONSerializer7 | JSONSerializer8:
-        pass  # pragma: no cover
+    def new_encoder(cls) -> JSONSerializer7 | JSONSerializer8:
+        """Create a new instance of the JSON serializer."""
+        # pragma: no cover
 
     @classmethod
     @abstractmethod
@@ -320,19 +320,20 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
                 self._logger.error("Required privileges are missing.")
                 raise InsufficientPrivileges
 
-            return privilege_response
         except Exception as err:
             msg = "Error enforcing privileges"
             raise convert_es_error(msg, err) from err
+        else:
+            return privilege_response
 
     @classmethod
-    def _new_encoder(cls) -> JSONSerializer8:
+    def new_encoder(cls) -> JSONSerializer8:
         """Create a new instance of the JSON serializer."""
 
         class SetEncoder(JSONSerializer8):
             """JSONSerializer which serializes sets to lists."""
 
-            def default(self, data: any):
+            def default(self, data: any) -> any:
                 """Entry point."""
                 if isinstance(data, set):
                     output = list(data)
@@ -363,13 +364,14 @@ class Elasticsearch7Gateway(ElasticsearchGateway):
                 self._logger.error("Required privileges are missing.")
                 raise InsufficientPrivileges
 
-            return privilege_response
         except Exception as err:
             msg = "Error enforcing privileges"
             raise convert_es_error(msg, err) from err
+        else:
+            return privilege_response
 
     @classmethod
-    def _new_encoder(cls) -> JSONSerializer7:
+    def new_encoder(cls) -> JSONSerializer7:
         """Create a new instance of the JSON serializer."""
 
         class SetEncoder(JSONSerializer7):
