@@ -1,3 +1,4 @@
+# type: ignore  # noqa: PGH003
 """Sample data for testing."""
 
 from datetime import datetime

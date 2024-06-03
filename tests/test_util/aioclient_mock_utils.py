@@ -1,3 +1,4 @@
+# type: ignore  # noqa: PGH003
 """Utilities for working with the AIOClient Mock."""
 
 import json

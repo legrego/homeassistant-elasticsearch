@@ -57,15 +57,15 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
     existing_instance = hass.data.get(DOMAIN)
     if isinstance(existing_instance, ElasticIntegration):
         LOGGER.debug("Shutting down previous integration")
-        await existing_instance.async_shutdown(config_entry)
+        await existing_instance.async_shutdown()
         hass.data[DOMAIN] = None
     return True
 
 
-async def async_config_entry_updated(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+async def async_config_entry_updated(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
     """Respond to config changes."""
     LOGGER.debug("Configuration change detected")
-    return await _async_init_integration(hass, config_entry)
+    await _async_init_integration(hass, config_entry)
 
 
 async def _async_init_integration(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:

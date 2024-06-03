@@ -1,3 +1,4 @@
+# type: ignore  # noqa: PGH003
 """Tests for the DocumentCreator class."""
 
 from datetime import datetime

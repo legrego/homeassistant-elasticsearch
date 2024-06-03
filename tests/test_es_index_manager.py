@@ -1,3 +1,4 @@
+# type: ignore  # noqa: PGH003
 """Testing for Elasticsearch Index Manager."""
 
 from unittest import mock

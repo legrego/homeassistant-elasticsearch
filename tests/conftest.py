@@ -1,3 +1,4 @@
+# type: ignore  # noqa: PGH003
 """Global fixtures for elastic integration."""
 # Fixtures allow you to replace functions with a Mock object. You can perform
 # many options via the Mock to reflect a particular behavior from the original

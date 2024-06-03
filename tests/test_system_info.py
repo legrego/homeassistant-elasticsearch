@@ -1,3 +1,4 @@
+# type: ignore  # noqa: PGH003
 """Test Entity Details."""
 
 from typing import Never

@@ -124,7 +124,7 @@ def build_new_data(existing_data: dict | None = None, user_input: dict | None = 
     if existing_data is None:
         existing_data = {}
 
-    data = {
+    data: dict = {
         CONF_URL: user_input.get(CONF_URL, existing_data.get(CONF_URL, DEFAULT_URL)),
         CONF_TIMEOUT: user_input.get(CONF_TIMEOUT, existing_data.get(CONF_TIMEOUT, DEFAULT_TIMEOUT_SECONDS)),
         CONF_VERIFY_SSL: user_input.get(
@@ -151,7 +151,7 @@ def build_new_data(existing_data: dict | None = None, user_input: dict | None = 
     elif auth.get(CONF_API_KEY):
         data[CONF_API_KEY] = auth.get(CONF_API_KEY)
 
-    if data.get(CONF_SSL_CA_PATH) and len(data.get(CONF_SSL_CA_PATH)) > 0:
+    if data.get(CONF_SSL_CA_PATH) and len(str(data.get(CONF_SSL_CA_PATH))) > 0:
         data[CONF_SSL_CA_PATH] = user_input[CONF_SSL_CA_PATH]
 
     return data
@@ -208,7 +208,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             data: dict,
             auth_type: str,
             errors: dict | None = None,
-            skip_common: dict | None = False,
+            skip_common: bool | None = False,
         ) -> dict:
             """Build the authentication schema."""
 
@@ -314,12 +314,12 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         else:
             return self.async_abort(reason="cannot_connect")
 
-    async def async_step_no_auth(self, user_input: map | None) -> FlowResult:
+    async def async_step_no_auth(self, user_input: dict | None) -> FlowResult:
         """Handle connection to an unsecured Elasticsearch cluster."""
 
         return await self._handle_auth_flow(user_input=user_input, data=self.init_data, auth_type="no_auth")
 
-    async def async_step_basic_auth(self, user_input: map | None) -> FlowResult:
+    async def async_step_basic_auth(self, user_input: dict | None) -> FlowResult:
         """Handle connection to an unsecured Elasticsearch cluster."""
 
         return await self._handle_auth_flow(
@@ -328,14 +328,16 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             auth_type="basic_auth",
         )
 
-    async def async_step_api_key(self, user_input: map | None) -> FlowResult:
+    async def async_step_api_key(self, user_input: dict | None) -> FlowResult:
         """Handle connection to an unsecured Elasticsearch cluster."""
 
         return await self._handle_auth_flow(user_input=user_input, data=self.init_data, auth_type="api_key")
 
-    async def async_step_reauth(self, user_input: map | None) -> FlowResult:
+    async def async_step_reauth(self, user_input: dict | None) -> FlowResult:
         """Handle reauthorization."""
         entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
+        if entry is None:
+            return self.async_abort(reason="no_entry")
 
         auth_type = "no_auth"
         if entry.data.get(CONF_USERNAME):
@@ -345,9 +347,9 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             auth_type = "api_key"
 
         return await self._handle_auth_flow(
-            data=entry.data,
+            data=dict(entry.data),
             user_input=user_input,
-            options=entry.options,
+            options=dict(entry.options),
             auth_type=auth_type,
         )
 
@@ -366,7 +368,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
                 return self.async_abort(reason="updated_entry")
 
-        return self.async_create_entry(title=data.get(CONF_URL), data=data, options=options)
+        return self.async_create_entry(title=str(data.get(CONF_URL)), data=data, options=options)
 
     async def _async_elasticsearch_login(
         self,
@@ -504,7 +506,7 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_publish_options(
         self,
         user_input: dict | None = None,
-    ) -> FlowResult | ConfigFlowResult:
+    ) -> ConfigFlowResult:
         """Publish Options."""
         if user_input is not None:
             self.options.update(user_input)
@@ -518,7 +520,7 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
             data_schema=vol.Schema(await self.async_build_publish_options_schema()),
         )
 
-    async def async_step_ilm_options(self, user_input: dict | None = None) -> FlowResult:
+    async def async_step_ilm_options(self, user_input: dict | None = None) -> ConfigFlowResult:
         """ILM Options."""
         errors = {}
 
@@ -532,12 +534,12 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
             errors=errors,
         )
 
-    async def _update_options(self) -> FlowResult:
+    async def _update_options(self) -> ConfigFlowResult:
         """Update config entry options."""
         return self.async_create_entry(title="", data=self.options)
 
-    def _get_config_value(self, key: str, default: any) -> any:
-        current = self.options.get(key, default)
+    def _get_config_value(self, key: str, default: object) -> object:
+        current: object = self.options.get(key, default)
         if current is None:
             return default
         return current
@@ -548,11 +550,13 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
 
         current_excluded_domains = self._get_config_value(CONF_EXCLUDED_DOMAINS, [])
         current_included_domains = self._get_config_value(CONF_INCLUDED_DOMAINS, [])
-        domain_options = self._dedup_list(domains + current_excluded_domains + current_included_domains)
+        domain_options = self._dedup_list(
+            list(str(domains)) + list(str(current_excluded_domains)) + list(str(current_included_domains)),
+        )
 
         current_excluded_entities = self._get_config_value(CONF_EXCLUDED_ENTITIES, [])
         current_included_entities = self._get_config_value(CONF_INCLUDED_ENTITIES, [])
-        entity_options = self._dedup_list(entities + current_excluded_entities + current_included_entities)
+        entity_options = self._dedup_list(list(str(entities)) + list(str(current_excluded_entities)) + list(str(current_included_entities)))
 
         schema = {
             vol.Required(

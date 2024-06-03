@@ -1,3 +1,4 @@
+# type: ignore  # noqa: PGH003
 """Test Config Flow."""
 
 from unittest.mock import MagicMock

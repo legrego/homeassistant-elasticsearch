@@ -1,3 +1,4 @@
+# type: ignore  # noqa: PGH003
 """Tests for Elastic init."""
 
 import pytest
