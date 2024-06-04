@@ -66,7 +66,7 @@ class DocumentCreator:
 
         await self._populate_static_doc_properties()
 
-    async def _populate_static_doc_properties(self) -> dict:
+    async def _populate_static_doc_properties(self) -> None:
         hass_config = self._hass.config
 
         shared_properties = {
@@ -122,7 +122,7 @@ class DocumentCreator:
             if orig_key in SKIP_ATTRIBUTES:
                 continue
 
-            key = self.normalize_attribute_name(orig_key)
+            key = DocumentCreator.normalize_attribute_name(orig_key)
             value = orig_value
 
             # coerce set to list. ES does not handle sets natively
@@ -245,7 +245,7 @@ class DocumentCreator:
             dict: A dictionary representing the value in version 2 format. i.e. {value: "thisValue", valueas: {<type>: "thisCoercedValue"}}
 
         """
-        additions = {"valueas": {}}
+        additions: dict = {"valueas": {}}
 
         _state = state.state
 
@@ -375,7 +375,7 @@ class DocumentCreator:
             if self._static_v1doc_properties is not None:
                 document_body.update(self._static_v1doc_properties)
 
-        if version == 2:
+        if version == 2:  # noqa: PLR2004
             document_body.update(self._state_to_document_v2(state, entity, time_tz))
 
             if self._static_v2doc_properties is not None:
@@ -384,7 +384,8 @@ class DocumentCreator:
         return document_body
 
     @lru_cache(maxsize=4096)
-    def normalize_attribute_name(self, attribute_name: str) -> str:
+    @staticmethod
+    def normalize_attribute_name(attribute_name: str) -> str:
         """Create an ECS-compliant version of the provided attribute name."""
         # Normalize to closest ASCII equivalent where possible
         normalized_string = unicodedata.normalize("NFKD", attribute_name).encode("ascii", "ignore").decode()
@@ -409,12 +410,13 @@ class DocumentCreator:
 
         try:
             cls.state_as_number(state)
-            return True
         except ValueError:
             return False
+        else:
+            return True
 
     @classmethod
-    def state_as_number(cls, state: State) -> bool:
+    def state_as_number(cls, state: State) -> float:
         """Try to coerce our state to a number."""
 
         number = state_helper.state_as_number(state)
@@ -431,9 +433,10 @@ class DocumentCreator:
 
         try:
             cls.state_as_boolean(state)
-            return True
         except ValueError:
             return False
+        else:
+            return True
 
     @classmethod
     def state_as_boolean(cls, state: State) -> bool:
@@ -463,7 +466,7 @@ class DocumentCreator:
         raise ValueError(msg)
 
     @classmethod
-    def try_state_as_datetime(cls, state: State) -> datetime:
+    def try_state_as_datetime(cls, state: State) -> datetime | bool:
         """Try to coerce our state to a datetime and return True if we can, false if we can't."""
 
         try:

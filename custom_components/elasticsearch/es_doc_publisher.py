@@ -79,7 +79,7 @@ class DocumentPublisher:
         self._gateway: ElasticsearchGateway = gateway
         self._hass: HomeAssistant = hass
 
-        self._destination_type: str = config_entry.data.get(CONF_INDEX_MODE)
+        self._destination_type: str = str(config_entry.data.get(CONF_INDEX_MODE))
 
         if self._destination_type == INDEX_MODE_LEGACY:
             self.legacy_index_name = config_entry.options.get(CONF_ALIAS) + VERSION_SUFFIX
@@ -123,7 +123,7 @@ class DocumentPublisher:
 
         self.remove_hass_close_listener = hass.bus.async_listen_once(
             EVENT_HOMEASSISTANT_CLOSE,
-            hass_close_event_listener,
+            hass_close_event_listener,  # type: ignore
         )
 
         self._document_creator = DocumentCreator(log=log, hass=hass, config_entry=config_entry)
@@ -253,7 +253,7 @@ class DocumentPublisher:
         except ElasticsearchException as err:
             self._logger.exception("Error publishing documents to Elasticsearch: %s", err)
 
-    def _determine_change_type(self, new_state: State, old_state: State = None):
+    def _determine_change_type(self, new_state: State, old_state: State) -> str | None:
         if new_state is None:
             return None
 
@@ -319,7 +319,7 @@ class DocumentPublisher:
                 return False
             return True
 
-    def _state_to_bulk_action(self, state: State, time: datetime, reason: str):
+    def _state_to_bulk_action(self, state: State, time: datetime, reason: str) -> dict:
         """Create a bulk action from the given state object."""
 
         if self._destination_type == INDEX_MODE_DATASTREAM:
@@ -435,7 +435,7 @@ class DocumentPublisher:
         if name != name.translate(str.maketrans("", "", invalid_chars)):
             return True
 
-        if len(name) > 255:
+        if len(name) > 255:  # noqa: PLR2004
             return True
 
         # This happens when dataset is empty

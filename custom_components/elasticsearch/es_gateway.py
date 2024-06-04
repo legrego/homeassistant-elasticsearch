@@ -333,8 +333,8 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
         class SetEncoder(JSONSerializer8):
             """JSONSerializer which serializes sets to lists."""
 
-            def default(self, data: any) -> any:
-                """Entry point."""
+            def default(self, data: any) -> any:  # type: ignore
+                """JSONSerializer which serializes sets to lists."""
                 if isinstance(data, set):
                     output = list(data)
                     output.sort()
@@ -377,7 +377,7 @@ class Elasticsearch7Gateway(ElasticsearchGateway):
         class SetEncoder(JSONSerializer7):
             """JSONSerializer which serializes sets to lists."""
 
-            def default(self, data):
+            def default(self, data: any) -> any:  # type: ignore
                 """Entry point."""
                 if isinstance(data, set):
                     output = list(data)
@@ -433,7 +433,7 @@ class ConnectionMonitor:
         """Determine if a transport error is ignorable."""
 
         if isinstance(err, TransportError7 | TransportError8):
-            return isinstance(err.status_code, int) and cls.status_code <= 403
+            return isinstance(err.status_code, int) and cls.status_code <= 403  # type: ignore # noqa: PLR2004
 
         return False
 
@@ -468,7 +468,7 @@ class ConnectionMonitor:
 
             try:
                 self._active = await self.test()
-            except err as err:
+            except Exception as err:  # type: ignore
                 if not self._is_ignorable_error(err):
                     self._logger.exception("Connection test to [%s] failed", self.gateway.url)
                     self._active = False
@@ -494,7 +494,7 @@ class ConnectionMonitor:
 
     def start(self, config_entry: ConfigEntry) -> None:
         """Start the connection monitor."""
-        if not self._gateway._use_connection_monitor:
+        if not self._gateway._use_connection_monitor:  # noqa: SLF001
             return
 
         self._logger.info("Starting new connection monitor.")

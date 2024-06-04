@@ -70,7 +70,10 @@ lint.ignore = [
     "PLR0913",
     "ANN101",
     "N801",
-    "PT011"
+    "PT011",
+    "PT004",
+    "N806",
+    "ANN202"
 ]
 
 [lint.flake8-pytest-style]

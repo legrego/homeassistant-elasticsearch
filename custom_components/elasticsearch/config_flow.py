@@ -538,6 +538,12 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
         """Update config entry options."""
         return self.async_create_entry(title="", data=self.options)
 
+    def _get_config_string(self, key: str, default: str) -> str:
+        current: str = self.options.get(key, default)
+        if current is None:
+            return default
+        return current
+
     def _get_config_value(self, key: str, default: object) -> object:
         current: object = self.options.get(key, default)
         if current is None:
@@ -561,15 +567,15 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
         schema = {
             vol.Required(
                 CONF_PUBLISH_ENABLED,
-                default=self._get_config_value(CONF_PUBLISH_ENABLED, DEFAULT_PUBLISH_ENABLED),
+                default=self._get_config_value(CONF_PUBLISH_ENABLED, DEFAULT_PUBLISH_ENABLED),  # type: ignore  # noqa: PGH003
             ): bool,
             vol.Required(
                 CONF_PUBLISH_FREQUENCY,
-                default=self._get_config_value(CONF_PUBLISH_FREQUENCY, DEFAULT_PUBLISH_FREQUENCY),
+                default=self._get_config_value(CONF_PUBLISH_FREQUENCY, DEFAULT_PUBLISH_FREQUENCY),  # type: ignore  # noqa: PGH003
             ): int,
             vol.Required(
                 CONF_PUBLISH_MODE,
-                default=self._get_config_value(CONF_PUBLISH_MODE, DEFAULT_PUBLISH_MODE),
+                default=self._get_config_string(CONF_PUBLISH_MODE, DEFAULT_PUBLISH_MODE),  # type: ignore  # noqa: PGH003
             ): selector(
                 {
                     "select": {
@@ -589,19 +595,19 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
             ),
             vol.Required(
                 CONF_EXCLUDED_DOMAINS,
-                default=current_excluded_domains,
+                default=current_excluded_domains,  # type: ignore  # noqa: PGH003
             ): cv.multi_select(domain_options),
             vol.Required(
                 CONF_EXCLUDED_ENTITIES,
-                default=current_excluded_entities,
+                default=current_excluded_entities,  # type: ignore  # noqa: PGH003
             ): cv.multi_select(entity_options),
             vol.Required(
                 CONF_INCLUDED_DOMAINS,
-                default=current_included_domains,
+                default=current_included_domains,  # type: ignore  # noqa: PGH003
             ): cv.multi_select(domain_options),
             vol.Required(
                 CONF_INCLUDED_ENTITIES,
-                default=current_included_entities,
+                default=current_included_entities,  # type: ignore  # noqa: PGH003
             ): cv.multi_select(entity_options),
         }
 
@@ -612,14 +618,14 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
             schema[
                 vol.Required(
                     CONF_INDEX_FORMAT,
-                    default=self._get_config_value(CONF_INDEX_FORMAT, DEFAULT_INDEX_FORMAT),
+                    default=self._get_config_value(CONF_INDEX_FORMAT, DEFAULT_INDEX_FORMAT),  # type: ignore  # noqa: PGH003
                 )
             ] = str
 
             schema[
                 vol.Required(
                     CONF_ALIAS,
-                    default=self._get_config_value(CONF_ALIAS, DEFAULT_ALIAS),
+                    default=self._get_config_value(CONF_ALIAS, DEFAULT_ALIAS),  # type: ignore  # noqa: PGH003
                 )
             ] = str
 
@@ -628,11 +634,12 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
     def _build_ilm_options_schema(self) -> dict:
         return {
             vol.Required(
-                CONF_ILM_ENABLED, default=self._get_config_value(CONF_ILM_ENABLED, default=True),
+                CONF_ILM_ENABLED,
+                default=self._get_config_value(CONF_ILM_ENABLED, default=True),  # type: ignore  # noqa: PGH003
             ): bool,
             vol.Required(
                 CONF_ILM_POLICY_NAME,
-                default=self._get_config_value(CONF_ILM_POLICY_NAME, DEFAULT_ILM_POLICY_NAME),
+                default=self._get_config_value(CONF_ILM_POLICY_NAME, DEFAULT_ILM_POLICY_NAME),  # type: ignore  # noqa: PGH003
             ): str,
         }
 

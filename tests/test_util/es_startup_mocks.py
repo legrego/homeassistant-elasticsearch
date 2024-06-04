@@ -1,3 +1,4 @@
+# type: ignore  # noqa: PGH003
 """ES Startup Mocks."""
 
 from elasticsearch.const import (
