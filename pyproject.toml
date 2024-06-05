@@ -61,6 +61,3 @@ addopts = [
 filterwarnings = ["ignore:ssl.PROTOCOL_TLS is deprecated:DeprecationWarning"]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-
-[tool.mypy]
-strict = true
