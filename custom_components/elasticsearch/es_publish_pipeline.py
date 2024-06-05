@@ -1,16 +1,15 @@
 """Publishes documents to Elasticsearch."""
 
-import asyncio
 import json
 import re
 import time
 import unicodedata
-from asyncio import Task
 from datetime import UTC, datetime
 from functools import lru_cache
 from logging import Logger
 from math import isinf
 from queue import Queue
+from typing import TYPE_CHECKING
 
 from elasticsearch.const import (
     DATASTREAM_DATASET_PREFIX,
@@ -18,6 +17,8 @@ from elasticsearch.const import (
     DATASTREAM_TYPE,
     StateChangeType,
 )
+from elasticsearch.entity_details import EntityDetails
+from elasticsearch.loop import LoopHandler
 from elasticsearch.system_info import SystemInfo, SystemInfoResult
 from homeassistant.components.sun import STATE_ABOVE_HORIZON, STATE_BELOW_HORIZON
 from homeassistant.config_entries import ConfigEntry
@@ -40,6 +41,9 @@ from homeassistant.util import dt as dt_util
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 
 from .logger import LOGGER as BASE_LOGGER
+
+if TYPE_CHECKING:
+    from asyncio import Task
 
 ALLOWED_ATTRIBUTE_TYPES = tuple | dict | set | list | int | float | bool | str | None
 SKIP_ATTRIBUTES = [
@@ -85,15 +89,16 @@ class Pipeline:
             self,
             hass: HomeAssistant,
             gateway: ElasticsearchGateway,
-            log: Logger,
             settings: PipelineSettings,
+            log: Logger = BASE_LOGGER,
         ) -> None:
             """Initialize the manager."""
             self._logger = log if log else BASE_LOGGER
             self._hass: HomeAssistant = hass
             self._gateway: ElasticsearchGateway = gateway
             self._publish_frequency: int = settings.publish_frequency
-            self._cancel_manager: Task
+            self._cancel_manager: Task | None = None
+            self._should_stop = False
 
             self._static_fields: dict[str, str | float] = {}
 
@@ -111,9 +116,10 @@ class Pipeline:
                 log=self._logger,
                 queue=self._queue,
             )
-            self._filterer = Pipeline.Filterer(hass=self._hass, log=self._logger, settings=settings)
+
+            self._filterer = Pipeline.Filterer(log=self._logger, settings=settings)
             self._formatter = Pipeline.Formatter(hass=self._hass, log=self._logger)
-            self._publisher = Pipeline.Publisher(hass=self._hass, gateway=gateway, log=self._logger)
+            self._publisher = Pipeline.Publisher(gateway=gateway, log=self._logger)
 
         async def async_init(self, config_entry: ConfigEntry) -> None:
             """Initialize the manager."""
@@ -139,58 +145,31 @@ class Pipeline:
             await self._formatter.async_init(self._static_fields)
             await self._publisher.async_init()
 
+            new_loop = LoopHandler(
+                name="es_etl_loop", func=self._gather_and_publish, frequency=self._publish_frequency,
+            )
+
             # Start processing
             self._cancel_manager = config_entry.async_create_background_task(
                 self._hass,
-                self._loop(),
-                "pipeline_manager_etl_loop",
+                new_loop.start(),
+                "es_etl_loop",
             )
 
-        async def _loop(self) -> None:
-            """Run the pipeline loop."""
+        async def _gather_and_publish(self) -> None:
+            documents = []
 
-            _next_poll = time.monotonic() + self._publish_frequency
+            await self._poller.poll()
 
-            def _time_to_run() -> bool:
-                """Determine if now is a good time to poll for state changes."""
-                return _next_poll <= time.monotonic()
+            while not self._queue.empty():
+                timestamp, state, reason = self._queue.get()
 
-            def _schedule_next_run() -> None:
-                _next_poll = time.monotonic() + self._publish_frequency
-
-            def _should_stop_running() -> bool:
-                """Determine if the runner should stop."""
-                return self._hass.is_stopping
-
-            async def _spin() -> None:
-                """Spin the event loop."""
-                await asyncio.sleep(1)
-
-            async def _wait_for_run() -> None:
-                """Wait for the next poll time."""
-                while not _time_to_run():
-                    if _should_stop_running():
-                        break
-                    await _spin()
+                if not self._filterer.passes_filter(state, reason):
                     continue
 
-            while True:
-                await _wait_for_run()
-                _schedule_next_run()
+                documents.append(self._formatter.format(timestamp, state, reason))
 
-                documents = []
-
-                await self._poller.poll()
-
-                while not self._queue.empty():
-                    timestamp, state, reason = self._queue.get()
-
-                    if not self._filterer.passes_filter(state, reason):
-                        continue
-
-                    documents.append(self._formatter.format(timestamp, state, reason))
-
-                await self._publisher.publish(documents)
+            await self._publisher.publish(documents)
 
         def stop(self) -> None:
             """Stop the manager."""
@@ -209,13 +188,11 @@ class Pipeline:
 
         def __init__(
             self,
-            log: Logger,
-            hass: HomeAssistant,
             settings: PipelineSettings,
+            log: Logger = BASE_LOGGER,
         ) -> None:
             """Initialize the filterer."""
             self._logger = log if log else BASE_LOGGER
-            self._hass: HomeAssistant = hass
 
             self._included_domains: list[str] = settings.included_domains
             self._included_entities: list[str] = settings.included_entities
@@ -229,10 +206,10 @@ class Pipeline:
         def passes_filter(self, state: State, reason: StateChangeType) -> bool:
             """Filter state changes for processing."""
 
-            if self._passes_change_type_filter(reason):
+            if not self._passes_change_type_filter(reason):
                 return False
 
-            if not self._passes_entity_domain_filters(state.entity_id, state.domain):
+            if not self._passes_entity_domain_filters(entity_id=state.entity_id, domain=state.domain):
                 return False
 
             return True
@@ -271,7 +248,7 @@ class Pipeline:
             self,
             hass: HomeAssistant,
             queue: EventQueue,
-            log: Logger,
+            log: Logger = BASE_LOGGER,
         ) -> None:
             """Initialize the listener."""
             self._logger = log if log else BASE_LOGGER
@@ -319,7 +296,7 @@ class Pipeline:
             self,
             hass: HomeAssistant,
             queue: EventQueue,
-            log: Logger,
+            log: Logger = BASE_LOGGER,
         ) -> None:
             """Initialize the poller."""
             self._logger = log if log else BASE_LOGGER
@@ -349,22 +326,22 @@ class Pipeline:
         def __init__(self, hass: HomeAssistant, log: Logger = BASE_LOGGER) -> None:
             """Initialize the formatter."""
             self._logger = log if log else BASE_LOGGER
-            self._hass = hass
             self._static_fields = {}
+            self._entity_details = EntityDetails(hass)
 
         async def async_init(self, static_fields: dict) -> None:
             """Initialize the formatter."""
             self._static_fields = static_fields
 
+        @staticmethod
         @lru_cache(maxsize=128)
-        @classmethod
-        def _sanitize_domain(cls, domain: str) -> str:
+        def _sanitize_domain(domain: str) -> str:
             """Sanitize the domain name."""
             # Only allow alphanumeric characters a-z 0-9 and underscores
             return re.sub(r"[^a-z0-9_]", "", domain.lower())[0:128]
 
-        @lru_cache(maxsize=4096)
         @staticmethod
+        @lru_cache(maxsize=4096)
         def normalize_attribute_name(attribute_name: str) -> str:
             """Create an ECS-compliant version of the provided attribute name."""
             # Normalize to closest ASCII equivalent where possible
@@ -464,6 +441,63 @@ class Pipeline:
 
             return dt_util.parse_datetime(state.state, raise_on_error=True)
 
+        def _state_to_entity_details(self, state: State) -> dict:
+            """Gather entity details from the state object and return a mapped dictionary ready to be put in an elasticsearch document."""
+
+            entity_details = self._entity_details.async_get(state.entity_id)
+
+            if entity_details is None:
+                return {}
+
+            entity = entity_details.entity
+
+            entity_capabilities = entity.capabilities or {}
+            entity_area = entity_details.entity_area
+            entity_floor = entity_details.entity_floor
+
+            entity_additions = {
+                "labels": entity_details.entity_labels,
+                "name": entity.name or entity.original_name,
+                "friendly_name": state.name,
+                "platform": entity.platform,
+                "unit_of_measurement": str(entity.unit_of_measurement),
+                "area.floor.id": entity_floor.floor_id if entity_floor else None,
+                "area.floor.name": entity_floor.name if entity_floor else None,
+                "area.id": entity_area.id if entity_area else None,
+                "area.name": entity_area.name if entity_area else None,
+                "state.class": entity_capabilities.get("state_class"),
+            }
+
+            entity_additions = {
+                k: str(v)
+                for k, v in entity_additions.items()
+                if (v is not None and v != "None" and len(v) != 0)
+            }
+
+            device = entity_details.device
+            device_floor = entity_details.device_floor
+            device_area = entity_details.device_area
+
+            device_additions = {
+                "class": entity.device_class or entity.original_device_class,
+                "id": (device.id if device else None),
+                "labels": entity_details.device_labels,
+                "name": (device.name if device else None),
+                "friendly_name": (device.name_by_user if device else None),
+                "area.floor.id": device_floor.floor_id if device_floor else None,
+                "area.floor.name": device_floor.name if device_floor else None,
+                "area.id": device_area.id if device_area else None,
+                "area.name": device_area.name if device_area else None,
+            }
+
+            device_additions = {
+                k: str(v)
+                for k, v in device_additions.items()
+                if (v is not None and v != "None" and len(v) != 0)
+            }
+
+            return {**entity_additions, "device": {**device_additions}}
+
         def _state_to_attributes(self, state: State) -> dict:
             """Convert the attributes of a State object into a dictionary compatible with Elasticsearch mappings."""
 
@@ -501,7 +535,7 @@ class Pipeline:
                 elif isinstance(value, list | tuple) and isinstance(value[0], tuple | dict | set | list):
                     new_value = json.dumps(value)
 
-                attributes[key] = value
+                attributes[key] = new_value
 
             return attributes
 
@@ -540,11 +574,6 @@ class Pipeline:
         def format(self, time: datetime, state: State, reason: StateChangeType) -> dict:
             """Format the state change into a document."""
 
-            ds_type = DATASTREAM_TYPE
-            ds_dataset = DATASTREAM_DATASET_PREFIX + "." + self._sanitize_domain(state.domain)
-            ds_namespace = DATASTREAM_NAMESPACE
-
-            # Create the document
             base_document = {
                 "@timestamp": time.isoformat(),
                 "event.action": {
@@ -566,6 +595,9 @@ class Pipeline:
             # Add static attributes
             base_document.update(self._static_fields)
 
+            # Add additional device and entity fields
+            base_document.update(self._state_to_entity_details(state))
+
             return base_document
 
     class Publisher:
@@ -573,26 +605,24 @@ class Pipeline:
 
         def __init__(
             self,
-            hass: HomeAssistant,
             gateway: ElasticsearchGateway,
             log: Logger = BASE_LOGGER,
         ) -> None:
             """Initialize the publisher."""
             self._logger = log
-            self._hass = hass
             self._gateway = gateway
 
-        async def async_init():
+        async def async_init(self) -> None:
             """Initialize the publisher."""
 
         def _format_datastream_name(
             self,
-            type: str,
-            dataset: str,
-            namespace: str,
+            datastream_type: str,
+            datastream_dataset: str,
+            datastream_namespace: str,
         ) -> str:
             """Format the datastream name."""
-            return f"{type}-{dataset}-{namespace}"
+            return f"{datastream_type}-{datastream_dataset}-{datastream_namespace}"
 
         def _add_action_and_meta_data(self, document: dict) -> dict:
             """Prepare the document for insertion into Elasticsearch."""
@@ -600,9 +630,9 @@ class Pipeline:
             return {
                 "_op_type": "create",
                 "_index": self._format_datastream_name(
-                    type=document["datastream"]["type"],
-                    dataset=document["datastream"]["dataset"],
-                    namespace=document["datastream"]["namespace"],
+                    datastream_type=document["datastream"]["type"],
+                    datastream_dataset=document["datastream"]["dataset"],
+                    datastream_namespace=document["datastream"]["namespace"],
                 ),
                 "_source": document,
             }
