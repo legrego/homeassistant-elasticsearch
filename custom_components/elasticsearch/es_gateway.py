@@ -34,8 +34,8 @@ class ElasticsearchGateway(ABC):
 
     def __init__(
         self,
+        hass: HomeAssistant,
         log: Logger = BASE_LOGGER,
-        hass: HomeAssistant = None,
         url: str | None = None,
         username: str | None = None,
         password: str | None = None,
@@ -276,6 +276,11 @@ class ElasticsearchGateway(ABC):
             raise convert_es_error(msg, err) from err
 
     @abstractmethod
+    async def bulk(self, body: list[dict]) -> dict:
+        """Perform a bulk operation."""
+        # pragma: no cover
+
+    @abstractmethod
     async def _has_required_privileges(self, required_privileges: dict) -> bool:
         pass  # pragma: no cover
 
@@ -344,6 +349,10 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
 
         return SetEncoder()
 
+    async def bulk(self, body: list[dict]) -> dict:
+        """Perform a bulk operation."""
+        # return await self.client.bulk(operations=body)
+
 
 class Elasticsearch7Gateway(ElasticsearchGateway):
     """Encapsulates Elasticsearch operations."""
@@ -387,6 +396,22 @@ class Elasticsearch7Gateway(ElasticsearchGateway):
                 return JSONSerializer7.default(self, data)
 
         return SetEncoder()
+
+    async def bulk(self, body: list[dict]) -> dict:
+        """Wrap event publishing.
+
+        Workaround for elasticsearch_async not supporting bulk operations.
+        """
+
+        from elasticsearch7.exceptions import ElasticsearchException
+        from elasticsearch7.helpers import async_bulk
+
+        try:
+            bulk_response = await async_bulk(self.client, actions)
+            self._logger.debug("Elasticsearch bulk response: %s", str(bulk_response))
+            self._logger.info("Publish Succeeded")
+        except ElasticsearchException as err:
+            self._logger.exception("Error publishing documents to Elasticsearch: %s", err)
 
 
 class ConnectionMonitor:

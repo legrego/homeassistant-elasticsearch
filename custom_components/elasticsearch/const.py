@@ -1,3 +1,5 @@
+from enum import Enum
+
 """constants."""
 
 DOMAIN: str = "elasticsearch"
@@ -48,6 +50,10 @@ PUBLISH_REASON_POLLING: str = "Polling"
 PUBLISH_REASON_STATE_CHANGE: str = "State change"
 PUBLISH_REASON_ATTR_CHANGE: str = "Attribute change"
 
+STATE_CHANGE_TYPE_VALUE: str = PUBLISH_REASON_STATE_CHANGE
+STATE_CHANGE_TYPE_ATTR: str = PUBLISH_REASON_ATTR_CHANGE
+
+
 INDEX_MODE_LEGACY: str = "index"
 INDEX_MODE_DATASTREAM: str = "datastream"
 
@@ -67,6 +73,13 @@ ES_CHECK_PERMISSIONS_DATASTREAM: dict = {
         },
     ],
 }
+
+class StateChangeType(Enum):
+    """Elasticsearch State Change Types constants."""
+
+    STATE = "STATE"
+    ATTRIBUTE = "ATTRIBUTE"
+    NO_CHANGE = "POLLING"
 
 
 class CAPABILITIES:
