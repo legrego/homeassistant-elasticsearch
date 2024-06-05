@@ -30,7 +30,6 @@ pytest-homeassistant-custom-component = "==0.13.125"
 mock = ">4.0.0"
 jsondiff = "*"
 
-
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
