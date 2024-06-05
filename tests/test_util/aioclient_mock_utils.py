@@ -1,3 +1,4 @@
+# type: ignore  # noqa: PGH003
 """Utilities for working with the AIOClient Mock."""
 
 import json
@@ -27,9 +28,7 @@ def extract_es_bulk_requests(aioclient_mock: AiohttpClientMocker) -> list[MockCa
     for call in aioclient_mock.mock_calls:
         (method, url, data, headers) = cast(tuple[str, URL, dict, dict], call)
         if method == "POST" and url.path.endswith("/_bulk"):
-            output = []
-            for payload in data.decode().rstrip().split("\n"):
-                output.append(json.loads(payload))
+            output = [json.loads(payload) for payload in data.decode().rstrip().split("\n")]
 
             bulk_requests.append(MockCall(method, url, output, headers))
 
@@ -47,9 +46,7 @@ def extract_es_modern_index_template_requests(
     for call in aioclient_mock.mock_calls:
         (method, url, data, headers) = cast(tuple[str, URL, dict, dict], call)
         if method == "PUT" and "/_index_template" in url.path:
-            output = []
-            for payload in data.decode().rstrip().split("\n"):
-                output.append(json.loads(payload))
+            output = [json.loads(payload) for payload in data.decode().rstrip().split("\n")]
 
             bulk_requests.append(MockCall(method, url, output, headers))
 
@@ -67,9 +64,7 @@ def extract_es_legacy_index_template_requests(
     for call in aioclient_mock.mock_calls:
         (method, url, data, headers) = cast(tuple[str, URL, dict, dict], call)
         if method == "PUT" and "/_template" in url.path:
-            output = []
-            for payload in data.decode().rstrip().split("\n"):
-                output.append(json.loads(payload))
+            output = [json.loads(payload) for payload in data.decode().rstrip().split("\n")]
 
             bulk_requests.append(MockCall(method, url, output, headers))
 
@@ -87,9 +82,7 @@ def extract_es_ilm_template_requests(
     for call in aioclient_mock.mock_calls:
         (method, url, data, headers) = cast(tuple[str, URL, dict, dict], call)
         if method == "PUT" and "/_ilm/policy" in url.path:
-            output = []
-            for payload in data.decode().rstrip().split("\n"):
-                output.append(json.loads(payload))
+            output = [json.loads(payload) for payload in data.decode().rstrip().split("\n")]
 
             bulk_requests.append(MockCall(method, url, output, headers))
 
@@ -107,9 +100,7 @@ def extract_es_modern_index_mapping_requests(
     for call in aioclient_mock.mock_calls:
         (method, url, data, headers) = cast(tuple[str, URL, dict, dict], call)
         if method == "PUT" and "/_mapping" in url.path:
-            output = []
-            for payload in data.decode().rstrip().split("\n"):
-                output.append(json.loads(payload))
+            output = [json.loads(payload) for payload in data.decode().rstrip().split("\n")]
 
             bulk_requests.append(MockCall(method, url, output, headers))
 

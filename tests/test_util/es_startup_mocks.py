@@ -1,3 +1,4 @@
+# type: ignore  # noqa: PGH003
 """ES Startup Mocks."""
 
 from elasticsearch.const import (
@@ -5,7 +6,7 @@ from elasticsearch.const import (
     DATASTREAM_METRICS_ILM_POLICY_NAME,
     DATASTREAM_TYPE,
 )
-from homeassistant.const import CONF_URL, CONTENT_TYPE_JSON
+from homeassistant.const import CONTENT_TYPE_JSON
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
 from custom_components.elasticsearch.config_flow import (
@@ -23,7 +24,7 @@ from tests.const import (
     CLUSTER_INFO_RESPONSE_BODY,
     CLUSTER_INFO_SERVERLESS_RESPONSE_BODY,
     CLUSTER_INFO_UNSUPPORTED_RESPONSE_BODY,
-    MOCK_COMPLEX_LEGACY_CONFIG,
+    MOCK_ELASTICSEARCH_URL,
 )
 
 
@@ -31,33 +32,33 @@ from tests.const import (
 # We need a different mechanism for configuring the mock cluster for all of the different test scenarios.
 def mock_es_initialization(
     aioclient_mock: AiohttpClientMocker,
-    url=MOCK_COMPLEX_LEGACY_CONFIG.get(CONF_URL),
-    mock_template_setup=True,
-    mock_modern_template_setup=True,
-    mock_modern_template_update=False,
-    mock_modern_template_error=False,
-    mock_template_update=False,
-    mock_template_error=False,
-    mock_index_creation=True,
-    mock_health_check=True,
-    mock_ilm_setup=True,
-    mock_ilm_update=False,
-    mock_mapping_dynamic_strict=False,
-    mock_mapping_dynamic_false=False,
-    mock_serverless_version=False,
-    mock_unsupported_version=False,
-    mock_authentication_error=False,
-    mock_legacy_index_authorization_error=False,
-    mock_modern_datastream_authorization_error=False,
-    mock_connection_error=False,
-    mock_v88_cluster=False,
-    mock_v80_cluster=False,
-    mock_v711_cluster=False,
-    mock_v717_cluster=False,
-    mock_v811_cluster=False,
-    alias_name=DEFAULT_ALIAS,
-    index_format=DEFAULT_INDEX_FORMAT,
-    ilm_policy_name=DEFAULT_ILM_POLICY_NAME,
+    url: str = MOCK_ELASTICSEARCH_URL,
+    mock_template_setup: bool = True,
+    mock_modern_template_setup: bool = True,
+    mock_modern_template_update: bool = False,
+    mock_modern_template_error: bool = False,
+    mock_template_update: bool = False,
+    mock_template_error: bool = False,
+    mock_index_creation: bool = True,
+    mock_health_check: bool = True,
+    mock_ilm_setup: bool = True,
+    mock_ilm_update: bool = False,
+    mock_mapping_dynamic_strict: bool = False,
+    mock_mapping_dynamic_false: bool = False,
+    mock_serverless_version: bool = False,
+    mock_unsupported_version: bool = False,
+    mock_authentication_error: bool = False,
+    mock_legacy_index_authorization_error: bool = False,
+    mock_modern_datastream_authorization_error: bool = False,
+    mock_connection_error: bool = False,
+    mock_v88_cluster: bool = False,
+    mock_v80_cluster: bool = False,
+    mock_v711_cluster: bool = False,
+    mock_v717_cluster: bool = False,
+    mock_v811_cluster: bool = False,
+    alias_name: str = DEFAULT_ALIAS,
+    index_format: str = DEFAULT_INDEX_FORMAT,
+    ilm_policy_name: str = DEFAULT_ILM_POLICY_NAME,
 ):
     """Mock for ES initialization flow."""
 
@@ -240,7 +241,7 @@ def mock_es_initialization(
                         {
                             "type": "resource_not_found_exception",
                             "reason": "index template matching [metrics-homeassistant] not found",
-                        }
+                        },
                     ],
                     "type": "resource_not_found_exception",
                     "reason": "index template matching [metrics-homeassistant] not found",
@@ -361,7 +362,7 @@ def mock_es_initialization(
                     "mappings": {
                         "dynamic": "strict",
                     },
-                }
+                },
             },
         )
         aioclient_mock.put(
@@ -380,6 +381,6 @@ def mock_es_initialization(
                     "mappings": {
                         "dynamic": "false",
                     },
-                }
+                },
             },
         )

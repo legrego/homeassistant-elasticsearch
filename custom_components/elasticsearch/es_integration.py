@@ -1,5 +1,7 @@
 """Support for sending event data to an Elasticsearch cluster."""
 
+from logging import Logger
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
@@ -15,7 +17,7 @@ from .logger import LOGGER as BASE_LOGGER
 class ElasticIntegration:
     """Integration for publishing entity state change events to Elasticsearch."""
 
-    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry, log=BASE_LOGGER):
+    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry, log: Logger = BASE_LOGGER) -> None:
         """Integration initialization."""
 
         self._hass = hass
@@ -35,10 +37,8 @@ class ElasticIntegration:
         self._publisher = DocumentPublisher(log=self._logger, **publisher_parameters)
 
     # TODO investigate helpers.event.async_call_later()
-    async def async_init(self):
+    async def async_init(self) -> None:
         """Async init procedure."""
-
-        # Include the title of the config_entry we are running under
 
         try:
             await self._gateway.async_init()
@@ -48,18 +48,19 @@ class ElasticIntegration:
             await self._publisher.async_init()
 
         except Exception as err:
+            self._logger.exception("Error initializing integration")
             try:
                 self._publisher.stop_publisher()
                 await self._gateway.stop()
-            except Exception as shutdown_err:
-                self._logger.error(
+            except Exception:
+                self._logger.exception(
                     "Error shutting down gateway following failed initialization",
-                    shutdown_err,
                 )
 
-            raise convert_es_error("Failed to initialize integration", err) from err
+            msg = "Failed to initialize integration"
+            raise convert_es_error(msg, err) from err
 
-    async def async_shutdown(self, config_entry: ConfigEntry):  # pylint disable=unused-argument
+    async def async_shutdown(self) -> bool:  # pylint disable=unused-argument
         """Async shutdown procedure."""
         self._logger.debug("async_shutdown: starting shutdown")
         self._publisher.stop_publisher()
@@ -67,7 +68,7 @@ class ElasticIntegration:
         self._logger.debug("async_shutdown: shutdown complete")
         return True
 
-    def build_gateway_parameters(self, config_entry):
+    def build_gateway_parameters(self, config_entry: ConfigEntry) -> dict:
         """Build the parameters for the Elasticsearch gateway."""
         return {
             "hass": self._hass,
@@ -82,7 +83,7 @@ class ElasticIntegration:
             "use_connection_monitor": config_entry.data.get("use_connection_monitor", True),
         }
 
-    def build_index_manager_parameters(self, config_entry):
+    def build_index_manager_parameters(self, config_entry: ConfigEntry) -> dict:
         """Build the parameters for the Elasticsearch index manager."""
         return {
             "hass": self._hass,
@@ -90,6 +91,6 @@ class ElasticIntegration:
             "gateway": self._gateway,
         }
 
-    def build_publisher_parameters(self, config_entry):
+    def build_publisher_parameters(self, config_entry: ConfigEntry) -> dict:
         """Build the parameters for the Elasticsearch document publisher."""
         return {"hass": self._hass, "config_entry": config_entry, "gateway": self._gateway}

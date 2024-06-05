@@ -53,7 +53,7 @@ class DocumentCreator:
         self._entity_details = EntityDetails(hass)
         self._static_v1doc_properties: dict | None = None
         self._static_v2doc_properties: dict | None = None
-        self._serializer = Elasticsearch7Gateway._new_encoder()
+        self._serializer = Elasticsearch7Gateway.new_encoder()
         self._system_info: SystemInfo = SystemInfo(hass)
         self._hass = hass
 
@@ -66,7 +66,7 @@ class DocumentCreator:
 
         await self._populate_static_doc_properties()
 
-    async def _populate_static_doc_properties(self) -> dict:
+    async def _populate_static_doc_properties(self) -> None:
         hass_config = self._hass.config
 
         shared_properties = {
@@ -122,7 +122,7 @@ class DocumentCreator:
             if orig_key in SKIP_ATTRIBUTES:
                 continue
 
-            key = self.normalize_attribute_name(orig_key)
+            key = DocumentCreator.normalize_attribute_name(orig_key)
             value = orig_value
 
             # coerce set to list. ES does not handle sets natively
@@ -191,7 +191,9 @@ class DocumentCreator:
             "state.class": entity_capabilities.get("state_class"),
         }
 
-        entity_additions = {k: str(v) for k, v in entity_additions.items() if (v is not None and v != "None" and len(v) != 0)}
+        entity_additions = {
+            k: str(v) for k, v in entity_additions.items() if (v is not None and v != "None" and len(v) != 0)
+        }
 
         device = entity_details.device
         device_floor = entity_details.device_floor
@@ -210,9 +212,7 @@ class DocumentCreator:
         }
 
         device_additions = {
-            k: str(v)
-            for k, v in device_additions.items()
-            if (v is not None and v != "None" and len(v) != 0)
+            k: str(v) for k, v in device_additions.items() if (v is not None and v != "None" and len(v) != 0)
         }
 
         return {**entity_additions, "device": {**device_additions}}
@@ -245,22 +245,26 @@ class DocumentCreator:
             dict: A dictionary representing the value in version 2 format. i.e. {value: "thisValue", valueas: {<type>: "thisCoercedValue"}}
 
         """
-        additions = {"valueas": {}}
+        additions: dict = {"valueas": {}}
 
         _state = state.state
 
         if isinstance(_state, str) and self.try_state_as_boolean(state):
             additions["valueas"]["boolean"] = self.state_as_boolean(state)
 
-        elif isinstance(_state, str) and self.try_state_as_number(state) and self.is_valid_number(state_helper.state_as_number(state)):
+        elif (
+            isinstance(_state, str)
+            and self.try_state_as_number(state)
+            and self.is_valid_number(state_helper.state_as_number(state))
+        ):
             additions["valueas"]["float"] = state_helper.state_as_number(state)
 
         elif isinstance(_state, str) and self.try_state_as_datetime(state):
-            _tempState = self.state_as_datetime(state)
+            _temp_state = self.state_as_datetime(state)
 
-            additions["valueas"]["datetime"] = _tempState.isoformat()
-            additions["valueas"]["date"] = _tempState.date().isoformat()
-            additions["valueas"]["time"] = _tempState.time().isoformat()
+            additions["valueas"]["datetime"] = _temp_state.isoformat()
+            additions["valueas"]["date"] = _temp_state.date().isoformat()
+            additions["valueas"]["time"] = _temp_state.time().isoformat()
 
         else:
             additions["valueas"]["string"] = _state
@@ -320,10 +324,7 @@ class DocumentCreator:
     def state_to_document(self, state: State, time: datetime, reason: str, version: int = 2) -> dict:
         """Convert entity state to ES document."""
 
-        if time.tzinfo is None:
-            time_tz = time.astimezone(utc)
-        else:
-            time_tz = time
+        time_tz = time.astimezone(utc) if time.tzinfo is None else time
 
         attributes = self._state_to_attributes(state)
 
@@ -347,15 +348,15 @@ class DocumentCreator:
         )
         """
 
-        updateType = "change"
+        update_type = "change"
         if reason == PUBLISH_REASON_POLLING:
-            updateType = "info"
+            update_type = "info"
 
         document_body = {
             "@timestamp": time_tz.isoformat(),
             "event": {
                 "action": reason,
-                "type": updateType,
+                "type": update_type,
                 "kind": "event",
             },
         }
@@ -374,7 +375,7 @@ class DocumentCreator:
             if self._static_v1doc_properties is not None:
                 document_body.update(self._static_v1doc_properties)
 
-        if version == 2:
+        if version == 2:  # noqa: PLR2004
             document_body.update(self._state_to_document_v2(state, entity, time_tz))
 
             if self._static_v2doc_properties is not None:
@@ -383,7 +384,8 @@ class DocumentCreator:
         return document_body
 
     @lru_cache(maxsize=4096)
-    def normalize_attribute_name(self, attribute_name: str) -> str:
+    @staticmethod
+    def normalize_attribute_name(attribute_name: str) -> str:
         """Create an ECS-compliant version of the provided attribute name."""
         # Normalize to closest ASCII equivalent where possible
         normalized_string = unicodedata.normalize("NFKD", attribute_name).encode("ascii", "ignore").decode()
@@ -396,45 +398,48 @@ class DocumentCreator:
         return replaced_string.lower()
 
     @classmethod
-    def is_valid_number(self, number) -> bool:
+    def is_valid_number(cls, number: float) -> bool:
         """Determine if the passed number is valid for Elasticsearch."""
         is_infinity = isinf(number)
-        is_nan = number != number  # pylint: disable=comparison-with-itself
+        is_nan = number != number  # pylint: disable=comparison-with-itself  # noqa: PLR0124
         return not is_infinity and not is_nan
 
     @classmethod
-    def try_state_as_number(self, state: State) -> bool:
+    def try_state_as_number(cls, state: State) -> bool:
         """Try to coerce our state to a number and return true if we can, false if we can't."""
 
         try:
-            self.state_as_number(state)
-            return True
+            cls.state_as_number(state)
         except ValueError:
             return False
+        else:
+            return True
 
     @classmethod
-    def state_as_number(self, state: State) -> bool:
+    def state_as_number(cls, state: State) -> float:
         """Try to coerce our state to a number."""
 
         number = state_helper.state_as_number(state)
 
-        if not self.is_valid_number(number):
-            raise ValueError("Could not coerce state to a number.")
+        if not cls.is_valid_number(number):
+            msg = "Could not coerce state to a number."
+            raise ValueError(msg)
 
         return number
 
     @classmethod
-    def try_state_as_boolean(self, state: State) -> bool:
+    def try_state_as_boolean(cls, state: State) -> bool:
         """Try to coerce our state to a boolean and return true if we can, false if we can't."""
 
         try:
-            self.state_as_boolean(state)
-            return True
+            cls.state_as_boolean(state)
         except ValueError:
             return False
+        else:
+            return True
 
     @classmethod
-    def state_as_boolean(self, state: State) -> bool:
+    def state_as_boolean(cls, state: State) -> bool:
         """Try to coerce our state to a boolean."""
         # copied from helper state_as_number function
         if state.state in (
@@ -457,20 +462,22 @@ class DocumentCreator:
         ):
             return False
 
-        raise ValueError("Could not coerce state to a boolean.")
+        msg = "Could not coerce state to a boolean."
+        raise ValueError(msg)
 
     @classmethod
-    def try_state_as_datetime(self, state: State) -> datetime:
+    def try_state_as_datetime(cls, state: State) -> datetime | bool:
         """Try to coerce our state to a datetime and return True if we can, false if we can't."""
 
         try:
-            self.state_as_datetime(state)
-            return True
+            cls.state_as_datetime(state)
         except ValueError:
             return False
+        else:
+            return True
 
     @classmethod
-    def state_as_datetime(self, state: State) -> datetime:
+    def state_as_datetime(cls, state: State) -> datetime:
         """Try to coerce our state to a datetime."""
 
         parsed = dt_util.parse_datetime(state.state)
@@ -480,6 +487,7 @@ class DocumentCreator:
         # parsed = dt_util.parse_datetime(_state, raise_on_error=True)
 
         if parsed is None:
-            raise ValueError("Could not coerce state to a datetime.")
+            msg = "Could not coerce state to a datetime."
+            raise ValueError(msg)
 
         return parsed

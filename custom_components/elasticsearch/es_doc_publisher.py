@@ -4,6 +4,7 @@ import asyncio
 import time
 from datetime import datetime
 from functools import lru_cache
+from logging import Logger
 from queue import Queue
 
 from homeassistant.config_entries import ConfigEntry
@@ -53,8 +54,8 @@ class DocumentPublisher:
         gateway: ElasticsearchGateway,
         hass: HomeAssistant,
         config_entry: ConfigEntry,
-        log=BASE_LOGGER,
-    ):
+        log: Logger = BASE_LOGGER,
+    ) -> None:
         """Initialize the publisher."""
 
         self._logger = log
@@ -63,6 +64,7 @@ class DocumentPublisher:
         self.publish_enabled = config_entry.options.get(CONF_PUBLISH_ENABLED)
         self.publish_active = False
         self.remove_state_change_listener = None
+        self._publish_timer_ref = None
 
         self.publish_queue = None
 
@@ -77,14 +79,13 @@ class DocumentPublisher:
         self._gateway: ElasticsearchGateway = gateway
         self._hass: HomeAssistant = hass
 
-        self._destination_type: str = config_entry.data.get(CONF_INDEX_MODE)
+        self._destination_type: str = str(config_entry.data.get(CONF_INDEX_MODE))
 
         if self._destination_type == INDEX_MODE_LEGACY:
             self.legacy_index_name = config_entry.options.get(CONF_ALIAS) + VERSION_SUFFIX
 
         self._publish_frequency = config_entry.options.get(CONF_PUBLISH_FREQUENCY)
         self._publish_mode = config_entry.options.get(CONF_PUBLISH_MODE)
-        self._publish_timer_ref = None
         self._tags = config_entry.options.get(CONF_TAGS)
 
         self._excluded_domains = config_entry.options.get(CONF_EXCLUDED_DOMAINS)
@@ -104,7 +105,7 @@ class DocumentPublisher:
         if self._included_entities:
             self._logger.debug("Including the following entities: %s", str(self._included_entities))
 
-        def elastic_event_listener(event: Event):
+        def elastic_event_listener(event: Event) -> None:
             """Listen for new messages on the bus and queue them for send."""
             state: State = event.data.get("new_state")
             old_state: State = event.data.get("old_state")
@@ -113,24 +114,23 @@ class DocumentPublisher:
 
             self.enqueue_state(state, event, reason)
 
-        self.remove_state_change_listener = hass.bus.async_listen(
-            EVENT_STATE_CHANGED, elastic_event_listener
-        )
+        self.remove_state_change_listener = hass.bus.async_listen(EVENT_STATE_CHANGED, elastic_event_listener)
 
         @callback
-        def hass_close_event_listener(event: Event):
+        def hass_close_event_listener() -> None:
             self._logger.debug("Detected Home Assistant Close Event.")
             self.stop_publisher()
 
         self.remove_hass_close_listener = hass.bus.async_listen_once(
-            EVENT_HOMEASSISTANT_CLOSE, hass_close_event_listener
+            EVENT_HOMEASSISTANT_CLOSE,
+            hass_close_event_listener,  # type: ignore
         )
 
         self._document_creator = DocumentCreator(log=log, hass=hass, config_entry=config_entry)
 
         self._last_publish_time = None
 
-    async def async_init(self):
+    async def async_init(self) -> None:
         """Perform async initialization for the ES document publisher."""
         if not self.publish_enabled:
             self._logger.debug("Aborting async_init: publish is not enabled")
@@ -142,13 +142,13 @@ class DocumentPublisher:
         self._start_publish_timer()
         self._logger.debug("async_init: done")
 
-    def stop_publisher(self):
+    def stop_publisher(self) -> None:
         """Perform shutdown for ES Document Publisher."""
         self._logger.info("Stopping document publisher")
 
         if not self.publish_active:
             self._logger.debug(
-                "Publisher is stopping but publishing documents was not active before stopping"
+                "Publisher is stopping but publishing documents was not active before stopping",
             )
 
         self.publish_active = False
@@ -164,21 +164,21 @@ class DocumentPublisher:
 
         self._logger.info("Stopped document publisher")
 
-    def queue_size(self):
+    def queue_size(self) -> int:
         """Return the approximate queue size."""
         return self.publish_queue.qsize()
 
-    def enqueue_state(self, state: State, event: Event, reason: str):
+    def enqueue_state(self, state: State, event: Event, reason: str) -> bool | None:
         """Queue up the provided state change."""
 
         domain = state.domain
         entity_id = state.entity_id
 
         if not self._should_publish_entity_passes_filter(entity_id):
-            return
+            return None
 
         if not self._should_publish_state_change_matches_mode(reason, state.entity_id):
-            return
+            return None
 
         if not self.publish_enabled:
             self._logger.warning(
@@ -189,14 +189,15 @@ class DocumentPublisher:
             return False
 
         self.publish_queue.put((state, event, reason))
+        return None
 
-    def empty_queue(self):
+    def empty_queue(self) -> None:
         """Empty the publish queue."""
         self.publish_queue = Queue[
             tuple[State, Event, str]
         ]()  # Initialize a new queue and let the runtime perform garbage collection.
 
-    async def async_do_publish(self):
+    async def async_do_publish(self) -> None:
         """Publish all queued documents to the Elasticsearch cluster."""
         from elasticsearch7.exceptions import ElasticsearchException
 
@@ -223,18 +224,10 @@ class DocumentPublisher:
             all_states = self._hass.states.async_all()
             reason = PUBLISH_REASON_POLLING
             for state in all_states:
-                if (
-                    state.entity_id not in entity_counts
-                    and self._should_publish_entity_passes_filter(state.entity_id)
+                if state.entity_id not in entity_counts and self._should_publish_entity_passes_filter(
+                    state.entity_id,
                 ):
-                    actions.append(
-                        self._state_to_bulk_action(state, self._last_publish_time, reason)
-                    )
-
-        # Check for duplicate entries
-        # The timestamp and object_id field are combined to generate the Elasticsearch document ID
-        # so we check and log warnings for duplicates
-        # self.check_duplicate_entries(actions)
+                    actions.append(self._state_to_bulk_action(state, self._last_publish_time, reason))
 
         self._logger.info("Publishing %i documents to Elasticsearch", len(actions))
 
@@ -244,7 +237,7 @@ class DocumentPublisher:
             self._logger.exception("Error publishing documents to Elasticsearch: %s", err)
         return
 
-    async def async_bulk_sync_wrapper(self, actions):
+    async def async_bulk_sync_wrapper(self, actions) -> None:
         """Wrap event publishing.
 
         Workaround for elasticsearch_async not supporting bulk operations.
@@ -260,33 +253,27 @@ class DocumentPublisher:
         except ElasticsearchException as err:
             self._logger.exception("Error publishing documents to Elasticsearch: %s", err)
 
-    def _determine_change_type(self, new_state: State, old_state: State = None):
+    def _determine_change_type(self, new_state: State, old_state: State) -> str | None:
         if new_state is None:
-            return
+            return None
 
         elif old_state is None:
             reason = PUBLISH_REASON_STATE_CHANGE
         else:  # state and old_state are both available
             state_value_changed = old_state.state != new_state.state
 
-            if state_value_changed:
-                reason = PUBLISH_REASON_STATE_CHANGE
-            else:
-                reason = PUBLISH_REASON_ATTR_CHANGE
+            reason = PUBLISH_REASON_STATE_CHANGE if state_value_changed else PUBLISH_REASON_ATTR_CHANGE
 
         return reason
 
-    def _should_publish_state_change_matches_mode(self, change_type, entity_id):
+    def _should_publish_state_change_matches_mode(self, change_type, entity_id) -> bool:
         """Determine if a state change should be published."""
 
         # Publish mode is All or Any Changes, so publish everything!
         if self._publish_mode != PUBLISH_MODE_STATE_CHANGES:
             return True
 
-        if (
-            change_type == PUBLISH_REASON_ATTR_CHANGE
-            and self._publish_mode == PUBLISH_MODE_STATE_CHANGES
-        ):
+        if change_type == PUBLISH_REASON_ATTR_CHANGE and self._publish_mode == PUBLISH_MODE_STATE_CHANGES:
             self._logger.debug(
                 "Excluding event state change for %s because the value did not change and publish mode is set to state changes only.",
                 entity_id,
@@ -295,7 +282,7 @@ class DocumentPublisher:
 
         return True
 
-    def _should_publish_entity_passes_filter(self, entity_id: str):
+    def _should_publish_entity_passes_filter(self, entity_id: str) -> bool:
         """Determine if a state change should be published."""
 
         domain = entity_id.split(".")[0]
@@ -332,7 +319,7 @@ class DocumentPublisher:
                 return False
             return True
 
-    def _state_to_bulk_action(self, state: State, time: datetime, reason: str):
+    def _state_to_bulk_action(self, state: State, time: datetime, reason: str) -> dict:
         """Create a bulk action from the given state object."""
 
         if self._destination_type == INDEX_MODE_DATASTREAM:
@@ -373,17 +360,20 @@ class DocumentPublisher:
                 # Index Template likely wasn't created properly, and we should bail.
                 "require_alias": True,
             }
+        return None
 
-    def _start_publish_timer(self):
+    def _start_publish_timer(self) -> None:
         """Initialize the publish timer."""
         if self._config_entry:
             self._publish_timer_ref = self._config_entry.async_create_background_task(
-                self._hass, self._publish_queue_timer(), "publish_queue_timer"
+                self._hass,
+                self._publish_queue_timer(),
+                "publish_queue_timer",
             )
         else:
             self._publish_timer_ref = asyncio.ensure_future(self._publish_queue_timer())
 
-    def _has_entries_to_publish(self):
+    def _has_entries_to_publish(self) -> bool:
         """Determine if now is a good time to publish documents."""
         if self.publish_queue.empty():
             self._logger.debug("Nothing to publish")
@@ -393,18 +383,17 @@ class DocumentPublisher:
 
     @classmethod
     @lru_cache(maxsize=128)
-    def _sanitize_datastream_name(
-        self, dataset: str, type: str = "metrics", namespace: str = "default"
-    ):
+    def _sanitize_datastream_name(cls, dataset: str, type: str = "metrics", namespace: str = "default"):
         """Sanitize a datastream name."""
 
         full_datastream_name = f"{type}-{dataset}-{namespace}"
 
-        if self._datastream_has_fatal_name(full_datastream_name):
-            raise ElasticException("Invalid / unfixable datastream name: %s", full_datastream_name)
+        if cls._datastream_has_fatal_name(full_datastream_name):
+            msg = "Invalid / unfixable datastream name: %s"
+            raise ElasticException(msg, full_datastream_name)
 
-        if self._datastream_has_unsafe_name(full_datastream_name):
-            self._logger.debug(
+        if cls._datastream_has_unsafe_name(full_datastream_name):
+            cls._logger.debug(
                 "Datastream name %s is unsafe, attempting to sanitize.",
                 full_datastream_name,
             )
@@ -426,26 +415,27 @@ class DocumentPublisher:
 
         full_sanitized_datastream_name = f"{type}-{sanitized_dataset}-{namespace}"
         # if the datastream still has an unsafe name after sanitization, throw an error
-        if self._datastream_has_unsafe_name(full_sanitized_datastream_name):
+        if cls._datastream_has_unsafe_name(full_sanitized_datastream_name):
+            msg = "Invalid / unfixable datastream name: %s"
             raise ElasticException(
-                "Invalid / unfixable datastream name: %s",
+                msg,
                 full_sanitized_datastream_name,
             )
 
         return (type, sanitized_dataset, namespace, full_sanitized_datastream_name)
 
     @classmethod
-    def _datastream_has_unsafe_name(self, name: str):
+    def _datastream_has_unsafe_name(cls, name: str) -> bool:
         """Check if a datastream name is unsafe."""
 
-        if self._datastream_has_fatal_name(name):
+        if cls._datastream_has_fatal_name(name):
             return True
 
         invalid_chars = r"\\/*?\":<>|,#+"
         if name != name.translate(str.maketrans("", "", invalid_chars)):
             return True
 
-        if len(name) > 255:
+        if len(name) > 255:  # noqa: PLR2004
             return True
 
         # This happens when dataset is empty
@@ -461,7 +451,7 @@ class DocumentPublisher:
         return False
 
     @classmethod
-    def _datastream_has_fatal_name(self, name: str):
+    def _datastream_has_fatal_name(cls, name: str) -> bool:
         """Check if a datastream name is invalid."""
         if name in (".", ".."):
             return True
@@ -471,7 +461,7 @@ class DocumentPublisher:
 
         return False
 
-    async def _publish_queue_timer(self):
+    async def _publish_queue_timer(self) -> None:
         """Publish queue timer."""
         from elasticsearch7 import TransportError
 
@@ -489,9 +479,7 @@ class DocumentPublisher:
 
                 can_publish = self._gateway.active
 
-                should_publish = (
-                    self._has_entries_to_publish() or self._publish_mode == PUBLISH_MODE_ALL
-                )
+                should_publish = self._has_entries_to_publish() or self._publish_mode == PUBLISH_MODE_ALL
 
                 if time_to_publish and can_publish and should_publish:
                     try:
@@ -511,7 +499,7 @@ class DocumentPublisher:
                 if self.publish_active:
                     await asyncio.sleep(1)
 
-    def check_duplicate_entries(self, actions: list):
+    def check_duplicate_entries(self, actions: list) -> None:
         """Check for duplicate entries in the actions list."""
         duplicate_entries = {}
 

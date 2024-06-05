@@ -63,7 +63,7 @@ def freeze_location(hass: HomeAssistant):
 def mock_system_info():
     """Fixture to skip returning system info."""
 
-    async def get_system_info():
+    async def get_system_info() -> SystemInfoResult:
         return SystemInfoResult(
             version="2099.1.2",
             arch="Test Arch",
@@ -122,7 +122,7 @@ def reason():
 
 
 @pytest.fixture(autouse=True)
-def snapshot(snapshot):
+def snapshot(snapshot: SnapshotAssertion):
     """Provide a pre-configured snapshot object."""
 
     return snapshot.with_defaults(extension_class=JSONSnapshotExtension)
@@ -134,13 +134,15 @@ def freeze_time(freezer: FrozenDateTimeFactory):
     freezer.move_to(datetime(2023, 4, 12, 12, tzinfo=UTC))  # Monday
 
 
-@pytest.fixture()
+@pytest.fixture
 def standard_entity_state(
-    hass,
-    state,
-    attributes={},
+    hass: HomeAssistant,
+    state: str | float,
+    attributes: dict | None = None,
 ):
     """Create a standard entity state for testing."""
+    if attributes is None:
+        attributes = {}
     return MockEntityState(
         hass=hass,
         entity_id="counter.test_1",
@@ -151,8 +153,8 @@ def standard_entity_state(
     )
 
 
-@pytest.fixture(scope="function")
-def config_entry(hass: HomeAssistant, data, options):
+@pytest.fixture
+def config_entry(hass: HomeAssistant, data: dict, options: dict):
     """Create a mock config entry."""
     es_url = "http://localhost:9200"
 
@@ -173,13 +175,15 @@ def config_entry(hass: HomeAssistant, data, options):
     return entry
 
 
-@pytest.fixture()
+@pytest.fixture
 def uninitialized_gateway(hass: HomeAssistant, config_entry: MockConfigEntry):
     """Create an uninitialized gateway."""
-    return Elasticsearch7Gateway(**ElasticsearchGateway.build_gateway_parameters(hass=hass, config_entry=config_entry))
+    return Elasticsearch7Gateway(
+        **ElasticsearchGateway.build_gateway_parameters(hass=hass, config_entry=config_entry),
+    )
 
 
-@pytest.fixture()
+@pytest.fixture
 def uninitialized_publisher(
     config_entry: MockConfigEntry,
     uninitialized_gateway: ElasticsearchGateway,
@@ -193,7 +197,7 @@ def uninitialized_publisher(
     return publisher
 
 
-@pytest.fixture()
+@pytest.fixture
 async def initialized_publisher(
     config_entry: MockConfigEntry,
     initialized_gateway: ElasticsearchGateway,
@@ -209,7 +213,7 @@ async def initialized_publisher(
     publisher.stop_publisher()
 
 
-@pytest.fixture()
+@pytest.fixture
 async def initialized_gateway(
     hass: HomeAssistant,
     config_entry: MockConfigEntry,
@@ -217,7 +221,12 @@ async def initialized_gateway(
 ):
     """Create an uninitialized gateway."""
     gateway = Elasticsearch7Gateway(
-        **ElasticsearchGateway.build_gateway_parameters(hass=hass, config_entry=config_entry, minimum_privileges=None), use_connection_monitor=False
+        **ElasticsearchGateway.build_gateway_parameters(
+            hass=hass,
+            config_entry=config_entry,
+            minimum_privileges=None,
+        ),
+        use_connection_monitor=False,
     )
 
     mock_es_initialization(es_aioclient_mock, config_entry.data[CONF_URL])
@@ -233,13 +242,13 @@ async def initialized_gateway(
     await gateway.stop()
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 class Test_Unit_Tests:
     """Unit tests for the Elasticsearch Document Publisher."""
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio()
     @pytest.mark.parametrize(
-        "case,expected",
+        ("case", "expected"),
         [
             ("a_test_name", "a_test_name"),
             ("test-name", "test-name"),
@@ -268,14 +277,18 @@ class Test_Unit_Tests:
             with pytest.raises(ElasticException):
                 DocumentPublisher._sanitize_datastream_name(type="metrics", dataset=case, namespace="default")
         else:
-            type, dataset, namespace, full_name = DocumentPublisher._sanitize_datastream_name(type="metrics", dataset=case, namespace="default")
+            type, dataset, namespace, full_name = DocumentPublisher._sanitize_datastream_name(
+                type="metrics",
+                dataset=case,
+                namespace="default",
+            )
 
             assert dataset == expected
             assert {"dataset": case, "sanitized_dataset": dataset} == snapshot
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio()
     @pytest.mark.parametrize(
-        "case,expected",
+        ("case", "expected"),
         [("a" * 256, "a" * 239)],
     )
     async def test_sanitize_long_datastream_name(
@@ -291,14 +304,24 @@ class Test_Unit_Tests:
             with pytest.raises(ElasticException):
                 DocumentPublisher._sanitize_datastream_name(type="metrics", dataset=case, namespace="default")
         else:
-            type, dataset, namespace, full_name = DocumentPublisher._sanitize_datastream_name(type="metrics", dataset=case, namespace="default")
+            type, dataset, namespace, full_name = DocumentPublisher._sanitize_datastream_name(
+                type="metrics",
+                dataset=case,
+                namespace="default",
+            )
             assert dataset == expected
 
     class Test_Change_Mode:
         """Test change mode functions."""
 
-        @pytest.mark.asyncio
-        async def test_determine_change_type(self, hass, data, options, uninitialized_publisher: DocumentPublisher):
+        @pytest.mark.asyncio()
+        async def test_determine_change_type(
+            self,
+            hass: HomeAssistant,
+            data: dict,
+            options: dict,
+            uninitialized_publisher: DocumentPublisher,
+        ):
             """Test entity change is published."""
             assert (
                 uninitialized_publisher._determine_change_type(
@@ -364,12 +387,12 @@ class Test_Unit_Tests:
         #     uninitialized_publisher: DocumentPublisher,
         # ):
 
-        @pytest.mark.asyncio
+        @pytest.mark.asyncio()
         async def test_queue_enqueue(
             self,
             data: None,
-            hass,
-            options,
+            hass: HomeAssistant,
+            options: dict,
             uninitialized_publisher: DocumentPublisher,
         ):
             """Test entity change is published."""
@@ -392,10 +415,10 @@ class Test_Unit_Tests:
             assert not uninitialized_publisher._has_entries_to_publish()
             assert uninitialized_publisher.queue_size() == 0
 
-        @pytest.mark.asyncio
+        @pytest.mark.asyncio()
         async def test_queue_empty(
             self,
-            hass,
+            hass: HomeAssistant,
             uninitialized_publisher: DocumentPublisher,
         ):
             """Test entity change is published."""
@@ -414,10 +437,10 @@ class Test_Unit_Tests:
 
             assert uninitialized_publisher.publish_queue.qsize() == 0
 
-        @pytest.mark.asyncio
+        @pytest.mark.asyncio()
         async def test_queue_has_entries_to_publish(
             self,
-            hass,
+            hass: HomeAssistant,
             uninitialized_publisher: DocumentPublisher,
         ):
             """Test entity change is published."""
@@ -436,9 +459,9 @@ class Test_Unit_Tests:
     class Test_Publishing_Filters:
         """Test publishing functions."""
 
-        @pytest.mark.asyncio  # fmt: skip
+        @pytest.mark.asyncio()  # fmt: skip
         @pytest.mark.parametrize(
-            "data, options, entity_id, expected",
+            ("data", "options", "entity_id", "expected"),
             [
                 ({CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"]}, "test.test_1", True),
                 ({CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"]}, "counter.test_1", False),
@@ -466,8 +489,7 @@ class Test_Unit_Tests:
                 ( {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_2"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_1", True),
                 ( {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_2"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_2", False),
                 ( {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_2"], CONF_EXCLUDED_DOMAINS: ["test"]}, "counter.test_1", False),
-                ( {CONF_INDEX_MODE: INDEX_MODE_DATASTREAM}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_2"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_2", False),
-            ]
+            ],
 
         )  # fmt: off
         async def test_publishing_datastream_filters(
@@ -489,9 +511,9 @@ class Test_Unit_Tests:
                 "should_publish": result,
             } == snapshot
 
-        @pytest.mark.asyncio  # fmt: skip
+        @pytest.mark.asyncio()  # fmt: skip
         @pytest.mark.parametrize(
-            "data, options, entity_id, expected",
+            ("data", "options", "entity_id", "expected"),
             [
                 ({CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_DOMAINS: ["test"]}, "test.test_1", True),
                 ({CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_ENTITIES: ["test.test_1"]}, "test.test_1", True),
@@ -511,11 +533,11 @@ class Test_Unit_Tests:
                 ( {CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_1", False),
                 ( {CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_2"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_1", True),
                 ( {CONF_INDEX_MODE: INDEX_MODE_LEGACY}, {CONF_INCLUDED_DOMAINS: ["test"], CONF_INCLUDED_ENTITIES: ["test.test_1"], CONF_EXCLUDED_ENTITIES: ["test.test_2"], CONF_EXCLUDED_DOMAINS: ["test"]}, "test.test_2", False),
-            ]
+            ],
 
         )  # fmt: off
         async def test_publishing_legacy_filters(
-            hass: HomeAssistant,
+            self: HomeAssistant,
             uninitialized_publisher: DocumentPublisher,
             entity_id: str,
             expected: bool,
@@ -534,7 +556,7 @@ class Test_Unit_Tests:
     class Test_Publisher_Document_Creation:
         """Test document creation functions."""
 
-        @pytest.mark.asyncio
+        @pytest.mark.asyncio()
         @pytest.mark.parametrize(
             "data",
             [
@@ -543,7 +565,7 @@ class Test_Unit_Tests:
             ],
         )
         @pytest.mark.parametrize(
-            "order,state,state_type,attributes,reason",
+            ("order", "state", "state_type", "attributes", "reason"),
             [
                 (0, 0.0, "float", {}, PUBLISH_REASON_ATTR_CHANGE),
                 (1, 0.0, "float", {}, PUBLISH_REASON_ATTR_CHANGE),
@@ -555,14 +577,14 @@ class Test_Unit_Tests:
         )
         async def test_state_to_bulk_action_via_uninitialized_publisher(
             self,
-            order,
-            data,
-            state,
-            state_type,
-            attributes,
-            reason,
+            order: int,
+            data: dict,
+            state: str | float,
+            state_type: str,
+            attributes: dict,
+            reason: str,
             uninitialized_publisher: DocumentPublisher,
-            standard_entity_state,
+            standard_entity_state: MockEntityState,
             snapshot: SnapshotAssertion,
         ):
             """Test state to bulk action."""
@@ -577,7 +599,7 @@ class Test_Unit_Tests:
                 "_bulk": result,
             } == snapshot
 
-        @pytest.mark.asyncio
+        @pytest.mark.asyncio()
         @pytest.mark.parametrize(
             "data",
             [
@@ -586,7 +608,7 @@ class Test_Unit_Tests:
             ],
         )
         @pytest.mark.parametrize(
-            "order,state,state_type,attributes,reason",
+            ("order", "state", "state_type", "attributes", "reason"),
             [
                 (0, 0.0, "float", {}, PUBLISH_REASON_ATTR_CHANGE),
                 (1, 0.0, "float", {}, PUBLISH_REASON_ATTR_CHANGE),
@@ -598,12 +620,12 @@ class Test_Unit_Tests:
         )
         async def test_state_to_bulk_action_via_initialized_publisher(
             self,
-            order,
-            data,
-            state,
-            state_type,
-            attributes,
-            reason,
+            order: int,
+            data: dict,
+            state: str | float,
+            state_type: str,
+            attributes: dict,
+            reason: str,
             initialized_publisher: DocumentPublisher,
             standard_entity_state,
             snapshot: SnapshotAssertion,
@@ -625,15 +647,15 @@ class Test_Benchmark_Tests:
     """Benchmark tests for the Elasticsearch Document Publisher."""
 
     @pytest.fixture(autouse=True)
-    def freeze_time(freezer: FrozenDateTimeFactory):
+    def freeze_time(self: FrozenDateTimeFactory):
         """Do not freeze time, override auto-use fixture."""
         return
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio()
     async def test_publishing_benchmark(
         self,
         hass: HomeAssistant,
-        state,
+        state: str | float,
         initialized_publisher: DocumentPublisher,
         es_aioclient_mock: AiohttpClientMocker,
     ):
@@ -668,7 +690,7 @@ class Test_Integration_Tests:
         """Test publishing functions."""
 
         # These are e2e tests, so we will need to mock the Elasticsearch Gateway and test the Document Publisher with it
-        @pytest.mark.asyncio
+        @pytest.mark.asyncio()
         @pytest.mark.parametrize(
             "options",
             [
@@ -684,7 +706,7 @@ class Test_Integration_Tests:
             ],
         )
         @pytest.mark.parametrize(
-            "order,state,state_type,attributes,reason",
+            ("order", "state", "state_type", "attributes", "reason"),
             [
                 (0, 0.0, "float", {}, PUBLISH_REASON_STATE_CHANGE),
                 (1, 0.0, "float", {}, PUBLISH_REASON_STATE_CHANGE),
@@ -696,13 +718,13 @@ class Test_Integration_Tests:
         )
         async def test_publishing_state_change(
             self,
-            data,
-            options,
-            order,
-            state,
-            state_type,
-            attributes,
-            reason,
+            data: dict,
+            options: dict,
+            order: int,
+            state: str | float,
+            state_type: str,
+            attributes: dict,
+            reason: str,
             initialized_publisher: DocumentPublisher,
             standard_entity_state: MockEntityState,
             es_aioclient_mock: AiohttpClientMocker,

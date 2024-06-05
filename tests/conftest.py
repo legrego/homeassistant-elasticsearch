@@ -1,3 +1,4 @@
+# type: ignore  # noqa: PGH003
 """Global fixtures for elastic integration."""
 # Fixtures allow you to replace functions with a Mock object. You can perform
 # many options via the Mock to reflect a particular behavior from the original
@@ -36,9 +37,7 @@ def mock_es_aiohttp_client():
 
     def create_session(*args, **kwargs):
         print(args)
-        session = mocker.create_session(get_running_loop())
-
-        return session
+        return mocker.create_session(get_running_loop())
 
     with mock.patch(
         "elasticsearch7._async.http_aiohttp.aiohttp.ClientSession",
@@ -57,9 +56,9 @@ def es_aioclient_mock():
 # This fixture enables loading custom integrations in all tests.
 # Remove to enable selective use of this fixture
 @pytest.fixture(autouse=True)
-def auto_enable_custom_integrations(enable_custom_integrations):
+def auto_enable_custom_integrations(enable_custom_integrations) -> None:
     """Auto enable custom integrations."""
-    yield
+    return
 
 
 # This fixture is used to prevent HomeAssistant from attempting to create and dismiss persistent
@@ -75,7 +74,7 @@ def skip_notifications_fixture():
         yield
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_config_entry(hass: HomeAssistant) -> MockConfigEntry:
     """Create a mock config entry and add it to hass."""
     entry = MockConfigEntry(title=None)
@@ -95,14 +94,14 @@ class MockEntityState(State):
         last_changed: datetime | None = None,
         last_updated: datetime | None = None,
         validate_entity_id: bool | None = False,
-    ):
+    ) -> None:
         """Initialize the mock entity state."""
 
         if last_changed is None:
-            last_changed = datetime.now()
+            last_changed = datetime.now()  # noqa: DTZ005
 
         if last_updated is None:
-            last_updated = datetime.now()
+            last_updated = datetime.now()  # noqa: DTZ005
 
         self.hass = hass
 
@@ -154,5 +153,4 @@ class MockEntityState(State):
 def mock_entity_state(hass: HomeAssistant) -> MockEntityState:
     """Mock an entity state in the state machine."""
 
-    state = MockEntityState()
-    return state
+    return MockEntityState()

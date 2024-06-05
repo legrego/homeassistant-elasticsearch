@@ -1,3 +1,4 @@
+# type: ignore  # noqa: PGH003
 """Tests for the Elasticsearch Gateway."""
 
 import asyncio
@@ -6,6 +7,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 from homeassistant.core import HomeAssistant
+from syrupy.assertion import SnapshotAssertion
 from syrupy.extensions.json import JSONSnapshotExtension
 
 from custom_components.elasticsearch.es_gateway import (
@@ -28,7 +30,7 @@ from tests.const import (
 
 
 @pytest.fixture(autouse=True)
-def snapshot(snapshot):
+def snapshot(snapshot: SnapshotAssertion):
     """Provide a pre-configured snapshot object."""
 
     return snapshot.with_defaults(extension_class=JSONSnapshotExtension)
@@ -38,10 +40,9 @@ class Test_Elasticsearch_Gateway:
     """Test ElasticsearchGateway."""
 
     @pytest.fixture(autouse=True)
-    def minimum_privileges(self):
+    def minimum_privileges(self) -> None:
         """Provide a default empty minimum_privileges object."""
-
-        return None
+        return
 
     @pytest.fixture(autouse=True)
     def use_connection_monitor(self):
@@ -51,31 +52,31 @@ class Test_Elasticsearch_Gateway:
 
     @pytest.fixture(params=[Elasticsearch7Gateway, Elasticsearch8Gateway])
     async def uninitialized_gateway(
+        self,
         hass: HomeAssistant,
         request: pytest.FixtureRequest,
-        minimum_privileges,
-        use_connection_monitor,
+        minimum_privileges: dict,
+        use_connection_monitor: bool,
         url: str = "http://localhost:9200",
     ):
         """Return a gateway instance."""
 
         gateway_type: ElasticsearchGateway = request.param
 
-        new_gateway = gateway_type(
+        return gateway_type(
             hass=hass,
             url=url,
             minimum_privileges=minimum_privileges,
             use_connection_monitor=use_connection_monitor,
         )
 
-        return new_gateway
-
     @pytest.fixture(params=[Elasticsearch7Gateway, Elasticsearch8Gateway])
     async def initialized_gateway(
+        self,
         hass: HomeAssistant,
         request: pytest.FixtureRequest,
-        minimum_privileges,
-        use_connection_monitor,
+        minimum_privileges: dict,
+        use_connection_monitor: bool,
         url: str = "http://localhost:9200",
     ):
         """Return a gateway instance."""
@@ -91,7 +92,9 @@ class Test_Elasticsearch_Gateway:
 
         with (
             mock.patch.object(
-                new_gateway, "_get_cluster_info", return_value=CLUSTER_INFO_8DOT0_RESPONSE_BODY
+                new_gateway,
+                "_get_cluster_info",
+                return_value=CLUSTER_INFO_8DOT0_RESPONSE_BODY,
             ),
             mock.patch.object(new_gateway, "test", return_value=True),
         ):
@@ -99,12 +102,13 @@ class Test_Elasticsearch_Gateway:
 
         return new_gateway
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio()
     async def test_async_init(
+        self,
         hass: HomeAssistant,
         uninitialized_gateway: ElasticsearchGateway,
-        minimum_privileges,
-        use_connection_monitor,
+        minimum_privileges: dict,
+        use_connection_monitor: bool,
     ):
         """Test async_init."""
         with (
@@ -123,16 +127,17 @@ class Test_Elasticsearch_Gateway:
 
         await uninitialized_gateway.stop()
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio()
     @pytest.mark.parametrize("minimum_privileges", [{}])
     async def test_async_init_with_insufficient_privileges(
-        hass: HomeAssistant, uninitialized_gateway: ElasticsearchGateway, minimum_privileges: dict
+        self,
+        hass: HomeAssistant,
+        uninitialized_gateway: ElasticsearchGateway,
+        minimum_privileges: dict,
     ):
         """Test async_init with insufficient privileges."""
         with (
-            mock.patch.object(
-                uninitialized_gateway, "_has_required_privileges", return_value=False
-            ),
+            mock.patch.object(uninitialized_gateway, "_has_required_privileges", return_value=False),
             mock.patch.object(
                 uninitialized_gateway,
                 "_get_cluster_info",
@@ -147,8 +152,8 @@ class Test_Elasticsearch_Gateway:
         assert uninitialized_gateway._capabilities is not None
         assert uninitialized_gateway._connection_monitor is None
 
-    @pytest.mark.asyncio
-    async def test_async_init_successful(hass: HomeAssistant):
+    @pytest.mark.asyncio()
+    async def test_async_init_successful(self, hass: HomeAssistant):
         """Test async_init when initialization is successful."""
         gateway = Elasticsearch7Gateway(hass=hass)
         gateway._get_cluster_info = AsyncMock(return_value={"version": {"number": "7.11"}})
@@ -161,8 +166,8 @@ class Test_Elasticsearch_Gateway:
         assert gateway._capabilities is not None
         assert gateway._connection_monitor is not None
 
-    @pytest.mark.asyncio
-    async def test_async_init_connection_test_failed(hass: HomeAssistant):
+    @pytest.mark.asyncio()
+    async def test_async_init_connection_test_failed(self, hass: HomeAssistant):
         """Test async_init when connection test fails."""
         gateway = Elasticsearch7Gateway(hass=hass)
         gateway._get_cluster_info = AsyncMock(return_value={"version": {"number": "7.11"}})
@@ -175,8 +180,8 @@ class Test_Elasticsearch_Gateway:
         assert gateway._capabilities is None
         assert gateway._connection_monitor is None
 
-    @pytest.mark.asyncio
-    async def test_async_init_unsupported_version(hass: HomeAssistant):
+    @pytest.mark.asyncio()
+    async def test_async_init_unsupported_version(self, hass: HomeAssistant):
         """Test async_init when the Elasticsearch version is unsupported."""
         gateway = Elasticsearch7Gateway(hass=hass)
         gateway._get_cluster_info = AsyncMock(return_value={"version": {"number": "6.8"}})
@@ -190,8 +195,8 @@ class Test_Elasticsearch_Gateway:
         assert not gateway._capabilities[CAPABILITIES.SUPPORTED]
         assert gateway._connection_monitor is None
 
-    @pytest.mark.asyncio
-    async def test_async_init_insufficient_privileges(hass: HomeAssistant):
+    @pytest.mark.asyncio()
+    async def test_async_init_insufficient_privileges(self, hass: HomeAssistant):
         """Test async_init when there are insufficient privileges."""
         gateway = Elasticsearch7Gateway(hass=hass, minimum_privileges="test")
         gateway._get_cluster_info = AsyncMock(return_value={"version": {"number": "7.11"}})
@@ -205,33 +210,29 @@ class Test_Elasticsearch_Gateway:
         assert gateway._capabilities is not None
         assert gateway._connection_monitor is None
 
-    @pytest.mark.asyncio
-    async def test_test_success(hass: HomeAssistant, initialized_gateway: ElasticsearchGateway):
+    @pytest.mark.asyncio()
+    async def test_test_success(self, hass: HomeAssistant, initialized_gateway: ElasticsearchGateway):
         """Test the gateway connection test function for success."""
 
         async_test_result = asyncio.Future()
         async_test_result.set_result(True)
 
         with (
-            mock.patch.object(
-                initialized_gateway, "_get_cluster_info", return_value=async_test_result
-            ),
+            mock.patch.object(initialized_gateway, "_get_cluster_info", return_value=async_test_result),
         ):
             assert await initialized_gateway.test()
 
-    @pytest.mark.asyncio
-    async def test_test_failed(hass: HomeAssistant, initialized_gateway: ElasticsearchGateway):
+    @pytest.mark.asyncio()
+    async def test_test_failed(self, hass: HomeAssistant, initialized_gateway: ElasticsearchGateway):
         """Test the gateway connection test function for failure."""
 
         with (
-            mock.patch.object(
-                initialized_gateway, "_get_cluster_info", side_effect=Exception("Info Failed")
-            ),
+            mock.patch.object(initialized_gateway, "_get_cluster_info", side_effect=Exception("Info Failed")),
         ):
             assert not await initialized_gateway.test()
 
     @pytest.mark.parametrize("minimum_privileges", [None, {}])
-    async def test_build_gateway_parameters(hass: HomeAssistant, minimum_privileges: dict | None):
+    async def test_build_gateway_parameters(self, hass: HomeAssistant, minimum_privileges: dict | None):
         """Test build_gateway_parameters."""
         hass = mock.Mock()
         config_entry = mock.Mock()
@@ -246,20 +247,22 @@ class Test_Elasticsearch_Gateway:
         """ Test build_gateway_parameters."""
 
         parameters = ElasticsearchGateway.build_gateway_parameters(
-            hass=hass, config_entry=config_entry, minimum_privileges=minimum_privileges
+            hass=hass,
+            config_entry=config_entry,
+            minimum_privileges=minimum_privileges,
         )
 
         assert parameters["hass"] == hass
         assert parameters["url"] == "http://localhost:9200"
         assert parameters["username"] == "admin"
-        assert parameters["password"] == "password"
+        assert parameters["password"] == "password"  # noqa: S105
         assert parameters["verify_certs"] is True
         assert parameters["ca_certs"] == "/path/to/ca_certs"
         assert parameters["request_timeout"] == 30
         assert parameters["minimum_privileges"] == minimum_privileges
 
     @pytest.mark.parametrize(
-        "name, cluster_info",
+        ("name", "cluster_info"),
         [
             ("7DOT11_CAPABILITIES", CLUSTER_INFO_7DOT11_RESPONSE_BODY),
             ("7DOT17_CAPABILITIES", CLUSTER_INFO_7DOT17_RESPONSE_BODY),
@@ -270,17 +273,16 @@ class Test_Elasticsearch_Gateway:
         ],
     )
     async def test_capabilities(
+        self,
         hass: HomeAssistant,
         uninitialized_gateway: ElasticsearchGateway,
         name: str,
         cluster_info: dict,
-        snapshot,
+        snapshot: SnapshotAssertion,
     ):
         """Test capabilities."""
         with (
-            mock.patch.object(
-                uninitialized_gateway, "_get_cluster_info", return_value=cluster_info
-            ),
+            mock.patch.object(uninitialized_gateway, "_get_cluster_info", return_value=cluster_info),
             mock.patch.object(uninitialized_gateway, "test", return_value=True),
         ):
             await uninitialized_gateway.async_init()
@@ -293,7 +295,7 @@ class Test_Elasticsearch_Gateway:
             "capabilities": uninitialized_gateway._capabilities,
         } == snapshot
 
-    def test_has_capability(hass: HomeAssistant, uninitialized_gateway: ElasticsearchGateway):
+    def test_has_capability(self, hass: HomeAssistant, uninitialized_gateway: ElasticsearchGateway):
         """Test has_capability."""
         uninitialized_gateway._capabilities = {
             "supported": True,
@@ -310,22 +312,22 @@ class Test_Elasticsearch_Gateway:
         assert uninitialized_gateway.has_capability("max_primary_shard_size") is False
         assert uninitialized_gateway.has_capability("invalid_capability") is False
 
-    def test_client(hass: HomeAssistant, uninitialized_gateway: ElasticsearchGateway):
+    def test_client(self, hass: HomeAssistant, uninitialized_gateway: ElasticsearchGateway):
         """Test Getter for client."""
         uninitialized_gateway._client = mock.Mock()
 
         assert uninitialized_gateway.client == uninitialized_gateway._client
 
-    def test_connection_monitor(hass: HomeAssistant, uninitialized_gateway: ElasticsearchGateway):
+    def test_connection_monitor(self, hass: HomeAssistant, uninitialized_gateway: ElasticsearchGateway):
         """Test Getter for connection_monitor."""
         uninitialized_gateway._connection_monitor = mock.Mock()
 
         assert uninitialized_gateway.connection_monitor == uninitialized_gateway._connection_monitor
 
-    def test_authentication_type(hass: HomeAssistant, uninitialized_gateway: ElasticsearchGateway):
+    def test_authentication_type(self, hass: HomeAssistant, uninitialized_gateway: ElasticsearchGateway):
         """Test Getter for authentication_type."""
         uninitialized_gateway.username = "admin"
-        uninitialized_gateway.password = "password"
+        uninitialized_gateway.password = "password"  # noqa: S105
         uninitialized_gateway.api_key = None
 
         assert uninitialized_gateway.authentication_type == "basic"
@@ -342,13 +344,13 @@ class Test_Elasticsearch_Gateway:
 
         assert uninitialized_gateway.authentication_type == "none"
 
-    def test_hass(hass: HomeAssistant, uninitialized_gateway: ElasticsearchGateway):
+    def test_hass(self, hass: HomeAssistant, uninitialized_gateway: ElasticsearchGateway):
         """Test Getter for hass."""
         uninitialized_gateway._hass = mock.Mock()
 
         assert uninitialized_gateway.hass == uninitialized_gateway._hass
 
-    def test_url(hass: HomeAssistant, uninitialized_gateway: ElasticsearchGateway):
+    def test_url(self, hass: HomeAssistant, uninitialized_gateway: ElasticsearchGateway):
         """Test Getter for url."""
         uninitialized_gateway._url = "http://localhost:9200"
 
@@ -358,7 +360,7 @@ class Test_Elasticsearch_Gateway:
 class Test_Connection_Monitor:
     """Test ConnectionMonitor."""
 
-    @pytest.fixture()
+    @pytest.fixture
     async def connection_monitor(self):
         """Return a connection monitor instance."""
         gateway = mock.Mock()
@@ -367,24 +369,6 @@ class Test_Connection_Monitor:
         yield connection_monitor
 
         connection_monitor.stop()
-
-    # async def test_async_init(self):
-    #     """Test async_init."""
-
-    #     gateway = mock.Mock()
-    #     monitor = ConnectionMonitor(gateway)
-    #     config_entry = mock.Mock()
-
-    #     with (
-    #         mock.patch.object(monitor, "should_test", return_value=True),
-    #         mock.patch.object(monitor, "test", return_value=True),
-    #         mock.patch.object(config_entry, "async_create_background_task", return_value=True),
-    #         mock.patch.object(monitor, "_connection_monitor_task", return_value=True),
-    #     ):
-    #         await monitor.async_init()
-    #         assert monitor.start(config_entry) is True
-
-    #     monitor.stop()
 
     async def test_active(self):
         """Test active."""
