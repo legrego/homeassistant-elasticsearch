@@ -1,3 +1,5 @@
+"""Implements a loop handler."""
+
 import asyncio
 import time
 import typing

@@ -562,7 +562,9 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
 
         current_excluded_entities = self._get_config_value(CONF_EXCLUDED_ENTITIES, [])
         current_included_entities = self._get_config_value(CONF_INCLUDED_ENTITIES, [])
-        entity_options = self._dedup_list(list(str(entities)) + list(str(current_excluded_entities)) + list(str(current_included_entities)))
+        entity_options = self._dedup_list(
+            list(str(entities)) + list(str(current_excluded_entities)) + list(str(current_included_entities)),
+        )
 
         schema = {
             vol.Required(
