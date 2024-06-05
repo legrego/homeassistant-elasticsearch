@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "homeassistant-elasticsearch"
-version = "0.7.0"
+version = "2.0.0"
 description = ""
 authors = ["Larry Gregory <lgregorydev@gmail.com>"]
 license = "MIT"
