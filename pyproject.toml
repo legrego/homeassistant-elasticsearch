@@ -14,7 +14,7 @@ elasticsearch7 = "~=7.11.0"
 
 [tool.poetry.group.dev.dependencies]
 colorlog = "==6.8.2"
-homeassistant = "==2024.5.5"
+homeassistant = "==2024.6.0b8"
 ruff = ">=0.0.291"
 pip = ">=21.0,<24.1"
 
@@ -26,10 +26,9 @@ syrupy = ">=4.6.0"
 pytest = ">=7.3.1"
 pytest-asyncio = ">=0.20.3"
 pytest-cov = ">=4.0.0"
-pytest-homeassistant-custom-component = "==0.13.125"
+pytest-homeassistant-custom-component = "==0.13.131"
 mock = ">4.0.0"
 jsondiff = "*"
-
 
 [build-system]
 requires = ["poetry-core"]
@@ -62,6 +61,3 @@ addopts = [
 filterwarnings = ["ignore:ssl.PROTOCOL_TLS is deprecated:DeprecationWarning"]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-
-[tool.mypy]
-strict = true

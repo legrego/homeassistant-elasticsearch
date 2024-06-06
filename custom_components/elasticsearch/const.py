@@ -1,6 +1,6 @@
-from enum import Enum
-
 """constants."""
+
+from enum import Enum
 
 DOMAIN: str = "elasticsearch"
 
@@ -73,6 +73,7 @@ ES_CHECK_PERMISSIONS_DATASTREAM: dict = {
         },
     ],
 }
+
 
 class StateChangeType(Enum):
     """Elasticsearch State Change Types constants."""

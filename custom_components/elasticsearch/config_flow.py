@@ -52,6 +52,8 @@ from .errors import (
 from .es_gateway import Elasticsearch7Gateway
 from .logger import LOGGER
 
+CONFIG_TO_REDACT = {CONF_API_KEY, CONF_PASSWORD, CONF_URL, CONF_USERNAME}
+
 DEFAULT_URL = "http://localhost:9200"
 DEFAULT_ALIAS = "active-hass-index"
 DEFAULT_INDEX_FORMAT = "hass-events"
@@ -487,6 +489,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         return errors
 
 
+
 class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
     """Handle Elastic options."""
 
@@ -562,7 +565,9 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
 
         current_excluded_entities = self._get_config_value(CONF_EXCLUDED_ENTITIES, [])
         current_included_entities = self._get_config_value(CONF_INCLUDED_ENTITIES, [])
-        entity_options = self._dedup_list(list(str(entities)) + list(str(current_excluded_entities)) + list(str(current_included_entities)))
+        entity_options = self._dedup_list(
+            list(str(entities)) + list(str(current_excluded_entities)) + list(str(current_included_entities)),
+        )
 
         schema = {
             vol.Required(

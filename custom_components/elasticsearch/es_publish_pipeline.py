@@ -146,7 +146,9 @@ class Pipeline:
             await self._publisher.async_init()
 
             new_loop = LoopHandler(
-                name="es_etl_loop", func=self._gather_and_publish, frequency=self._publish_frequency,
+                name="es_etl_loop",
+                func=self._gather_and_publish,
+                frequency=self._publish_frequency,
             )
 
             # Start processing

@@ -179,6 +179,8 @@ class Test_Manager:
 
             config_entry.async_create_background_task.assert_called_once()
 
+            manager.stop()
+
     def test_stop(self, manager):
         """Test stopping the manager."""
         manager._cancel_manager = mock.Mock()

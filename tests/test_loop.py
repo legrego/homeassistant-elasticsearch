@@ -10,9 +10,8 @@ from custom_components.elasticsearch.logger import LOGGER as BASE_LOGGER
 from custom_components.elasticsearch.loop import LoopHandler
 
 
-@pytest.mark.asyncio()
-class Test_loop_handler:
-    """Test the LoopHandler class."""
+class Test_loop_handler_sync:
+    """Test the LoopHandler class with syncronous functions."""
 
     def test_loop_handler_start(self):
         """Test starting the loop handler."""
@@ -30,6 +29,11 @@ class Test_loop_handler:
         # Assert that the mock function was called at least once
         assert mock_func.call_count >= 1
         assert loop_handler._should_keep_running.call_count >= 2
+
+
+@pytest.mark.asyncio()
+class Test_loop_handler:
+    """Test the LoopHandler class."""
 
     async def test_loop_handler_stop(self):
         """Test starting the loop handler."""

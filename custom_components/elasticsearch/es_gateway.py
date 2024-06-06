@@ -81,7 +81,6 @@ class ElasticsearchGateway(ABC):
             msg = "Connection test failed."
             raise ConnectionError(msg)
 
-
         # Obtain the capabilities of the Elasticsearch instance
         self._capabilities = self._build_capabilities()
 
@@ -406,6 +405,7 @@ class Elasticsearch7Gateway(ElasticsearchGateway):
         from elasticsearch7.exceptions import ElasticsearchException
         from elasticsearch7.helpers import async_bulk
 
+        actions = []
         try:
             bulk_response = await async_bulk(self.client, actions)
             self._logger.debug("Elasticsearch bulk response: %s", str(bulk_response))
