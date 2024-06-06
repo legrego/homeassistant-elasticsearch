@@ -1,0 +1,13 @@
+{
+  "data": {
+    "alias": "hass-events",
+    "index_format": "hass-events",
+    "index_mode": "index",
+    "password": "**REDACTED**",
+    "publish_mode": "All",
+    "url": "**REDACTED**",
+    "use_connection_monitor": false,
+    "username": "**REDACTED**"
+  },
+  "options": {}
+}

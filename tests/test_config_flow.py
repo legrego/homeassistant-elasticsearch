@@ -18,7 +18,11 @@ from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
+from pytest_homeassistant_custom_component.typing import ClientSessionGenerator
+from syrupy.assertion import SnapshotAssertion
+from syrupy.extensions.json import JSONSnapshotExtension
 
+from custom_components.elasticsearch.config_flow import async_get_config_entry_diagnostics
 from custom_components.elasticsearch.const import (
     CONF_INDEX_FORMAT,
     CONF_INDEX_MODE,
@@ -30,6 +34,13 @@ from custom_components.elasticsearch.const import (
 )
 from tests.conftest import mock_config_entry
 from tests.test_util.es_startup_mocks import mock_es_initialization
+
+
+@pytest.fixture(autouse=True)
+def snapshot(snapshot: SnapshotAssertion):
+    """Provide a pre-configured snapshot object."""
+
+    return snapshot.with_defaults(extension_class=JSONSnapshotExtension)
 
 
 async def _setup_config_entry(hass: HomeAssistant, mock_entry: mock_config_entry):
@@ -690,3 +701,30 @@ async def test_legacy_options_flow(hass: HomeAssistant, es_aioclient_mock: Aioht
     )
 
     assert options_result["type"] == data_entry_flow.RESULT_TYPE_CREATE_ENTRY
+
+async def test_entry_diagnostics(
+    hass: HomeAssistant,
+    hass_client: ClientSessionGenerator,
+    snapshot: SnapshotAssertion,
+) -> None:
+    """Test config entry diagnostics."""
+
+    entry = MockConfigEntry(
+        unique_id="test_legacy_options",
+        domain=DOMAIN,
+        version=3,
+        data={
+            "url": "https://localhost:9200",
+            "username": "original_user",
+            "password": "abc123",
+            CONF_PUBLISH_MODE: PUBLISH_MODE_ALL,
+            CONF_ALIAS: "hass-events",
+            CONF_INDEX_MODE: INDEX_MODE_LEGACY,
+            CONF_INDEX_FORMAT: "hass-events",
+            "use_connection_monitor": False,
+        },
+        title="ES Config",
+    )
+
+    diagnostics = await async_get_config_entry_diagnostics(hass, entry)
+    assert diagnostics == snapshot
