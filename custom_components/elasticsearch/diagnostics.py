@@ -1,5 +1,7 @@
 """Diagnostics for the Elasticsearch integration."""
 
+from typing import Any
+
 from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
@@ -13,7 +15,7 @@ from homeassistant.core import HomeAssistant
 CONFIG_TO_REDACT = {CONF_API_KEY, CONF_PASSWORD, CONF_URL, CONF_USERNAME}
 
 
-async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigEntry) -> dict[str, any]:
+async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: ConfigEntry) -> dict[str, Any]:
     """Return diagnostics for the config entry."""
 
     return {

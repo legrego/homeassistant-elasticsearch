@@ -10,7 +10,10 @@ from homeassistant.const import CONF_ALIAS
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import issue_registry as ir
 
-from custom_components.elasticsearch.errors import ElasticException, convert_es_error
+from custom_components.elasticsearch.errors import (
+    ESIntegrationConnectionException,
+    ESIntegrationException,
+)
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 
 from .const import (
@@ -78,8 +81,8 @@ class IndexManager:
             pass
 
         else:
-            msg = "Unexpected index_mode: %s"
-            raise ElasticException(msg, self.index_mode)
+            msg = f"Unexpected index_mode: {self.index_mode}"
+            raise ESIntegrationException(msg)
 
     async def async_setup(self) -> None:
         """Perform setup for index management."""
@@ -170,10 +173,7 @@ class IndexManager:
             self._logger.exception("Error creating/updating index template")
             if not template_exists:
                 msg = "No index template present in Elasticsearch and failed to create one"
-                raise convert_es_error(
-                    msg,
-                    err,
-                ) from err
+                raise self._gateway.convert_es_error(msg) from err
         try:
             if await self.requires_datastream_ignore_dynamic_fields_migration():
                 self._logger.debug(
@@ -182,7 +182,7 @@ class IndexManager:
                 await self.migrate_datastreams_to_ignore_dynamic_fields()
 
         except ElasticsearchException as err:
-            raise convert_es_error(err)
+            raise self._gateway.convert_es_error() from err
 
     async def _create_legacy_template(self) -> None:
         """Initialize the Elasticsearch cluster with an index template, initial index, and alias."""
@@ -191,9 +191,7 @@ class IndexManager:
 
         if self._gateway.has_capability(CAPABILITIES.SERVERLESS):
             msg = "Serverless environment detected, legacy index usage not allowed in ES Serverless. Switch to datastreams."
-            raise ElasticException(
-                msg,
-            )
+            raise ESIntegrationConnectionException(msg)
 
         client = self._gateway.client
 
@@ -234,10 +232,7 @@ class IndexManager:
                 await client.indices.put_template(name=LEGACY_TEMPLATE_NAME, body=index_template)
             except ElasticsearchException as err:
                 msg = "No index template present in Elasticsearch and failed to create one"
-                raise convert_es_error(
-                    msg,
-                    err,
-                ) from err
+                raise self._gateway.convert_es_error(msg) from err
 
         alias = await client.indices.get_alias(name=self.index_alias, ignore=[404])
         alias_exists = alias and not alias.get("error")
@@ -264,13 +259,10 @@ class IndexManager:
                 existing_policy = None
             else:
                 msg = "Unexpected return code when checking for existing ILM policy"
-                raise convert_es_error(
-                    msg,
-                    err,
-                ) from err
+                raise self._gateway.convert_es_error(msg) from err
         except ElasticsearchException as err:
             msg = "Error checking for existing ILM policy"
-            raise convert_es_error(msg, err) from err
+            raise self._gateway.convert_es_error() from err
 
         if existing_policy:
             self._logger.info("Found existing ILM Policy, do nothing '%s'", ilm_policy_name)
@@ -301,7 +293,7 @@ class IndexManager:
             await client.ilm.put_lifecycle(ilm_policy_name, policy)
         except ElasticsearchException as err:
             msg = "Error creating initial ILM policy"
-            raise convert_es_error(msg, err) from err
+            raise self._gateway.convert_es_error() from err
 
     async def requires_datastream_ignore_dynamic_fields_migration(self) -> bool:
         """Check if datastreams need to be migrated to ignore dynamic fields."""
@@ -316,7 +308,7 @@ class IndexManager:
             )
         except ElasticsearchException as err:
             msg = "Error checking datastream mapping for dynamic fields"
-            raise convert_es_error(msg, err) from err
+            raise self._gateway.convert_es_error() from err
 
         return any(mapping["mappings"].get("dynamic") == "strict" for _index, mapping in mappings.items())
 
@@ -338,4 +330,4 @@ class IndexManager:
             )
         except ElasticsearchException as err:
             msg = "Error migrating datastream to ignore dynamic fields"
-            raise convert_es_error(msg, err) from err
+            raise self._gateway.convert_es_error() from err

@@ -4,7 +4,6 @@ from datetime import datetime
 from unittest import mock
 
 import pytest
-from elasticsearch.system_info import SystemInfoResult
 from freezegun.api import FrozenDateTimeFactory
 from homeassistant.const import (
     CONF_URL,
@@ -36,11 +35,13 @@ from custom_components.elasticsearch.const import (
     PUBLISH_REASON_ATTR_CHANGE,
     PUBLISH_REASON_STATE_CHANGE,
 )
-from custom_components.elasticsearch.errors import ElasticException
-from custom_components.elasticsearch.es_doc_publisher import (
-    DocumentPublisher,
+from custom_components.elasticsearch.errors import ESIntegrationException
+from custom_components.elasticsearch.es_doc_publisher import DocumentPublisher
+from custom_components.elasticsearch.es_gateway import (
+    Elasticsearch7Gateway,
+    ElasticsearchGateway,
 )
-from custom_components.elasticsearch.es_gateway import Elasticsearch7Gateway, ElasticsearchGateway
+from custom_components.elasticsearch.system_info import SystemInfoResult
 from tests.conftest import MockEntityState
 from tests.const import (
     CLUSTER_INFO_8DOT0_RESPONSE_BODY,
@@ -274,7 +275,7 @@ class Test_Unit_Tests:
         """Test datastream names are sanitized correctly."""
 
         if expected is None:
-            with pytest.raises(ElasticException):
+            with pytest.raises(ESIntegrationException):
                 DocumentPublisher._sanitize_datastream_name(type="metrics", dataset=case, namespace="default")
         else:
             type, dataset, namespace, full_name = DocumentPublisher._sanitize_datastream_name(
@@ -301,7 +302,7 @@ class Test_Unit_Tests:
         """Test datastream names are sanitized correctly."""
 
         if expected is None:
-            with pytest.raises(ElasticException):
+            with pytest.raises(ESIntegrationException):
                 DocumentPublisher._sanitize_datastream_name(type="metrics", dataset=case, namespace="default")
         else:
             type, dataset, namespace, full_name = DocumentPublisher._sanitize_datastream_name(

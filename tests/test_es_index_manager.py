@@ -20,7 +20,7 @@ from custom_components.elasticsearch.const import (
     INDEX_MODE_LEGACY,
     LEGACY_TEMPLATE_NAME,
 )
-from custom_components.elasticsearch.errors import ElasticException
+from custom_components.elasticsearch.errors import ESIntegrationException
 from custom_components.elasticsearch.es_gateway import (
     Elasticsearch7Gateway,
     ElasticsearchGateway,
@@ -562,7 +562,7 @@ class Test_Integration_tests:
 
         assert len(extract_es_legacy_index_template_requests(es_aioclient_mock)) == 0
 
-        with pytest.raises(ElasticException):
+        with pytest.raises(ESIntegrationException):
             await legacy_index_manager.async_setup()
 
     @pytest.mark.asyncio()
@@ -723,7 +723,7 @@ class Test_Integration_tests:
         ):
             await modern_index_manager._gateway.async_init()
 
-        with pytest.raises(ElasticException):
+        with pytest.raises(ESIntegrationException):
             await modern_index_manager.async_setup()
 
         # ILM setup occurs before our index template creation error
@@ -790,7 +790,7 @@ class Test_Integration_tests:
         ):
             await legacy_index_manager._gateway.async_init()
 
-        with pytest.raises(ElasticException):
+        with pytest.raises(ESIntegrationException):
             await legacy_index_manager.async_setup()
 
         assert len(extract_es_legacy_index_template_requests(es_aioclient_mock)) == 1

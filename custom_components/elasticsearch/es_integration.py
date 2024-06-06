@@ -5,8 +5,6 @@ from logging import Logger
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from custom_components.elasticsearch.errors import convert_es_error
-
 from .const import ES_CHECK_PERMISSIONS_DATASTREAM
 from .es_doc_publisher import DocumentPublisher
 from .es_gateway import Elasticsearch7Gateway
@@ -47,7 +45,7 @@ class ElasticIntegration:
             await self._index_manager.async_setup()
             await self._publisher.async_init()
 
-        except Exception as err:
+        except Exception:
             self._logger.exception("Error initializing integration")
             try:
                 self._publisher.stop_publisher()
@@ -57,8 +55,7 @@ class ElasticIntegration:
                     "Error shutting down gateway following failed initialization",
                 )
 
-            msg = "Failed to initialize integration"
-            raise convert_es_error(msg, err) from err
+            raise
 
     async def async_shutdown(self) -> bool:  # pylint disable=unused-argument
         """Async shutdown procedure."""

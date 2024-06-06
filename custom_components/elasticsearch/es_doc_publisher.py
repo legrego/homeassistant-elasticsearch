@@ -15,9 +15,8 @@ from homeassistant.const import (
 )
 from homeassistant.core import Event, HomeAssistant, State, callback
 
-from custom_components.elasticsearch.errors import ElasticException
 from custom_components.elasticsearch.es_doc_creator import DocumentCreator
-from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
+from custom_components.elasticsearch.es_gateway import ElasticsearchGateway, ESIntegrationException
 
 from .const import (
     CONF_EXCLUDED_DOMAINS,
@@ -389,8 +388,8 @@ class DocumentPublisher:
         full_datastream_name = f"{type}-{dataset}-{namespace}"
 
         if cls._datastream_has_fatal_name(full_datastream_name):
-            msg = "Invalid / unfixable datastream name: %s"
-            raise ElasticException(msg, full_datastream_name)
+            msg = f"Invalid / unfixable datastream name: {full_datastream_name}"
+            raise ESIntegrationException(msg)
 
         if cls._datastream_has_unsafe_name(full_datastream_name):
             cls._logger.debug(
@@ -416,10 +415,9 @@ class DocumentPublisher:
         full_sanitized_datastream_name = f"{type}-{sanitized_dataset}-{namespace}"
         # if the datastream still has an unsafe name after sanitization, throw an error
         if cls._datastream_has_unsafe_name(full_sanitized_datastream_name):
-            msg = "Invalid / unfixable datastream name: %s"
-            raise ElasticException(
+            msg = f"Invalid / unfixable datastream name: {full_sanitized_datastream_name}"
+            raise ESIntegrationException(
                 msg,
-                full_sanitized_datastream_name,
             )
 
         return (type, sanitized_dataset, namespace, full_sanitized_datastream_name)

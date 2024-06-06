@@ -1,9 +1,11 @@
 """Encapsulates Elasticsearch operations."""
 
 import asyncio
+import sys
 import time
 from abc import ABC, abstractmethod
 from logging import Logger
+from typing import Any
 
 from elasticsearch7 import TransportError as TransportError7
 from elasticsearch7._async.client import AsyncElasticsearch as AsyncElasticsearch7
@@ -19,9 +21,13 @@ from custom_components.elasticsearch.const import (
     ES_CHECK_PERMISSIONS_DATASTREAM,
 )
 from custom_components.elasticsearch.errors import (
+    AuthenticationRequired,
+    CannotConnect,
+    ClientError,
+    ESIntegrationException,
     InsufficientPrivileges,
     UnsupportedVersion,
-    convert_es_error,
+    UntrustedCertificate,
 )
 
 from .logger import LOGGER as BASE_LOGGER
@@ -35,8 +41,7 @@ class ElasticsearchGateway(ABC):
     def __init__(
         self,
         hass: HomeAssistant,
-        log: Logger = BASE_LOGGER,
-        url: str | None = None,
+        url: str,
         username: str | None = None,
         password: str | None = None,
         api_key: str | None = None,
@@ -45,13 +50,14 @@ class ElasticsearchGateway(ABC):
         request_timeout: int = 30,
         minimum_privileges: dict | None = None,
         use_connection_monitor: bool = True,
+        log: Logger = BASE_LOGGER,
     ) -> None:
         """Non-I/O bound init."""
 
-        self._logger = log
-        self._hass = hass
-        self._url = url
-        client_args = self._create_es_client_args(
+        self._logger: Logger = log
+        self._hass: HomeAssistant = hass
+        self._url: str = url
+        self._client_args = self._create_es_client_args(
             url=url,
             username=username,
             password=password,
@@ -60,12 +66,12 @@ class ElasticsearchGateway(ABC):
             ca_certs=ca_certs,
             request_timeout=request_timeout,
         )
-        self._client = self._create_es_client(**client_args)
-        self._connection_monitor: ConnectionMonitor = None
-        self._minimum_privileges = minimum_privileges
-        self._info = None
-        self._capabilities = None
-        self._use_connection_monitor = use_connection_monitor
+        self._client: AsyncElasticsearch7 | AsyncElasticsearch8 = self._create_es_client(**self._client_args)
+        self._connection_monitor: ConnectionMonitor = ConnectionMonitor(gateway=self, log=self._logger)
+        self._minimum_privileges: dict | None = minimum_privileges
+        self._info: dict[str, Any] = {}
+        self._capabilities: dict = {}
+        self._use_connection_monitor: bool = use_connection_monitor
 
     async def async_init(self) -> None:
         """I/O bound init."""
@@ -96,8 +102,7 @@ class ElasticsearchGateway(ABC):
                 raise InsufficientPrivileges
 
         if self._use_connection_monitor:
-            # Start a new connection monitor
-            self._connection_monitor = ConnectionMonitor(gateway=self, log=self._logger)
+            # Start the connection monitor
             await self._connection_monitor.async_init()
 
     def _build_capabilities(self) -> dict[str, int | bool | str]:
@@ -106,6 +111,10 @@ class ElasticsearchGateway(ABC):
             return version_info[CAPABILITIES.MAJOR] > major or (
                 version_info[CAPABILITIES.MAJOR] == major and version_info[CAPABILITIES.MINOR] >= minor
             )
+
+        if self._info is None:
+            msg = "Cluster info is not available."
+            raise ValueError(msg)
 
         version_info = {
             CAPABILITIES.MAJOR: int(self._info["version"]["number"].split(".")[0]),
@@ -132,16 +141,6 @@ class ElasticsearchGateway(ABC):
         }
 
         return {**version_info, **capabilities}
-
-    @classmethod
-    def build_from_config_entry(
-        cls,
-        hass: HomeAssistant,
-        config_entry: ConfigEntry,
-    ) -> "ElasticsearchGateway":
-        """Build the Elasticsearch gateway from a config entry."""
-        gateway_parameters = cls.build_gateway_parameters(hass, config_entry)
-        return cls(**gateway_parameters)
 
     @classmethod
     def build_gateway_parameters(
@@ -185,9 +184,10 @@ class ElasticsearchGateway(ABC):
     @property
     def authentication_type(self) -> str:
         """Return the authentication type."""
-        if self.username and self.password:
+
+        if self._client_args.get("http_auth", None) is not None:
             return "basic"
-        elif self.api_key:
+        elif self._client_args.get("headers", None) is not None:
             return "api_key"
         else:
             return "none"
@@ -200,7 +200,7 @@ class ElasticsearchGateway(ABC):
 
     # Getter for url
     @property
-    def url(self) -> HomeAssistant:
+    def url(self) -> str:
         """Return the Home Assistant instance."""
         return self._url
 
@@ -216,7 +216,6 @@ class ElasticsearchGateway(ABC):
 
         if self.client:
             await self.client.close()
-            self._client = None
 
         self._logger.warning("Stopped Elasticsearch Gateway")
 
@@ -261,6 +260,7 @@ class ElasticsearchGateway(ABC):
         if use_basic_auth:
             args["http_auth"] = (username, password)
 
+
         if use_api_key:
             args["headers"] = {"Authorization": f"ApiKey {api_key}"}
 
@@ -269,10 +269,15 @@ class ElasticsearchGateway(ABC):
     async def _get_cluster_info(self) -> dict:
         """Retrieve info about the connected elasticsearch cluster."""
         try:
-            return await self._client.info()
+            info = await self._client.info()
         except Exception as err:
-            msg = "Connection test failed"
-            raise convert_es_error(msg, err) from err
+            raise self.convert_es_error() from err
+
+        if not isinstance(info, dict):
+            msg = "Invalid response from Elasticsearch"
+            raise self.convert_es_error(msg)
+
+        return dict(info)
 
     @abstractmethod
     async def bulk(self, body: list[dict]) -> dict:
@@ -303,6 +308,12 @@ class ElasticsearchGateway(ABC):
     ) -> AsyncElasticsearch7 | AsyncElasticsearch8:
         pass  # pragma: no cover
 
+    @classmethod
+    @abstractmethod
+    def convert_es_error(cls, msg: str | None = None, err: Exception | None = None) -> Exception:
+        """Convert an internal error from the elasticsearch package into one of our own."""
+        # pragma: no cover
+
 
 class Elasticsearch8Gateway(ElasticsearchGateway):
     """Encapsulates Elasticsearch operations."""
@@ -318,7 +329,7 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
     async def _has_required_privileges(self, required_privileges: dict) -> bool:
         """Enforce the required privileges."""
         try:
-            privilege_response = await self.client.security.has_privileges(body=required_privileges)
+            privilege_response = await self.client.security.has_privileges(index=required_privileges)
 
             if not privilege_response.get("has_all_requested"):
                 self._logger.error("Required privileges are missing.")
@@ -326,9 +337,9 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
 
         except Exception as err:
             msg = "Error enforcing privileges"
-            raise convert_es_error(msg, err) from err
-        else:
-            return privilege_response
+            raise self.convert_es_error(msg) from err
+
+        return True
 
     @classmethod
     def new_encoder(cls) -> JSONSerializer8:
@@ -337,7 +348,7 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
         class SetEncoder(JSONSerializer8):
             """JSONSerializer which serializes sets to lists."""
 
-            def default(self, data: any) -> any:  # type: ignore
+            def default(self, data: any) -> any:  # type: ignore # noqa: PGH003
                 """JSONSerializer which serializes sets to lists."""
                 if isinstance(data, set):
                     output = list(data)
@@ -350,7 +361,51 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
 
     async def bulk(self, body: list[dict]) -> dict:
         """Perform a bulk operation."""
+        return {}
         # return await self.client.bulk(operations=body)
+
+    @classmethod
+    def convert_es_error(
+        cls,
+        msg: str | None = None,
+        err: Exception | None = None,
+    ) -> BaseException | Exception:
+        """Convert an internal error from the elasticsearch package into one of our own."""
+        from aiohttp import client_exceptions
+        from elasticsearch8 import (
+            AuthenticationException,
+            AuthorizationException,
+            SSLError,
+        )
+        from elasticsearch8 import (
+            ConnectionError as ESConnectionError,
+        )
+
+        t = sys.exc_info() if err is None else type(err)
+
+        new_err: Exception = ESIntegrationException(msg)
+
+        if t is SSLError:
+            new_err = UntrustedCertificate(msg, err)
+
+        elif t is ESConnectionError:
+            if t is client_exceptions.ClientConnectorCertificateError:
+                new_err = UntrustedCertificate(msg, err)
+            elif t is client_exceptions.ClientConnectorError:
+                new_err = ClientError(msg, err)
+            else:
+                new_err = CannotConnect(msg, err)
+
+        elif t is AuthenticationException:
+            new_err = AuthenticationRequired(msg, err)
+
+        elif t is AuthorizationException:
+            new_err = InsufficientPrivileges(msg, err)
+
+        # elif t is ElasticsearchException:
+        #    new_err = ESIntegrationException(msg, err)
+
+        return new_err
 
 
 class Elasticsearch7Gateway(ElasticsearchGateway):
@@ -367,16 +422,15 @@ class Elasticsearch7Gateway(ElasticsearchGateway):
 
         try:
             privilege_response = await self.client.security.has_privileges(body=required_privileges)
-
-            if not privilege_response.get("has_all_requested"):
-                self._logger.error("Required privileges are missing.")
-                raise InsufficientPrivileges
-
         except Exception as err:
             msg = "Error enforcing privileges"
-            raise convert_es_error(msg, err) from err
-        else:
-            return privilege_response
+            raise self.convert_es_error(msg) from err
+
+        if not privilege_response.get("has_all_requested"):
+            self._logger.error("Required privileges are missing.")
+            raise InsufficientPrivileges
+
+        return True
 
     @classmethod
     def new_encoder(cls) -> JSONSerializer7:
@@ -385,7 +439,7 @@ class Elasticsearch7Gateway(ElasticsearchGateway):
         class SetEncoder(JSONSerializer7):
             """JSONSerializer which serializes sets to lists."""
 
-            def default(self, data: any) -> any:  # type: ignore
+            def default(self, data: any) -> any:  # type: ignore  # noqa: PGH003
                 """Entry point."""
                 if isinstance(data, set):
                     output = list(data)
@@ -396,7 +450,7 @@ class Elasticsearch7Gateway(ElasticsearchGateway):
 
         return SetEncoder()
 
-    async def bulk(self, body: list[dict]) -> dict:
+    async def bulk(self, body: list[dict]) -> None:
         """Wrap event publishing.
 
         Workaround for elasticsearch_async not supporting bulk operations.
@@ -410,8 +464,55 @@ class Elasticsearch7Gateway(ElasticsearchGateway):
             bulk_response = await async_bulk(self.client, actions)
             self._logger.debug("Elasticsearch bulk response: %s", str(bulk_response))
             self._logger.info("Publish Succeeded")
-        except ElasticsearchException as err:
-            self._logger.exception("Error publishing documents to Elasticsearch: %s", err)
+        except ElasticsearchException:
+            self._logger.exception("Error publishing documents to Elasticsearch")
+
+    @classmethod
+    def convert_es_error(
+        cls,
+        msg: str | None = None,
+        err: Exception | None = None,
+    ) -> BaseException | Exception:
+        """Convert an internal error from the elasticsearch package into one of our own."""
+        from aiohttp import client_exceptions
+        from elasticsearch7 import (
+            AuthenticationException,
+            AuthorizationException,
+            ElasticsearchException,
+            SSLError,
+        )
+        from elasticsearch7 import (
+            ConnectionError as ESConnectionError,
+        )
+
+        if err is None:
+            t, v, tb = sys.exc_info()
+        else:
+            t, v = type(err), err
+
+        new_err: Exception = ESIntegrationException(msg)
+
+        if t is SSLError:
+            new_err = UntrustedCertificate(msg, err)
+
+        elif t is ESConnectionError:
+            if isinstance(v.info, client_exceptions.ClientConnectorCertificateError):  # type: ignore  # noqa: PGH003
+                new_err = UntrustedCertificate(msg, err)
+            elif isinstance(v.info, client_exceptions.ClientConnectorError):  # type: ignore  # noqa: PGH003
+                new_err = ClientError(msg, err)
+            else:
+                new_err = CannotConnect(msg, err)
+
+        elif t is AuthenticationException:
+            new_err = AuthenticationRequired(msg, err)
+
+        elif t is AuthorizationException:
+            new_err = InsufficientPrivileges(msg, err)
+
+        elif t is ElasticsearchException:
+            new_err = ESIntegrationException(msg, err)
+
+        return new_err
 
 
 class ConnectionMonitor:
@@ -424,8 +525,8 @@ class ConnectionMonitor:
         self._gateway: ElasticsearchGateway = gateway
         self._previous: bool = False
         self._active: bool = False
-        self._task: asyncio.Task = None
-        self._next_test: float = None
+        self._task: asyncio.Task | None = None
+        self._next_test: float | None = 0
 
     async def async_init(self) -> None:
         """Start the connection monitor."""
@@ -448,17 +549,12 @@ class ConnectionMonitor:
         """Return the previous connection monitor status."""
         return self._previous
 
-    # @property
-    # def task(self) -> asyncio.Task | None:
-    #     """Return the asyncio task for the connection monitor."""
-    #     return self._task
-
     @classmethod
     def _is_ignorable_error(cls, err) -> bool:
         """Determine if a transport error is ignorable."""
 
         if isinstance(err, TransportError7 | TransportError8):
-            return isinstance(err.status_code, int) and cls.status_code <= 403  # type: ignore # noqa: PLR2004
+            return isinstance(err.status_code, int) and cls.status_code <= 403  # type: ignore # noqa: PLR2004, PGH003
 
         return False
 
@@ -493,7 +589,7 @@ class ConnectionMonitor:
 
             try:
                 self._active = await self.test()
-            except Exception as err:  # type: ignore
+            except Exception as err:  # type: ignore  # noqa: PGH003
                 if not self._is_ignorable_error(err):
                     self._logger.exception("Connection test to [%s] failed", self.gateway.url)
                     self._active = False
@@ -542,8 +638,5 @@ class ConnectionMonitor:
 
         self._active = False
 
-        # if self._task is not None:
-        #     self._task.cancel()
-        #     self._task = None
-
         self._logger.warning("Connection monitor stopped.")
+

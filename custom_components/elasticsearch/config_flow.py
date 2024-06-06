@@ -19,7 +19,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.selector import selector
 
-from .const import (
+from custom_components.elasticsearch.const import (
     CONF_EXCLUDED_DOMAINS,
     CONF_EXCLUDED_ENTITIES,
     CONF_ILM_ENABLED,
@@ -40,8 +40,8 @@ from .const import (
     PUBLISH_MODE_ANY_CHANGES,
     PUBLISH_MODE_STATE_CHANGES,
 )
-from .const import DOMAIN as ELASTIC_DOMAIN
-from .errors import (
+from custom_components.elasticsearch.const import DOMAIN as ELASTIC_DOMAIN
+from custom_components.elasticsearch.errors import (
     AuthenticationRequired,
     CannotConnect,
     ClientError,
@@ -49,7 +49,8 @@ from .errors import (
     UnsupportedVersion,
     UntrustedCertificate,
 )
-from .es_gateway import Elasticsearch7Gateway
+from custom_components.elasticsearch.es_gateway import Elasticsearch7Gateway
+
 from .logger import LOGGER
 
 CONFIG_TO_REDACT = {CONF_API_KEY, CONF_PASSWORD, CONF_URL, CONF_USERNAME}
@@ -648,8 +649,8 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
             ): str,
         }
 
-    def _dedup_list(self, list_to_dedup: list) -> list:
-        return list(dict.fromkeys(list_to_dedup))
+    def _dedup_list(self, list_to_dedup: list[str]) -> list:
+        return list(set(list_to_dedup))
 
     @callback
     async def _async_get_domains_and_entities(self) -> tuple[list, list]:

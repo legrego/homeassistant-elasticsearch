@@ -20,7 +20,7 @@ from elasticsearch.const import (
 from elasticsearch.entity_details import EntityDetails
 from elasticsearch.loop import LoopHandler
 from elasticsearch.system_info import SystemInfo, SystemInfoResult
-from homeassistant.components.sun import STATE_ABOVE_HORIZON, STATE_BELOW_HORIZON
+from homeassistant.components.sun.const import STATE_ABOVE_HORIZON, STATE_BELOW_HORIZON
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     EVENT_STATE_CHANGED,
@@ -34,7 +34,7 @@ from homeassistant.const import (
     STATE_UNKNOWN,
     STATE_UNLOCKED,
 )
-from homeassistant.core import Event, HomeAssistant, State
+from homeassistant.core import Event, EventStateChangedData, HomeAssistant, State, callback
 from homeassistant.helpers import state as state_helper
 from homeassistant.util import dt as dt_util
 
@@ -266,7 +266,8 @@ class Pipeline:
                 self._handle_event,
             )
 
-        async def _handle_event(self, event: Event) -> None:
+        @callback
+        async def _handle_event(self, event: Event[EventStateChangedData]) -> None:
             """Listen for new messages on the bus and queue them for send."""
             new_state: State | None = event.data.get("new_state")
             old_state: State | None = event.data.get("old_state")
