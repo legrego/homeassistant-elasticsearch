@@ -43,7 +43,7 @@ from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 from .logger import LOGGER as BASE_LOGGER
 
 if TYPE_CHECKING:
-    from asyncio import Task
+    from asyncio import Task  # pragma: no cover
 
 ALLOWED_ATTRIBUTE_TYPES = tuple | dict | set | list | int | float | bool | str | None
 SKIP_ATTRIBUTES = [
@@ -370,10 +370,10 @@ class Pipeline:
         def __init__(self, hass: HomeAssistant, log: Logger = BASE_LOGGER) -> None:
             """Initialize the formatter."""
             self._logger = log if log else BASE_LOGGER
-            self._static_fields = {}
+            self._static_fields: dict[str, Any] = {}
             self._entity_details = EntityDetails(hass)
 
-        async def async_init(self, static_fields: dict) -> None:
+        async def async_init(self, static_fields: dict[str, Any]) -> None:
             """Initialize the formatter."""
             self._static_fields = static_fields
 
@@ -401,15 +401,12 @@ class Pipeline:
             return replaced_string.lower()
 
         @classmethod
-        def try_state_as_number(cls, state: State) -> bool:
+        def try_state_as_number(cls, state: State) -> tuple[bool, float | None]:
             """Try to coerce our state to a number and return true if we can, false if we can't."""
-
             try:
-                cls.state_as_number(state)
+                return True, cls.state_as_number(state)
             except ValueError:
-                return False
-            else:
-                return True
+                return False, None
 
         @classmethod
         def state_as_number(cls, state: State) -> float:
@@ -426,13 +423,10 @@ class Pipeline:
         @classmethod
         def try_state_as_boolean(cls, state: State) -> tuple[bool, bool | None]:
             """Try to coerce our state to a boolean and return true if we can, false if we can't."""
-
             try:
-                result = cls.state_as_boolean(state)
+                return True, cls.state_as_boolean(state)
             except ValueError:
                 return False, None
-            else:
-                return True, result
 
         @classmethod
         def state_as_boolean(cls, state: State) -> bool:
@@ -462,15 +456,13 @@ class Pipeline:
             raise ValueError(msg)
 
         @classmethod
-        def try_state_as_datetime(cls, state: State) -> bool:
+        def try_state_as_datetime(cls, state: State) -> tuple[bool, datetime | None]:
             """Try to coerce our state to a datetime and return True if we can, false if we can't."""
 
             try:
-                cls.state_as_datetime(state)
+                return True, cls.state_as_datetime(state)
             except ValueError:
-                return False
-            else:
-                return True
+                return False, None
 
         @classmethod
         def state_as_datetime(cls, state: State) -> datetime:
@@ -572,7 +564,7 @@ class Pipeline:
                 elif isinstance(value, list | tuple) and isinstance(value[0], tuple | dict | set | list):
                     new_value = json.dumps(value)
 
-                attributes[key] = new_value
+                attributes[new_key] = new_value
 
             return attributes
 
@@ -580,26 +572,23 @@ class Pipeline:
             """Coerce the state value into a dictionary of possible types."""
             value = state.state
 
-            if not isinstance(value, str):
-                return {"string": value}
-
             success, result = self.try_state_as_boolean(state)
-            if success:
+            if success and result is not None:
                 return {"boolean": result}
 
-            elif self.try_state_as_number(state):
-                return {"float": self.state_as_number(state)}
+            success, result = self.try_state_as_number(state)
+            if success and result is not None:
+                return {"float": result}
 
-            elif self.try_state_as_datetime(state):
-                _temp_state = self.state_as_datetime(state)
+            success, result = self.try_state_as_datetime(state)
+            if success and result is not None:
                 return {
-                    "datetime": _temp_state.isoformat(),
-                    "date": _temp_state.date().isoformat(),
-                    "time": _temp_state.time().isoformat(),
+                    "datetime": result.isoformat(),
+                    "date": result.date().isoformat(),
+                    "time": result.time().isoformat(),
                 }
 
-            else:
-                return {"string": value}
+            return {"string": value}
 
         def state_to_datastream(self, state: State) -> dict:
             """Convert the state into a datastream."""
@@ -614,8 +603,8 @@ class Pipeline:
 
             base_document = {
                 "@timestamp": time.isoformat(),
-                "event.action": {
-                    "action": reason.value,
+                "event": {
+                    "action": reason.to_publish_reason(),
                     "kind": "event",
                     "type": "info" if reason == StateChangeType.NO_CHANGE else "change",
                 },
@@ -657,9 +646,9 @@ class Pipeline:
         async def async_init(self, config_entry: ConfigEntry) -> None:
             """Initialize the publisher."""
 
-
+        @staticmethod
+        @lru_cache(maxsize=128)
         def _format_datastream_name(
-            self,
             datastream_type: str,
             datastream_dataset: str,
             datastream_namespace: str,
@@ -667,20 +656,7 @@ class Pipeline:
             """Format the datastream name."""
             return f"{datastream_type}-{datastream_dataset}-{datastream_namespace}"
 
-        def _add_action_and_meta_data(self, document: dict) -> dict:
-            """Prepare the document for insertion into Elasticsearch."""
-
-            return {
-                "_op_type": "create",
-                "_index": self._format_datastream_name(
-                    datastream_type=document["datastream"]["type"],
-                    datastream_dataset=document["datastream"]["dataset"],
-                    datastream_namespace=document["datastream"]["namespace"],
-                ),
-                "_source": document,
-            }
-
-        async def _add_action_and_meta_data_gen(self, generator) -> AsyncGenerator[dict, None]:
+        async def _add_action_and_meta_data(self, generator) -> AsyncGenerator[dict, None]:
             """Prepare the document for insertion into Elasticsearch."""
 
             async for document in generator:
@@ -698,7 +674,7 @@ class Pipeline:
             """Publish the document to Elasticsearch."""
 
             # We are passed a generator, we will async grab each item, call _add_action_and_meta_data on it, and then produce a generator to pass to publish
-            await self._gateway.bulk(self._add_action_and_meta_data_gen(generator))
+            await self._gateway.bulk(self._add_action_and_meta_data(generator))
 
         def stop(self) -> None:
             """Stop the publisher."""

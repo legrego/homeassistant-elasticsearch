@@ -65,6 +65,14 @@ class StateChangeType(Enum):
     ATTRIBUTE = "ATTRIBUTE"
     NO_CHANGE = "POLLING"
 
+    def to_publish_reason(self) -> str:
+        """Return the publish reason for the state change type."""
+        if self == StateChangeType.STATE:
+            return PUBLISH_REASON_STATE_CHANGE
+        if self == StateChangeType.ATTRIBUTE:
+            return PUBLISH_REASON_ATTR_CHANGE
+        return PUBLISH_REASON_POLLING
+
 
 class CAPABILITIES:
     """Elasticsearch CAPABILITIES constants."""
