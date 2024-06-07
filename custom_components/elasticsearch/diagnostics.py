@@ -5,7 +5,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONF_API_KEY,
     CONF_PASSWORD,
-    CONF_URL,
     CONF_USERNAME,
 )
 from homeassistant.core import HomeAssistant
