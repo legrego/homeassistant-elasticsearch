@@ -5,7 +5,9 @@ from enum import Enum
 DOMAIN: str = "elasticsearch"
 
 CONF_PUBLISH_ENABLED: str = "publish_enabled"
-
+CONF_POLLING_ENABLED: str = "polling_enabled"
+CONF_POLLING_FREQUENCY: str = "polling_frequency"
+CONF_ALLOWED_CHANGE_TYPES: str = "allowed_change_types"
 CONF_PUBLISH_FREQUENCY: str = "publish_frequency"
 CONF_EXCLUDED_DOMAINS: str = "excluded_domains"
 CONF_EXCLUDED_ENTITIES: str = "excluded_entities"

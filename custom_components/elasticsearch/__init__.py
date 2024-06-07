@@ -99,7 +99,10 @@ async def _async_init_integration(hass: HomeAssistant, config_entry: ConfigEntry
         _logger.exception(msg)
         raise ConfigEntryNotReady(msg) from err
 
-    hass.data[DOMAIN] = integration
+    if hass.data.get(DOMAIN) is None:
+        hass.data[DOMAIN] = {}
+
+    hass.data[DOMAIN][config_entry.entry_id] = integration
 
     return True
 
@@ -136,11 +139,11 @@ def migrate_data_and_options_to_version(
 
 def migrate_to_version_2(data: dict, options: dict) -> tuple[dict, dict]:
     """Migrate config to version 2."""
-    only_publish_changed = data.get(CONF_ONLY_PUBLISH_CHANGED, False)
-    data[CONF_PUBLISH_MODE] = PUBLISH_MODE_ALL if not only_publish_changed else PUBLISH_MODE_ANY_CHANGES
+    only_publish_changed = data.get("only_publish_changed", False)
+    data["publish_mode"] = "All" if not only_publish_changed else "Any changes"
 
-    if CONF_ONLY_PUBLISH_CHANGED in data:
-        del data[CONF_ONLY_PUBLISH_CHANGED]
+    if "only_publish_changed" in data:
+        del data["only_publish_changed"]
 
     return data, options
 
@@ -206,5 +209,27 @@ def migrate_to_version_5(data: dict, options: dict) -> tuple[dict, dict]:
     for key in remove_keys_if_empty:
         if key in data and data[key] == "":
             del data[key]
+
+    return data, options
+
+def migrate_to_version_6(data: dict, options: dict) -> tuple[dict, dict]:
+    """Migrate config to version 6."""
+
+    options["polling_enabled"] = True
+    options["polling_frequency"] = 60
+
+    if data.get("index_mode") is not None:
+        del data["index_mode"]
+
+    if options.get("publish_mode") is not None:
+        if options["publish_mode"] == "All":
+            options["allowed_change_types"] = ["STATE", "ATTRIBUTE", "POLLING"]
+        if options["publish_mode"] == "Any changes":
+            options["allowed_change_types"] = ["STATE", "ATTRIBUTE"]
+        if options["publish_mode"] == "State changes":
+            options["allowed_change_types"] = ["STATE"]
+        del options["publish_mode"]
+    else:
+        options["allowed_change_types"] = ["STATE", "ATTRIBUTE", "POLLING"]
 
     return data, options

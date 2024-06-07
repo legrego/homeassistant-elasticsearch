@@ -20,6 +20,7 @@ from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.selector import selector
 
 from custom_components.elasticsearch.const import (
+    CONF_ALLOWED_CHANGE_TYPES,
     CONF_EXCLUDED_DOMAINS,
     CONF_EXCLUDED_ENTITIES,
     CONF_ILM_ENABLED,
@@ -28,6 +29,8 @@ from custom_components.elasticsearch.const import (
     CONF_INCLUDED_ENTITIES,
     CONF_INDEX_FORMAT,
     CONF_INDEX_MODE,
+    CONF_POLLING_ENABLED,
+    CONF_POLLING_FREQUENCY,
     CONF_PUBLISH_ENABLED,
     CONF_PUBLISH_FREQUENCY,
     CONF_PUBLISH_MODE,
@@ -39,6 +42,7 @@ from custom_components.elasticsearch.const import (
     PUBLISH_MODE_ALL,
     PUBLISH_MODE_ANY_CHANGES,
     PUBLISH_MODE_STATE_CHANGES,
+    StateChangeType,
 )
 from custom_components.elasticsearch.const import DOMAIN as ELASTIC_DOMAIN
 from custom_components.elasticsearch.errors import (
@@ -61,6 +65,9 @@ DEFAULT_INDEX_FORMAT = "hass-events"
 
 DEFAULT_PUBLISH_ENABLED = True
 DEFAULT_PUBLISH_FREQUENCY = ONE_MINUTE
+DEFAULT_POLLING_ENABLED = True
+DEFAULT_POLLING_FREQUENCY = ONE_MINUTE
+DEFAULT_ALLOWED_CHANGE_TYPES = [StateChangeType.STATE, StateChangeType.ATTRIBUTE, StateChangeType.NO_CHANGE]
 DEFAULT_PUBLISH_MODE = PUBLISH_MODE_ANY_CHANGES
 DEFAULT_VERIFY_SSL = True
 DEFAULT_TIMEOUT_SECONDS = 30
@@ -79,6 +86,18 @@ def build_new_options(existing_options: dict | None = None, user_input: dict | N
         CONF_PUBLISH_ENABLED: user_input.get(
             CONF_PUBLISH_ENABLED,
             existing_options.get(CONF_PUBLISH_ENABLED, DEFAULT_PUBLISH_ENABLED),
+        ),
+        CONF_POLLING_ENABLED: user_input.get(
+            CONF_POLLING_ENABLED,
+            existing_options.get(CONF_POLLING_ENABLED, DEFAULT_POLLING_ENABLED),
+        ),
+        CONF_ALLOWED_CHANGE_TYPES: user_input.get(
+            CONF_ALLOWED_CHANGE_TYPES,
+            existing_options.get(CONF_ALLOWED_CHANGE_TYPES, DEFAULT_ALLOWED_CHANGE_TYPES),
+        ),
+        CONF_POLLING_FREQUENCY: user_input.get(
+            CONF_POLLING_FREQUENCY,
+            existing_options.get(CONF_POLLING_FREQUENCY, DEFAULT_POLLING_FREQUENCY),
         ),
         CONF_PUBLISH_FREQUENCY: user_input.get(
             CONF_PUBLISH_FREQUENCY,
@@ -171,7 +190,7 @@ class ClusterCheckResult:
 class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
     """Handle an Elastic config flow."""
 
-    VERSION = 5
+    VERSION = 6
     CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_PUSH
 
     @staticmethod

@@ -5,8 +5,9 @@ from logging import Logger
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
+from custom_components.elasticsearch.es_publish_pipeline import Pipeline, PipelineSettings
+
 from .const import ES_CHECK_PERMISSIONS_DATASTREAM
-from .es_doc_publisher import DocumentPublisher
 from .es_gateway import Elasticsearch7Gateway
 from .es_index_manager import IndexManager
 from .logger import LOGGER as BASE_LOGGER
@@ -25,45 +26,76 @@ class ElasticIntegration:
 
         self._logger.info("Initializing integration.")
 
-        gateway_parameters = self.build_gateway_parameters(self._config_entry)
+        gateway_parameters = self.build_gateway_parameters(config_entry=self._config_entry)
         self._gateway = Elasticsearch7Gateway(log=self._logger, **gateway_parameters)
+
+        manager_parameters = self.build_pipeline_manager_parameters(config_entry=self._config_entry)
+        self._pipeline_manager = Pipeline.Manager(log=self._logger, **manager_parameters)
 
         index_parameters = self.build_index_manager_parameters()
         self._index_manager = IndexManager(log=self._logger, **index_parameters)
 
-        publisher_parameters = self.build_publisher_parameters(self._config_entry)
-        self._publisher = DocumentPublisher(log=self._logger, **publisher_parameters)
-
     # TODO investigate helpers.event.async_call_later()
     async def async_init(self) -> None:
         """Async init procedure."""
+
+        self._logger.debug("async_init: starting initialization")
 
         try:
             await self._gateway.async_init()
             self._gateway.connection_monitor.start(config_entry=self._config_entry)
 
             await self._index_manager.async_init()
-            await self._publisher.async_init()
+            await self._pipeline_manager.async_init(config_entry=self._config_entry)
 
         except Exception:
             self._logger.exception("Error initializing integration")
-            try:
-                self._publisher.stop_publisher()
-                await self._gateway.stop()
-            except Exception:
-                self._logger.exception(
-                    "Error shutting down gateway following failed initialization",
-                )
+            await self.async_shutdown()
 
             raise
+
+        self._logger.debug("async_init: finished initialization")
 
     async def async_shutdown(self) -> bool:  # pylint disable=unused-argument
         """Async shutdown procedure."""
         self._logger.debug("async_shutdown: starting shutdown")
-        self._publisher.stop_publisher()
-        await self._gateway.stop()
+
+        try:
+            await self._gateway.stop()
+        except Exception:
+            self._logger.exception("Error stopping gateway")
+
+        try:
+            self._pipeline_manager.stop()
+        except Exception:
+            self._logger.exception("Error stopping pipeline manager")
+
+        try:
+            self._index_manager.stop()
+        except Exception:
+            self._logger.exception("Error stopping index manager")
+
         self._logger.debug("async_shutdown: shutdown complete")
         return True
+
+    def build_pipeline_manager_parameters(self, config_entry: ConfigEntry) -> dict:
+        """Build the parameters for the Elasticsearch pipeline manager."""
+
+        if config_entry.options is None:
+            raise ValueError("Config entry options are required for the pipeline manager.")
+
+        settings = PipelineSettings(
+            included_domains=config_entry.options["included_domains"],
+            included_entities=config_entry.options["included_entities"],
+            excluded_domains=config_entry.options["excluded_domains"],
+            excluded_entities=config_entry.options["excluded_entities"],
+            polling_enabled=config_entry.options["polling_enabled"],
+            polling_frequency=config_entry.options["polling_frequency"],
+            allowed_change_types=config_entry.options["allowed_change_types"],
+            publish_frequency=config_entry.options["publish_frequency"],
+        )
+
+        return {"hass": self._hass, "gateway": self._gateway, "settings": settings}
 
     def build_gateway_parameters(self, config_entry: ConfigEntry) -> dict:
         """Build the parameters for the Elasticsearch gateway."""

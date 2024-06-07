@@ -292,7 +292,7 @@
         },
         "settings": {
             "codec": "best_compression",
-            "index_mode": "time_series",
+            "index.mode": "time_series",
             "mapping": {
                 "total_fields": {
                     "limit": "10000"

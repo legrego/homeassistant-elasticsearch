@@ -316,7 +316,7 @@ class ElasticsearchGateway(ABC):
         self._logger.debug("Updating index template %s", kwargs.get("name", ""))
 
         try:
-            result = await self._client.indices.put_template(**kwargs)
+            result = await self._client.indices.put_index_template(**kwargs)
 
         except Exception:
             msg = "Error creating/updating index template"

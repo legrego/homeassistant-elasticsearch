@@ -1,0 +1,23 @@
+{
+  "after_data": {
+    "url": "http://migration-test:9200"
+  },
+  "after_options": {
+    "allowed_change_types": [
+      "STATE",
+      "ATTRIBUTE"
+    ],
+    "excluded_domains": [],
+    "excluded_entities": [],
+    "included_domains": [],
+    "included_entities": [],
+    "polling_enabled": true,
+    "polling_frequency": 60,
+    "publish_enabled": true,
+    "publish_frequency": 60
+  },
+  "after_version": 6,
+  "before_data": "mappingproxy({'url': 'http://migration-test:9200'})",
+  "before_options": "mappingproxy({'publish_mode': 'Any changes', 'excluded_domains': [], 'excluded_entities': [], 'included_domains': [], 'included_entities': [], 'publish_enabled': True, 'publish_frequency': 60})",
+  "before_version": 5
+}

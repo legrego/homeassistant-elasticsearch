@@ -113,11 +113,12 @@ async def test_update_entry(hass: HomeAssistant, es_aioclient_mock: AiohttpClien
     expected_config = {
         "url": es_url,
         "excluded_domains": ["sensor", "weather"],
-        "index_mode": "index",
         "use_connection_monitor": False,
     }
 
     assert merged_config == expected_config
+
+    mock_entry.async_shutdown()
 
 
 @pytest.mark.asyncio()
@@ -314,6 +315,47 @@ async def test_config_migration_v4tov5(
             "url": "http://migration-test:9200",
         },
         after_version=5,
+        snapshot=snapshot,
+    )
+
+
+@pytest.mark.asyncio()
+async def test_config_migration_v5tov6(
+    hass: HomeAssistant,
+    es_aioclient_mock: AiohttpClientMocker,
+    snapshot: SnapshotAssertion,
+):
+    """Test config migration from v4."""
+
+    assert _test_config_data_options_migration_to_version(
+        before_version=5,
+        before_options={
+            "publish_mode": "Any changes",
+            "excluded_domains": [],
+            "excluded_entities": [],
+            "included_domains": [],
+            "included_entities": [],
+            "publish_enabled": True,
+            "publish_frequency": 60,
+        },
+        before_data={
+            "url": "http://migration-test:9200",
+        },
+        after_options={
+            "excluded_domains": [],
+            "excluded_entities": [],
+            "included_domains": [],
+            "included_entities": [],
+            "publish_enabled": True,
+            "publish_frequency": 60,
+            "polling_enabled": True,
+            "polling_frequency": 60,
+            "allowed_change_types": ["STATE", "ATTRIBUTE"],
+        },
+        after_data={
+            "url": "http://migration-test:9200",
+        },
+        after_version=6,
         snapshot=snapshot,
     )
 

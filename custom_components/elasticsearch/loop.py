@@ -75,4 +75,9 @@ class LoopHandler:
             self._schedule_next_run()
 
             self._run_count += 1
-            await self._func()
+            try:
+                await self._func()
+            except Exception:
+                self._log.exception("Error in loop handler: %s")
+                self.stop()
+                raise

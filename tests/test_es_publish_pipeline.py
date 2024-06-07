@@ -306,6 +306,7 @@ class Test_Manager:
 
         @pytest.mark.asyncio()
         async def test_publish(self, hass, manager):
+            """Test the _publish method of the Pipeline.Manager class."""
             # Create a mock sip_queue generator
 
             included_state = State("light.living_room", "on")
@@ -480,6 +481,8 @@ class Test_Poller:
 
 
 class Test_Listener:
+    """Test the Pipeline.Listener class."""
+
     @pytest.fixture
     def queue(self) -> EventQueue:
         """Return a Listener instance."""

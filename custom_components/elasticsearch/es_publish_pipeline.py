@@ -192,6 +192,10 @@ class Pipeline:
                 yield self._formatter.format(timestamp, state, reason)
 
         async def _publish(self) -> None:
+            """Publish the documents to Elasticsearch."""
+
+            self._logger.debug("Publishing documents to Elasticsearch.")
+
             await self._publisher.publish(self._sip_queue())
 
         def stop(self) -> None:

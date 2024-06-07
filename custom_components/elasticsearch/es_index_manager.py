@@ -68,3 +68,11 @@ class IndexManager:
             name=DATASTREAM_METRICS_INDEX_TEMPLATE_NAME,
             body=index_template,
         )
+
+    def stop(self):
+        """Stop the index manager."""
+        pass
+
+    def __del__(self):
+        """Destructor."""
+        self.stop()
