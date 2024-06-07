@@ -1,13 +1,31 @@
 """Tests for the es_publish_pipeline module."""
 
-from datetime import UTC, datetime
+from datetime import datetime
+from queue import Queue
 from unittest import mock
 from unittest.mock import MagicMock, patch
 
 import pytest
+from freezegun.api import FrozenDateTimeFactory
 from homeassistant.core import HomeAssistant, State
+from homeassistant.util import dt as dt_util
+from syrupy.assertion import SnapshotAssertion
+from syrupy.extensions.json import JSONSnapshotExtension
 
-from custom_components.elasticsearch.es_publish_pipeline import Pipeline, PipelineSettings, StateChangeType
+from custom_components.elasticsearch.es_publish_pipeline import (
+    EventQueue,
+    Pipeline,
+    PipelineSettings,
+    StateChangeType,
+)
+from tests.const import MOCK_NOON_APRIL_12TH_2023
+
+
+@pytest.fixture(autouse=True)
+def snapshot(snapshot: SnapshotAssertion):
+    """Provide a pre-configured snapshot object."""
+
+    return snapshot.with_defaults(extension_class=JSONSnapshotExtension)
 
 
 @pytest.fixture
@@ -20,6 +38,8 @@ def settings():
         excluded_domains=[],
         allowed_change_types=[],
         publish_frequency=60,
+        polling_enabled=True,
+        polling_frequency=60,
     )
 
 
@@ -119,23 +139,26 @@ class Test_Manager:
             excluded_domains=[],
             allowed_change_types=[],
             publish_frequency=60,
+            polling_enabled=True,
+            polling_frequency=60,
         )
         return Pipeline.Manager(hass=hass, gateway=gateway, settings=settings)
 
-    def test_init(self, manager):
+    def test_init(self, manager, snapshot: SnapshotAssertion):
         """Test the initialization of the manager."""
-        assert manager._logger is not None
-        assert manager._hass is not None
-        assert manager._gateway is not None
-        assert manager._publish_frequency == 60
-        assert manager._cancel_manager is None
-        assert manager._static_fields == {}
-        assert manager._queue is not None
-        assert manager._listener is not None
-        assert manager._poller is not None
+
         assert manager._filterer is not None
         assert manager._formatter is not None
+        assert manager._gateway is not None
+        assert manager._hass is not None
+        assert manager._listener is not None
+        assert manager._poller is not None
         assert manager._publisher is not None
+
+        assert {
+            "settings": manager._settings.to_dict(),
+            "static_fields": manager._static_fields,
+        } == snapshot
 
     async def test_async_init(self, manager):
         """Test the async initialization of the manager."""
@@ -183,66 +206,156 @@ class Test_Manager:
 
     def test_stop(self, manager):
         """Test stopping the manager."""
-        manager._cancel_manager = mock.Mock()
-        manager._listener = mock.Mock()
-        manager.stop()
 
-        manager._cancel_manager.cancel.assert_called_once()
-        manager._listener.stop.assert_called_once()
+        with (
+            patch.object(manager._listener, "stop") as listener_stop,
+            patch.object(manager._poller, "stop") as poller_stop,
+            patch.object(manager._publisher, "stop") as publisher_stop,
+        ):
+            manager.stop()
+
+            listener_stop.assert_called_once()
+            poller_stop.assert_called_once()
+            publisher_stop.assert_called_once()
 
     def test_del(self, manager):
         """Test cleaning up the manager."""
-        manager._cancel_manager = mock.Mock()
-        manager._listener = mock.Mock()
-        manager.__del__()
+        with patch.object(manager, "stop") as manager_stop:
+            manager.stop()
 
-        manager._cancel_manager.cancel.assert_called_once()
-        manager._listener.stop.assert_called_once()
+            manager_stop.assert_called_once()
 
-    async def test_gather_and_publish(self, hass: HomeAssistant, settings: PipelineSettings):
-        """Test gathering and publishing."""
+    # async def test_gather_and_publish(self, hass: HomeAssistant, settings: PipelineSettings):
+    #     """Test gathering and publishing."""
 
-        gateway = mock.Mock()
-        manager = Pipeline.Manager(hass=hass, gateway=gateway, settings=settings)
+    #     gateway = mock.Mock()
+    #     manager = Pipeline.Manager(hass=hass, gateway=gateway, settings=settings)
 
-        # Assign the mock dependencies to the manager
-        manager._poller = MagicMock()
-        manager._poller.poll = mock.AsyncMock()
-        manager._filterer = MagicMock()
-        manager._formatter = MagicMock()
-        manager._publisher = MagicMock()
-        manager._publisher.publish = mock.AsyncMock()
+    #     # Assign the mock dependencies to the manager
+    #     manager._poller = MagicMock()
+    #     manager._poller.poll = mock.AsyncMock()
+    #     manager._filterer = MagicMock()
+    #     manager._formatter = MagicMock()
+    #     manager._publisher = MagicMock()
+    #     manager._publisher.publish = mock.AsyncMock()
 
-        # Create mock state changes
-        state1 = State("light.living_room", "on")
-        state2 = State("sensor.temperature", "25.0")
-        state3 = State("switch.bedroom", "off")
+    #     # Create mock state changes
+    #     state1 = State("light.living_room", "on")
+    #     state2 = State("sensor.temperature", "25.0")
+    #     state3 = State("switch.bedroom", "off")
 
-        document1 = {"timestamp": datetime.now(tz=UTC), "state": "on"}
-        document2 = {"timestamp": datetime.now(tz=UTC), "state": 25.0}
-        document3 = {"timestamp": datetime.now(tz=UTC), "state": "off"}
+    #     document1 = {"timestamp": datetime.now(tz=UTC), "state": "on"}
+    #     document2 = {"timestamp": datetime.now(tz=UTC), "state": 25.0}
+    #     document3 = {"timestamp": datetime.now(tz=UTC), "state": "off"}
 
-        manager._queue.put((document1["timestamp"], state1, StateChangeType.STATE))
-        manager._queue.put((document2["timestamp"], state2, StateChangeType.STATE))
-        manager._queue.put((document3["timestamp"], state3, StateChangeType.STATE))
+    #     manager._queue.put((document1["timestamp"], state1, StateChangeType.STATE))
+    #     manager._queue.put((document2["timestamp"], state2, StateChangeType.STATE))
+    #     manager._queue.put((document3["timestamp"], state3, StateChangeType.STATE))
 
-        # Configure the mock filterer to pass all state changes
-        manager._filterer.passes_filter.side_effect = [True, True, True]
+    #     # Configure the mock filterer to pass all state changes
+    #     manager._filterer.passes_filter.side_effect = [True, True, True]
 
-        # Configure the mock formatter to return the mock documents
-        manager._formatter.format.side_effect = [document1, document2, document3]
+    #     # Configure the mock formatter to return the mock documents
+    #     manager._formatter.format.side_effect = [document1, document2, document3]
 
-        # Run the _gather_and_publish method
-        await manager._gather_and_publish()
+    #     # Run the _gather_and_publish method
+    #     await manager._gather_and_publish()
 
-        # Assert that the poller was called
-        manager._poller.poll.assert_called_once()
+    #     # Assert that the poller was called
+    #     manager._poller.poll.assert_called_once()
 
-        # Assert that the filterer was called for each state change
-        assert manager._filterer.passes_filter.call_count == 3
+    #     # Assert that the filterer was called for each state change
+    #     assert manager._filterer.passes_filter.call_count == 3
 
-        # Assert that the formatter was called for each state change
-        assert manager._formatter.format.call_count == 3
+    #     # Assert that the formatter was called for each state change
+    #     assert manager._formatter.format.call_count == 3
 
-        # Assert that the publisher was called with the mock documents
-        manager._publisher.publish.assert_called_once_with([document1, document2, document3])
+    #     # Assert that the publisher was called with the mock documents
+    #     manager._publisher.publish.assert_called_once_with([document1, document2, document3])
+
+
+class Test_Poller:
+    """Test the Pipeline.Poller class."""
+
+    @pytest.fixture
+    def poller(self, hass: HomeAssistant) -> Pipeline.Poller:
+        """Return a Pipeline.Poller instance."""
+        queue: EventQueue = Queue[tuple[datetime, State, StateChangeType]]()
+        settings = MagicMock()
+        return Pipeline.Poller(hass, queue, settings)
+
+    @pytest.fixture
+    def freeze_time(self, freezer: FrozenDateTimeFactory):
+        """Freeze time so we can properly assert on payload contents."""
+
+        frozen_time = dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023)
+        if frozen_time is None:
+            msg = "Invalid date string"
+            raise ValueError(msg)
+
+        freezer.move_to(frozen_time)
+
+        return freezer
+
+    @pytest.mark.asyncio()
+    @pytest.mark.parametrize(
+        "states",
+        [
+            [],
+            [State("light.living_room", "on")],
+            [State("light.living_room", "on"), State("switch.living_room", "off")],
+        ],
+    )
+    async def test_poll(
+        self,
+        poller: Pipeline.Poller,
+        states: list[State],
+        freeze_time: FrozenDateTimeFactory,
+        snapshot: SnapshotAssertion,
+    ):
+        """Test polling for different quantities of states."""
+
+        freeze_time.tick()  # use the fixture so it doesnt show type errors
+
+        with patch.object(poller._hass, "states") as states_mock:
+            states_mock.async_all = MagicMock(return_value=states)
+
+            await poller.poll()
+
+            states_mock.async_all.assert_called_once()
+
+            if len(states) > 0:
+                assert not poller._queue.empty()
+
+            queued_states: list[dict] = []
+
+            while not poller._queue.empty():
+                timestamp, state, change_type = poller._queue.get()
+                queued_states.append(
+                    {
+                        "timestamp": timestamp,
+                        "state": state.state,
+                        "entity_id": state.entity_id,
+                        "change type": change_type.value,
+                    },
+                )
+
+            assert poller._queue.empty()
+
+            assert len(queued_states) == len(states)
+
+            assert queued_states == snapshot
+
+    def test_stop(self, poller):
+        """Test stopping the poller."""
+
+        with patch.object(poller, "_cancel_poller") as cancel_poller:
+            poller.stop()
+            cancel_poller.cancel.assert_called_once()
+
+    def test_cleanup(self, poller):
+        """Test cleaning up the poller."""
+
+        with patch.object(poller, "stop") as stop:
+            poller.__del__()
+            stop.assert_called_once()

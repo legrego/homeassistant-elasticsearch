@@ -28,7 +28,7 @@ class ElasticIntegration:
         gateway_parameters = self.build_gateway_parameters(self._config_entry)
         self._gateway = Elasticsearch7Gateway(log=self._logger, **gateway_parameters)
 
-        index_parameters = self.build_index_manager_parameters(self._config_entry)
+        index_parameters = self.build_index_manager_parameters()
         self._index_manager = IndexManager(log=self._logger, **index_parameters)
 
         publisher_parameters = self.build_publisher_parameters(self._config_entry)
@@ -42,7 +42,7 @@ class ElasticIntegration:
             await self._gateway.async_init()
             self._gateway.connection_monitor.start(config_entry=self._config_entry)
 
-            await self._index_manager.async_setup()
+            await self._index_manager.async_init()
             await self._publisher.async_init()
 
         except Exception:
@@ -80,11 +80,10 @@ class ElasticIntegration:
             "use_connection_monitor": config_entry.data.get("use_connection_monitor", True),
         }
 
-    def build_index_manager_parameters(self, config_entry: ConfigEntry) -> dict:
+    def build_index_manager_parameters(self) -> dict:
         """Build the parameters for the Elasticsearch index manager."""
         return {
             "hass": self._hass,
-            "config_entry": config_entry,
             "gateway": self._gateway,
         }
 
