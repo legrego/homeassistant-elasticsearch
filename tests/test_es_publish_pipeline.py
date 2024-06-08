@@ -657,14 +657,6 @@ class Test_Publisher:
         @pytest.mark.asyncio()
         async def test_publish(self, publisher, mock_gateway):
             """Test publishing a document."""
-            generator = MagicMock()
-            with patch.object(publisher, "_add_action_and_meta_data") as add_action_and_meta_data:
-                await publisher.publish(generator)
-
-                mock_gateway.bulk.assert_called_once_with(add_action_and_meta_data.return_value)
-
-        async def test_publish(self, publisher, mock_gateway):
-            """Test publishing a document."""
 
             # Mock the iterable
             iterable = [MagicMock(), MagicMock(), MagicMock()]

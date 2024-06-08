@@ -276,7 +276,7 @@ class ElasticsearchGateway(ABC):
         return dict(info)
 
     @abstractmethod
-    async def bulk(self, **kwargs):
+    async def bulk(self, **kwargs) -> None:
         """Perform a bulk operation."""
 
     def _convert_api_response_to_dict(self, response: object) -> dict:
@@ -369,14 +369,13 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
         """Enforce the required privileges."""
         try:
             privilege_response = await self.client.security.has_privileges(index=required_privileges)
-
-            if not privilege_response.get("has_all_requested"):
-                self._logger.error("Required privileges are missing.")
-                raise InsufficientPrivileges
-
         except Exception:
             msg = "Error enforcing privileges"
             self.convert_es_error(msg)
+
+        if not privilege_response.get("has_all_requested"):
+            self._logger.error("Required privileges are missing.")
+            raise InsufficientPrivileges
 
         return True
 
@@ -398,11 +397,18 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
 
         return SetEncoder()
 
-    async def bulk(self, **kwargs):
+    async def bulk(self, actions) -> None:
         """Perform a bulk operation."""
 
         self._logger.debug("Performing bulk operation")
-        async_streaming_bulk8(self.client, yield_ok=False, **kwargs)
+        async for ok, result in async_streaming_bulk8(
+            client=self.client,
+            actions=actions,
+            yield_ok=False,
+        ):
+            action, outcome = result.popitem()
+            if not ok:
+                self._logger.error("failed to %s document %s", action, outcome)
 
     @classmethod
     def convert_es_error(
@@ -491,7 +497,7 @@ class Elasticsearch7Gateway(ElasticsearchGateway):
 
         return SetEncoder()
 
-    async def bulk(self, actions):
+    async def bulk(self, actions) -> None:
         """Perform a bulk operation."""
 
         self._logger.debug("Performing bulk operation")
@@ -500,26 +506,9 @@ class Elasticsearch7Gateway(ElasticsearchGateway):
             actions=actions,
             yield_ok=False,
         ):
-            action, result = result.popitem()
+            action, outcome = result.popitem()
             if not ok:
-                self._logger.warning("failed to %s document %s", action, result)
-
-    # def bulk(self, body: list[dict]) -> None:
-    #     """Wrap event publishing.
-
-    #     Workaround for elasticsearch_async not supporting bulk operations.
-    #     """
-
-    #     from elasticsearch7.exceptions import ElasticsearchException
-    #     from elasticsearch7.helpers import async_bulk
-
-    #     actions = []
-    #     try:
-    #         bulk_response = await async_bulk(self.client, actions)
-    #         self._logger.debug("Elasticsearch bulk response: %s", str(bulk_response))
-    #         self._logger.info("Publish Succeeded")
-    #     except ElasticsearchException:
-    #         self._logger.exception("Error publishing documents to Elasticsearch")
+                self._logger.error("failed to %s document %s", action, outcome)
 
     @classmethod
     def convert_es_error(

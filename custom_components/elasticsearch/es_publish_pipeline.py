@@ -3,6 +3,7 @@
 import json
 import re
 import unicodedata
+from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from functools import lru_cache
 from logging import Logger
@@ -182,7 +183,7 @@ class Pipeline:
                 "es_filter_transform_load",
             )
 
-        async def _sip_queue(self):
+        async def _sip_queue(self) -> AsyncGenerator[dict[str, Any], Any]:
             while not self._queue.empty():
                 timestamp, state, reason = self._queue.get()
 
@@ -665,7 +666,7 @@ class Pipeline:
             """Format the datastream name."""
             return f"{datastream_type}-{datastream_dataset}-{datastream_namespace}"
 
-        async def _add_action_and_meta_data(self, iterable):
+        async def _add_action_and_meta_data(self, iterable) -> AsyncGenerator[dict[str, Any], Any]:
             """Prepare the document for insertion into Elasticsearch."""
             async for document in iterable:
                 yield {
@@ -684,14 +685,6 @@ class Pipeline:
             actions = self._add_action_and_meta_data(iterable)
 
             await self._gateway.bulk(actions=actions)
-            # async for ok, result in async_streaming_bulk7(
-            #     client=self._gateway.client,
-            #     actions=self._add_action_and_meta_data(iterable),
-            #     yield_ok=False,
-            # ):
-            #     action, result = result.popitem()
-            #     if not ok:
-            #         self._logger.warning("failed to %s document %s", action, result)
 
         def stop(self) -> None:
             """Stop the publisher."""
