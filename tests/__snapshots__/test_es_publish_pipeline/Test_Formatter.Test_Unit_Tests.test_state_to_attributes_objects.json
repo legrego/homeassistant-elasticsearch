@@ -1,0 +1,34 @@
+{
+  "orig_attributes": {
+    "brightness": 255,
+    "child": {
+      "name": "Alice"
+    },
+    "children": [
+      {
+        "name": "Alice"
+      }
+    ],
+    "color_temp": 4000,
+    "colors": [
+      "red"
+    ],
+    "lights": [
+      "lamp",
+      "ceiling"
+    ]
+  },
+  "transformed_attributes": {
+    "brightness": 255,
+    "child": "{\"name\": \"Alice\"}",
+    "children": "[{\"name\": \"Alice\"}]",
+    "color_temp": 4000,
+    "colors": [
+      "red"
+    ],
+    "lights": [
+      "lamp",
+      "ceiling"
+    ]
+  }
+}

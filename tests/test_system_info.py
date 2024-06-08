@@ -1,5 +1,7 @@
+# type: ignore  # noqa: PGH003
 """Test Entity Details."""
 
+from typing import Never
 from unittest import mock
 
 import pytest
@@ -10,7 +12,7 @@ from homeassistant.exceptions import HomeAssistantError
 from custom_components.elasticsearch.system_info import SystemInfo, SystemInfoResult
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_success(hass: HomeAssistant):
     """Verify system info can be returned."""
     # Test adapted from:
@@ -26,13 +28,13 @@ async def test_success(hass: HomeAssistant):
     assert result.hostname is not None
 
 
-
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_error_handling(hass: HomeAssistant):
     """Verify unexpected errors return empty object."""
 
-    def mock_get_system_info():
-        raise HomeAssistantError("Something bad happened")
+    def mock_get_system_info() -> Never:
+        msg = "Something bad happened"
+        raise HomeAssistantError(msg)
 
     with mock.patch(
         "homeassistant.helpers.system_info.async_get_system_info",

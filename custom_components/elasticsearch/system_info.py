@@ -23,7 +23,7 @@ class SystemInfoResult:
 class SystemInfo:
     """Retrieve system information."""
 
-    def __init__(self, hass: HomeAssistant):
+    def __init__(self, hass: HomeAssistant) -> None:
         """System Info init."""
         self._hass: HomeAssistant = hass
 

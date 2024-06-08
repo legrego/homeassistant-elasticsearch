@@ -1,0 +1,31 @@
+{
+  "capabilities": {
+    "BUILD_FLAVOR": "serverless",
+    "DATASTREAM_LIFECYCLE_MANAGEMENT": true,
+    "IGNORE_MISSING_COMPONENT_TEMPLATES": true,
+    "MAJOR": 8,
+    "MAX_PRIMARY_SHARD_SIZE": true,
+    "MINOR": 11,
+    "SERVERLESS": true,
+    "SUPPORTED": true,
+    "TIMESERIES_DATASTREAM": true
+  },
+  "cluster info": {
+    "cluster_name": "home-assistant-cluster",
+    "cluster_uuid": "xtsjNokTQGClXbRibWjxyg",
+    "name": "serverless",
+    "tagline": "You Know, for Search",
+    "version": {
+      "build_date": "2023-10-31",
+      "build_flavor": "serverless",
+      "build_hash": "00000000",
+      "build_snapshot": false,
+      "build_type": "docker",
+      "lucene_version": "9.7.0",
+      "minimum_index_compatibility_version": "8.11.0",
+      "minimum_wire_compatibility_version": "8.11.0",
+      "number": "8.11.0"
+    }
+  },
+  "name": "SERVERLESS_CAPABILITIES"
+}

@@ -1,59 +1,48 @@
 """constants."""
 
-DOMAIN = "elasticsearch"
+from enum import Enum
 
-CONF_PUBLISH_ENABLED = "publish_enabled"
-CONF_INDEX_FORMAT = "index_format"
+DOMAIN: str = "elasticsearch"
 
-CONF_INDEX_MODE = "index_mode"
+CONF_PUBLISH_ENABLED: str = "publish_enabled"
+CONF_POLLING_ENABLED: str = "polling_enabled"
+CONF_POLLING_FREQUENCY: str = "polling_frequency"
+CONF_ALLOWED_CHANGE_TYPES: str = "allowed_change_types"
+CONF_PUBLISH_FREQUENCY: str = "publish_frequency"
+CONF_EXCLUDED_DOMAINS: str = "excluded_domains"
+CONF_EXCLUDED_ENTITIES: str = "excluded_entities"
+CONF_PUBLISH_MODE: str = "publish_mode"
+CONF_INCLUDED_DOMAINS: str = "included_domains"
+CONF_INCLUDED_ENTITIES: str = "included_entities"
 
-CONF_PUBLISH_FREQUENCY = "publish_frequency"
-CONF_EXCLUDED_DOMAINS = "excluded_domains"
-CONF_EXCLUDED_ENTITIES = "excluded_entities"
-CONF_PUBLISH_MODE = "publish_mode"
-CONF_INCLUDED_DOMAINS = "included_domains"
-CONF_INCLUDED_ENTITIES = "included_entities"
+CONF_ILM_ENABLED: str = "ilm_enabled"
+CONF_ILM_POLICY_NAME: str = "ilm_policy_name"
+CONF_SSL_CA_PATH: str = "ssl_ca_path"
 
-CONF_ILM_ENABLED = "ilm_enabled"
-CONF_ILM_POLICY_NAME = "ilm_policy_name"
-CONF_SSL_CA_PATH = "ssl_ca_path"
+CONF_TAGS: str = "tags"
 
-# BEGIN DEPRECATED CONFIG
-CONF_HEALTH_SENSOR_ENABLED = "health_sensor_enabled"
-CONF_ONLY_PUBLISH_CHANGED = "only_publish_changed"
-# END DEPRECATED CONFIG
+ONE_MINUTE: int = 60
+ONE_HOUR: int = 60 * 60
 
-CONF_TAGS = "tags"
-
-ONE_MINUTE = 60
-ONE_HOUR = 60 * 60
-
-VERSION_SUFFIX = "-v4_2"
-
-DATASTREAM_TYPE = "metrics"
-DATASTREAM_DATASET_PREFIX = "homeassistant"
-DATASTREAM_NAMESPACE = "default"
+DATASTREAM_TYPE: str = "metrics"
+DATASTREAM_DATASET_PREFIX: str = "homeassistant"
+DATASTREAM_NAMESPACE: str = "default"
 
 # Set to match the datastream prefix name
-DATASTREAM_METRICS_INDEX_TEMPLATE_NAME = (
-    DATASTREAM_TYPE + "-" + DATASTREAM_DATASET_PREFIX
-)
-DATASTREAM_METRICS_ILM_POLICY_NAME = DATASTREAM_TYPE + "-" + DATASTREAM_DATASET_PREFIX
+DATASTREAM_METRICS_INDEX_TEMPLATE_NAME: str = DATASTREAM_TYPE + "-" + DATASTREAM_DATASET_PREFIX
 
-LEGACY_TEMPLATE_NAME = "hass-index-template" + VERSION_SUFFIX
+PUBLISH_MODE_ALL: str = "All"
+PUBLISH_MODE_STATE_CHANGES: str = "State changes"
+PUBLISH_MODE_ANY_CHANGES: str = "Any changes"
 
-PUBLISH_MODE_ALL = "All"
-PUBLISH_MODE_STATE_CHANGES = "State changes"
-PUBLISH_MODE_ANY_CHANGES = "Any changes"
+PUBLISH_REASON_POLLING: str = "Polling"
+PUBLISH_REASON_STATE_CHANGE: str = "State change"
+PUBLISH_REASON_ATTR_CHANGE: str = "Attribute change"
 
-PUBLISH_REASON_POLLING = "Polling"
-PUBLISH_REASON_STATE_CHANGE = "State change"
-PUBLISH_REASON_ATTR_CHANGE = "Attribute change"
+STATE_CHANGE_TYPE_VALUE: str = PUBLISH_REASON_STATE_CHANGE
+STATE_CHANGE_TYPE_ATTR: str = PUBLISH_REASON_ATTR_CHANGE
 
-INDEX_MODE_LEGACY = "index"
-INDEX_MODE_DATASTREAM = "datastream"
-
-ES_CHECK_PERMISSIONS_DATASTREAM = {
+ES_CHECK_PERMISSIONS_DATASTREAM: dict = {
     "cluster": ["manage_index_templates", "manage_ilm", "monitor"],
     "index": [
         {
@@ -66,6 +55,55 @@ ES_CHECK_PERMISSIONS_DATASTREAM = {
                 "create_index",
                 "create",
             ],
-        }
+        },
     ],
 }
+
+
+class StateChangeType(Enum):
+    """Elasticsearch State Change Types constants."""
+
+    STATE = "STATE"
+    ATTRIBUTE = "ATTRIBUTE"
+    NO_CHANGE = "POLLING"
+
+    def to_publish_reason(self) -> str:
+        """Return the publish reason for the state change type."""
+        if self == StateChangeType.STATE:
+            return PUBLISH_REASON_STATE_CHANGE
+        if self == StateChangeType.ATTRIBUTE:
+            return PUBLISH_REASON_ATTR_CHANGE
+        return PUBLISH_REASON_POLLING
+
+
+class CAPABILITIES:
+    """Elasticsearch CAPABILITIES constants."""
+
+    MAJOR: str = "MAJOR"
+    MINOR: str = "MINOR"
+    BUILD_FLAVOR: str = "BUILD_FLAVOR"
+    SERVERLESS: str = "SERVERLESS"
+    OSS: str = "OSS"
+    SUPPORTED: str = "SUPPORTED"
+    TIMESERIES_DATASTREAM: str = "TIMESERIES_DATASTREAM"
+    IGNORE_MISSING_COMPONENT_TEMPLATES: str = "IGNORE_MISSING_COMPONENT_TEMPLATES"
+    DATASTREAM_LIFECYCLE_MANAGEMENT: str = "DATASTREAM_LIFECYCLE_MANAGEMENT"
+    MAX_PRIMARY_SHARD_SIZE: str = "MAX_PRIMARY_SHARD_SIZE"
+
+
+# BEGIN DEPRECATED CONFIG
+CONF_HEALTH_SENSOR_ENABLED: str = "health_sensor_enabled"
+CONF_ONLY_PUBLISH_CHANGED: str = "only_publish_changed"
+
+VERSION_SUFFIX: str = "-v4_2"
+DATASTREAM_METRICS_ILM_POLICY_NAME: str = DATASTREAM_TYPE + "-" + DATASTREAM_DATASET_PREFIX
+
+LEGACY_TEMPLATE_NAME: str = "hass-index-template" + VERSION_SUFFIX
+
+INDEX_MODE_LEGACY: str = "index"
+INDEX_MODE_DATASTREAM: str = "datastream"
+CONF_INDEX_FORMAT: str = "index_format"
+
+CONF_INDEX_MODE: str = "index_mode"
+
+# END DEPRECATED CONFIG

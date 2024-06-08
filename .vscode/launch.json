@@ -5,6 +5,28 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python: Update snapshots",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "console": "integratedTerminal",
+            "args": [
+                "tests",
+                "--snapshot-update"
+            ]
+        },
+        {
+            "name": "Python: Run Tests",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "console": "integratedTerminal",
+            "args": [
+                "tests",
+                "--continue-on-collection-errors"
+            ]
+        },
+        {
             "name": "Debug HA with Elasticsearch Component",
             "type": "debugpy",
             "request": "launch",
@@ -15,6 +37,6 @@
                 "-c",
                 "config"
             ]
-        }
+        },
     ]
 }

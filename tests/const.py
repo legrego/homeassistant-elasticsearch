@@ -46,6 +46,8 @@ MOCK_COMPLEX_LEGACY_CONFIG = {
     },
 }
 
+MOCK_ELASTICSEARCH_URL = "https://my-complex-es:9200"
+
 MOCK_NOON_APRIL_12TH_2023 = "2023-04-12T12:00:00+00:00"
 
 MOCK_LOCATION_SERVER = {
@@ -69,9 +71,9 @@ CLUSTER_INFO_MISSING_CREDENTIALS_RESPONSE_BODY = {
                         'Basic realm="security" charset="UTF-8"',
                         'Bearer realm="security"',
                         "ApiKey",
-                    ]
+                    ],
                 },
-            }
+            },
         ],
         "type": "security_exception",
         "reason": "missing authentication credentials for REST request [/?pretty]",
@@ -80,7 +82,7 @@ CLUSTER_INFO_MISSING_CREDENTIALS_RESPONSE_BODY = {
                 'Basic realm="security" charset="UTF-8"',
                 'Bearer realm="security"',
                 "ApiKey",
-            ]
+            ],
         },
     },
     "status": 401,

@@ -55,7 +55,7 @@ This project includes a [devcontainer](./.devcontainer) configuration for an eas
 Dependencies are managed via [Poetry](https://python-poetry.org). This will be managed for you automatically if using the dev container. If you wish to run outside of a dev container, you will need to install your dependencies manually:
 
 ```sh
-pip install poetry~=1.7
+pip install poetry~=1.8
 poetry install
 ```
 

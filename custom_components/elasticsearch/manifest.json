@@ -4,6 +4,9 @@
   "codeowners": [
     "@legrego"
   ],
+  "loggers": [
+    "es_integration"
+  ],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/legrego/homeassistant-elasticsearch",

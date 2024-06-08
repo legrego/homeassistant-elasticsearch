@@ -1,0 +1,31 @@
+{
+  "capabilities": {
+    "BUILD_FLAVOR": "default",
+    "DATASTREAM_LIFECYCLE_MANAGEMENT": false,
+    "IGNORE_MISSING_COMPONENT_TEMPLATES": false,
+    "MAJOR": 7,
+    "MAX_PRIMARY_SHARD_SIZE": false,
+    "MINOR": 11,
+    "SERVERLESS": false,
+    "SUPPORTED": true,
+    "TIMESERIES_DATASTREAM": false
+  },
+  "cluster info": {
+    "cluster_name": "docker-cluster",
+    "cluster_uuid": "AlICUdW5Tl2ZxNAA1Mk3fg",
+    "name": "a6680a08c202",
+    "tagline": "You Know, for Search",
+    "version": {
+      "build_date": "2021-02-08T22:44:01.320463Z",
+      "build_flavor": "default",
+      "build_hash": "8ced7813d6f16d2ef30792e2fcde3e755795ee04",
+      "build_snapshot": false,
+      "build_type": "docker",
+      "lucene_version": "8.7.0",
+      "minimum_index_compatibility_version": "6.0.0-beta1",
+      "minimum_wire_compatibility_version": "6.8.0",
+      "number": "7.11.0"
+    }
+  },
+  "name": "7DOT11_CAPABILITIES"
+}
