@@ -61,21 +61,21 @@ class Test_Filterer:
         def test_passes_filter_with_allowed_change_type_and_included_entity(self, filterer):
             """Test that a state change with an allowed change type and included entity passes the filter."""
             state = State("light.living_room", "on")
-            filterer._allowed_change_types = [StateChangeType.STATE]
+            filterer._allowed_change_types = [StateChangeType.STATE.name]
             filterer._included_entities = ["light.living_room"]
             assert filterer.passes_filter(state, StateChangeType.STATE) is True
 
         def test_passes_filter_with_allowed_change_type_and_excluded_entity(self, filterer):
             """Test that a state change with an allowed change type and excluded entity does not pass the filter."""
             state = State("light.living_room", "on")
-            filterer._allowed_change_types = [StateChangeType.STATE]
+            filterer._allowed_change_types = [StateChangeType.STATE.name]
             filterer._excluded_entities = ["light.living_room"]
             assert filterer.passes_filter(state, StateChangeType.STATE) is False
 
         def test_passes_filter_with_disallowed_change_type(self, filterer):
             """Test that a state change with an allowed change type and excluded entity does not pass the filter."""
             state = State("light.living_room", "on")
-            filterer._allowed_change_types = [StateChangeType.NO_CHANGE]
+            filterer._allowed_change_types = [StateChangeType.NO_CHANGE.name]
             filterer._excluded_entities = ["light.living_room"]
             assert filterer.passes_filter(state, StateChangeType.STATE) is False
 
@@ -137,12 +137,12 @@ class Test_Filterer:
 
         def test_passes_change_type_filter_true(self, filterer):
             """Test that a state change with an allowed change type passes the filter."""
-            filterer._allowed_change_types = [StateChangeType.STATE]
+            filterer._allowed_change_types = [StateChangeType.STATE.name]
             assert filterer._passes_change_type_filter(StateChangeType.STATE) is True
 
         def test_passes_change_type_filter_false(self, filterer):
             """Test that a state change with an allowed change type passes the filter."""
-            filterer._allowed_change_types = [StateChangeType.ATTRIBUTE]
+            filterer._allowed_change_types = [StateChangeType.ATTRIBUTE.name]
             assert filterer._passes_change_type_filter(StateChangeType.STATE) is False
 
 
@@ -334,7 +334,11 @@ class Test_Manager:
                 await manager._publish()
 
                 publisher_publish.assert_called_once_with(
-                    {"timestamp": "2023-01-01T00:00:00Z", "state": included_state, "reason": "STATE_CHANGE"},
+                    iterable={
+                        "timestamp": "2023-01-01T00:00:00Z",
+                        "state": included_state,
+                        "reason": "STATE_CHANGE",
+                    },
                 )
 
         def test_stop(self, manager):
@@ -409,6 +413,7 @@ class Test_Poller:
                     name="es_etl_poll_loop",
                     func=poller.poll,
                     frequency=poller._settings.polling_frequency,
+                    log=poller._logger,
                 )
 
                 create_background_task.assert_called_once()
@@ -657,6 +662,21 @@ class Test_Publisher:
                 await publisher.publish(generator)
 
                 mock_gateway.bulk.assert_called_once_with(add_action_and_meta_data.return_value)
+
+        async def test_publish(self, publisher, mock_gateway):
+            """Test publishing a document."""
+
+            # Mock the iterable
+            iterable = [MagicMock(), MagicMock(), MagicMock()]
+
+            publisher._add_action_and_meta_data = MagicMock(side_effect=iterable)
+            # Call the publish method
+            await publisher.publish(iterable)
+
+            # Assert that the bulk method of the gateway was called with the correct arguments
+            mock_gateway.bulk.assert_called_once_with(
+                actions=iterable[0],
+            )
 
         def test_cleanup(self, publisher, mock_gateway):
             """Test cleaning up the Publisher."""

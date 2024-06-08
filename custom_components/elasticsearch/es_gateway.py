@@ -4,7 +4,6 @@ import asyncio
 import sys
 import time
 from abc import ABC, abstractmethod
-from collections.abc import AsyncGenerator, AsyncIterable
 from logging import Logger
 from typing import Any, NoReturn
 
@@ -224,14 +223,9 @@ class ElasticsearchGateway(ABC):
 
     async def test(self) -> bool:
         """Test the connection to the Elasticsearch server."""
-
-        self._logger.debug("Testing the connection for [%s].", self._url)
-
         try:
             await self._get_cluster_info()
-            self._logger.debug("Connection test to [%s] was successful.", self._url)
         except Exception:
-            self._logger.exception("Connection test to [%s] failed.", self._url)
             return False
         else:
             return True
@@ -263,7 +257,6 @@ class ElasticsearchGateway(ABC):
         if use_basic_auth:
             args["http_auth"] = (username, password)
 
-
         if use_api_key:
             args["headers"] = {"Authorization": f"ApiKey {api_key}"}
 
@@ -283,9 +276,8 @@ class ElasticsearchGateway(ABC):
         return dict(info)
 
     @abstractmethod
-    async def bulk(self, generator: AsyncIterable) -> AsyncGenerator[tuple[bool, Any], Any]:
+    async def bulk(self, **kwargs):
         """Perform a bulk operation."""
-        # pragma: no cover
 
     def _convert_api_response_to_dict(self, response: object) -> dict:
         """Convert an API response to a dictionary."""
@@ -406,10 +398,11 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
 
         return SetEncoder()
 
-    async def bulk(self, generator: AsyncIterable) -> AsyncGenerator[tuple[bool, Any], Any]:
+    async def bulk(self, **kwargs):
         """Perform a bulk operation."""
-        async for ok, result in async_streaming_bulk8(self.client, actions=generator, yield_ok=False):
-            yield ok, result
+
+        self._logger.debug("Performing bulk operation")
+        async_streaming_bulk8(self.client, yield_ok=False, **kwargs)
 
     @classmethod
     def convert_es_error(
@@ -498,12 +491,20 @@ class Elasticsearch7Gateway(ElasticsearchGateway):
 
         return SetEncoder()
 
-    async def bulk(self, generator: AsyncIterable) -> AsyncGenerator[tuple[bool, Any], Any]:
+    async def bulk(self, actions):
         """Perform a bulk operation."""
-        async for ok, result in async_streaming_bulk7(self.client, actions=generator, yield_ok=False):
-            yield ok, result
 
-    # async def bulk(self, body: list[dict]) -> None:
+        self._logger.debug("Performing bulk operation")
+        async for ok, result in async_streaming_bulk7(
+            client=self.client,
+            actions=actions,
+            yield_ok=False,
+        ):
+            action, result = result.popitem()
+            if not ok:
+                self._logger.warning("failed to %s document %s", action, result)
+
+    # def bulk(self, body: list[dict]) -> None:
     #     """Wrap event publishing.
 
     #     Workaround for elasticsearch_async not supporting bulk operations.
@@ -693,4 +694,3 @@ class ConnectionMonitor:
         self._active = False
 
         self._logger.warning("Connection monitor stopped.")
-

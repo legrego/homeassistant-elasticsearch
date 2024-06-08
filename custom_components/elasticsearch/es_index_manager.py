@@ -19,7 +19,6 @@ class IndexManager:
 
     _logger = BASE_LOGGER
 
-
     def __init__(
         self,
         hass: HomeAssistant,

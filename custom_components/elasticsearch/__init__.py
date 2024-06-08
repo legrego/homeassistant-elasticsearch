@@ -212,6 +212,7 @@ def migrate_to_version_5(data: dict, options: dict) -> tuple[dict, dict]:
 
     return data, options
 
+
 def migrate_to_version_6(data: dict, options: dict) -> tuple[dict, dict]:
     """Migrate config to version 6."""
 

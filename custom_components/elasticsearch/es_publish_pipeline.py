@@ -3,7 +3,6 @@
 import json
 import re
 import unicodedata
-from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from functools import lru_cache
 from logging import Logger
@@ -174,6 +173,7 @@ class Pipeline:
                 name="es_filter_transform_load",
                 func=self._publish,
                 frequency=self._settings.publish_frequency,
+                log=self._logger,
             )
 
             self._cancel_publisher = config_entry.async_create_background_task(
@@ -182,7 +182,7 @@ class Pipeline:
                 "es_filter_transform_load",
             )
 
-        async def _sip_queue(self) -> AsyncGenerator[dict[str, Any], Any]:
+        async def _sip_queue(self):
             while not self._queue.empty():
                 timestamp, state, reason = self._queue.get()
 
@@ -196,7 +196,7 @@ class Pipeline:
 
             self._logger.debug("Publishing documents to Elasticsearch.")
 
-            await self._publisher.publish(self._sip_queue())
+            await self._publisher.publish(iterable=self._sip_queue())
 
         def stop(self) -> None:
             """Stop the manager."""
@@ -242,7 +242,7 @@ class Pipeline:
         def _passes_change_type_filter(self, reason: StateChangeType) -> bool:
             """Determine if a state change should be published."""
 
-            return reason in self._allowed_change_types
+            return reason.value in self._allowed_change_types
 
         def _passes_entity_domain_filters(self, entity_id: str, domain: str) -> bool:
             """Determine if a state change should be published."""
@@ -340,6 +340,7 @@ class Pipeline:
                 name="es_etl_poll_loop",
                 func=self.poll,
                 frequency=self._settings.polling_frequency,
+                log=self._logger,
             )
 
             self._cancel_poller = config_entry.async_create_background_task(
@@ -565,7 +566,11 @@ class Pipeline:
                     new_value = json.dumps(value)
                 elif isinstance(value, set):
                     new_value = list(value)
-                elif isinstance(value, list | tuple) and isinstance(value[0], tuple | dict | set | list):
+                elif (
+                    isinstance(value, list | tuple)
+                    and len(value) > 0
+                    and isinstance(value[0], tuple | dict | set | list)
+                ):
                     new_value = json.dumps(value)
 
                 attributes[new_key] = new_value
@@ -660,10 +665,9 @@ class Pipeline:
             """Format the datastream name."""
             return f"{datastream_type}-{datastream_dataset}-{datastream_namespace}"
 
-        async def _add_action_and_meta_data(self, generator) -> AsyncGenerator[dict, None]:
+        async def _add_action_and_meta_data(self, iterable):
             """Prepare the document for insertion into Elasticsearch."""
-
-            async for document in generator:
+            async for document in iterable:
                 yield {
                     "_op_type": "create",
                     "_index": self._format_datastream_name(
@@ -674,11 +678,20 @@ class Pipeline:
                     "_source": document,
                 }
 
-        async def publish(self, generator) -> None:
+        async def publish(self, iterable) -> None:
             """Publish the document to Elasticsearch."""
 
-            # We are passed a generator, we will async grab each item, call _add_action_and_meta_data on it, and then produce a generator to pass to publish
-            await self._gateway.bulk(self._add_action_and_meta_data(generator))
+            actions = self._add_action_and_meta_data(iterable)
+
+            await self._gateway.bulk(actions=actions)
+            # async for ok, result in async_streaming_bulk7(
+            #     client=self._gateway.client,
+            #     actions=self._add_action_and_meta_data(iterable),
+            #     yield_ok=False,
+            # ):
+            #     action, result = result.popitem()
+            #     if not ok:
+            #         self._logger.warning("failed to %s document %s", action, result)
 
         def stop(self) -> None:
             """Stop the publisher."""
