@@ -1,0 +1,314 @@
+{
+  "body": {
+    "composed_of": "metrics-homeassistant@custom",
+    "data_stream": {},
+    "ignore_missing_component_templates": "metrics-homeassistant@custom",
+    "index_patterns": [
+      "metrics-homeassistant.*-default"
+    ],
+    "priority": 500,
+    "template": {
+      "lifecycle": {
+        "data_retention": "365d"
+      },
+      "mappings": {
+        "dynamic": "false",
+        "dynamic_templates": [
+          {
+            "hass_entity_attributes": {
+              "mapping": {
+                "fields": {
+                  "float": {
+                    "ignore_malformed": true,
+                    "type": "float"
+                  },
+                  "keyword": {
+                    "ignore_above": 1024,
+                    "type": "keyword"
+                  }
+                },
+                "type": "text"
+              },
+              "path_match": "hass.entity.attributes.*"
+            }
+          }
+        ],
+        "properties": {
+          "@timestamp": {
+            "format": "strict_date_optional_time_nanos",
+            "type": "date_nanos"
+          },
+          "agent": {
+            "properties": {
+              "ephemeral_id": {
+                "ignore_above": 1024,
+                "type": "keyword"
+              },
+              "id": {
+                "ignore_above": 1024,
+                "type": "keyword"
+              },
+              "name": {
+                "ignore_above": 1024,
+                "type": "keyword"
+              },
+              "type": {
+                "ignore_above": 1024,
+                "type": "keyword"
+              },
+              "version": {
+                "ignore_above": 1024,
+                "type": "keyword"
+              }
+            }
+          },
+          "data_stream": {
+            "properties": {
+              "dataset": {
+                "type": "constant_keyword"
+              },
+              "namespace": {
+                "type": "constant_keyword"
+              },
+              "type": {
+                "type": "constant_keyword",
+                "value": "metrics"
+              }
+            }
+          },
+          "ecs": {
+            "properties": {
+              "version": {
+                "ignore_above": 1024,
+                "type": "keyword"
+              }
+            }
+          },
+          "event": {
+            "properties": {
+              "action": {
+                "ignore_above": 1024,
+                "type": "keyword"
+              },
+              "kind": {
+                "ignore_above": 1024,
+                "type": "keyword"
+              },
+              "type": {
+                "ignore_above": 1024,
+                "type": "keyword"
+              }
+            }
+          },
+          "hass": {
+            "properties": {
+              "entity": {
+                "properties": {
+                  "area": {
+                    "properties": {
+                      "floor": {
+                        "properties": {
+                          "id": {
+                            "type": "keyword"
+                          },
+                          "name": {
+                            "type": "keyword"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "id": {
+                        "type": "keyword"
+                      },
+                      "name": {
+                        "type": "keyword"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "attributes": {
+                    "dynamic": true,
+                    "type": "object"
+                  },
+                  "device": {
+                    "properties": {
+                      "area": {
+                        "properties": {
+                          "floor": {
+                            "properties": {
+                              "id": {
+                                "type": "keyword"
+                              },
+                              "name": {
+                                "type": "keyword"
+                              }
+                            },
+                            "type": "object"
+                          },
+                          "id": {
+                            "type": "keyword"
+                          },
+                          "name": {
+                            "type": "keyword"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "class": {
+                        "type": "keyword"
+                      },
+                      "id": {
+                        "type": "keyword"
+                      },
+                      "labels": {
+                        "type": "keyword"
+                      },
+                      "name": {
+                        "type": "keyword"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "domain": {
+                    "type": "keyword"
+                  },
+                  "geo": {
+                    "properties": {
+                      "location": {
+                        "type": "geo_point"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "id": {
+                    "type": "keyword"
+                  },
+                  "labels": {
+                    "type": "keyword"
+                  },
+                  "name": {
+                    "type": "keyword"
+                  },
+                  "object": {
+                    "properties": {
+                      "id": {
+                        "time_series_dimension": true,
+                        "type": "keyword"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "platform": {
+                    "type": "keyword"
+                  },
+                  "state": {
+                    "properties": {
+                      "class": {
+                        "type": "keyword"
+                      }
+                    }
+                  },
+                  "unit_of_measure": {
+                    "type": "keyword"
+                  },
+                  "value": {
+                    "fields": {
+                      "keyword": {
+                        "ignore_above": 1024,
+                        "type": "keyword"
+                      }
+                    },
+                    "type": "text"
+                  },
+                  "valueas": {
+                    "properties": {
+                      "boolean": {
+                        "type": "boolean"
+                      },
+                      "date": {
+                        "format": "strict_date",
+                        "type": "date"
+                      },
+                      "datetime": {
+                        "type": "date"
+                      },
+                      "float": {
+                        "ignore_malformed": true,
+                        "type": "float"
+                      },
+                      "integer": {
+                        "ignore_malformed": true,
+                        "type": "integer"
+                      },
+                      "string": {
+                        "fields": {
+                          "keyword": {
+                            "ignore_above": 1024,
+                            "type": "keyword"
+                          }
+                        },
+                        "type": "text"
+                      },
+                      "time": {
+                        "format": "HH:mm:ss.SSSSSS||time||strict_hour_minute_second||time_no_millis",
+                        "type": "date"
+                      }
+                    }
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          },
+          "host": {
+            "properties": {
+              "architecture": {
+                "ignore_above": 1024,
+                "type": "keyword"
+              },
+              "geo": {
+                "properties": {
+                  "location": {
+                    "type": "geo_point"
+                  }
+                }
+              },
+              "hostname": {
+                "ignore_above": 1024,
+                "type": "keyword"
+              },
+              "name": {
+                "ignore_above": 1024,
+                "type": "keyword"
+              },
+              "os": {
+                "properties": {
+                  "name": {
+                    "ignore_above": 1024,
+                    "type": "keyword"
+                  }
+                }
+              }
+            }
+          },
+          "tags": {
+            "ignore_above": 1024,
+            "type": "keyword"
+          }
+        }
+      },
+      "settings": {
+        "codec": "best_compression",
+        "index.mode": "time_series",
+        "mapping": {
+          "total_fields": {
+            "limit": "10000"
+          }
+        }
+      }
+    },
+    "version": 1
+  },
+  "name": "metrics-homeassistant"
+}

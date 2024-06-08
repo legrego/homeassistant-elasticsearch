@@ -8,7 +8,6 @@ import pytest
 from homeassistant import data_entry_flow
 from homeassistant.config_entries import SOURCE_REAUTH, SOURCE_USER
 from homeassistant.const import (
-    CONF_ALIAS,
     CONF_API_KEY,
     CONF_PASSWORD,
     CONF_URL,
@@ -22,13 +21,9 @@ from syrupy.assertion import SnapshotAssertion
 from syrupy.extensions.json import JSONSnapshotExtension
 
 from custom_components.elasticsearch.const import (
-    CONF_INDEX_FORMAT,
     CONF_INDEX_MODE,
-    CONF_PUBLISH_MODE,
     DOMAIN,
     INDEX_MODE_DATASTREAM,
-    INDEX_MODE_LEGACY,
-    PUBLISH_MODE_ALL,
 )
 from tests.conftest import mock_config_entry
 from tests.test_util.es_startup_mocks import mock_es_initialization
@@ -640,56 +635,6 @@ async def test_modern_options_flow(hass: HomeAssistant, es_aioclient_mock: Aioht
 
     assert options_result["type"] == data_entry_flow.RESULT_TYPE_FORM
     assert options_result["step_id"] == "publish_options"
-
-    # this last step *might* attempt to use a real connection instead of our mock...
-
-    options_result = await hass.config_entries.options.async_configure(
-        options_result["flow_id"],
-        user_input={},
-    )
-
-    assert options_result["type"] == data_entry_flow.RESULT_TYPE_CREATE_ENTRY
-
-
-@pytest.mark.asyncio()
-async def test_legacy_options_flow(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker) -> None:
-    """Test options config flow."""
-
-    es_url = "http://localhost:9200"
-
-    mock_es_initialization(es_aioclient_mock, url=es_url)
-
-    mock_entry = MockConfigEntry(
-        unique_id="test_legacy_options",
-        domain=DOMAIN,
-        version=3,
-        data={
-            "url": es_url,
-            "username": "original_user",
-            "password": "abc123",
-            CONF_PUBLISH_MODE: PUBLISH_MODE_ALL,
-            CONF_ALIAS: "hass-events",
-            CONF_INDEX_MODE: INDEX_MODE_LEGACY,
-            CONF_INDEX_FORMAT: "hass-events",
-            "use_connection_monitor": False,
-        },
-        title="ES Config",
-    )
-
-    entry = await _setup_config_entry(hass, mock_entry)
-
-    options_result = await hass.config_entries.options.async_init(entry.entry_id, data={})
-
-    assert options_result["type"] == data_entry_flow.RESULT_TYPE_FORM
-    assert options_result["step_id"] == "publish_options"
-
-    options_result = await hass.config_entries.options.async_configure(
-        options_result["flow_id"],
-        user_input={},
-    )
-
-    assert options_result["type"] == data_entry_flow.RESULT_TYPE_FORM
-    assert options_result["step_id"] == "ilm_options"
 
     # this last step *might* attempt to use a real connection instead of our mock...
 

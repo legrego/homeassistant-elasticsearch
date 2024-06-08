@@ -2,14 +2,14 @@
 
 import json
 import re
-import time
 import unicodedata
+from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from functools import lru_cache
 from logging import Logger
-from math import isinf
+from math import isinf, isnan
 from queue import Queue
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from elasticsearch.const import (
     DATASTREAM_DATASET_PREFIX,
@@ -20,7 +20,7 @@ from elasticsearch.const import (
 from elasticsearch.entity_details import EntityDetails
 from elasticsearch.loop import LoopHandler
 from elasticsearch.system_info import SystemInfo, SystemInfoResult
-from homeassistant.components.sun import STATE_ABOVE_HORIZON, STATE_BELOW_HORIZON
+from homeassistant.components.sun.const import STATE_ABOVE_HORIZON, STATE_BELOW_HORIZON
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     EVENT_STATE_CHANGED,
@@ -34,7 +34,7 @@ from homeassistant.const import (
     STATE_UNKNOWN,
     STATE_UNLOCKED,
 )
-from homeassistant.core import Event, HomeAssistant, State
+from homeassistant.core import Event, EventStateChangedData, HomeAssistant, State, callback
 from homeassistant.helpers import state as state_helper
 from homeassistant.util import dt as dt_util
 
@@ -43,7 +43,7 @@ from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 from .logger import LOGGER as BASE_LOGGER
 
 if TYPE_CHECKING:
-    from asyncio import Task
+    from asyncio import Task  # pragma: no cover
 
 ALLOWED_ATTRIBUTE_TYPES = tuple | dict | set | list | int | float | bool | str | None
 SKIP_ATTRIBUTES = [
@@ -68,6 +68,8 @@ class PipelineSettings:
         excluded_domains: list[str],
         excluded_entities: list[str],
         allowed_change_types: list[StateChangeType],
+        polling_enabled: bool,
+        polling_frequency: int,
         publish_frequency: int,
     ) -> None:
         """Initialize the settings."""
@@ -77,6 +79,21 @@ class PipelineSettings:
         self.excluded_entities: list[str] = excluded_entities
         self.allowed_change_types: list[StateChangeType] = allowed_change_types
         self.publish_frequency: int = publish_frequency
+        self.polling_enabled: bool = polling_enabled
+        self.polling_frequency: int = polling_frequency
+
+    def to_dict(self) -> dict:
+        """Convert the settings to a dictionary."""
+        return {
+            "included_domains": self.included_domains,
+            "included_entities": self.included_entities,
+            "excluded_domains": self.excluded_domains,
+            "excluded_entities": self.excluded_entities,
+            "allowed_change_types": [i.value for i in self.allowed_change_types],
+            "publish_frequency": self.publish_frequency,
+            "polling_enabled": self.polling_enabled,
+            "polling_frequency": self.polling_frequency,
+        }
 
 
 class Pipeline:
@@ -96,30 +113,36 @@ class Pipeline:
             self._logger = log if log else BASE_LOGGER
             self._hass: HomeAssistant = hass
             self._gateway: ElasticsearchGateway = gateway
-            self._publish_frequency: int = settings.publish_frequency
-            self._cancel_manager: Task | None = None
-            self._should_stop = False
+
+            self._cancel_publisher: Task | None = None
+
+            self._settings: PipelineSettings = settings
 
             self._static_fields: dict[str, str | float] = {}
 
-            # Set _queue to an instance of EventQueue
-            self._queue = Queue[tuple[datetime, State, StateChangeType]]()
+            self._queue: EventQueue = Queue[tuple[datetime, State, StateChangeType]]()
 
-            self._listener = Pipeline.Listener(
+            self._listener: Pipeline.Listener = Pipeline.Listener(
                 hass=self._hass,
                 log=self._logger,
                 queue=self._queue,
             )
 
-            self._poller = Pipeline.Poller(
+            self._poller: Pipeline.Poller = Pipeline.Poller(
                 hass=self._hass,
                 log=self._logger,
                 queue=self._queue,
+                settings=self._settings,
             )
 
-            self._filterer = Pipeline.Filterer(log=self._logger, settings=settings)
-            self._formatter = Pipeline.Formatter(hass=self._hass, log=self._logger)
-            self._publisher = Pipeline.Publisher(gateway=gateway, log=self._logger)
+            self._filterer: Pipeline.Filterer = Pipeline.Filterer(log=self._logger, settings=settings)
+            self._formatter: Pipeline.Formatter = Pipeline.Formatter(hass=self._hass, log=self._logger)
+            self._publisher: Pipeline.Publisher = Pipeline.Publisher(
+                hass=self._hass,
+                settings=self._settings,
+                gateway=gateway,
+                log=self._logger,
+            )
 
         async def async_init(self, config_entry: ConfigEntry) -> None:
             """Initialize the manager."""
@@ -137,49 +160,50 @@ class Pipeline:
                 if result.hostname:
                     self._static_fields["host.hostname"] = result.hostname
 
-            # Start gathering
+            # Initialize document faucets
             await self._listener.async_init()
-            await self._poller.async_init()
 
-            # Start the processors
+            if self._settings.polling_enabled:
+                await self._poller.async_init(config_entry=config_entry)
+
+            # Initialize document sinks
             await self._formatter.async_init(self._static_fields)
-            await self._publisher.async_init()
+            await self._publisher.async_init(config_entry=config_entry)
 
-            new_loop = LoopHandler(
-                name="es_etl_loop",
-                func=self._gather_and_publish,
-                frequency=self._publish_frequency,
+            filter_transform_load = LoopHandler(
+                name="es_filter_transform_load",
+                func=self._publish,
+                frequency=self._settings.publish_frequency,
+                log=self._logger,
             )
 
-            # Start processing
-            self._cancel_manager = config_entry.async_create_background_task(
+            self._cancel_publisher = config_entry.async_create_background_task(
                 self._hass,
-                new_loop.start(),
-                "es_etl_loop",
+                filter_transform_load.start(),
+                "es_filter_transform_load",
             )
 
-        async def _gather_and_publish(self) -> None:
-            documents = []
-
-            await self._poller.poll()
-
+        async def _sip_queue(self) -> AsyncGenerator[dict[str, Any], Any]:
             while not self._queue.empty():
                 timestamp, state, reason = self._queue.get()
 
                 if not self._filterer.passes_filter(state, reason):
                     continue
 
-                documents.append(self._formatter.format(timestamp, state, reason))
+                yield self._formatter.format(timestamp, state, reason)
 
-            await self._publisher.publish(documents)
+        async def _publish(self) -> None:
+            """Publish the documents to Elasticsearch."""
+
+            self._logger.debug("Publishing documents to Elasticsearch.")
+
+            await self._publisher.publish(iterable=self._sip_queue())
 
         def stop(self) -> None:
             """Stop the manager."""
-            if self._cancel_manager:
-                self._cancel_manager.cancel()
-
-            if self._listener:
-                self._listener.stop()
+            self._listener.stop()
+            self._poller.stop()
+            self._publisher.stop()
 
         def __del__(self) -> None:
             """Clean up the manager."""
@@ -219,7 +243,7 @@ class Pipeline:
         def _passes_change_type_filter(self, reason: StateChangeType) -> bool:
             """Determine if a state change should be published."""
 
-            return reason in self._allowed_change_types
+            return reason.value in self._allowed_change_types
 
         def _passes_entity_domain_filters(self, entity_id: str, domain: str) -> bool:
             """Determine if a state change should be published."""
@@ -256,17 +280,18 @@ class Pipeline:
             self._logger = log if log else BASE_LOGGER
             self._hass: HomeAssistant = hass
             self._queue: EventQueue = queue
-            self._bus_listener_cancel = None
+            self._cancel_listener = None
 
         async def async_init(self) -> None:
             """Initialize the listener."""
 
-            self._bus_listener_cancel = self._hass.bus.async_listen(
+            self._cancel_listener = self._hass.bus.async_listen(
                 EVENT_STATE_CHANGED,
                 self._handle_event,
             )
 
-        async def _handle_event(self, event: Event) -> None:
+        @callback
+        async def _handle_event(self, event: Event[EventStateChangedData]) -> None:
             """Listen for new messages on the bus and queue them for send."""
             new_state: State | None = event.data.get("new_state")
             old_state: State | None = event.data.get("old_state")
@@ -284,8 +309,8 @@ class Pipeline:
 
         def stop(self) -> None:
             """Stop the listener."""
-            if self._bus_listener_cancel:
-                self._bus_listener_cancel()
+            if self._cancel_listener:
+                self._cancel_listener()
 
         def __del__(self) -> None:
             """Clean up the listener."""
@@ -298,18 +323,32 @@ class Pipeline:
             self,
             hass: HomeAssistant,
             queue: EventQueue,
+            settings: PipelineSettings,
             log: Logger = BASE_LOGGER,
         ) -> None:
             """Initialize the poller."""
             self._logger = log if log else BASE_LOGGER
             self._hass: HomeAssistant = hass
-            self._background_task_cancel: Task | None = None
+            self._cancel_poller: Task | None = None
+
             self._queue: EventQueue = queue
 
-            self._next_poll = time.monotonic()
+            self._settings: PipelineSettings = settings
 
-        async def async_init(self) -> None:
+        async def async_init(self, config_entry: ConfigEntry) -> None:
             """Initialize the poller."""
+            poll_loop = LoopHandler(
+                name="es_etl_poll_loop",
+                func=self.poll,
+                frequency=self._settings.polling_frequency,
+                log=self._logger,
+            )
+
+            self._cancel_poller = config_entry.async_create_background_task(
+                self._hass,
+                poll_loop.start(),
+                "es_etl_poll",
+            )
 
         async def poll(self) -> None:
             """Poll for state changes and queue them for send."""
@@ -322,16 +361,25 @@ class Pipeline:
 
             [self._queue.put((now, i, reason)) for i in all_states]
 
+        def stop(self) -> None:
+            """Stop the poller."""
+            if self._cancel_poller:
+                self._cancel_poller.cancel()
+
+        def __del__(self) -> None:
+            """Clean up the poller."""
+            self.stop()
+
     class Formatter:
         """Formats state changes into documents."""
 
         def __init__(self, hass: HomeAssistant, log: Logger = BASE_LOGGER) -> None:
             """Initialize the formatter."""
             self._logger = log if log else BASE_LOGGER
-            self._static_fields = {}
+            self._static_fields: dict[str, Any] = {}
             self._entity_details = EntityDetails(hass)
 
-        async def async_init(self, static_fields: dict) -> None:
+        async def async_init(self, static_fields: dict[str, Any]) -> None:
             """Initialize the formatter."""
             self._static_fields = static_fields
 
@@ -359,22 +407,12 @@ class Pipeline:
             return replaced_string.lower()
 
         @classmethod
-        def is_valid_number(cls, number: float) -> bool:
-            """Determine if the passed number is valid for Elasticsearch."""
-            is_infinity = isinf(number)
-            is_nan = number != number  # pylint: disable=comparison-with-itself  # noqa: PLR0124
-            return not is_infinity and not is_nan
-
-        @classmethod
-        def try_state_as_number(cls, state: State) -> bool:
+        def try_state_as_number(cls, state: State) -> tuple[bool, float | None]:
             """Try to coerce our state to a number and return true if we can, false if we can't."""
-
             try:
-                cls.state_as_number(state)
+                return True, cls.state_as_number(state)
             except ValueError:
-                return False
-            else:
-                return True
+                return False, None
 
         @classmethod
         def state_as_number(cls, state: State) -> float:
@@ -382,22 +420,19 @@ class Pipeline:
 
             number = state_helper.state_as_number(state)
 
-            if not cls.is_valid_number(number):
+            if isinf(number) or isnan(number):
                 msg = "Could not coerce state to a number."
                 raise ValueError(msg)
 
             return number
 
         @classmethod
-        def try_state_as_boolean(cls, state: State) -> bool:
+        def try_state_as_boolean(cls, state: State) -> tuple[bool, bool | None]:
             """Try to coerce our state to a boolean and return true if we can, false if we can't."""
-
             try:
-                cls.state_as_boolean(state)
+                return True, cls.state_as_boolean(state)
             except ValueError:
-                return False
-            else:
-                return True
+                return False, None
 
         @classmethod
         def state_as_boolean(cls, state: State) -> bool:
@@ -427,15 +462,13 @@ class Pipeline:
             raise ValueError(msg)
 
         @classmethod
-        def try_state_as_datetime(cls, state: State) -> bool:
+        def try_state_as_datetime(cls, state: State) -> tuple[bool, datetime | None]:
             """Try to coerce our state to a datetime and return True if we can, false if we can't."""
 
             try:
-                cls.state_as_datetime(state)
+                return True, cls.state_as_datetime(state)
             except ValueError:
-                return False
-            else:
-                return True
+                return False, None
 
         @classmethod
         def state_as_datetime(cls, state: State) -> datetime:
@@ -534,10 +567,14 @@ class Pipeline:
                     new_value = json.dumps(value)
                 elif isinstance(value, set):
                     new_value = list(value)
-                elif isinstance(value, list | tuple) and isinstance(value[0], tuple | dict | set | list):
+                elif (
+                    isinstance(value, list | tuple)
+                    and len(value) > 0
+                    and isinstance(value[0], tuple | dict | set | list)
+                ):
                     new_value = json.dumps(value)
 
-                attributes[key] = new_value
+                attributes[new_key] = new_value
 
             return attributes
 
@@ -545,25 +582,23 @@ class Pipeline:
             """Coerce the state value into a dictionary of possible types."""
             value = state.state
 
-            if not isinstance(value, str):
-                return {"string": value}
+            success, result = self.try_state_as_boolean(state)
+            if success and result is not None:
+                return {"boolean": result}
 
-            if self.try_state_as_boolean(state):
-                return {"boolean": self.state_as_boolean(state)}
+            success, result = self.try_state_as_number(state)
+            if success and result is not None:
+                return {"float": result}
 
-            elif self.try_state_as_number(state):
-                return {"float": self.state_as_number(state)}
-
-            elif self.try_state_as_datetime(state):
-                _temp_state = self.state_as_datetime(state)
+            success, result = self.try_state_as_datetime(state)
+            if success and result is not None:
                 return {
-                    "datetime": _temp_state.isoformat(),
-                    "date": _temp_state.date().isoformat(),
-                    "time": _temp_state.time().isoformat(),
+                    "datetime": result.isoformat(),
+                    "date": result.date().isoformat(),
+                    "time": result.time().isoformat(),
                 }
 
-            else:
-                return {"string": value}
+            return {"string": value}
 
         def state_to_datastream(self, state: State) -> dict:
             """Convert the state into a datastream."""
@@ -573,13 +608,13 @@ class Pipeline:
                 "namespace": DATASTREAM_NAMESPACE,
             }
 
-        def format(self, time: datetime, state: State, reason: StateChangeType) -> dict:
+        def format(self, time: datetime, state: State, reason: StateChangeType) -> dict[str, Any]:
             """Format the state change into a document."""
 
             base_document = {
                 "@timestamp": time.isoformat(),
-                "event.action": {
-                    "action": reason.value,
+                "event": {
+                    "action": reason.to_publish_reason(),
                     "kind": "event",
                     "type": "info" if reason == StateChangeType.NO_CHANGE else "change",
                 },
@@ -607,18 +642,23 @@ class Pipeline:
 
         def __init__(
             self,
+            hass: HomeAssistant,
             gateway: ElasticsearchGateway,
+            settings: PipelineSettings,
             log: Logger = BASE_LOGGER,
         ) -> None:
             """Initialize the publisher."""
             self._logger = log
             self._gateway = gateway
+            self._settings = settings
+            self._hass = hass
 
-        async def async_init(self) -> None:
+        async def async_init(self, config_entry: ConfigEntry) -> None:
             """Initialize the publisher."""
 
+        @staticmethod
+        @lru_cache(maxsize=128)
         def _format_datastream_name(
-            self,
             datastream_type: str,
             datastream_dataset: str,
             datastream_namespace: str,
@@ -626,20 +666,29 @@ class Pipeline:
             """Format the datastream name."""
             return f"{datastream_type}-{datastream_dataset}-{datastream_namespace}"
 
-        def _add_action_and_meta_data(self, document: dict) -> dict:
+        async def _add_action_and_meta_data(self, iterable) -> AsyncGenerator[dict[str, Any], Any]:
             """Prepare the document for insertion into Elasticsearch."""
+            async for document in iterable:
+                yield {
+                    "_op_type": "create",
+                    "_index": self._format_datastream_name(
+                        datastream_type=document["datastream"]["type"],
+                        datastream_dataset=document["datastream"]["dataset"],
+                        datastream_namespace=document["datastream"]["namespace"],
+                    ),
+                    "_source": document,
+                }
 
-            return {
-                "_op_type": "create",
-                "_index": self._format_datastream_name(
-                    datastream_type=document["datastream"]["type"],
-                    datastream_dataset=document["datastream"]["dataset"],
-                    datastream_namespace=document["datastream"]["namespace"],
-                ),
-                "_source": document,
-            }
-
-        async def publish(self, documents: list[dict]) -> None:
+        async def publish(self, iterable) -> None:
             """Publish the document to Elasticsearch."""
 
-            await self._gateway.bulk(documents)
+            actions = self._add_action_and_meta_data(iterable)
+
+            await self._gateway.bulk(actions=actions)
+
+        def stop(self) -> None:
+            """Stop the publisher."""
+
+        def __del__(self) -> None:
+            """Clean up the publisher."""
+            self.stop()

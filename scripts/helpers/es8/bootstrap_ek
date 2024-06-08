@@ -105,9 +105,9 @@ echo "  Duration: $((end - start)) seconds"
 echo "  Credential File: ../../es_cluster.creds"
 
 # Save a file with the credentials in the scripts directory which is 2 directories up
-echo "elastic:$espwd" > "$dir/../../es_cluster.creds"
-echo "hass_writer:changeme" >> "$dir/../../es_cluster.creds"
-echo "hass_writer:$apikey" >> "$dir/../../es_cluster.creds"
+echo "elastic: $espwd" > "$dir/../../es_cluster.creds"
+echo "hass_writer: changeme" >> "$dir/../../es_cluster.creds"
+echo "hass_writer: $apikey" >> "$dir/../../es_cluster.creds"
 
 
 

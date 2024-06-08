@@ -3,69 +3,33 @@
 from homeassistant.exceptions import HomeAssistantError
 
 
-class ElasticException(HomeAssistantError):
+class ESIntegrationException(HomeAssistantError):
     """Base class for Elastic exceptions."""
 
 
-class AlreadyConfigured(ElasticException):
-    """Cluster is already configured."""
+class ESIntegrationConnectionException(ESIntegrationException):
+    """Base class for Elasticsearch exceptions."""
 
 
-class AuthenticationRequired(ElasticException):
+class AuthenticationRequired(ESIntegrationConnectionException):
     """Cluster requires authentication."""
 
 
-class InsufficientPrivileges(ElasticException):
+class InsufficientPrivileges(ESIntegrationConnectionException):
     """Credentials are lacking the required privileges."""
 
 
-class CannotConnect(ElasticException):
+class CannotConnect(ESIntegrationConnectionException):
     """Unable to connect to the cluster."""
 
 
-class ClientError(ElasticException):
+class ClientError(ESIntegrationConnectionException):
     """Connected with a Client Error."""
 
 
-class UntrustedCertificate(ElasticException):
+class UntrustedCertificate(ESIntegrationConnectionException):
     """Connected with untrusted certificate."""
 
 
-class UnsupportedVersion(ElasticException):
+class UnsupportedVersion(ESIntegrationConnectionException):
     """Connected to an unsupported version of Elasticsearch."""
-
-
-def convert_es_error(msg, err):
-    """Convert an internal error from the elasticsearch package into one of our own."""
-    import aiohttp
-    from elasticsearch7 import (
-        AuthenticationException,
-        AuthorizationException,
-        ElasticsearchException,
-        SSLError,
-    )
-    from elasticsearch7 import (
-        ConnectionError as ESConnectionError,
-    )
-
-    if isinstance(err, SSLError):
-        return UntrustedCertificate(msg, err)
-
-    if isinstance(err, ESConnectionError):
-        if isinstance(err.info, aiohttp.client_exceptions.ClientConnectorCertificateError):
-            return UntrustedCertificate(msg, err)
-
-        if isinstance(err.info, aiohttp.client_exceptions.ClientConnectorError):
-            return ClientError(msg, err)
-        return CannotConnect(msg, err)
-
-    if isinstance(err, AuthenticationException):
-        return AuthenticationRequired(msg, err)
-
-    if isinstance(err, AuthorizationException):
-        return InsufficientPrivileges(msg, err)
-
-    if isinstance(err, ElasticsearchException):
-        return ElasticException(msg, err)
-
-    return err

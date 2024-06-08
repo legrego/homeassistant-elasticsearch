@@ -3,6 +3,7 @@
 import asyncio
 import time
 import typing
+from datetime import datetime
 from logging import Logger
 
 from .logger import LOGGER as BASE_LOGGER
@@ -47,7 +48,11 @@ class LoopHandler:
 
     def _schedule_next_run(self) -> None:
         self._next_run_time = time.monotonic() + self._frequency
-        self._log.debug("Next run of loop: %s scheduled for %s", self._name, self._next_run_time)
+        self._log.debug(
+            "Next run of loop: %s scheduled for %s",
+            self._name,
+            datetime.fromtimestamp(self._next_run_time).isoformat(),
+        )
 
     def _should_keep_running(self) -> bool:
         """Determine if the runner should keep running."""
@@ -75,4 +80,9 @@ class LoopHandler:
             self._schedule_next_run()
 
             self._run_count += 1
-            await self._func()
+            try:
+                await self._func()
+            except Exception:
+                self._log.exception("Error in loop handler: %s")
+                self.stop()
+                raise

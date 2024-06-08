@@ -1,0 +1,13 @@
+{
+  "settings": {
+    "allowed_change_types": [],
+    "excluded_domains": [],
+    "excluded_entities": [],
+    "included_domains": [],
+    "included_entities": [],
+    "polling_enabled": true,
+    "polling_frequency": 60,
+    "publish_frequency": 60
+  },
+  "static_fields": {}
+}
