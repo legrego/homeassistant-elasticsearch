@@ -198,7 +198,10 @@ class Test_Manager:
             manager._publisher = mock.Mock()
             manager._publisher.async_init = mock.AsyncMock()
 
-            with patch("custom_components.elasticsearch.es_publish_pipeline.SystemInfo") as system_info:
+            with (
+                patch("custom_components.elasticsearch.es_publish_pipeline.SystemInfo") as system_info,
+                patch("custom_components.elasticsearch.es_publish_pipeline.LoopHandler") as loop_handler,
+            ):
                 system_info_instance = system_info.return_value
                 system_info_instance.async_get_system_info = mock.AsyncMock(
                     return_value=mock.Mock(
@@ -208,6 +211,10 @@ class Test_Manager:
                         hostname="localhost",
                     ),
                 )
+
+                # Ensure we don't start a coroutine that never finishes
+                loop_handler_instance = loop_handler.return_value
+                loop_handler_instance.start = mock.Mock()
 
                 await manager.async_init(config_entry)
 
@@ -367,11 +374,14 @@ class Test_Poller:
     """Test the Pipeline.Poller class."""
 
     @pytest.fixture
-    def poller(self, hass: HomeAssistant) -> Pipeline.Poller:
+    async def poller(self, hass: HomeAssistant):
         """Return a Pipeline.Poller instance."""
         queue: EventQueue = Queue[tuple[datetime, State, StateChangeType]]()
         settings = MagicMock()
-        return Pipeline.Poller(hass, queue, settings)
+        poller = Pipeline.Poller(hass, queue, settings)
+        yield poller
+
+        poller.stop()
 
     @pytest.fixture
     def freeze_time(self, freezer: FrozenDateTimeFactory):
@@ -389,14 +399,14 @@ class Test_Poller:
     class Test_Unit_Tests:
         """Run the unit tests of the Poller class."""
 
-        def test_init(self, poller):
+        def test_init(self, poller: Pipeline.Poller):
             """Test the initialization of the Poller."""
             assert poller._hass is not None
             assert poller._queue is not None
             assert poller._cancel_poller is None
 
         @pytest.mark.asyncio()
-        async def test_async_init(self, poller):
+        async def test_async_init(self, poller: Pipeline.Poller):
             """Test the async initialization of the Poller."""
 
             config_entry = mock.Mock()
@@ -404,28 +414,32 @@ class Test_Poller:
                 patch("custom_components.elasticsearch.es_publish_pipeline.LoopHandler") as loop_handler,
                 patch.object(config_entry, "async_create_background_task") as create_background_task,
             ):
+                # Ensure we don't start a coroutine that never finishes
                 loop_handler_instance = loop_handler.return_value
-                loop_handler_instance.start = mock.AsyncMock()
+                loop_handler_instance.start = mock.Mock()
+
+                poller.poll = MagicMock()
 
                 await poller.async_init(config_entry=config_entry)
 
                 loop_handler.assert_called_once_with(
-                    name="es_etl_poll_loop",
+                    name="es_state_poll_loop",
                     func=poller.poll,
                     frequency=poller._settings.polling_frequency,
                     log=poller._logger,
                 )
 
+                loop_handler_instance.start.assert_called_once()
                 create_background_task.assert_called_once()
 
-        def test_stop(self, poller):
+        async def test_stop(self, poller: Pipeline.Poller):
             """Test stopping the poller."""
 
             with patch.object(poller, "_cancel_poller") as cancel_poller:
                 poller.stop()
                 cancel_poller.cancel.assert_called_once()
 
-        def test_cleanup(self, poller):
+        def test_cleanup(self, poller: Pipeline.Poller):
             """Test cleaning up the poller."""
 
             with patch.object(poller, "stop") as stop:
@@ -592,7 +606,11 @@ class Test_Publisher:
     @pytest.fixture
     def publisher(self, hass, mock_gateway, mock_settings):
         """Return a Publisher instance."""
-        return Pipeline.Publisher(hass=hass, gateway=mock_gateway, settings=mock_settings)
+        publisher = Pipeline.Publisher(hass=hass, gateway=mock_gateway, settings=mock_settings)
+
+        yield publisher
+
+        publisher.stop()
 
     class Test_Unit_Tests:
         """Run the unit tests of the Publisher class."""
@@ -670,7 +688,7 @@ class Test_Publisher:
                 actions=iterable[0],
             )
 
-        def test_cleanup(self, publisher, mock_gateway):
+        async def test_cleanup(self, publisher, mock_gateway):
             """Test cleaning up the Publisher."""
             with patch.object(publisher, "stop") as stop:
                 publisher.__del__()

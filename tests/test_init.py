@@ -92,6 +92,7 @@ async def test_update_entry(hass: HomeAssistant, es_aioclient_mock: AiohttpClien
         domain=ELASTIC_DOMAIN,
         version=3,
         data={"url": es_url, "use_connection_monitor": False},
+        options={"polling_enabled": False, "publishing_enabled": False},
         title="ES Config",
     )
 

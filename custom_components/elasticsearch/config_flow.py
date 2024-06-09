@@ -1,6 +1,7 @@
 """Config flow for Elastic."""
 
 from dataclasses import dataclass
+from typing import Any
 
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
@@ -55,7 +56,7 @@ from custom_components.elasticsearch.errors import (
 )
 from custom_components.elasticsearch.es_gateway import Elasticsearch7Gateway
 
-from .logger import LOGGER
+from .logger import LOGGER, async_log_enter_exit
 
 CONFIG_TO_REDACT = {CONF_API_KEY, CONF_PASSWORD, CONF_URL, CONF_USERNAME}
 
@@ -392,6 +393,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
         return self.async_create_entry(title=str(data.get(CONF_URL)), data=data, options=options)
 
+    @async_log_enter_exit
     async def _async_elasticsearch_login(
         self,
         url: str,
@@ -401,27 +403,25 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         password: str | None = None,
         api_key: str | None = None,
         timeout: int = 30,
-        verify_permissions: dict | None = None,
+        verify_permissions: dict[str, Any] | None = None,
     ) -> ClusterCheckResult:
         """Handle connection & authentication to Elasticsearch."""
         errors = {}
 
-        temp_gateway = Elasticsearch7Gateway(
-            hass=self.hass,
-            url=url,
-            username=username,
-            password=password,
-            api_key=api_key,
-            verify_certs=verify_certs,
-            ca_certs=ca_certs,
-            request_timeout=timeout,
-            minimum_privileges=verify_permissions,
-            use_connection_monitor=False,
-        )
+        prospective_settings: dict = {
+            "hass": self.hass,
+            "url": url,
+            "username": username,
+            "password": password,
+            "api_key": api_key,
+            "verify_certs": verify_certs,
+            "ca_certs": ca_certs,
+            "request_timeout": timeout,
+            "minimum_privileges": verify_permissions,
+        }
 
         try:
-            await temp_gateway.async_init()
-
+            await Elasticsearch7Gateway.test_prospective_settings(**prospective_settings)
         except ClientError:
             errors = await self._handle_client_error(
                 url,
@@ -448,9 +448,6 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                 ex,
             )
             errors["base"] = "cannot_connect"
-        finally:
-            if temp_gateway is not None:
-                await temp_gateway.stop()
 
         success = not errors
         return ClusterCheckResult(success, errors)
@@ -463,7 +460,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         password: str | None,
         api_key: str | None,
         timeout: int,
-        verify_permissions: dict | None,
+        verify_permissions: dict[str, Any] | None,
     ) -> dict:
         """Handle client error when connecting to Elasticsearch."""
         errors = {}

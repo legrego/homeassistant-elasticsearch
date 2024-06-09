@@ -1,6 +1,7 @@
 """Retrieve entity details."""
 
 from dataclasses import dataclass
+from logging import Logger
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import (
@@ -11,7 +12,7 @@ from homeassistant.helpers import (
     label_registry,
 )
 
-from .logger import LOGGER
+from .logger import LOGGER as BASE_LOGGER
 
 
 @dataclass
@@ -32,10 +33,11 @@ class FullEntityDetails:
 class EntityDetails:
     """Retrieve details about entities for publishing to ES."""
 
-    def __init__(self, hass: HomeAssistant) -> None:
+    def __init__(self, hass: HomeAssistant, log: Logger = BASE_LOGGER) -> None:
         """Init EntityDetails."""
         self._hass = hass
 
+        self._logger = log
         self._registry_entry = entity_registry.async_get(self._hass)
         self._registry_device = device_registry.async_get(self._hass)
         self._registry_area = area_registry.async_get(self._hass)
@@ -48,7 +50,7 @@ class EntityDetails:
         # Get the entity
         entity = self.async_get_entity(entity_id)
         if entity is None:
-            LOGGER.debug("Entity not found: %s", entity_id)
+            self._logger.debug("Entity not found: %s", entity_id)
             return None
 
         entity_labels = self.async_get_entity_labels(entity)
@@ -58,7 +60,7 @@ class EntityDetails:
         # Get the device of the entity
         device = self.async_get_device(entity.device_id) if entity.device_id else None
         if device is None:
-            LOGGER.debug("Device not found for entity: %s", entity_id)
+            self._logger.debug("Device not found for entity: %s", entity_id)
 
         device_labels = self.async_get_device_labels(device) if device else None
         device_area = self.async_get_device_area(device) if device else None

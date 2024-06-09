@@ -31,9 +31,13 @@ def mock_gateway(hass: HomeAssistant) -> Elasticsearch8Gateway:
 
 
 @pytest.fixture
-def index_manager(hass, mock_gateway) -> IndexManager:
+async def index_manager(hass, mock_gateway):
     """Return an IndexManager instance."""
-    return IndexManager(hass, mock_gateway)
+    index_manager = IndexManager(hass, mock_gateway)
+
+    yield index_manager
+
+    index_manager.stop()
 
 
 class Test_IndexManager_Sync:

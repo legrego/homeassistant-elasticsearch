@@ -11,15 +11,6 @@ from math import isinf, isnan
 from queue import Queue
 from typing import TYPE_CHECKING, Any
 
-from elasticsearch.const import (
-    DATASTREAM_DATASET_PREFIX,
-    DATASTREAM_NAMESPACE,
-    DATASTREAM_TYPE,
-    StateChangeType,
-)
-from elasticsearch.entity_details import EntityDetails
-from elasticsearch.loop import LoopHandler
-from elasticsearch.system_info import SystemInfo, SystemInfoResult
 from homeassistant.components.sun.const import STATE_ABOVE_HORIZON, STATE_BELOW_HORIZON
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
@@ -38,9 +29,18 @@ from homeassistant.core import Event, EventStateChangedData, HomeAssistant, Stat
 from homeassistant.helpers import state as state_helper
 from homeassistant.util import dt as dt_util
 
+from custom_components.elasticsearch.const import (
+    DATASTREAM_DATASET_PREFIX,
+    DATASTREAM_NAMESPACE,
+    DATASTREAM_TYPE,
+    StateChangeType,
+)
+from custom_components.elasticsearch.entity_details import EntityDetails
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
-
-from .logger import LOGGER as BASE_LOGGER
+from custom_components.elasticsearch.logger import LOGGER as BASE_LOGGER
+from custom_components.elasticsearch.logger import log_enter_exit
+from custom_components.elasticsearch.loop import LoopHandler
+from custom_components.elasticsearch.system_info import SystemInfo, SystemInfoResult
 
 if TYPE_CHECKING:
     from asyncio import Task  # pragma: no cover
@@ -144,6 +144,7 @@ class Pipeline:
                 log=self._logger,
             )
 
+        @log_enter_exit
         async def async_init(self, config_entry: ConfigEntry) -> None:
             """Initialize the manager."""
 
@@ -170,8 +171,8 @@ class Pipeline:
             await self._formatter.async_init(self._static_fields)
             await self._publisher.async_init(config_entry=config_entry)
 
-            filter_transform_load = LoopHandler(
-                name="es_filter_transform_load",
+            filter_format_publish = LoopHandler(
+                name="es_filter_format_publish_loop",
                 func=self._publish,
                 frequency=self._settings.publish_frequency,
                 log=self._logger,
@@ -179,8 +180,8 @@ class Pipeline:
 
             self._cancel_publisher = config_entry.async_create_background_task(
                 self._hass,
-                filter_transform_load.start(),
-                "es_filter_transform_load",
+                filter_format_publish.start(),
+                "es_filter_format_publish_task",
             )
 
         async def _sip_queue(self) -> AsyncGenerator[dict[str, Any], Any]:
@@ -195,12 +196,14 @@ class Pipeline:
         async def _publish(self) -> None:
             """Publish the documents to Elasticsearch."""
 
-            self._logger.debug("Publishing documents to Elasticsearch.")
-
             await self._publisher.publish(iterable=self._sip_queue())
 
+        @log_enter_exit
         def stop(self) -> None:
             """Stop the manager."""
+            if self._cancel_publisher is not None:
+                self._cancel_publisher.cancel()
+
             self._listener.stop()
             self._poller.stop()
             self._publisher.stop()
@@ -226,6 +229,7 @@ class Pipeline:
             self._excluded_entities: list[str] = settings.excluded_entities
             self._allowed_change_types: list[StateChangeType] = settings.allowed_change_types
 
+        @log_enter_exit
         async def async_init(self) -> None:
             """Initialize the filterer."""
 
@@ -282,6 +286,7 @@ class Pipeline:
             self._queue: EventQueue = queue
             self._cancel_listener = None
 
+        @log_enter_exit
         async def async_init(self) -> None:
             """Initialize the listener."""
 
@@ -307,6 +312,7 @@ class Pipeline:
 
             self._queue.put((event.time_fired, new_state, reason))
 
+        @log_enter_exit
         def stop(self) -> None:
             """Stop the listener."""
             if self._cancel_listener:
@@ -335,10 +341,11 @@ class Pipeline:
 
             self._settings: PipelineSettings = settings
 
+        @log_enter_exit
         async def async_init(self, config_entry: ConfigEntry) -> None:
             """Initialize the poller."""
-            poll_loop = LoopHandler(
-                name="es_etl_poll_loop",
+            state_poll_loop = LoopHandler(
+                name="es_state_poll_loop",
                 func=self.poll,
                 frequency=self._settings.polling_frequency,
                 log=self._logger,
@@ -346,8 +353,8 @@ class Pipeline:
 
             self._cancel_poller = config_entry.async_create_background_task(
                 self._hass,
-                poll_loop.start(),
-                "es_etl_poll",
+                state_poll_loop.start(),
+                "es_state_poll_task",
             )
 
         async def poll(self) -> None:
@@ -361,6 +368,7 @@ class Pipeline:
 
             [self._queue.put((now, i, reason)) for i in all_states]
 
+        @log_enter_exit
         def stop(self) -> None:
             """Stop the poller."""
             if self._cancel_poller:
@@ -377,8 +385,9 @@ class Pipeline:
             """Initialize the formatter."""
             self._logger = log if log else BASE_LOGGER
             self._static_fields: dict[str, Any] = {}
-            self._entity_details = EntityDetails(hass)
+            self._entity_details = EntityDetails(hass, self._logger)
 
+        @log_enter_exit
         async def async_init(self, static_fields: dict[str, Any]) -> None:
             """Initialize the formatter."""
             self._static_fields = static_fields
@@ -653,6 +662,7 @@ class Pipeline:
             self._settings = settings
             self._hass = hass
 
+        @log_enter_exit
         async def async_init(self, config_entry: ConfigEntry) -> None:
             """Initialize the publisher."""
 
@@ -686,6 +696,7 @@ class Pipeline:
 
             await self._gateway.bulk(actions=actions)
 
+        @log_enter_exit
         def stop(self) -> None:
             """Stop the publisher."""
 

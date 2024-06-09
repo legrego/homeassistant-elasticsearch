@@ -12,6 +12,7 @@ from .const import (
     DATASTREAM_METRICS_INDEX_TEMPLATE_NAME,
 )
 from .logger import LOGGER as BASE_LOGGER
+from .logger import async_log_enter_exit, log_enter_exit
 
 
 class IndexManager:
@@ -29,21 +30,15 @@ class IndexManager:
 
         self._logger = log
 
-        self._logger.debug("Index Manager __init__ starting")
-
         self._hass = hass
         self._gateway: ElasticsearchGateway = gateway
 
-        self._logger.debug("Index Manager __init__ completed")
-
+    @log_enter_exit
     async def async_init(self) -> None:
         """Perform init for index management."""
-        self._logger.debug("Index Manager async_init starting")
-
         await self._create_index_template()
 
-        self._logger.debug("Index Manager async_init completed")
-
+    @async_log_enter_exit
     async def _needs_index_template(self) -> bool:
         matching_templates = await self._gateway.get_index_template(
             name=DATASTREAM_METRICS_INDEX_TEMPLATE_NAME,
@@ -52,6 +47,7 @@ class IndexManager:
 
         return len(matching_templates.get("index_templates", [])) > 0
 
+    @log_enter_exit
     async def _create_index_template(self) -> None:
         """Initialize any required datastream templates."""
 
@@ -60,7 +56,7 @@ class IndexManager:
         ) as json_file:
             index_template = json.load(json_file)
 
-        action = "Creating" if await self._needs_index_template() else "Updating"
+        action = "Creating" if (await self._needs_index_template()) else "Updating"
         self._logger.info("%s index template for Home Assistant datastreams", action)
 
         await self._gateway.put_index_template(
@@ -68,10 +64,10 @@ class IndexManager:
             body=index_template,
         )
 
-    def stop(self):
+    @log_enter_exit
+    def stop(self) -> None:
         """Stop the index manager."""
-        pass
 
-    def __del__(self):
+    def __del__(self) -> None:
         """Destructor."""
         self.stop()

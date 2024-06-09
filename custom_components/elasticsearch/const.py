@@ -1,6 +1,7 @@
 """constants."""
 
 from enum import Enum
+from typing import Any
 
 DOMAIN: str = "elasticsearch"
 
@@ -42,7 +43,7 @@ PUBLISH_REASON_ATTR_CHANGE: str = "Attribute change"
 STATE_CHANGE_TYPE_VALUE: str = PUBLISH_REASON_STATE_CHANGE
 STATE_CHANGE_TYPE_ATTR: str = PUBLISH_REASON_ATTR_CHANGE
 
-ES_CHECK_PERMISSIONS_DATASTREAM: dict = {
+ES_CHECK_PERMISSIONS_DATASTREAM: dict[str, Any] = {
     "cluster": ["manage_index_templates", "manage_ilm", "monitor"],
     "index": [
         {

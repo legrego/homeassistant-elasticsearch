@@ -11,6 +11,7 @@ from .const import ES_CHECK_PERMISSIONS_DATASTREAM
 from .es_gateway import Elasticsearch7Gateway
 from .es_index_manager import IndexManager
 from .logger import LOGGER as BASE_LOGGER
+from .logger import log_enter_exit
 
 
 class ElasticIntegration:
@@ -35,16 +36,12 @@ class ElasticIntegration:
         index_parameters = self.build_index_manager_parameters()
         self._index_manager = IndexManager(log=self._logger, **index_parameters)
 
-    # TODO investigate helpers.event.async_call_later()
+    @log_enter_exit
     async def async_init(self) -> None:
         """Async init procedure."""
 
-        self._logger.debug("async_init: starting initialization")
-
         try:
-            await self._gateway.async_init()
-            self._gateway.connection_monitor.start(config_entry=self._config_entry)
-
+            await self._gateway.async_init(config_entry=self._config_entry)
             await self._index_manager.async_init()
             await self._pipeline_manager.async_init(config_entry=self._config_entry)
 
@@ -54,12 +51,9 @@ class ElasticIntegration:
 
             raise
 
-        self._logger.debug("async_init: finished initialization")
-
+    @log_enter_exit
     async def async_shutdown(self) -> bool:  # pylint disable=unused-argument
         """Async shutdown procedure."""
-        self._logger.debug("async_shutdown: starting shutdown")
-
         try:
             await self._gateway.stop()
         except Exception:
@@ -75,14 +69,14 @@ class ElasticIntegration:
         except Exception:
             self._logger.exception("Error stopping index manager")
 
-        self._logger.debug("async_shutdown: shutdown complete")
         return True
 
     def build_pipeline_manager_parameters(self, config_entry: ConfigEntry) -> dict:
         """Build the parameters for the Elasticsearch pipeline manager."""
 
         if config_entry.options is None:
-            raise ValueError("Config entry options are required for the pipeline manager.")
+            msg = "Config entry options are required for the pipeline manager."
+            raise ValueError(msg)
 
         settings = PipelineSettings(
             included_domains=config_entry.options["included_domains"],
