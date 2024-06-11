@@ -1,52 +1,17 @@
-// See https://aka.ms/vscode-remote/devcontainer.json for format details.
 {
 	"context": "..",
 	"customizations": {
 		"vscode": {
 			"extensions": [
-				"ms-python.python",
-				"github.vscode-pull-request-github",
-				"ryanluker.vscode-coverage-gutters",
 				"charliermarsh.ruff",
-				"redhat.vscode-yaml"
-			],
-			"settings": {
-				"[python]": {
-					"editor.codeActionsOnSave": {
-						"source.fixAll": "explicit",
-						"source.organizeImports": "explicit"
-					},
-					"editor.formatOnSave": true,
-					"editor.formatOnSaveMode": "modifications"
-				},
-				"editor.formatOnPaste": false,
-				"editor.formatOnSave": true,
-				"editor.formatOnType": true,
-				"editor.tabSize": 4,
-				"files.eol": "\n",
-				"files.trimTrailingWhitespace": true,
-				"python.analysis.autoSearchPaths": false,
-				"python.analysis.inlayHints.pytestParameters": true,
-				"python.analysis.typeCheckingMode": "basic",
-				"python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
-				"python.experiments.optInto": [
-					"pythonTestAdapter"
-				],
-				"python.formatting.blackPath": "/usr/local/py-utils/bin/black",
-				"python.terminal.activateEnvInCurrentTerminal": true,
-				"python.testing.cwd": "./tests",
-				"python.testing.pytestArgs": [
-					"tests",
-					"--continue-on-collection-errors"
-				],
-				"python.testing.pytestEnabled": true,
-				"python.testing.unittestEnabled": false,
-				"ruff.configurationPreference": "filesystemFirst",
-				"ruff.format.args": [
-					"--config=./.ruff.toml"
-				],
-				"ruff.showNotifications": "onWarning"
-			}
+				"github.vscode-pull-request-github",
+				"ms-python.debugpy",
+				"ms-python.python",
+				"ms-python.vscode-pylance",
+				"redhat.vscode-yaml",
+				"ryanluker.vscode-coverage-gutters",
+				"streetsidesoftware.code-spell-checker"
+			]
 		}
 	},
 	"dockerFile": "Dockerfile",
@@ -66,8 +31,16 @@
 	],
 	"name": "Elasticsearch integration development",
 	"portsAttributes": {
+		"5601": {
+			"label": "Kibana",
+			"onAutoForward": "notify"
+		},
 		"8123": {
 			"label": "Home Assistant",
+			"onAutoForward": "notify"
+		},
+		"9200": {
+			"label": "Elasticsearch",
 			"onAutoForward": "notify"
 		}
 	},

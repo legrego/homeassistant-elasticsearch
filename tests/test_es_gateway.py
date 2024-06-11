@@ -304,7 +304,7 @@ class Test_Elasticsearch_Gateway:
             "url": "http://localhost:9200",
             "username": "admin",
             "password": "password",
-            "verify_certs": True,
+            "verify_ssl": True,
             "ca_certs": "/path/to/ca_certs",
             "timeout": 30,
         }
