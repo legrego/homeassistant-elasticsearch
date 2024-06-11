@@ -127,15 +127,6 @@ class Test_loop_handler:
 
         assert loop_handler._next_run_time > 0
 
-    # async def _wait_for_next_run(self) -> None:
-    #     """Wait for the next poll time."""
-    #     while not self._time_to_run(self):
-    #         if self._should_stop_running(self):
-    #             msg = "Stopping the loop handler."
-    #             raise RuntimeError(msg)
-    #         await self._spin()
-    #         continue
-
     async def test_loop_handler_wait_for_next_run(self):
         """Test the _wait_for_next_run method of LoopHandler."""
 

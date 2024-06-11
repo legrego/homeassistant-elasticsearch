@@ -5,19 +5,17 @@ from typing import Any
 
 DOMAIN: str = "elasticsearch"
 
-CONF_PUBLISH_ENABLED: str = "publish_enabled"
-CONF_POLLING_ENABLED: str = "polling_enabled"
-CONF_POLLING_FREQUENCY: str = "polling_frequency"
-CONF_ALLOWED_CHANGE_TYPES: str = "allowed_change_types"
 CONF_PUBLISH_FREQUENCY: str = "publish_frequency"
+CONF_POLLING_FREQUENCY: str = "polling_frequency"
+
+CONF_CHANGE_DETECTION_ENABLED: str = "change_detection_enabled"
+CONF_CHANGE_DETECTION_TYPE: str = "change_detection_type"
+
 CONF_EXCLUDED_DOMAINS: str = "excluded_domains"
 CONF_EXCLUDED_ENTITIES: str = "excluded_entities"
-CONF_PUBLISH_MODE: str = "publish_mode"
 CONF_INCLUDED_DOMAINS: str = "included_domains"
 CONF_INCLUDED_ENTITIES: str = "included_entities"
 
-CONF_ILM_ENABLED: str = "ilm_enabled"
-CONF_ILM_POLICY_NAME: str = "ilm_policy_name"
 CONF_SSL_CA_PATH: str = "ssl_ca_path"
 
 CONF_TAGS: str = "tags"
@@ -31,10 +29,6 @@ DATASTREAM_NAMESPACE: str = "default"
 
 # Set to match the datastream prefix name
 DATASTREAM_METRICS_INDEX_TEMPLATE_NAME: str = DATASTREAM_TYPE + "-" + DATASTREAM_DATASET_PREFIX
-
-PUBLISH_MODE_ALL: str = "All"
-PUBLISH_MODE_STATE_CHANGES: str = "State changes"
-PUBLISH_MODE_ANY_CHANGES: str = "Any changes"
 
 PUBLISH_REASON_POLLING: str = "Polling"
 PUBLISH_REASON_STATE_CHANGE: str = "State change"
@@ -103,8 +97,15 @@ LEGACY_TEMPLATE_NAME: str = "hass-index-template" + VERSION_SUFFIX
 
 INDEX_MODE_LEGACY: str = "index"
 INDEX_MODE_DATASTREAM: str = "datastream"
+
+
+PUBLISH_MODE_ALL: str = "All"
+PUBLISH_MODE_STATE_CHANGES: str = "State changes"
+PUBLISH_MODE_ANY_CHANGES: str = "Any changes"
+
+CONF_ILM_ENABLED: str = "ilm_enabled"
+CONF_ILM_POLICY_NAME: str = "ilm_policy_name"
+CONF_PUBLISH_MODE: str = "publish_mode"
 CONF_INDEX_FORMAT: str = "index_format"
-
 CONF_INDEX_MODE: str = "index_mode"
-
 # END DEPRECATED CONFIG

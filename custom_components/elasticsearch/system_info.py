@@ -45,6 +45,6 @@ class SystemInfo:
                 os_version=system_info.get("os_version"),
                 hostname=hostname,
             )
-        except Exception as err:  # pylint disable=broad-exception-caught
+        except Exception as err:  # pylint disable=broad-exception-caught  # noqa: BLE001
             LOGGER.exception("Error retrieving system info: %s", err)
             return None

@@ -83,9 +83,8 @@ class ElasticIntegration:
             included_entities=config_entry.options["included_entities"],
             excluded_domains=config_entry.options["excluded_domains"],
             excluded_entities=config_entry.options["excluded_entities"],
-            polling_enabled=config_entry.options["polling_enabled"],
             polling_frequency=config_entry.options["polling_frequency"],
-            allowed_change_types=config_entry.options["allowed_change_types"],
+            change_detection_type=config_entry.options["change_detection_type"],
             publish_frequency=config_entry.options["publish_frequency"],
         )
 

@@ -10,21 +10,18 @@ from custom_components.elasticsearch.errors import (
     InsufficientPrivileges,
     UnsupportedVersion,
 )
-from custom_components.elasticsearch.logger import LOGGER, have_child
+from custom_components.elasticsearch.logger import LOGGER, async_log_enter_exit, have_child, log_enter_exit
 
 from .const import (
     CONF_HEALTH_SENSOR_ENABLED,
     CONF_INDEX_MODE,
-    CONF_ONLY_PUBLISH_CHANGED,
-    CONF_PUBLISH_MODE,
     DOMAIN,
     INDEX_MODE_LEGACY,
-    PUBLISH_MODE_ALL,
-    PUBLISH_MODE_ANY_CHANGES,
 )
 from .es_integration import ElasticIntegration
 
 
+@async_log_enter_exit
 async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:  # pylint: disable=unused-argument
     """Migrate old entry."""
 
@@ -38,36 +35,59 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
         latest_version,
     )
 
-    config_entry.version = migrated_version
+    if migrated_version != latest_version:
+        LOGGER.error(
+            "Migration failed attempting to migrate from version %s to version %s. Ended on %s.",
+            config_entry.version,
+            latest_version,
+            migrated_version,
+        )
+        return False
 
-    return hass.config_entries.async_update_entry(config_entry, data=migrated_data, options=migrated_options)
+    hass.config_entries.async_update_entry(
+        config_entry,
+        data=migrated_data,
+        options=migrated_options,
+        version=migrated_version,
+    )
 
-
-async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
-    """Set up integration via config flow."""
-
-    LOGGER.debug("Setting up integration")
-    init = await _async_init_integration(hass, config_entry)
-    config_entry.add_update_listener(async_config_entry_updated)
-    return init
-
-
-async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
-    """Teardown integration."""
-    existing_instance = hass.data.get(DOMAIN)
-    if isinstance(existing_instance, ElasticIntegration):
-        LOGGER.debug("Shutting down previous integration")
-        await existing_instance.async_shutdown()
-        hass.data[DOMAIN] = None
     return True
 
 
+@async_log_enter_exit
+async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+    """Set up integration via config flow."""
+    init = await _async_init_integration(hass, config_entry)
+
+    config_entry.add_update_listener(async_config_entry_updated)
+
+    return init
+
+
+@async_log_enter_exit
+async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+    """Teardown integration."""
+    existing_instances = hass.data.get(DOMAIN)
+    if existing_instances is None:
+        return True
+
+    existing_instance = existing_instances.get(config_entry.entry_id)
+
+    if isinstance(existing_instance, ElasticIntegration):
+        LOGGER.debug("Shutting down previous integration")
+        await existing_instance.async_shutdown()
+        hass.data[DOMAIN][config_entry.entry_id] = None
+
+    return True
+
+
+@async_log_enter_exit
 async def async_config_entry_updated(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
     """Respond to config changes."""
-    LOGGER.debug("Configuration change detected")
     await _async_init_integration(hass, config_entry)
 
 
+@async_log_enter_exit
 async def _async_init_integration(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Initialize integration."""
     await async_unload_entry(hass=hass, config_entry=config_entry)
@@ -107,6 +127,7 @@ async def _async_init_integration(hass: HomeAssistant, config_entry: ConfigEntry
     return True
 
 
+@log_enter_exit
 def migrate_data_and_options_to_version(
     config_entry: ConfigEntry,
     desired_version: int,
@@ -216,21 +237,39 @@ def migrate_to_version_5(data: dict, options: dict) -> tuple[dict, dict]:
 def migrate_to_version_6(data: dict, options: dict) -> tuple[dict, dict]:
     """Migrate config to version 6."""
 
-    options["polling_enabled"] = True
-    options["polling_frequency"] = 60
-
     if data.get("index_mode") is not None:
         del data["index_mode"]
 
+    # Change publish mode to change_detection_type
     if options.get("publish_mode") is not None:
         if options["publish_mode"] == "All":
-            options["allowed_change_types"] = ["STATE", "ATTRIBUTE", "POLLING"]
+            options["polling_frequency"] = options["publish_frequency"]
+            options["change_detection_type"] = ["STATE", "ATTRIBUTE"]
+
         if options["publish_mode"] == "Any changes":
-            options["allowed_change_types"] = ["STATE", "ATTRIBUTE"]
+            options["change_detection_type"] = ["STATE", "ATTRIBUTE"]
+
         if options["publish_mode"] == "State changes":
-            options["allowed_change_types"] = ["STATE"]
+            options["change_detection_type"] = ["STATE"]
+
         del options["publish_mode"]
+
     else:
-        options["allowed_change_types"] = ["STATE", "ATTRIBUTE", "POLLING"]
+        options["change_detection_type"] = ["STATE", "ATTRIBUTE"]
+
+    # add dedicated settings for polling
+    options_to_remove = [
+        "ilm_enabled",
+        "ilm_policy_name",
+        "publish_mode",
+        "publish_enabled",
+        "index_format",
+        "index_mode",
+        "alias",
+    ]
+
+    for key in options_to_remove:
+        if key in options:
+            del options[key]
 
     return data, options

@@ -38,9 +38,8 @@ def settings():
         excluded_entities=[],
         included_domains=[],
         excluded_domains=[],
-        allowed_change_types=[],
+        change_detection_type=[],
         publish_frequency=60,
-        polling_enabled=True,
         polling_frequency=60,
     )
 
@@ -61,21 +60,21 @@ class Test_Filterer:
         def test_passes_filter_with_allowed_change_type_and_included_entity(self, filterer):
             """Test that a state change with an allowed change type and included entity passes the filter."""
             state = State("light.living_room", "on")
-            filterer._allowed_change_types = [StateChangeType.STATE.name]
+            filterer._change_detection_type = [StateChangeType.STATE.name]
             filterer._included_entities = ["light.living_room"]
             assert filterer.passes_filter(state, StateChangeType.STATE) is True
 
         def test_passes_filter_with_allowed_change_type_and_excluded_entity(self, filterer):
             """Test that a state change with an allowed change type and excluded entity does not pass the filter."""
             state = State("light.living_room", "on")
-            filterer._allowed_change_types = [StateChangeType.STATE.name]
+            filterer._change_detection_type = [StateChangeType.STATE.name]
             filterer._excluded_entities = ["light.living_room"]
             assert filterer.passes_filter(state, StateChangeType.STATE) is False
 
         def test_passes_filter_with_disallowed_change_type(self, filterer):
             """Test that a state change with an allowed change type and excluded entity does not pass the filter."""
             state = State("light.living_room", "on")
-            filterer._allowed_change_types = [StateChangeType.NO_CHANGE.name]
+            filterer._change_detection_type = [StateChangeType.NO_CHANGE.name]
             filterer._excluded_entities = ["light.living_room"]
             assert filterer.passes_filter(state, StateChangeType.STATE) is False
 
@@ -135,15 +134,18 @@ class Test_Filterer:
             filterer._excluded_domains = ["light"]
             assert filterer._passes_entity_domain_filters(state.entity_id, state.domain) is False
 
-        def test_passes_change_type_filter_true(self, filterer):
+        def test_passes_change_detection_type_filter_true(self, filterer):
             """Test that a state change with an allowed change type passes the filter."""
-            filterer._allowed_change_types = [StateChangeType.STATE.name]
-            assert filterer._passes_change_type_filter(StateChangeType.STATE) is True
+            filterer._change_detection_type = [StateChangeType.STATE.name]
+            assert filterer._passes_change_detection_type_filter(StateChangeType.STATE) is True
 
-        def test_passes_change_type_filter_false(self, filterer):
+            filterer._change_detection_type = [StateChangeType.NO_CHANGE.name]
+            assert filterer._passes_change_detection_type_filter(StateChangeType.NO_CHANGE) is True
+
+        def test_passes_change_detection_type_filter_false(self, filterer):
             """Test that a state change with an allowed change type passes the filter."""
-            filterer._allowed_change_types = [StateChangeType.ATTRIBUTE.name]
-            assert filterer._passes_change_type_filter(StateChangeType.STATE) is False
+            filterer._change_detection_type = [StateChangeType.ATTRIBUTE.name]
+            assert filterer._passes_change_detection_type_filter(StateChangeType.STATE) is False
 
 
 class Test_Manager:
@@ -158,9 +160,8 @@ class Test_Manager:
             excluded_entities=[],
             included_domains=[],
             excluded_domains=[],
-            allowed_change_types=[],
+            change_detection_type=[],
             publish_frequency=60,
-            polling_enabled=True,
             polling_frequency=60,
         )
         return Pipeline.Manager(hass=hass, gateway=gateway, settings=settings)
@@ -187,6 +188,8 @@ class Test_Manager:
         async def test_async_init(self, manager):
             """Test the async initialization of the manager."""
             config_entry = mock.Mock()
+            manager._settings.change_detection_type = ["STATE"]
+
             config_entry.async_create_background_task = mock.Mock()
 
             manager._listener = mock.Mock()
@@ -910,7 +913,7 @@ class Test_Formatter:
 
         def test_format(self, formatter):
             """Test formatting a state change document."""
-            time = datetime.now()
+            time = datetime.now(tz=UTC)
             state = State("light.living_room", "on", {"brightness": 255})
             reason = StateChangeType.STATE
             document = formatter.format(time, state, reason)

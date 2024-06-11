@@ -18,7 +18,6 @@ from custom_components.elasticsearch.const import (
     CONF_ILM_POLICY_NAME,
     CONF_INDEX_FORMAT,
     CONF_ONLY_PUBLISH_CHANGED,
-    CONF_PUBLISH_ENABLED,
     CONF_PUBLISH_FREQUENCY,
 )
 
@@ -31,7 +30,6 @@ MOCK_COMPLEX_LEGACY_CONFIG = {
     CONF_USERNAME: "username",
     CONF_PASSWORD: "changeme",
     CONF_TIMEOUT: 60,
-    CONF_PUBLISH_ENABLED: True,
     CONF_PUBLISH_FREQUENCY: 1,
     CONF_ILM_ENABLED: True,
     CONF_ILM_POLICY_NAME: "custom-policy-name",

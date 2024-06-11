@@ -3,7 +3,7 @@
     "url": "http://migration-test:9200"
   },
   "after_options": {
-    "allowed_change_types": [
+    "change_detection_type": [
       "STATE",
       "ATTRIBUTE"
     ],
@@ -11,13 +11,25 @@
     "excluded_entities": [],
     "included_domains": [],
     "included_entities": [],
-    "polling_enabled": true,
     "polling_frequency": 60,
-    "publish_enabled": true,
     "publish_frequency": 60
   },
   "after_version": 6,
-  "before_data": "mappingproxy({'url': 'http://migration-test:9200'})",
-  "before_options": "mappingproxy({'publish_mode': 'Any changes', 'excluded_domains': [], 'excluded_entities': [], 'included_domains': [], 'included_entities': [], 'publish_enabled': True, 'publish_frequency': 60})",
+  "before_data": {
+    "url": "http://migration-test:9200"
+  },
+  "before_options": {
+    "excluded_domains": [],
+    "excluded_entities": [],
+    "ilm_enabled": true,
+    "ilm_policy_name": "test policy",
+    "included_domains": [],
+    "included_entities": [],
+    "index_format": "test format",
+    "index_mode": "index",
+    "publish_enabled": true,
+    "publish_frequency": 60,
+    "publish_mode": "All"
+  },
   "before_version": 5
 }

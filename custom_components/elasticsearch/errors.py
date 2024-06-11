@@ -3,7 +3,7 @@
 from homeassistant.exceptions import HomeAssistantError
 
 
-class ESIntegrationException(HomeAssistantError):
+class ESIntegrationException(HomeAssistantError):  # noqa: N818
     """Base class for Elastic exceptions."""
 
 

@@ -8,7 +8,6 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry, ConfigFlowResult
 from homeassistant.const import (
-    CONF_ALIAS,
     CONF_API_KEY,
     CONF_PASSWORD,
     CONF_TIMEOUT,
@@ -21,28 +20,17 @@ from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.selector import selector
 
 from custom_components.elasticsearch.const import (
-    CONF_ALLOWED_CHANGE_TYPES,
+    CONF_CHANGE_DETECTION_ENABLED,
+    CONF_CHANGE_DETECTION_TYPE,
     CONF_EXCLUDED_DOMAINS,
     CONF_EXCLUDED_ENTITIES,
-    CONF_ILM_ENABLED,
-    CONF_ILM_POLICY_NAME,
     CONF_INCLUDED_DOMAINS,
     CONF_INCLUDED_ENTITIES,
-    CONF_INDEX_FORMAT,
-    CONF_INDEX_MODE,
-    CONF_POLLING_ENABLED,
     CONF_POLLING_FREQUENCY,
-    CONF_PUBLISH_ENABLED,
     CONF_PUBLISH_FREQUENCY,
-    CONF_PUBLISH_MODE,
     CONF_SSL_CA_PATH,
     ES_CHECK_PERMISSIONS_DATASTREAM,
-    INDEX_MODE_DATASTREAM,
-    INDEX_MODE_LEGACY,
     ONE_MINUTE,
-    PUBLISH_MODE_ALL,
-    PUBLISH_MODE_ANY_CHANGES,
-    PUBLISH_MODE_STATE_CHANGES,
     StateChangeType,
 )
 from custom_components.elasticsearch.const import DOMAIN as ELASTIC_DOMAIN
@@ -58,23 +46,17 @@ from custom_components.elasticsearch.es_gateway import Elasticsearch7Gateway
 
 from .logger import LOGGER, async_log_enter_exit
 
-CONFIG_TO_REDACT = {CONF_API_KEY, CONF_PASSWORD, CONF_URL, CONF_USERNAME}
+CONFIG_TO_REDACT = {CONF_API_KEY, CONF_PASSWORD, CONF_USERNAME}
 
 DEFAULT_URL = "http://localhost:9200"
-DEFAULT_ALIAS = "active-hass-index"
-DEFAULT_INDEX_FORMAT = "hass-events"
 
-DEFAULT_PUBLISH_ENABLED = True
 DEFAULT_PUBLISH_FREQUENCY = ONE_MINUTE
-DEFAULT_POLLING_ENABLED = True
 DEFAULT_POLLING_FREQUENCY = ONE_MINUTE
-DEFAULT_ALLOWED_CHANGE_TYPES = [StateChangeType.STATE, StateChangeType.ATTRIBUTE, StateChangeType.NO_CHANGE]
-DEFAULT_PUBLISH_MODE = PUBLISH_MODE_ANY_CHANGES
+
+DEFAULT_CHANGE_DETECTION_ENABLED = True
+DEFAULT_CHANGE_DETECTION_TYPE = [StateChangeType.STATE.value, StateChangeType.ATTRIBUTE.value]
 DEFAULT_VERIFY_SSL = True
 DEFAULT_TIMEOUT_SECONDS = 30
-DEFAULT_ILM_ENABLED = True
-DEFAULT_ILM_POLICY_NAME = "home-assistant"
-DEFAULT_INDEX_MODE = "datastream"
 
 
 def build_new_options(existing_options: dict | None = None, user_input: dict | None = None) -> dict:
@@ -84,17 +66,13 @@ def build_new_options(existing_options: dict | None = None, user_input: dict | N
     if existing_options is None:
         existing_options = {}
     return {
-        CONF_PUBLISH_ENABLED: user_input.get(
-            CONF_PUBLISH_ENABLED,
-            existing_options.get(CONF_PUBLISH_ENABLED, DEFAULT_PUBLISH_ENABLED),
+        CONF_CHANGE_DETECTION_ENABLED: user_input.get(
+            CONF_CHANGE_DETECTION_ENABLED,
+            existing_options.get(CONF_CHANGE_DETECTION_ENABLED, DEFAULT_CHANGE_DETECTION_ENABLED),
         ),
-        CONF_POLLING_ENABLED: user_input.get(
-            CONF_POLLING_ENABLED,
-            existing_options.get(CONF_POLLING_ENABLED, DEFAULT_POLLING_ENABLED),
-        ),
-        CONF_ALLOWED_CHANGE_TYPES: user_input.get(
-            CONF_ALLOWED_CHANGE_TYPES,
-            existing_options.get(CONF_ALLOWED_CHANGE_TYPES, DEFAULT_ALLOWED_CHANGE_TYPES),
+        CONF_CHANGE_DETECTION_TYPE: user_input.get(
+            CONF_CHANGE_DETECTION_TYPE,
+            existing_options.get(CONF_CHANGE_DETECTION_TYPE, DEFAULT_CHANGE_DETECTION_TYPE),
         ),
         CONF_POLLING_FREQUENCY: user_input.get(
             CONF_POLLING_FREQUENCY,
@@ -103,23 +81,6 @@ def build_new_options(existing_options: dict | None = None, user_input: dict | N
         CONF_PUBLISH_FREQUENCY: user_input.get(
             CONF_PUBLISH_FREQUENCY,
             existing_options.get(CONF_PUBLISH_FREQUENCY, DEFAULT_PUBLISH_FREQUENCY),
-        ),
-        CONF_PUBLISH_MODE: user_input.get(
-            CONF_PUBLISH_MODE,
-            existing_options.get(CONF_PUBLISH_MODE, DEFAULT_PUBLISH_MODE),
-        ),
-        CONF_ALIAS: user_input.get(CONF_ALIAS, existing_options.get(CONF_ALIAS, DEFAULT_ALIAS)),
-        CONF_INDEX_FORMAT: user_input.get(
-            CONF_INDEX_FORMAT,
-            existing_options.get(CONF_INDEX_FORMAT, DEFAULT_INDEX_FORMAT),
-        ),
-        CONF_ILM_POLICY_NAME: user_input.get(
-            CONF_ILM_POLICY_NAME,
-            existing_options.get(CONF_ILM_POLICY_NAME, DEFAULT_ILM_POLICY_NAME),
-        ),
-        CONF_ILM_ENABLED: user_input.get(
-            CONF_ILM_ENABLED,
-            existing_options.get(CONF_ILM_ENABLED, DEFAULT_ILM_ENABLED),
         ),
         CONF_EXCLUDED_DOMAINS: user_input.get(
             CONF_EXCLUDED_DOMAINS,
@@ -155,10 +116,6 @@ def build_new_data(existing_data: dict | None = None, user_input: dict | None = 
             existing_data.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL),
         ),
         CONF_SSL_CA_PATH: user_input.get(CONF_SSL_CA_PATH, existing_data.get(CONF_SSL_CA_PATH, None)),
-        CONF_INDEX_MODE: user_input.get(
-            CONF_INDEX_MODE,
-            existing_data.get(CONF_INDEX_MODE, DEFAULT_INDEX_MODE),
-        ),
     }
     auth = {
         CONF_USERNAME: user_input.get(CONF_USERNAME, existing_data.get(CONF_USERNAME, None)),
@@ -294,9 +251,6 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
         # Figure out what we need to auth check for
         verify_permissions = ES_CHECK_PERMISSIONS_DATASTREAM
-
-        if effective_data.get(CONF_INDEX_MODE) == INDEX_MODE_LEGACY:
-            verify_permissions = None
 
         params = {
             "url": user_input.get("url"),
@@ -529,28 +483,11 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
         """Publish Options."""
         if user_input is not None:
             self.options.update(user_input)
-            if self.config_entry.data.get(CONF_INDEX_MODE, INDEX_MODE_DATASTREAM) == INDEX_MODE_DATASTREAM:
-                return await self._update_options()
-            else:
-                return await self.async_step_ilm_options()
+            return await self._update_options()
 
         return self.async_show_form(
             step_id="publish_options",
             data_schema=vol.Schema(await self.async_build_publish_options_schema()),
-        )
-
-    async def async_step_ilm_options(self, user_input: dict | None = None) -> ConfigFlowResult:
-        """ILM Options."""
-        errors = {}
-
-        if user_input is not None:
-            self.options.update(user_input)
-            return await self._update_options()
-
-        return self.async_show_form(
-            step_id="ilm_options",
-            data_schema=vol.Schema(self._build_ilm_options_schema()),
-            errors=errors,
         )
 
     async def _update_options(self) -> ConfigFlowResult:
@@ -585,30 +522,31 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
             list(str(entities)) + list(str(current_excluded_entities)) + list(str(current_included_entities)),
         )
 
-        schema = {
-            vol.Required(
-                CONF_PUBLISH_ENABLED,
-                default=self._get_config_value(CONF_PUBLISH_ENABLED, DEFAULT_PUBLISH_ENABLED),  # type: ignore  # noqa: PGH003
-            ): bool,
-            vol.Required(
+        return {
+            vol.Optional(
                 CONF_PUBLISH_FREQUENCY,
                 default=self._get_config_value(CONF_PUBLISH_FREQUENCY, DEFAULT_PUBLISH_FREQUENCY),  # type: ignore  # noqa: PGH003
-            ): int,
+            ): vol.All(vol.Coerce(int), vol.Range(min=1, max=600)),
+            vol.Optional(
+                CONF_POLLING_FREQUENCY,
+                default=self._get_config_value(CONF_POLLING_FREQUENCY, DEFAULT_POLLING_FREQUENCY),  # type: ignore  # noqa: PGH003
+            ): vol.All(vol.Coerce(int), vol.Range(min=1, max=3600)),
             vol.Required(
-                CONF_PUBLISH_MODE,
-                default=self._get_config_string(CONF_PUBLISH_MODE, DEFAULT_PUBLISH_MODE),  # type: ignore  # noqa: PGH003
+                CONF_CHANGE_DETECTION_TYPE,
+                default=self._get_config_value(CONF_CHANGE_DETECTION_TYPE, DEFAULT_CHANGE_DETECTION_TYPE),  # type: ignore  # noqa: PGH003
             ): selector(
                 {
                     "select": {
+                        "multiple": True,
+                        "mode": "list",
                         "options": [
-                            {"label": "All entities", "value": PUBLISH_MODE_ALL},
                             {
-                                "label": "Entities with state changes",
-                                "value": PUBLISH_MODE_STATE_CHANGES,
+                                "label": "Track entities with state changes",
+                                "value": StateChangeType.STATE.value,
                             },
                             {
-                                "label": "Entities with state or attribute changes",
-                                "value": PUBLISH_MODE_ANY_CHANGES,
+                                "label": "Track entities with attribute changes",
+                                "value": StateChangeType.ATTRIBUTE.value,
                             },
                         ],
                     },
@@ -630,38 +568,6 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
                 CONF_INCLUDED_ENTITIES,
                 default=current_included_entities,  # type: ignore  # noqa: PGH003
             ): cv.multi_select(entity_options),
-        }
-
-        if (
-            self.show_advanced_options
-            and self.config_entry.data.get(CONF_INDEX_MODE, DEFAULT_INDEX_MODE) != INDEX_MODE_DATASTREAM
-        ):
-            schema[
-                vol.Required(
-                    CONF_INDEX_FORMAT,
-                    default=self._get_config_value(CONF_INDEX_FORMAT, DEFAULT_INDEX_FORMAT),  # type: ignore  # noqa: PGH003
-                )
-            ] = str
-
-            schema[
-                vol.Required(
-                    CONF_ALIAS,
-                    default=self._get_config_value(CONF_ALIAS, DEFAULT_ALIAS),  # type: ignore  # noqa: PGH003
-                )
-            ] = str
-
-        return schema
-
-    def _build_ilm_options_schema(self) -> dict:
-        return {
-            vol.Required(
-                CONF_ILM_ENABLED,
-                default=self._get_config_value(CONF_ILM_ENABLED, default=True),  # type: ignore  # noqa: PGH003
-            ): bool,
-            vol.Required(
-                CONF_ILM_POLICY_NAME,
-                default=self._get_config_value(CONF_ILM_POLICY_NAME, DEFAULT_ILM_POLICY_NAME),  # type: ignore  # noqa: PGH003
-            ): str,
         }
 
     def _dedup_list(self, list_to_dedup: list[str]) -> list:

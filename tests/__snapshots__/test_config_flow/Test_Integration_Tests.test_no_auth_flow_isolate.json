@@ -1,0 +1,21 @@
+{
+  "data": {
+    "ssl_ca_path": null,
+    "timeout": 30,
+    "url": "http://minimum-fields:9200",
+    "verify_ssl": true
+  },
+  "options": {
+    "change_detection_enabled": true,
+    "change_detection_type": [
+      "STATE",
+      "ATTRIBUTE"
+    ],
+    "excluded_domains": [],
+    "excluded_entities": [],
+    "included_domains": [],
+    "included_entities": [],
+    "polling_frequency": 60,
+    "publish_frequency": 60
+  }
+}

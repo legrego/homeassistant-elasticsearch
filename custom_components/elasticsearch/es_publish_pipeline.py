@@ -67,8 +67,7 @@ class PipelineSettings:
         included_entities: list[str],
         excluded_domains: list[str],
         excluded_entities: list[str],
-        allowed_change_types: list[StateChangeType],
-        polling_enabled: bool,
+        change_detection_type: list[StateChangeType],
         polling_frequency: int,
         publish_frequency: int,
     ) -> None:
@@ -77,9 +76,8 @@ class PipelineSettings:
         self.included_entities: list[str] = included_entities
         self.excluded_domains: list[str] = excluded_domains
         self.excluded_entities: list[str] = excluded_entities
-        self.allowed_change_types: list[StateChangeType] = allowed_change_types
+        self.change_detection_type: list[StateChangeType] = change_detection_type
         self.publish_frequency: int = publish_frequency
-        self.polling_enabled: bool = polling_enabled
         self.polling_frequency: int = polling_frequency
 
     def to_dict(self) -> dict:
@@ -89,9 +87,8 @@ class PipelineSettings:
             "included_entities": self.included_entities,
             "excluded_domains": self.excluded_domains,
             "excluded_entities": self.excluded_entities,
-            "allowed_change_types": [i.value for i in self.allowed_change_types],
+            "change_detection_type": [i.value for i in self.change_detection_type],
             "publish_frequency": self.publish_frequency,
-            "polling_enabled": self.polling_enabled,
             "polling_frequency": self.polling_frequency,
         }
 
@@ -148,6 +145,10 @@ class Pipeline:
         async def async_init(self, config_entry: ConfigEntry) -> None:
             """Initialize the manager."""
 
+            if self._settings.publish_frequency is None:
+                self._logger.warning("No publish frequency set. Disabling publishing.")
+                return
+
             system_info: SystemInfo = SystemInfo(hass=self._hass)
             result: SystemInfoResult | None = await system_info.async_get_system_info()
 
@@ -161,10 +162,10 @@ class Pipeline:
                 if result.hostname:
                     self._static_fields["host.hostname"] = result.hostname
 
-            # Initialize document faucets
-            await self._listener.async_init()
+            if len(self._settings.change_detection_type) != 0:
+                await self._listener.async_init()
 
-            if self._settings.polling_enabled:
+            if self._settings.polling_frequency is not None:
                 await self._poller.async_init(config_entry=config_entry)
 
             # Initialize document sinks
@@ -227,7 +228,7 @@ class Pipeline:
             self._included_entities: list[str] = settings.included_entities
             self._excluded_domains: list[str] = settings.excluded_domains
             self._excluded_entities: list[str] = settings.excluded_entities
-            self._allowed_change_types: list[StateChangeType] = settings.allowed_change_types
+            self._change_detection_type: list[StateChangeType] = settings.change_detection_type
 
         @log_enter_exit
         async def async_init(self) -> None:
@@ -236,7 +237,7 @@ class Pipeline:
         def passes_filter(self, state: State, reason: StateChangeType) -> bool:
             """Filter state changes for processing."""
 
-            if not self._passes_change_type_filter(reason):
+            if not self._passes_change_detection_type_filter(reason):
                 return False
 
             if not self._passes_entity_domain_filters(entity_id=state.entity_id, domain=state.domain):
@@ -244,10 +245,14 @@ class Pipeline:
 
             return True
 
-        def _passes_change_type_filter(self, reason: StateChangeType) -> bool:
+        def _passes_change_detection_type_filter(self, reason: StateChangeType) -> bool:
             """Determine if a state change should be published."""
 
-            return reason.value in self._allowed_change_types
+            # If polling is enabled, we publish all polled events
+            if reason.value == StateChangeType.NO_CHANGE.value:
+                return True
+
+            return reason.value in self._change_detection_type
 
         def _passes_entity_domain_filters(self, entity_id: str, domain: str) -> bool:
             """Determine if a state change should be published."""

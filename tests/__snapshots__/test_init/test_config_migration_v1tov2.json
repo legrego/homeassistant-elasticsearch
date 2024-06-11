@@ -5,7 +5,10 @@
   },
   "after_options": {},
   "after_version": 2,
-  "before_data": "mappingproxy({'url': 'http://migration-test:9200', 'only_publish_changed': True})",
-  "before_options": "mappingproxy({})",
+  "before_data": {
+    "only_publish_changed": true,
+    "url": "http://migration-test:9200"
+  },
+  "before_options": {},
   "before_version": 1
 }

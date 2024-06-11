@@ -379,18 +379,18 @@ class ElasticsearchGateway(ABC):
         self._logger.debug("Retrieving index template %s", kwargs.get("name", ""))
 
         try:
-            result = await self._client.indices.get_template(**kwargs)
+            result = await self._client.indices.get_index_template(**kwargs)
 
         except ConnectionError:
             msg = "Error retrieving index template"
             self.convert_es_error(msg)
 
         except Exception:
-            self._logger.exception("Unknown error retrieving cluster info")
+            self._logger.exception("Unknown error retrieving index templates")
             raise
 
         if not isinstance(result, dict):
-            self._logger.error("Invalid response from Elasticsearch")
+            self._logger.error("Invalid response from Elasticsearch while retrieving index templates")
 
         return self._convert_api_response_to_dict(result)
 
@@ -409,7 +409,7 @@ class ElasticsearchGateway(ABC):
             raise
 
         if not isinstance(result, dict):
-            self._logger.error("Invalid response from Elasticsearch")
+            self._logger.error("Invalid response from Elasticsearch while creating/updating index template")
 
         return self._convert_api_response_to_dict(result)
 

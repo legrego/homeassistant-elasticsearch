@@ -68,11 +68,11 @@ def _test_config_data_options_migration_to_version(
     assert end_version == after_version
 
     assert {
-        "before_data": mock_entry.data,
-        "before_options": mock_entry.options,
+        "before_data": dict(mock_entry.data),
+        "before_options": dict(mock_entry.options),
         "before_version": mock_entry.version,
-        "after_data": migrated_data,
-        "after_options": migrated_options,
+        "after_data": dict(migrated_data),
+        "after_options": dict(migrated_options),
         "after_version": end_version,
     } == snapshot
 
@@ -92,7 +92,7 @@ async def test_update_entry(hass: HomeAssistant, es_aioclient_mock: AiohttpClien
         domain=ELASTIC_DOMAIN,
         version=3,
         data={"url": es_url, "use_connection_monitor": False},
-        options={"polling_enabled": False, "publishing_enabled": False},
+        options={},
         title="ES Config",
     )
 
@@ -331,13 +331,17 @@ async def test_config_migration_v5tov6(
     assert _test_config_data_options_migration_to_version(
         before_version=5,
         before_options={
-            "publish_mode": "Any changes",
+            "publish_mode": "All",
             "excluded_domains": [],
             "excluded_entities": [],
             "included_domains": [],
             "included_entities": [],
             "publish_enabled": True,
             "publish_frequency": 60,
+            "ilm_enabled": True,
+            "ilm_policy_name": "test policy",
+            "index_format": "test format",
+            "index_mode": "index",
         },
         before_data={
             "url": "http://migration-test:9200",
@@ -347,11 +351,9 @@ async def test_config_migration_v5tov6(
             "excluded_entities": [],
             "included_domains": [],
             "included_entities": [],
-            "publish_enabled": True,
             "publish_frequency": 60,
-            "polling_enabled": True,
             "polling_frequency": 60,
-            "allowed_change_types": ["STATE", "ATTRIBUTE"],
+            "change_detection_type": ["STATE", "ATTRIBUTE"],
         },
         after_data={
             "url": "http://migration-test:9200",

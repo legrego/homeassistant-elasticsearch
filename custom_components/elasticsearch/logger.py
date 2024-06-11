@@ -55,6 +55,7 @@ def log_enter_exit(func) -> Callable:
 def async_log_enter_exit(func):  # noqa: ANN201
     """Log function start and end."""
 
+    # noinspection PyBroadException
     async def decorated_func(*args, **kwargs):  # noqa: ANN202
         logger = getattr(args[0], "_logger", LOGGER) if args and len(args) > 0 else LOGGER
 
