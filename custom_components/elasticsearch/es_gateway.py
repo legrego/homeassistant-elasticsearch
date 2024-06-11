@@ -2,6 +2,7 @@
 
 import sys
 from abc import ABC, abstractmethod
+from collections.abc import AsyncGenerator
 from logging import Logger
 from typing import TYPE_CHECKING, Any, NoReturn
 
@@ -32,7 +33,7 @@ from custom_components.elasticsearch.errors import (
 from custom_components.elasticsearch.loop import LoopHandler
 
 from .logger import LOGGER as BASE_LOGGER
-from .logger import async_log_enter_exit, log_enter_exit
+from .logger import async_log_enter_exit_debug, log_enter_exit_debug
 
 if TYPE_CHECKING:
     import asyncio  # nocover
@@ -84,8 +85,8 @@ class ElasticsearchGateway(ABC):
         self._previous: bool = False
         self._active: bool = False
 
-    @log_enter_exit
-    async def async_init(self, config_entry=None) -> None:
+    @log_enter_exit_debug
+    async def async_init(self, config_entry: ConfigEntry = None) -> None:
         """I/O bound init."""
 
         # if not await self.test_connection():
@@ -149,10 +150,6 @@ class ElasticsearchGateway(ABC):
 
         return self._capabilities
 
-    def has_capability(self, capability: str) -> bool:
-        """Determine if the Elasticsearch instance has the specified capability."""
-        return self.capabilities.get(capability, False)
-
     @property
     def active(self) -> bool:
         """Return the state of the connection_monitor."""
@@ -163,16 +160,21 @@ class ElasticsearchGateway(ABC):
         """Return the underlying ES Client."""
         return self._client
 
+    def has_capability(self, capability: str) -> bool:
+        """Determine if the Elasticsearch instance has the specified capability."""
+        return self.capabilities.get(capability, False)
+
     @property
     def authentication_type(self) -> str:
         """Return the authentication type."""
 
         if self._client_args.get("http_auth", None) or self._client_args.get("basic_auth", None) is not None:
             return "basic"
-        elif self._client_args.get("headers", None) or self._client_args.get("api_key", None) is not None:
+
+        if self._client_args.get("headers", None) or self._client_args.get("api_key", None) is not None:
             return "api_key"
-        else:
-            return "none"
+
+        return "none"
 
     def _build_capabilities(self) -> dict[str, int | bool | str]:
         def meets_minimum_version(version_info: dict, major: int, minor: int) -> bool:
@@ -222,8 +224,8 @@ class ElasticsearchGateway(ABC):
         verify_certs: bool = True,
         ca_certs: str | None = None,
         request_timeout: int = 30,
-        minimum_privileges=ES_CHECK_PERMISSIONS_DATASTREAM,
-        logger=BASE_LOGGER,
+        minimum_privileges: dict[str, Any] = ES_CHECK_PERMISSIONS_DATASTREAM,
+        logger: Logger = BASE_LOGGER,
     ) -> bool:
         """Test the settings provided by the user and make sure they work."""
         try:
@@ -265,13 +267,14 @@ class ElasticsearchGateway(ABC):
             "username": config_entry.data.get("username"),
             "password": config_entry.data.get("password"),
             "api_key": config_entry.data.get("api_key"),
-            "verify_certs": config_entry.data.get("verify_certs"),
+            "verify_certs": config_entry.data.get("verify_ssl"),
             "ca_certs": config_entry.data.get("ca_certs"),
             "request_timeout": config_entry.data.get("timeout"),
             "minimum_privileges": minimum_privileges,
+            "use_connection_monitor": config_entry.data.get("use_connection_monitor", True),
         }
 
-    @log_enter_exit
+    @log_enter_exit_debug
     async def stop(self) -> None:
         """Stop the ES Gateway."""
         self._logger.warning("Stopping Elasticsearch Gateway")
@@ -416,7 +419,7 @@ class ElasticsearchGateway(ABC):
     # Abstract Methods
 
     @abstractmethod
-    async def bulk(self, **kwargs) -> None:
+    async def bulk(self, actions: AsyncGenerator[dict[str, Any], Any]) -> None:
         """Perform a bulk operation."""
 
     @abstractmethod
@@ -533,7 +536,7 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
 
         return SetEncoder()
 
-    async def bulk(self, actions) -> None:
+    async def bulk(self, actions: AsyncGenerator[dict[str, Any], Any]) -> None:
         """Perform a bulk operation."""
 
         count = 0
@@ -673,8 +676,8 @@ class Elasticsearch7Gateway(ElasticsearchGateway):
 
         return args
 
-    @async_log_enter_exit
-    async def bulk(self, actions) -> None:
+    @async_log_enter_exit_debug
+    async def bulk(self, actions: AsyncGenerator[dict[str, Any], Any]) -> None:
         """Perform a bulk operation."""
 
         count = 0

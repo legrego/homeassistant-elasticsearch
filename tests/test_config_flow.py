@@ -38,6 +38,7 @@ async def _setup_config_entry(hass: HomeAssistant, mock_entry: mock_config_entry
     assert len(config_entries) == 1
     return config_entries[0]
 
+
 class Test_Integration_Tests:
     """Test the integration."""
 

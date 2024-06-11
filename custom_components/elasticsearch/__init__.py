@@ -10,7 +10,12 @@ from custom_components.elasticsearch.errors import (
     InsufficientPrivileges,
     UnsupportedVersion,
 )
-from custom_components.elasticsearch.logger import LOGGER, async_log_enter_exit, have_child, log_enter_exit
+from custom_components.elasticsearch.logger import (
+    LOGGER,
+    async_log_enter_exit_debug,
+    have_child,
+    log_enter_exit_debug,
+)
 
 from .const import (
     CONF_HEALTH_SENSOR_ENABLED,
@@ -21,7 +26,7 @@ from .const import (
 from .es_integration import ElasticIntegration
 
 
-@async_log_enter_exit
+@async_log_enter_exit_debug
 async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:  # pylint: disable=unused-argument
     """Migrate old entry."""
 
@@ -54,7 +59,7 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
     return True
 
 
-@async_log_enter_exit
+@async_log_enter_exit_debug
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Set up integration via config flow."""
     init = await _async_init_integration(hass, config_entry)
@@ -64,7 +69,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     return init
 
 
-@async_log_enter_exit
+@async_log_enter_exit_debug
 async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Teardown integration."""
     existing_instances = hass.data.get(DOMAIN)
@@ -81,13 +86,13 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
     return True
 
 
-@async_log_enter_exit
+@async_log_enter_exit_debug
 async def async_config_entry_updated(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
     """Respond to config changes."""
     await _async_init_integration(hass, config_entry)
 
 
-@async_log_enter_exit
+@async_log_enter_exit_debug
 async def _async_init_integration(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Initialize integration."""
     await async_unload_entry(hass=hass, config_entry=config_entry)
@@ -127,7 +132,7 @@ async def _async_init_integration(hass: HomeAssistant, config_entry: ConfigEntry
     return True
 
 
-@log_enter_exit
+@log_enter_exit_debug
 def migrate_data_and_options_to_version(
     config_entry: ConfigEntry,
     desired_version: int,

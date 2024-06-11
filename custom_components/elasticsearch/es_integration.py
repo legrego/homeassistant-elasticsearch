@@ -7,16 +7,16 @@ from homeassistant.core import HomeAssistant
 
 from custom_components.elasticsearch.es_publish_pipeline import Pipeline, PipelineSettings
 
-from .const import ES_CHECK_PERMISSIONS_DATASTREAM
 from .es_gateway import Elasticsearch7Gateway
 from .es_index_manager import IndexManager
 from .logger import LOGGER as BASE_LOGGER
-from .logger import log_enter_exit
+from .logger import async_log_enter_exit_debug, async_log_enter_exit_info, log_enter_exit_info
 
 
 class ElasticIntegration:
     """Integration for publishing entity state change events to Elasticsearch."""
 
+    @log_enter_exit_info
     def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry, log: Logger = BASE_LOGGER) -> None:
         """Integration initialization."""
 
@@ -27,7 +27,10 @@ class ElasticIntegration:
 
         self._logger.info("Initializing integration.")
 
-        gateway_parameters = self.build_gateway_parameters(config_entry=self._config_entry)
+        gateway_parameters = Elasticsearch7Gateway.build_gateway_parameters(
+            hass,
+            config_entry=self._config_entry,
+        )
         self._gateway = Elasticsearch7Gateway(log=self._logger, **gateway_parameters)
 
         manager_parameters = self.build_pipeline_manager_parameters(config_entry=self._config_entry)
@@ -36,7 +39,7 @@ class ElasticIntegration:
         index_parameters = self.build_index_manager_parameters()
         self._index_manager = IndexManager(log=self._logger, **index_parameters)
 
-    @log_enter_exit
+    @async_log_enter_exit_debug
     async def async_init(self) -> None:
         """Async init procedure."""
 
@@ -51,7 +54,7 @@ class ElasticIntegration:
 
             raise
 
-    @log_enter_exit
+    @async_log_enter_exit_info
     async def async_shutdown(self) -> bool:  # pylint disable=unused-argument
         """Async shutdown procedure."""
         try:
@@ -90,28 +93,9 @@ class ElasticIntegration:
 
         return {"hass": self._hass, "gateway": self._gateway, "settings": settings}
 
-    def build_gateway_parameters(self, config_entry: ConfigEntry) -> dict:
-        """Build the parameters for the Elasticsearch gateway."""
-        return {
-            "hass": self._hass,
-            "url": config_entry.data.get("url"),
-            "username": config_entry.data.get("username"),
-            "password": config_entry.data.get("password"),
-            "api_key": config_entry.data.get("api_key"),
-            "verify_certs": config_entry.data.get("verify_ssl"),
-            "ca_certs": config_entry.data.get("ca_certs"),
-            "request_timeout": config_entry.data.get("timeout"),
-            "minimum_privileges": ES_CHECK_PERMISSIONS_DATASTREAM,
-            "use_connection_monitor": config_entry.data.get("use_connection_monitor", True),
-        }
-
     def build_index_manager_parameters(self) -> dict:
         """Build the parameters for the Elasticsearch index manager."""
         return {
             "hass": self._hass,
             "gateway": self._gateway,
         }
-
-    def build_publisher_parameters(self, config_entry: ConfigEntry) -> dict:
-        """Build the parameters for the Elasticsearch document publisher."""
-        return {"hass": self._hass, "config_entry": config_entry, "gateway": self._gateway}

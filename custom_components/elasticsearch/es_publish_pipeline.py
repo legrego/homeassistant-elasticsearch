@@ -38,7 +38,7 @@ from custom_components.elasticsearch.const import (
 from custom_components.elasticsearch.entity_details import EntityDetails
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 from custom_components.elasticsearch.logger import LOGGER as BASE_LOGGER
-from custom_components.elasticsearch.logger import log_enter_exit
+from custom_components.elasticsearch.logger import log_enter_exit_debug
 from custom_components.elasticsearch.loop import LoopHandler
 from custom_components.elasticsearch.system_info import SystemInfo, SystemInfoResult
 
@@ -141,7 +141,7 @@ class Pipeline:
                 log=self._logger,
             )
 
-        @log_enter_exit
+        @log_enter_exit_debug
         async def async_init(self, config_entry: ConfigEntry) -> None:
             """Initialize the manager."""
 
@@ -199,7 +199,7 @@ class Pipeline:
 
             await self._publisher.publish(iterable=self._sip_queue())
 
-        @log_enter_exit
+        @log_enter_exit_debug
         def stop(self) -> None:
             """Stop the manager."""
             if self._cancel_publisher is not None:
@@ -230,7 +230,7 @@ class Pipeline:
             self._excluded_entities: list[str] = settings.excluded_entities
             self._change_detection_type: list[StateChangeType] = settings.change_detection_type
 
-        @log_enter_exit
+        @log_enter_exit_debug
         async def async_init(self) -> None:
             """Initialize the filterer."""
 
@@ -291,7 +291,7 @@ class Pipeline:
             self._queue: EventQueue = queue
             self._cancel_listener = None
 
-        @log_enter_exit
+        @log_enter_exit_debug
         async def async_init(self) -> None:
             """Initialize the listener."""
 
@@ -317,7 +317,7 @@ class Pipeline:
 
             self._queue.put((event.time_fired, new_state, reason))
 
-        @log_enter_exit
+        @log_enter_exit_debug
         def stop(self) -> None:
             """Stop the listener."""
             if self._cancel_listener:
@@ -346,7 +346,7 @@ class Pipeline:
 
             self._settings: PipelineSettings = settings
 
-        @log_enter_exit
+        @log_enter_exit_debug
         async def async_init(self, config_entry: ConfigEntry) -> None:
             """Initialize the poller."""
             state_poll_loop = LoopHandler(
@@ -373,7 +373,7 @@ class Pipeline:
 
             [self._queue.put((now, i, reason)) for i in all_states]
 
-        @log_enter_exit
+        @log_enter_exit_debug
         def stop(self) -> None:
             """Stop the poller."""
             if self._cancel_poller:
@@ -392,7 +392,7 @@ class Pipeline:
             self._static_fields: dict[str, Any] = {}
             self._entity_details = EntityDetails(hass, self._logger)
 
-        @log_enter_exit
+        @log_enter_exit_debug
         async def async_init(self, static_fields: dict[str, Any]) -> None:
             """Initialize the formatter."""
             self._static_fields = static_fields
@@ -667,7 +667,7 @@ class Pipeline:
             self._settings = settings
             self._hass = hass
 
-        @log_enter_exit
+        @log_enter_exit_debug
         async def async_init(self, config_entry: ConfigEntry) -> None:
             """Initialize the publisher."""
 
@@ -681,7 +681,10 @@ class Pipeline:
             """Format the datastream name."""
             return f"{datastream_type}-{datastream_dataset}-{datastream_namespace}"
 
-        async def _add_action_and_meta_data(self, iterable) -> AsyncGenerator[dict[str, Any], Any]:
+        async def _add_action_and_meta_data(
+            self,
+            iterable: AsyncGenerator[dict[str, Any], Any],
+        ) -> AsyncGenerator[dict[str, Any], Any]:
             """Prepare the document for insertion into Elasticsearch."""
             async for document in iterable:
                 yield {
@@ -694,14 +697,14 @@ class Pipeline:
                     "_source": document,
                 }
 
-        async def publish(self, iterable) -> None:
+        async def publish(self, iterable: AsyncGenerator[dict[str, Any], Any]) -> None:
             """Publish the document to Elasticsearch."""
 
             actions = self._add_action_and_meta_data(iterable)
 
             await self._gateway.bulk(actions=actions)
 
-        @log_enter_exit
+        @log_enter_exit_debug
         def stop(self) -> None:
             """Stop the publisher."""
 

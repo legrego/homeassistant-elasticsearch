@@ -12,7 +12,7 @@ from .const import (
     DATASTREAM_METRICS_INDEX_TEMPLATE_NAME,
 )
 from .logger import LOGGER as BASE_LOGGER
-from .logger import async_log_enter_exit, log_enter_exit
+from .logger import async_log_enter_exit_debug, log_enter_exit_debug
 
 
 class IndexManager:
@@ -33,12 +33,12 @@ class IndexManager:
         self._hass = hass
         self._gateway: ElasticsearchGateway = gateway
 
-    @log_enter_exit
+    @log_enter_exit_debug
     async def async_init(self) -> None:
         """Perform init for index management."""
         await self._create_index_template()
 
-    @async_log_enter_exit
+    @async_log_enter_exit_debug
     async def _needs_index_template(self) -> bool:
         matching_templates = await self._gateway.get_index_template(
             name=DATASTREAM_METRICS_INDEX_TEMPLATE_NAME,
@@ -47,7 +47,7 @@ class IndexManager:
 
         return len(matching_templates.get("index_templates", [])) > 0
 
-    @log_enter_exit
+    @log_enter_exit_debug
     async def _create_index_template(self) -> None:
         """Initialize any required datastream templates."""
 
@@ -64,7 +64,7 @@ class IndexManager:
             body=index_template,
         )
 
-    @log_enter_exit
+    @log_enter_exit_debug
     def stop(self) -> None:
         """Stop the index manager."""
 

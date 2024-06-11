@@ -44,7 +44,7 @@ from custom_components.elasticsearch.errors import (
 )
 from custom_components.elasticsearch.es_gateway import Elasticsearch7Gateway
 
-from .logger import LOGGER, async_log_enter_exit
+from .logger import LOGGER, async_log_enter_exit_debug
 
 CONFIG_TO_REDACT = {CONF_API_KEY, CONF_PASSWORD, CONF_USERNAME}
 
@@ -195,12 +195,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             schema = {}
             if not skip_common:
                 schema.update(
-                    {
-                        vol.Required(
-                            CONF_URL,
-                            default=data.get(CONF_URL, "http://localhost:9200"),
-                        ): str,
-                    },
+                    {vol.Required(CONF_URL, default=data.get(CONF_URL, "http://localhost:9200")): str},
                 )
 
             if errors and errors["base"] == "untrusted_connection":
@@ -249,14 +244,11 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                 ),
             )
 
-        # Figure out what we need to auth check for
-        verify_permissions = ES_CHECK_PERMISSIONS_DATASTREAM
-
         params = {
             "url": user_input.get("url"),
             "verify_certs": user_input.get("verify_ssl", True),
             "ca_certs": user_input.get("ssl_ca_path"),
-            "verify_permissions": verify_permissions,
+            "verify_permissions": ES_CHECK_PERMISSIONS_DATASTREAM,
         }
 
         # Handle testing various authentication methods
@@ -288,8 +280,8 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                 ),
                 errors=result.errors,
             )
-        else:
-            return self.async_abort(reason="cannot_connect")
+
+        return self.async_abort(reason="cannot_connect")
 
     async def async_step_no_auth(self, user_input: dict | None) -> FlowResult:
         """Handle connection to an unsecured Elasticsearch cluster."""
@@ -347,7 +339,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
         return self.async_create_entry(title=str(data.get(CONF_URL)), data=data, options=options)
 
-    @async_log_enter_exit
+    @async_log_enter_exit_debug
     async def _async_elasticsearch_login(
         self,
         url: str,

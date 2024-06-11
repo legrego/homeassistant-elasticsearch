@@ -113,7 +113,6 @@ def mock_es_initialization(  # noqa: PLR0912
             },
         )
 
-
     if mock_modern_template_setup:
         aioclient_mock.get(
             url + "/_index_template/metrics-homeassistant",
@@ -127,7 +126,6 @@ def mock_es_initialization(  # noqa: PLR0912
             headers={"content-type": CONTENT_TYPE_JSON},
             json={"hi": "need dummy content"},
         )
-
 
     if mock_modern_template_update:
         aioclient_mock.get(
