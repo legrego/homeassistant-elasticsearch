@@ -5,6 +5,18 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Debug HA with Elasticsearch Component",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "homeassistant",
+            "justMyCode": false,
+            "args": [
+                "--debug",
+                "-c",
+                "config"
+            ]
+        },
+        {
             "name": "Python: Update snapshots",
             "type": "debugpy",
             "request": "launch",
@@ -24,18 +36,6 @@
             "args": [
                 "tests",
                 "--continue-on-collection-errors"
-            ]
-        },
-        {
-            "name": "Debug HA with Elasticsearch Component",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "homeassistant",
-            "justMyCode": false,
-            "args": [
-                "--debug",
-                "-c",
-                "config"
             ]
         },
     ]
