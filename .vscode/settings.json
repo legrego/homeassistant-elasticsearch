@@ -5,7 +5,11 @@
             "source.organizeImports": "explicit"
         },
         "editor.formatOnSave": true,
-        "editor.formatOnSaveMode": "modifications"
+        "editor.defaultFormatter": "charliermarsh.ruff",
+        "editor.formatOnSaveMode": "modifications",
+        "editor.rulers": [
+        110
+        ]
     },
     "debug.saveBeforeStart": "none",
     "editor.formatOnPaste": false,

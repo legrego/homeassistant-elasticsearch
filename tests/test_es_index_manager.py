@@ -4,18 +4,9 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from homeassistant.core import HomeAssistant
-from syrupy.assertion import SnapshotAssertion
-from syrupy.extensions.json import JSONSnapshotExtension
 
 from custom_components.elasticsearch.es_gateway import Elasticsearch8Gateway
 from custom_components.elasticsearch.es_index_manager import IndexManager
-
-
-@pytest.fixture(autouse=True)
-def snapshot(snapshot: SnapshotAssertion):
-    """Provide a pre-configured snapshot object."""
-
-    return snapshot.with_defaults(extension_class=JSONSnapshotExtension)
 
 
 @pytest.fixture

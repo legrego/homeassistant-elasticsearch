@@ -1,0 +1,184 @@
+# serializer version: 1
+# name: test_config_migration_v1tov2
+  dict({
+    'after_data': dict({
+      'publish_mode': 'Any changes',
+      'url': 'http://migration-test:9200',
+    }),
+    'after_options': dict({
+    }),
+    'after_version': 2,
+    'before_data': dict({
+      'only_publish_changed': True,
+      'url': 'http://migration-test:9200',
+    }),
+    'before_options': dict({
+    }),
+    'before_version': 1,
+  })
+# ---
+# name: test_config_migration_v1tov5
+  dict({
+    'after_data': dict({
+      'index_mode': 'index',
+      'url': 'http://migration-test:9200',
+    }),
+    'after_options': dict({
+      'excluded_domains': list([
+      ]),
+      'excluded_entities': list([
+      ]),
+      'included_domains': list([
+      ]),
+      'included_entities': list([
+      ]),
+      'publish_enabled': True,
+      'publish_frequency': 60,
+      'publish_mode': 'Any changes',
+    }),
+    'after_version': 5,
+    'before_data': dict({
+      'excluded_domains': list([
+      ]),
+      'excluded_entities': list([
+      ]),
+      'health_sensor_enabled': True,
+      'ilm_delete_after': '30d',
+      'ilm_max_size': '10gb',
+      'included_domains': list([
+      ]),
+      'included_entities': list([
+      ]),
+      'only_publish_changed': True,
+      'publish_enabled': True,
+      'publish_frequency': 60,
+      'publish_mode': 'Any changes',
+      'url': 'http://migration-test:9200',
+    }),
+    'before_options': dict({
+    }),
+    'before_version': 1,
+  })
+# ---
+# name: test_config_migration_v2tov3
+  dict({
+    'after_data': dict({
+      'url': 'http://migration-test:9200',
+    }),
+    'after_options': dict({
+    }),
+    'after_version': 3,
+    'before_data': dict({
+      'health_sensor_enabled': True,
+      'url': 'http://migration-test:9200',
+    }),
+    'before_options': dict({
+    }),
+    'before_version': 2,
+  })
+# ---
+# name: test_config_migration_v3tov4
+  dict({
+    'after_data': dict({
+      'index_mode': 'index',
+      'url': 'http://migration-test:9200',
+    }),
+    'after_options': dict({
+    }),
+    'after_version': 4,
+    'before_data': dict({
+      'ilm_delete_after': '30d',
+      'ilm_max_size': '10gb',
+      'url': 'http://migration-test:9200',
+    }),
+    'before_options': dict({
+    }),
+    'before_version': 3,
+  })
+# ---
+# name: test_config_migration_v4tov5
+  dict({
+    'after_data': dict({
+      'url': 'http://migration-test:9200',
+    }),
+    'after_options': dict({
+      'excluded_domains': list([
+      ]),
+      'excluded_entities': list([
+      ]),
+      'included_domains': list([
+      ]),
+      'included_entities': list([
+      ]),
+      'publish_enabled': True,
+      'publish_frequency': 60,
+      'publish_mode': 'Any changes',
+    }),
+    'after_version': 5,
+    'before_data': dict({
+      'datastream_name_prefix': 'homeassistant',
+      'datastream_namespace': 'default',
+      'datastream_type': 'metrics',
+      'excluded_domains': list([
+      ]),
+      'excluded_entities': list([
+      ]),
+      'included_domains': list([
+      ]),
+      'included_entities': list([
+      ]),
+      'publish_enabled': True,
+      'publish_frequency': 60,
+      'publish_mode': 'Any changes',
+      'url': 'http://migration-test:9200',
+    }),
+    'before_options': dict({
+    }),
+    'before_version': 4,
+  })
+# ---
+# name: test_config_migration_v5tov6
+  dict({
+    'after_data': dict({
+      'url': 'http://migration-test:9200',
+    }),
+    'after_options': dict({
+      'change_detection_type': list([
+        'STATE',
+        'ATTRIBUTE',
+      ]),
+      'excluded_domains': list([
+      ]),
+      'excluded_entities': list([
+      ]),
+      'included_domains': list([
+      ]),
+      'included_entities': list([
+      ]),
+      'polling_frequency': 60,
+      'publish_frequency': 60,
+    }),
+    'after_version': 6,
+    'before_data': dict({
+      'url': 'http://migration-test:9200',
+    }),
+    'before_options': dict({
+      'excluded_domains': list([
+      ]),
+      'excluded_entities': list([
+      ]),
+      'ilm_enabled': True,
+      'ilm_policy_name': 'test policy',
+      'included_domains': list([
+      ]),
+      'included_entities': list([
+      ]),
+      'index_format': 'test format',
+      'index_mode': 'index',
+      'publish_enabled': True,
+      'publish_frequency': 60,
+      'publish_mode': 'All',
+    }),
+    'before_version': 5,
+  })
+# ---

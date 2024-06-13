@@ -1,6 +1,33 @@
 {
     "version": "2.0.0",
     "tasks": [
+
+        {
+            "label": "Lint",
+            "type": "shell",
+            "command": "/bin/bash ./scripts/lint"
+        },
+        {
+            "label": "Run all Tests",
+            "type": "shell",
+            "command": "/bin/bash ./scripts/test"
+        },
+        {
+            "label": "Update Test Snapshots for current file",
+            "type": "shell",
+            "command": "/bin/bash ${workspaceFolder}/scripts/update_snapshots ${file}",
+            "problemMatcher": []
+        },
+        {
+            "label": "Update Test Snapshots",
+            "type": "shell",
+            "command": "/bin/bash ./scripts/update_snapshots"
+        },
+        {
+            "label": "Generate coverage report",
+            "type": "shell",
+            "command": "/bin/bash ./scripts/coverage"
+        },
         {
             "label": "Run Unsupported Elasticsearch 7.0.0 (HTTP Port 9200) and Kibana 7.0.0 (HTTP Port 5601)",
             "type": "shell",
@@ -36,15 +63,5 @@
             "type": "shell",
             "command": "/bin/bash ./scripts/run_ek_8_13_0"
         },
-        {
-            "label": "Run all Tests",
-            "type": "shell",
-            "command": "/bin/bash ./scripts/test"
-        },
-        {
-            "label": "Update Test Snapshots",
-            "type": "shell",
-            "command": "/bin/bash ./scripts/test_update_snapshot"
-        }
     ]
 }

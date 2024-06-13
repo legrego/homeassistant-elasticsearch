@@ -16,6 +16,7 @@ from elasticsearch8.helpers import async_streaming_bulk as async_streaming_bulk8
 from elasticsearch8.serializer import JSONSerializer as JSONSerializer8
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.util.logging import async_create_catching_coro
 
 from custom_components.elasticsearch.const import (
     CAPABILITIES,
@@ -36,7 +37,7 @@ from .logger import LOGGER as BASE_LOGGER
 from .logger import async_log_enter_exit_debug, log_enter_exit_debug
 
 if TYPE_CHECKING:
-    import asyncio  # nocover
+    import asyncio  # pragma: no cover
 
 
 class ElasticsearchGateway(ABC):
@@ -85,6 +86,8 @@ class ElasticsearchGateway(ABC):
         self._previous: bool = False
         self._active: bool = False
 
+        self._initialized: bool = False
+
     @log_enter_exit_debug
     async def async_init(self, config_entry: ConfigEntry = None) -> None:
         """I/O bound init."""
@@ -127,9 +130,11 @@ class ElasticsearchGateway(ABC):
 
             self._cancel_connection_monitor = config_entry.async_create_background_task(
                 self._hass,
-                connection_loop.start(),
+                async_create_catching_coro(connection_loop.start()),
                 "es_gateway_monitor_task",
             )
+
+        self._initialized = True
 
     @property
     def hass(self) -> HomeAssistant:

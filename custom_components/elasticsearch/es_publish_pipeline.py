@@ -28,6 +28,7 @@ from homeassistant.const import (
 from homeassistant.core import Event, EventStateChangedData, HomeAssistant, State, callback
 from homeassistant.helpers import state as state_helper
 from homeassistant.util import dt as dt_util
+from homeassistant.util.logging import async_create_catching_coro
 
 from custom_components.elasticsearch.const import (
     DATASTREAM_DATASET_PREFIX,
@@ -181,7 +182,7 @@ class Pipeline:
 
             self._cancel_publisher = config_entry.async_create_background_task(
                 self._hass,
-                filter_format_publish.start(),
+                async_create_catching_coro(filter_format_publish.start()),
                 "es_filter_format_publish_task",
             )
 
@@ -358,7 +359,7 @@ class Pipeline:
 
             self._cancel_poller = config_entry.async_create_background_task(
                 self._hass,
-                state_poll_loop.start(),
+                async_create_catching_coro(state_poll_loop.start()),
                 "es_state_poll_task",
             )
 

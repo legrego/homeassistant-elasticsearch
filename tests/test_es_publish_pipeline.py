@@ -10,7 +10,6 @@ from freezegun.api import FrozenDateTimeFactory
 from homeassistant.core import Event, HomeAssistant, State
 from homeassistant.util import dt as dt_util
 from syrupy.assertion import SnapshotAssertion
-from syrupy.extensions.json import JSONSnapshotExtension
 
 from custom_components.elasticsearch.entity_details import FullEntityDetails
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
@@ -21,13 +20,6 @@ from custom_components.elasticsearch.es_publish_pipeline import (
     StateChangeType,
 )
 from tests.const import MOCK_NOON_APRIL_12TH_2023
-
-
-@pytest.fixture(autouse=True)
-def snapshot(snapshot: SnapshotAssertion):
-    """Provide a pre-configured snapshot object."""
-
-    return snapshot.with_defaults(extension_class=JSONSnapshotExtension)
 
 
 @pytest.fixture
@@ -237,6 +229,32 @@ class Test_Manager:
                 config_entry.async_create_background_task.assert_called_once()
 
                 manager.stop()
+
+        async def test_async_init_no_publish(self, manager, mock_config_entry):
+            """Test the async initialization of the manager."""
+
+            mock_config_entry.options = {}
+            manager._listener = mock.Mock()
+            manager._listener.async_init = mock.AsyncMock()
+            manager._poller = mock.Mock()
+            manager._poller.async_init = mock.AsyncMock()
+            manager._formatter = mock.Mock()
+            manager._formatter.async_init = mock.AsyncMock()
+            manager._publisher = mock.Mock()
+            manager._publisher.async_init = mock.AsyncMock()
+
+            # No publish_frequency means the manager doesnt do anything
+            manager._settings = mock.Mock()
+            manager._settings.publish_frequency = None
+
+            # self._logger.warning("No publish frequency set. Disabling publishing.")
+            manager._logger.warning = mock.Mock()
+
+            await manager.async_init(mock_config_entry)
+
+            manager._logger.warning.assert_called_once_with("No publish frequency set. Disabling publishing.")
+
+            manager.stop()
 
         @pytest.mark.asyncio()
         async def test_sip_queue(self, manager, freezer: FrozenDateTimeFactory):

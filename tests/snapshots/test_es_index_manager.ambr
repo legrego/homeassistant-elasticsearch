@@ -1,0 +1,318 @@
+# serializer version: 1
+# name: Test_IndexManager_Async.test_create_index_template
+  dict({
+    'body': dict({
+      'composed_of': 'metrics-homeassistant@custom',
+      'data_stream': dict({
+      }),
+      'ignore_missing_component_templates': 'metrics-homeassistant@custom',
+      'index_patterns': list([
+        'metrics-homeassistant.*-default',
+      ]),
+      'priority': 500,
+      'template': dict({
+        'lifecycle': dict({
+          'data_retention': '365d',
+        }),
+        'mappings': dict({
+          'dynamic': 'false',
+          'dynamic_templates': list([
+            dict({
+              'hass_entity_attributes': dict({
+                'mapping': dict({
+                  'fields': dict({
+                    'float': dict({
+                      'ignore_malformed': True,
+                      'type': 'float',
+                    }),
+                    'keyword': dict({
+                      'ignore_above': 1024,
+                      'type': 'keyword',
+                    }),
+                  }),
+                  'type': 'text',
+                }),
+                'path_match': 'hass.entity.attributes.*',
+              }),
+            }),
+          ]),
+          'properties': dict({
+            '@timestamp': dict({
+              'format': 'strict_date_optional_time_nanos',
+              'type': 'date_nanos',
+            }),
+            'agent': dict({
+              'properties': dict({
+                'ephemeral_id': dict({
+                  'ignore_above': 1024,
+                  'type': 'keyword',
+                }),
+                'id': dict({
+                  'ignore_above': 1024,
+                  'type': 'keyword',
+                }),
+                'name': dict({
+                  'ignore_above': 1024,
+                  'type': 'keyword',
+                }),
+                'type': dict({
+                  'ignore_above': 1024,
+                  'type': 'keyword',
+                }),
+                'version': dict({
+                  'ignore_above': 1024,
+                  'type': 'keyword',
+                }),
+              }),
+            }),
+            'data_stream': dict({
+              'properties': dict({
+                'dataset': dict({
+                  'type': 'constant_keyword',
+                }),
+                'namespace': dict({
+                  'type': 'constant_keyword',
+                }),
+                'type': dict({
+                  'type': 'constant_keyword',
+                  'value': 'metrics',
+                }),
+              }),
+            }),
+            'ecs': dict({
+              'properties': dict({
+                'version': dict({
+                  'ignore_above': 1024,
+                  'type': 'keyword',
+                }),
+              }),
+            }),
+            'event': dict({
+              'properties': dict({
+                'action': dict({
+                  'ignore_above': 1024,
+                  'type': 'keyword',
+                }),
+                'kind': dict({
+                  'ignore_above': 1024,
+                  'type': 'keyword',
+                }),
+                'type': dict({
+                  'ignore_above': 1024,
+                  'type': 'keyword',
+                }),
+              }),
+            }),
+            'hass': dict({
+              'properties': dict({
+                'entity': dict({
+                  'properties': dict({
+                    'area': dict({
+                      'properties': dict({
+                        'floor': dict({
+                          'properties': dict({
+                            'id': dict({
+                              'type': 'keyword',
+                            }),
+                            'name': dict({
+                              'type': 'keyword',
+                            }),
+                          }),
+                          'type': 'object',
+                        }),
+                        'id': dict({
+                          'type': 'keyword',
+                        }),
+                        'name': dict({
+                          'type': 'keyword',
+                        }),
+                      }),
+                      'type': 'object',
+                    }),
+                    'attributes': dict({
+                      'dynamic': True,
+                      'type': 'object',
+                    }),
+                    'device': dict({
+                      'properties': dict({
+                        'area': dict({
+                          'properties': dict({
+                            'floor': dict({
+                              'properties': dict({
+                                'id': dict({
+                                  'type': 'keyword',
+                                }),
+                                'name': dict({
+                                  'type': 'keyword',
+                                }),
+                              }),
+                              'type': 'object',
+                            }),
+                            'id': dict({
+                              'type': 'keyword',
+                            }),
+                            'name': dict({
+                              'type': 'keyword',
+                            }),
+                          }),
+                          'type': 'object',
+                        }),
+                        'class': dict({
+                          'type': 'keyword',
+                        }),
+                        'id': dict({
+                          'type': 'keyword',
+                        }),
+                        'labels': dict({
+                          'type': 'keyword',
+                        }),
+                        'name': dict({
+                          'type': 'keyword',
+                        }),
+                      }),
+                      'type': 'object',
+                    }),
+                    'domain': dict({
+                      'type': 'keyword',
+                    }),
+                    'geo': dict({
+                      'properties': dict({
+                        'location': dict({
+                          'type': 'geo_point',
+                        }),
+                      }),
+                      'type': 'object',
+                    }),
+                    'id': dict({
+                      'type': 'keyword',
+                    }),
+                    'labels': dict({
+                      'type': 'keyword',
+                    }),
+                    'name': dict({
+                      'type': 'keyword',
+                    }),
+                    'object': dict({
+                      'properties': dict({
+                        'id': dict({
+                          'time_series_dimension': True,
+                          'type': 'keyword',
+                        }),
+                      }),
+                      'type': 'object',
+                    }),
+                    'platform': dict({
+                      'type': 'keyword',
+                    }),
+                    'state': dict({
+                      'properties': dict({
+                        'class': dict({
+                          'type': 'keyword',
+                        }),
+                      }),
+                    }),
+                    'unit_of_measure': dict({
+                      'type': 'keyword',
+                    }),
+                    'value': dict({
+                      'fields': dict({
+                        'keyword': dict({
+                          'ignore_above': 1024,
+                          'type': 'keyword',
+                        }),
+                      }),
+                      'type': 'text',
+                    }),
+                    'valueas': dict({
+                      'properties': dict({
+                        'boolean': dict({
+                          'type': 'boolean',
+                        }),
+                        'date': dict({
+                          'format': 'strict_date',
+                          'type': 'date',
+                        }),
+                        'datetime': dict({
+                          'type': 'date',
+                        }),
+                        'float': dict({
+                          'ignore_malformed': True,
+                          'type': 'float',
+                        }),
+                        'integer': dict({
+                          'ignore_malformed': True,
+                          'type': 'integer',
+                        }),
+                        'string': dict({
+                          'fields': dict({
+                            'keyword': dict({
+                              'ignore_above': 1024,
+                              'type': 'keyword',
+                            }),
+                          }),
+                          'type': 'text',
+                        }),
+                        'time': dict({
+                          'format': 'HH:mm:ss.SSSSSS||time||strict_hour_minute_second||time_no_millis',
+                          'type': 'date',
+                        }),
+                      }),
+                    }),
+                  }),
+                  'type': 'object',
+                }),
+              }),
+              'type': 'object',
+            }),
+            'host': dict({
+              'properties': dict({
+                'architecture': dict({
+                  'ignore_above': 1024,
+                  'type': 'keyword',
+                }),
+                'geo': dict({
+                  'properties': dict({
+                    'location': dict({
+                      'type': 'geo_point',
+                    }),
+                  }),
+                }),
+                'hostname': dict({
+                  'ignore_above': 1024,
+                  'type': 'keyword',
+                }),
+                'name': dict({
+                  'ignore_above': 1024,
+                  'type': 'keyword',
+                }),
+                'os': dict({
+                  'properties': dict({
+                    'name': dict({
+                      'ignore_above': 1024,
+                      'type': 'keyword',
+                    }),
+                  }),
+                }),
+              }),
+            }),
+            'tags': dict({
+              'ignore_above': 1024,
+              'type': 'keyword',
+            }),
+          }),
+        }),
+        'settings': dict({
+          'codec': 'best_compression',
+          'index.mode': 'time_series',
+          'mapping': dict({
+            'total_fields': dict({
+              'limit': '10000',
+            }),
+          }),
+        }),
+      }),
+      'version': 1,
+    }),
+    'name': 'metrics-homeassistant',
+  })
+# ---

@@ -4,6 +4,7 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
         {
             "name": "Debug HA with Elasticsearch Component",
             "type": "debugpy",
@@ -14,17 +15,6 @@
                 "--debug",
                 "-c",
                 "config"
-            ]
-        },
-        {
-            "name": "Python: Update snapshots",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "pytest",
-            "console": "integratedTerminal",
-            "args": [
-                "tests",
-                "--snapshot-update"
             ]
         },
         {

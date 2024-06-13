@@ -11,7 +11,6 @@ from elasticsearch7._async.client import AsyncElasticsearch as AsyncElasticsearc
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from syrupy.assertion import SnapshotAssertion
-from syrupy.extensions.json import JSONSnapshotExtension
 
 from custom_components.elasticsearch.errors import (
     ESIntegrationException,
@@ -32,13 +31,6 @@ from tests.const import (
     CLUSTER_INFO_8DOT11_RESPONSE_BODY,
     CLUSTER_INFO_SERVERLESS_RESPONSE_BODY,
 )
-
-
-@pytest.fixture(autouse=True)
-def snapshot(snapshot: SnapshotAssertion):
-    """Provide a pre-configured snapshot object."""
-
-    return snapshot.with_defaults(extension_class=JSONSnapshotExtension)
 
 
 class Test_Elasticsearch_Gateway:
@@ -64,66 +56,9 @@ class Test_Elasticsearch_Gateway:
 
         yield config_entry
 
-        await config_entry.async_unload(hass=hass)
-
-    @pytest.fixture(params=[Elasticsearch7Gateway, Elasticsearch8Gateway])
-    async def uninitialized_gateway(
-        self,
-        hass: HomeAssistant,
-        request: pytest.FixtureRequest,
-        minimum_privileges: dict,
-        use_connection_monitor: bool,
-        url: str = "http://localhost:9200",
-    ):
-        """Return a gateway instance."""
-
-        gateway_type: ElasticsearchGateway = request.param
-
-        gateway = gateway_type(
-            hass=hass,
-            url=url,
-            minimum_privileges=minimum_privileges,
-            use_connection_monitor=use_connection_monitor,
-        )
-
-        yield gateway
-
-        await gateway.stop()
-
-    @pytest.fixture(params=[Elasticsearch7Gateway, Elasticsearch8Gateway])
-    async def initialized_gateway(
-        self,
-        hass: HomeAssistant,
-        request: pytest.FixtureRequest,
-        minimum_privileges: dict,
-        use_connection_monitor: bool,
-        mock_config_entry,
-        url: str = "http://localhost:9200",
-    ):
-        """Return a gateway instance."""
-
-        gateway_type: ElasticsearchGateway = request.param
-
-        new_gateway = gateway_type(
-            hass=hass,
-            url=url,
-            minimum_privileges=minimum_privileges,
-            use_connection_monitor=use_connection_monitor,
-        )
-
-        with (
-            mock.patch.object(
-                new_gateway,
-                "_get_cluster_info",
-                return_value=CLUSTER_INFO_8DOT0_RESPONSE_BODY,
-            ),
-            mock.patch.object(new_gateway, "test_connection", return_value=True),
-        ):
-            await new_gateway.async_init(config_entry=mock_config_entry)
-
-        yield new_gateway
-
-        await new_gateway.stop()
+        # Kill all tasks associated with this config_entry
+        for task in config_entry._background_tasks:
+            task.cancel("Tests finished")
 
     @pytest.mark.asyncio()
     async def test_async_init(
@@ -271,7 +206,10 @@ class Test_Elasticsearch_Gateway:
         assert gateway._cancel_connection_monitor is None
 
     @pytest.mark.asyncio()
-    async def test_test_success(self, hass: HomeAssistant, initialized_gateway: ElasticsearchGateway):
+    @pytest.mark.parametrize("mock_test_connection", [False])
+    async def test_test_success(
+        self, hass: HomeAssistant, initialized_gateway: ElasticsearchGateway, mock_test_connection
+    ):
         """Test the gateway connection test function for success."""
 
         async_test_result = asyncio.Future()
@@ -282,8 +220,10 @@ class Test_Elasticsearch_Gateway:
         ):
             assert await initialized_gateway.test_connection()
 
-    @pytest.mark.asyncio()
-    async def test_test_failed(self, hass: HomeAssistant, initialized_gateway: ElasticsearchGateway):
+    @pytest.mark.parametrize("mock_test_connection", [False])
+    async def test_test_failed(
+        self, hass: HomeAssistant, initialized_gateway: ElasticsearchGateway, mock_test_connection
+    ):
         """Test the gateway connection test function for failure."""
 
         with (

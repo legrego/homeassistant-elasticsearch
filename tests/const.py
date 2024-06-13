@@ -1,50 +1,6 @@
 """Test Constants."""
 
-from homeassistant.const import (
-    CONF_ALIAS,
-    CONF_DOMAINS,
-    CONF_ENTITIES,
-    CONF_EXCLUDE,
-    CONF_PASSWORD,
-    CONF_TIMEOUT,
-    CONF_URL,
-    CONF_USERNAME,
-    CONF_VERIFY_SSL,
-)
-
-from custom_components.elasticsearch.const import (
-    CONF_HEALTH_SENSOR_ENABLED,
-    CONF_ILM_ENABLED,
-    CONF_ILM_POLICY_NAME,
-    CONF_INDEX_FORMAT,
-    CONF_ONLY_PUBLISH_CHANGED,
-    CONF_PUBLISH_FREQUENCY,
-)
-
-MOCK_MINIMAL_LEGACY_CONFIG = {
-    CONF_URL: "http://my-es:9200",
-}
-
-MOCK_COMPLEX_LEGACY_CONFIG = {
-    CONF_URL: "https://my-complex-es:9200",
-    CONF_USERNAME: "username",
-    CONF_PASSWORD: "changeme",
-    CONF_TIMEOUT: 60,
-    CONF_PUBLISH_FREQUENCY: 1,
-    CONF_ILM_ENABLED: True,
-    CONF_ILM_POLICY_NAME: "custom-policy-name",
-    CONF_INDEX_FORMAT: "custom-index-format",
-    CONF_HEALTH_SENSOR_ENABLED: True,
-    CONF_VERIFY_SSL: False,
-    CONF_ONLY_PUBLISH_CHANGED: True,
-    CONF_ALIAS: "my-alias",
-    CONF_EXCLUDE: {
-        CONF_ENTITIES: ["switch.my_switch"],
-        CONF_DOMAINS: ["sensor", "weather"],
-    },
-}
-
-MOCK_ELASTICSEARCH_URL = "https://my-complex-es:9200"
+MOCK_ELASTICSEARCH_URL = "https://localhost:9200"
 
 MOCK_NOON_APRIL_12TH_2023 = "2023-04-12T12:00:00+00:00"
 

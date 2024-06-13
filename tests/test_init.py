@@ -8,7 +8,6 @@ from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 from syrupy.assertion import SnapshotAssertion
-from syrupy.extensions.json import JSONSnapshotExtension
 
 from custom_components.elasticsearch import migrate_data_and_options_to_version
 from custom_components.elasticsearch.config_flow import build_new_options
@@ -18,13 +17,6 @@ from custom_components.elasticsearch.const import (
 from custom_components.elasticsearch.const import DOMAIN as ELASTIC_DOMAIN
 from custom_components.elasticsearch.utils import get_merged_config
 from tests.test_util.es_startup_mocks import mock_es_initialization
-
-
-@pytest.fixture(autouse=True)
-def snapshot(snapshot: SnapshotAssertion):
-    """Provide a pre-configured snapshot object."""
-
-    return snapshot.with_defaults(extension_class=JSONSnapshotExtension)
 
 
 async def _setup_config_entry(hass: HomeAssistant, mock_entry: MockConfigEntry) -> ConfigEntry:
