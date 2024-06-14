@@ -1,5 +1,69 @@
 """Test Constants."""
 
+from homeassistant.components.counter import DOMAIN as COUNTER_DOMAIN
+
+TEST_DEVICE_AREA_NAME = "device area"
+TEST_DEVICE_FLOOR_NAME = "device floor"
+TEST_DEVICE_LABELS = ["device label 1", "device label 2", "device label 3"]
+
+TEST_DEVICE_NAME = "device name"
+
+TEST_ENTITY_DOMAIN = COUNTER_DOMAIN
+TEST_ENTITY_AREA_NAME = "entity area"
+TEST_ENTITY_FLOOR_NAME = "entity floor"
+TEST_ENTITY_LABELS = ["entity label 1", "entity label 2", "entity label 3"]
+TEST_ENTITY_PLATFORM = "entity platform"
+
+TEST_ENTITY_OBJECT_ID_0 = "entity_object_id"
+TEST_ENTITY_OBJECT_ID_1 = "entity_object_id_1"
+TEST_ENTITY_OBJECT_ID_2 = "entity_object_id_2"
+TEST_ENTITY_OBJECT_ID_3 = "entity_object_id_3"
+TEST_ENTITY_OBJECT_ID_4 = "entity_object_id_4"
+TEST_ENTITY_OBJECT_ID_5 = "entity_object_id_5"
+
+TEST_CONFIG_ENTRY_BASE_DATA = {}
+TEST_CONFIG_ENTRY_BASE_OPTIONS = {}
+
+TEST_DEVICE_COMBINATION_FIELD_NAMES = (
+    "device_name",
+    "device_area_name",
+    "device_floor_name",
+    "device_labels",
+)
+TEST_DEVICE_COMBINATIONS = [
+    (TEST_DEVICE_NAME, TEST_DEVICE_AREA_NAME, TEST_DEVICE_FLOOR_NAME, TEST_DEVICE_LABELS),
+    (TEST_DEVICE_NAME, TEST_DEVICE_AREA_NAME, None, TEST_DEVICE_LABELS),
+    (TEST_DEVICE_NAME, None, None, TEST_DEVICE_LABELS),
+    (TEST_DEVICE_NAME, None, None, None),
+    (None, None, None, None),
+]
+TEST_DEVICE_COMBINATION_IDS = [
+    "With device",
+    "With device no floor",
+    "With device no area and floor",
+    "With device no area, floor, or labels",
+    "With no device",
+]
+
+TEST_ENTITY_COMBINATION_FIELD_NAMES = (
+    "entity_object_id",
+    "entity_area_name",
+    "entity_floor_name",
+    "entity_labels",
+)
+TEST_ENTITY_COMBINATIONS = [
+    (TEST_ENTITY_OBJECT_ID_0, TEST_ENTITY_AREA_NAME, TEST_ENTITY_FLOOR_NAME, TEST_ENTITY_LABELS),
+    (TEST_ENTITY_OBJECT_ID_0, TEST_ENTITY_AREA_NAME, None, TEST_ENTITY_LABELS),
+    (TEST_ENTITY_OBJECT_ID_0, None, None, TEST_ENTITY_LABELS),
+    (TEST_ENTITY_OBJECT_ID_0, None, None, None),
+]
+TEST_ENTITY_COMBINATION_IDS = [
+    "With entity",
+    "With entity no floor",
+    "With entity no area and floor",
+    "With entity no area, floor, or labels",
+]
+
 MOCK_ELASTICSEARCH_URL = "https://localhost:9200"
 
 MOCK_NOON_APRIL_12TH_2023 = "2023-04-12T12:00:00+00:00"

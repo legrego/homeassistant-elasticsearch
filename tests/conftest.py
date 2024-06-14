@@ -1,4 +1,5 @@
-# type: ignore  # noqa: PGH003
+# type: ignore noqa: PGH003
+
 """Global fixtures for elastic integration."""
 # Fixtures allow you to replace functions with a Mock object. You can perform
 # many options via the Mock to reflect a particular behavior from the original
@@ -27,6 +28,11 @@ from unittest.mock import patch
 
 import pytest
 from homeassistant.core import HomeAssistant, State
+from homeassistant.helpers.area_registry import AreaEntry, AreaRegistry
+from homeassistant.helpers.device_registry import DeviceRegistry
+from homeassistant.helpers.entity_registry import EntityRegistry
+from homeassistant.helpers.floor_registry import FloorEntry, FloorRegistry
+from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import (  # noqa: F401
     MockConfigEntry,
     mock_config_flow,
@@ -67,7 +73,6 @@ def mock_es_aiohttp_client():
     mocker = AiohttpClientMocker()
 
     def create_session(*args, **kwargs):
-        print(args)
         return mocker.create_session(get_running_loop())
 
     with mock.patch(
@@ -172,7 +177,6 @@ class MockEntityState(State):
         await self.hass.async_block_till_done()
 
 
-
 def mock_entity_state(hass: HomeAssistant) -> MockEntityState:
     """Mock an entity state in the state machine."""
     return MockEntityState()
@@ -270,7 +274,7 @@ async def initialized_integration(
     hass: HomeAssistant,
     mock_config_entry: MockConfigEntry,
 ) -> MockConfigEntry:
-    """Set up the IPP integration for testing."""
+    """Set up the integration for testing."""
     mock_config_entry.add_to_hass(hass)
 
     await hass.config_entries.async_setup(mock_config_entry.entry_id)
@@ -293,30 +297,24 @@ async def uninitialized_integration(
 @pytest.fixture
 async def data() -> AsyncGenerator[dict, Any]:
     """Return a mock data dict."""
-    return {}
+    return const.TEST_CONFIG_ENTRY_BASE_DATA
 
 
 @pytest.fixture
 async def options() -> AsyncGenerator[dict, Any]:
     """Return a mock options dict."""
-    return {}
+    return const.TEST_CONFIG_ENTRY_BASE_OPTIONS
 
 
 @pytest.fixture
 async def mock_config_entry(
     hass: HomeAssistant,
-    data: dict | None,
-    options: dict | None,
+    data: dict,
+    options: dict,
     version: int = ElasticFlowHandler.VERSION,
     add_to_hass: bool = True,
 ) -> AsyncGenerator[MockConfigEntry, Any]:
     """Create a mock config entry and add it to hass."""
-
-    if data is None:
-        data = {}
-
-    if options is None:
-        options = {}
 
     entry = MockConfigEntry(
         title="ES Integration",
@@ -333,3 +331,243 @@ async def mock_config_entry(
 
     # Unload the config entry
     del hass.config_entries._entries[entry.entry_id]
+
+
+# Fixtures for a new_component
+@pytest.fixture
+async def new_component_domain() -> str:
+    """Return a new component domain."""
+    return const.TEST_ENTITY_DOMAIN
+
+
+@pytest.fixture
+async def new_component_config() -> dict:
+    """Return a new component config."""
+    return {
+        const.TEST_ENTITY_DOMAIN: {
+            const.TEST_ENTITY_OBJECT_ID_0: {},
+            const.TEST_ENTITY_OBJECT_ID_1: {},
+            const.TEST_ENTITY_OBJECT_ID_2: {},
+            const.TEST_ENTITY_OBJECT_ID_3: {},
+            const.TEST_ENTITY_OBJECT_ID_4: {},
+        },
+    }
+
+
+@pytest.fixture
+async def new_component(hass: HomeAssistant, new_component_domain: str, new_component_config: dict) -> None:
+    """Mock a component in hass."""
+
+    assert await async_setup_component(hass, new_component_domain, new_component_config)
+    await hass.async_block_till_done()
+
+
+# New Device Fixtures
+@pytest.fixture
+async def device_floor(floor_registry: FloorRegistry, device_floor_name: str):
+    """Mock a floor."""
+    if device_floor_name is None:
+        return None
+
+    if floor_registry.async_get_floor_by_name(device_floor_name) is not None:
+        msg = f"Floor {device_floor_name} already exists"
+        raise ValueError(msg)
+
+    return floor_registry.async_create(device_floor_name)
+
+
+@pytest.fixture
+async def device_area_name():
+    """Return an device area name."""
+    return const.TEST_DEVICE_AREA_NAME
+
+
+@pytest.fixture
+async def device_floor_name():
+    """Return an device floor name."""
+    return const.TEST_DEVICE_FLOOR_NAME
+
+
+@pytest.fixture
+async def device_area(
+    area_registry: AreaRegistry,
+    device_floor: FloorEntry,
+    device_area_name: str,
+):
+    """Mock an area."""
+
+    if device_area_name is None:
+        return None
+
+    extra_settings = {}
+    if device_floor is not None:
+        extra_settings["floor_id"] = device_floor.floor_id
+
+    if area_registry.async_get_area_by_name(device_area_name) is not None:
+        msg = f"Area {device_area_name} already exists"
+        raise ValueError(msg)
+
+    return area_registry.async_create(device_area_name, **extra_settings)
+
+
+@pytest.fixture
+async def device(
+    mock_config_entry: MockConfigEntry,
+    device_registry: DeviceRegistry,
+    device_name: str,
+    device_area: AreaEntry,
+    device_labels: list[str],
+):
+    """Mock a device."""
+
+    device = device_registry.async_get_or_create(
+        config_entry_id=mock_config_entry.entry_id,
+        connections={},
+        identifiers={
+            (
+                "device_name",
+                device_name,
+            ),
+        },
+        manufacturer=None,
+        model=None,
+        name=device_name,
+    )
+
+    if device_area is not None:
+        device_registry.async_update_device(device_id=device.id, area_id=device_area.id)
+
+    if device_labels is not None and len(device_labels) > 0:
+        device_registry.async_update_device(device_id=device.id, labels=device_labels)
+
+    return device_registry.async_get(device.id)
+
+
+@pytest.fixture
+async def device_labels():
+    """Mock device labels."""
+    return const.TEST_DEVICE_LABELS
+
+
+@pytest.fixture
+async def device_name():
+    """Return a device name."""
+    return const.TEST_DEVICE_NAME
+
+
+# Entity Fixtures
+
+
+@pytest.fixture
+async def entity_labels():
+    """Mock entity labels."""
+    return const.TEST_ENTITY_LABELS
+
+
+@pytest.fixture
+async def entity_id(entity_domain: str, entity_object_id: str):
+    """Return an entity id."""
+    return f"{entity_domain}.{entity_object_id}"
+
+
+@pytest.fixture
+async def entity_domain():
+    """Return an entity domain."""
+    return const.TEST_ENTITY_DOMAIN
+
+
+@pytest.fixture
+async def entity_object_id():
+    """Return an entity name."""
+    return const.TEST_ENTITY_OBJECT_ID_0
+
+
+@pytest.fixture
+async def entity_area_name():
+    """Return an entity area name."""
+    return const.TEST_ENTITY_AREA_NAME
+
+
+@pytest.fixture
+async def entity_floor_name():
+    """Return an entity floor name."""
+    return const.TEST_ENTITY_FLOOR_NAME
+
+
+@pytest.fixture
+async def entity_floor(
+    floor_registry: FloorRegistry,
+    entity_floor_name: str,
+) -> FloorEntry | None:
+    """Build a floor."""
+
+    if entity_floor_name is None:
+        return None
+
+    if floor_registry.async_get_floor_by_name(entity_floor_name) is not None:
+        msg = f"Floor {entity_floor_name} already exists"
+        raise ValueError(msg)
+
+    return floor_registry.async_create(name=entity_floor_name)
+
+
+@pytest.fixture
+async def entity_platform():
+    """Return an entity platform."""
+    return const.TEST_ENTITY_PLATFORM
+
+
+@pytest.fixture
+async def entity_area(
+    area_registry: AreaRegistry,
+    entity_area_name: str,
+    entity_floor: FloorEntry,
+) -> AreaEntry | None:
+    """Build an area."""
+
+    if entity_area_name is None:
+        return None
+
+    extra_settings = {}
+    if entity_floor is not None:
+        extra_settings["floor_id"] = entity_floor.floor_id
+
+    if area_registry.async_get_area(entity_area_name) is not None:
+        msg = f"Area {entity_area_name} already exists"
+        raise ValueError(msg)
+
+    return area_registry.async_create(name=entity_area_name, **extra_settings)
+
+
+@pytest.fixture
+async def entity(
+    mock_config_entry: MockConfigEntry,
+    entity_registry: EntityRegistry,
+    entity_domain: str,
+    entity_id: str,
+    entity_object_id: str,
+    entity_area: AreaEntry,
+    entity_labels: list[str],
+    entity_platform: str,
+    device,
+    attach_device: bool = True,
+):
+    """Mock an entity."""
+    entity_registry.async_get_or_create(
+        config_entry=mock_config_entry,
+        domain=entity_domain,
+        unique_id=entity_id,
+        suggested_object_id=entity_object_id,
+        platform=entity_platform,
+    )
+
+    if entity_labels is not None and len(entity_labels) > 0:
+        entity_registry.async_update_entity(entity_id=entity_id, labels=entity_labels)
+
+    if entity_area is not None:
+        entity_registry.async_update_entity(entity_id=entity_id, area_id=entity_area.id)
+
+    if device is not None and attach_device:
+        entity_registry.async_update_entity(entity_id=entity_id, device_id=device.id)
+
+    return entity_registry.async_get(entity_id)

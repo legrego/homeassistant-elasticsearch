@@ -208,7 +208,7 @@ class Test_Elasticsearch_Gateway:
     @pytest.mark.asyncio()
     @pytest.mark.parametrize("mock_test_connection", [False])
     async def test_test_success(
-        self, hass: HomeAssistant, initialized_gateway: ElasticsearchGateway, mock_test_connection
+        self, hass: HomeAssistant, initialized_gateway: ElasticsearchGateway, mock_test_connection,
     ):
         """Test the gateway connection test function for success."""
 
@@ -222,7 +222,7 @@ class Test_Elasticsearch_Gateway:
 
     @pytest.mark.parametrize("mock_test_connection", [False])
     async def test_test_failed(
-        self, hass: HomeAssistant, initialized_gateway: ElasticsearchGateway, mock_test_connection
+        self, hass: HomeAssistant, initialized_gateway: ElasticsearchGateway, mock_test_connection,
     ):
         """Test the gateway connection test function for failure."""
 

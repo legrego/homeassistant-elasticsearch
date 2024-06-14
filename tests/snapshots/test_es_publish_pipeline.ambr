@@ -1,4 +1,710 @@
 # serializer version: 1
+# name: Test_Formatter.Test_Integration_Tests.test_format[With entity no area and floor-With device no area and floor]
+  dict({
+    '@timestamp': '2023-04-12T12:00:00+00:00',
+    'datastream.dataset': 'homeassistant.counter',
+    'datastream.namespace': 'default',
+    'datastream.type': 'metrics',
+    'event.action': 'State change',
+    'event.kind': 'event',
+    'event.type': 'change',
+    'hass.entity.attributes': dict({
+      'brightness': 255,
+    }),
+    'hass.entity.device.labels': list([
+      'device label 1',
+      'device label 2',
+      'device label 3',
+    ]),
+    'hass.entity.device.name': 'device name',
+    'hass.entity.domain': 'counter',
+    'hass.entity.friendly_name': 'entity object id',
+    'hass.entity.id': 'counter.entity_object_id',
+    'hass.entity.labels': list([
+      'entity label 1',
+      'entity label 2',
+      'entity label 3',
+    ]),
+    'hass.entity.object.id': 'entity_object_id',
+    'hass.entity.platform': 'entity platform',
+    'hass.entity.value': 'on',
+    'hass.entity.valueas': dict({
+      'boolean': True,
+    }),
+  })
+# ---
+# name: Test_Formatter.Test_Integration_Tests.test_format[With entity no area and floor-With device no area, floor, or labels]
+  dict({
+    '@timestamp': '2023-04-12T12:00:00+00:00',
+    'datastream.dataset': 'homeassistant.counter',
+    'datastream.namespace': 'default',
+    'datastream.type': 'metrics',
+    'event.action': 'State change',
+    'event.kind': 'event',
+    'event.type': 'change',
+    'hass.entity.attributes': dict({
+      'brightness': 255,
+    }),
+    'hass.entity.device.name': 'device name',
+    'hass.entity.domain': 'counter',
+    'hass.entity.friendly_name': 'entity object id',
+    'hass.entity.id': 'counter.entity_object_id',
+    'hass.entity.labels': list([
+      'entity label 1',
+      'entity label 2',
+      'entity label 3',
+    ]),
+    'hass.entity.object.id': 'entity_object_id',
+    'hass.entity.platform': 'entity platform',
+    'hass.entity.value': 'on',
+    'hass.entity.valueas': dict({
+      'boolean': True,
+    }),
+  })
+# ---
+# name: Test_Formatter.Test_Integration_Tests.test_format[With entity no area and floor-With device no floor]
+  dict({
+    '@timestamp': '2023-04-12T12:00:00+00:00',
+    'datastream.dataset': 'homeassistant.counter',
+    'datastream.namespace': 'default',
+    'datastream.type': 'metrics',
+    'event.action': 'State change',
+    'event.kind': 'event',
+    'event.type': 'change',
+    'hass.entity.area.id': 'device_area',
+    'hass.entity.area.name': 'device area',
+    'hass.entity.attributes': dict({
+      'brightness': 255,
+    }),
+    'hass.entity.device.area.id': 'device_area',
+    'hass.entity.device.area.name': 'device area',
+    'hass.entity.device.labels': list([
+      'device label 1',
+      'device label 2',
+      'device label 3',
+    ]),
+    'hass.entity.device.name': 'device name',
+    'hass.entity.domain': 'counter',
+    'hass.entity.friendly_name': 'entity object id',
+    'hass.entity.id': 'counter.entity_object_id',
+    'hass.entity.labels': list([
+      'entity label 1',
+      'entity label 2',
+      'entity label 3',
+    ]),
+    'hass.entity.object.id': 'entity_object_id',
+    'hass.entity.platform': 'entity platform',
+    'hass.entity.value': 'on',
+    'hass.entity.valueas': dict({
+      'boolean': True,
+    }),
+  })
+# ---
+# name: Test_Formatter.Test_Integration_Tests.test_format[With entity no area and floor-With device]
+  dict({
+    '@timestamp': '2023-04-12T12:00:00+00:00',
+    'datastream.dataset': 'homeassistant.counter',
+    'datastream.namespace': 'default',
+    'datastream.type': 'metrics',
+    'event.action': 'State change',
+    'event.kind': 'event',
+    'event.type': 'change',
+    'hass.entity.area.floor.id': 'device_floor',
+    'hass.entity.area.floor.name': 'device floor',
+    'hass.entity.area.id': 'device_area',
+    'hass.entity.area.name': 'device area',
+    'hass.entity.attributes': dict({
+      'brightness': 255,
+    }),
+    'hass.entity.device.area.floor.id': 'device_floor',
+    'hass.entity.device.area.floor.name': 'device floor',
+    'hass.entity.device.area.id': 'device_area',
+    'hass.entity.device.area.name': 'device area',
+    'hass.entity.device.labels': list([
+      'device label 1',
+      'device label 2',
+      'device label 3',
+    ]),
+    'hass.entity.device.name': 'device name',
+    'hass.entity.domain': 'counter',
+    'hass.entity.friendly_name': 'entity object id',
+    'hass.entity.id': 'counter.entity_object_id',
+    'hass.entity.labels': list([
+      'entity label 1',
+      'entity label 2',
+      'entity label 3',
+    ]),
+    'hass.entity.object.id': 'entity_object_id',
+    'hass.entity.platform': 'entity platform',
+    'hass.entity.value': 'on',
+    'hass.entity.valueas': dict({
+      'boolean': True,
+    }),
+  })
+# ---
+# name: Test_Formatter.Test_Integration_Tests.test_format[With entity no area and floor-With no device]
+  dict({
+    '@timestamp': '2023-04-12T12:00:00+00:00',
+    'datastream.dataset': 'homeassistant.counter',
+    'datastream.namespace': 'default',
+    'datastream.type': 'metrics',
+    'event.action': 'State change',
+    'event.kind': 'event',
+    'event.type': 'change',
+    'hass.entity.attributes': dict({
+      'brightness': 255,
+    }),
+    'hass.entity.device.name': 'ES Integration',
+    'hass.entity.domain': 'counter',
+    'hass.entity.friendly_name': 'entity object id',
+    'hass.entity.id': 'counter.entity_object_id',
+    'hass.entity.labels': list([
+      'entity label 1',
+      'entity label 2',
+      'entity label 3',
+    ]),
+    'hass.entity.object.id': 'entity_object_id',
+    'hass.entity.platform': 'entity platform',
+    'hass.entity.value': 'on',
+    'hass.entity.valueas': dict({
+      'boolean': True,
+    }),
+  })
+# ---
+# name: Test_Formatter.Test_Integration_Tests.test_format[With entity no area, floor, or labels-With device no area and floor]
+  dict({
+    '@timestamp': '2023-04-12T12:00:00+00:00',
+    'datastream.dataset': 'homeassistant.counter',
+    'datastream.namespace': 'default',
+    'datastream.type': 'metrics',
+    'event.action': 'State change',
+    'event.kind': 'event',
+    'event.type': 'change',
+    'hass.entity.attributes': dict({
+      'brightness': 255,
+    }),
+    'hass.entity.device.labels': list([
+      'device label 1',
+      'device label 2',
+      'device label 3',
+    ]),
+    'hass.entity.device.name': 'device name',
+    'hass.entity.domain': 'counter',
+    'hass.entity.friendly_name': 'entity object id',
+    'hass.entity.id': 'counter.entity_object_id',
+    'hass.entity.object.id': 'entity_object_id',
+    'hass.entity.platform': 'entity platform',
+    'hass.entity.value': 'on',
+    'hass.entity.valueas': dict({
+      'boolean': True,
+    }),
+  })
+# ---
+# name: Test_Formatter.Test_Integration_Tests.test_format[With entity no area, floor, or labels-With device no area, floor, or labels]
+  dict({
+    '@timestamp': '2023-04-12T12:00:00+00:00',
+    'datastream.dataset': 'homeassistant.counter',
+    'datastream.namespace': 'default',
+    'datastream.type': 'metrics',
+    'event.action': 'State change',
+    'event.kind': 'event',
+    'event.type': 'change',
+    'hass.entity.attributes': dict({
+      'brightness': 255,
+    }),
+    'hass.entity.device.name': 'device name',
+    'hass.entity.domain': 'counter',
+    'hass.entity.friendly_name': 'entity object id',
+    'hass.entity.id': 'counter.entity_object_id',
+    'hass.entity.object.id': 'entity_object_id',
+    'hass.entity.platform': 'entity platform',
+    'hass.entity.value': 'on',
+    'hass.entity.valueas': dict({
+      'boolean': True,
+    }),
+  })
+# ---
+# name: Test_Formatter.Test_Integration_Tests.test_format[With entity no area, floor, or labels-With device no floor]
+  dict({
+    '@timestamp': '2023-04-12T12:00:00+00:00',
+    'datastream.dataset': 'homeassistant.counter',
+    'datastream.namespace': 'default',
+    'datastream.type': 'metrics',
+    'event.action': 'State change',
+    'event.kind': 'event',
+    'event.type': 'change',
+    'hass.entity.area.id': 'device_area',
+    'hass.entity.area.name': 'device area',
+    'hass.entity.attributes': dict({
+      'brightness': 255,
+    }),
+    'hass.entity.device.area.id': 'device_area',
+    'hass.entity.device.area.name': 'device area',
+    'hass.entity.device.labels': list([
+      'device label 1',
+      'device label 2',
+      'device label 3',
+    ]),
+    'hass.entity.device.name': 'device name',
+    'hass.entity.domain': 'counter',
+    'hass.entity.friendly_name': 'entity object id',
+    'hass.entity.id': 'counter.entity_object_id',
+    'hass.entity.object.id': 'entity_object_id',
+    'hass.entity.platform': 'entity platform',
+    'hass.entity.value': 'on',
+    'hass.entity.valueas': dict({
+      'boolean': True,
+    }),
+  })
+# ---
+# name: Test_Formatter.Test_Integration_Tests.test_format[With entity no area, floor, or labels-With device]
+  dict({
+    '@timestamp': '2023-04-12T12:00:00+00:00',
+    'datastream.dataset': 'homeassistant.counter',
+    'datastream.namespace': 'default',
+    'datastream.type': 'metrics',
+    'event.action': 'State change',
+    'event.kind': 'event',
+    'event.type': 'change',
+    'hass.entity.area.floor.id': 'device_floor',
+    'hass.entity.area.floor.name': 'device floor',
+    'hass.entity.area.id': 'device_area',
+    'hass.entity.area.name': 'device area',
+    'hass.entity.attributes': dict({
+      'brightness': 255,
+    }),
+    'hass.entity.device.area.floor.id': 'device_floor',
+    'hass.entity.device.area.floor.name': 'device floor',
+    'hass.entity.device.area.id': 'device_area',
+    'hass.entity.device.area.name': 'device area',
+    'hass.entity.device.labels': list([
+      'device label 1',
+      'device label 2',
+      'device label 3',
+    ]),
+    'hass.entity.device.name': 'device name',
+    'hass.entity.domain': 'counter',
+    'hass.entity.friendly_name': 'entity object id',
+    'hass.entity.id': 'counter.entity_object_id',
+    'hass.entity.object.id': 'entity_object_id',
+    'hass.entity.platform': 'entity platform',
+    'hass.entity.value': 'on',
+    'hass.entity.valueas': dict({
+      'boolean': True,
+    }),
+  })
+# ---
+# name: Test_Formatter.Test_Integration_Tests.test_format[With entity no area, floor, or labels-With no device]
+  dict({
+    '@timestamp': '2023-04-12T12:00:00+00:00',
+    'datastream.dataset': 'homeassistant.counter',
+    'datastream.namespace': 'default',
+    'datastream.type': 'metrics',
+    'event.action': 'State change',
+    'event.kind': 'event',
+    'event.type': 'change',
+    'hass.entity.attributes': dict({
+      'brightness': 255,
+    }),
+    'hass.entity.device.name': 'ES Integration',
+    'hass.entity.domain': 'counter',
+    'hass.entity.friendly_name': 'entity object id',
+    'hass.entity.id': 'counter.entity_object_id',
+    'hass.entity.object.id': 'entity_object_id',
+    'hass.entity.platform': 'entity platform',
+    'hass.entity.value': 'on',
+    'hass.entity.valueas': dict({
+      'boolean': True,
+    }),
+  })
+# ---
+# name: Test_Formatter.Test_Integration_Tests.test_format[With entity no floor-With device no area and floor]
+  dict({
+    '@timestamp': '2023-04-12T12:00:00+00:00',
+    'datastream.dataset': 'homeassistant.counter',
+    'datastream.namespace': 'default',
+    'datastream.type': 'metrics',
+    'event.action': 'State change',
+    'event.kind': 'event',
+    'event.type': 'change',
+    'hass.entity.area.id': 'entity_area',
+    'hass.entity.area.name': 'entity area',
+    'hass.entity.attributes': dict({
+      'brightness': 255,
+    }),
+    'hass.entity.device.labels': list([
+      'device label 1',
+      'device label 2',
+      'device label 3',
+    ]),
+    'hass.entity.device.name': 'device name',
+    'hass.entity.domain': 'counter',
+    'hass.entity.friendly_name': 'entity object id',
+    'hass.entity.id': 'counter.entity_object_id',
+    'hass.entity.labels': list([
+      'entity label 1',
+      'entity label 2',
+      'entity label 3',
+    ]),
+    'hass.entity.object.id': 'entity_object_id',
+    'hass.entity.platform': 'entity platform',
+    'hass.entity.value': 'on',
+    'hass.entity.valueas': dict({
+      'boolean': True,
+    }),
+  })
+# ---
+# name: Test_Formatter.Test_Integration_Tests.test_format[With entity no floor-With device no area, floor, or labels]
+  dict({
+    '@timestamp': '2023-04-12T12:00:00+00:00',
+    'datastream.dataset': 'homeassistant.counter',
+    'datastream.namespace': 'default',
+    'datastream.type': 'metrics',
+    'event.action': 'State change',
+    'event.kind': 'event',
+    'event.type': 'change',
+    'hass.entity.area.id': 'entity_area',
+    'hass.entity.area.name': 'entity area',
+    'hass.entity.attributes': dict({
+      'brightness': 255,
+    }),
+    'hass.entity.device.name': 'device name',
+    'hass.entity.domain': 'counter',
+    'hass.entity.friendly_name': 'entity object id',
+    'hass.entity.id': 'counter.entity_object_id',
+    'hass.entity.labels': list([
+      'entity label 1',
+      'entity label 2',
+      'entity label 3',
+    ]),
+    'hass.entity.object.id': 'entity_object_id',
+    'hass.entity.platform': 'entity platform',
+    'hass.entity.value': 'on',
+    'hass.entity.valueas': dict({
+      'boolean': True,
+    }),
+  })
+# ---
+# name: Test_Formatter.Test_Integration_Tests.test_format[With entity no floor-With device no floor]
+  dict({
+    '@timestamp': '2023-04-12T12:00:00+00:00',
+    'datastream.dataset': 'homeassistant.counter',
+    'datastream.namespace': 'default',
+    'datastream.type': 'metrics',
+    'event.action': 'State change',
+    'event.kind': 'event',
+    'event.type': 'change',
+    'hass.entity.area.id': 'entity_area',
+    'hass.entity.area.name': 'entity area',
+    'hass.entity.attributes': dict({
+      'brightness': 255,
+    }),
+    'hass.entity.device.area.id': 'device_area',
+    'hass.entity.device.area.name': 'device area',
+    'hass.entity.device.labels': list([
+      'device label 1',
+      'device label 2',
+      'device label 3',
+    ]),
+    'hass.entity.device.name': 'device name',
+    'hass.entity.domain': 'counter',
+    'hass.entity.friendly_name': 'entity object id',
+    'hass.entity.id': 'counter.entity_object_id',
+    'hass.entity.labels': list([
+      'entity label 1',
+      'entity label 2',
+      'entity label 3',
+    ]),
+    'hass.entity.object.id': 'entity_object_id',
+    'hass.entity.platform': 'entity platform',
+    'hass.entity.value': 'on',
+    'hass.entity.valueas': dict({
+      'boolean': True,
+    }),
+  })
+# ---
+# name: Test_Formatter.Test_Integration_Tests.test_format[With entity no floor-With device]
+  dict({
+    '@timestamp': '2023-04-12T12:00:00+00:00',
+    'datastream.dataset': 'homeassistant.counter',
+    'datastream.namespace': 'default',
+    'datastream.type': 'metrics',
+    'event.action': 'State change',
+    'event.kind': 'event',
+    'event.type': 'change',
+    'hass.entity.area.id': 'entity_area',
+    'hass.entity.area.name': 'entity area',
+    'hass.entity.attributes': dict({
+      'brightness': 255,
+    }),
+    'hass.entity.device.area.floor.id': 'device_floor',
+    'hass.entity.device.area.floor.name': 'device floor',
+    'hass.entity.device.area.id': 'device_area',
+    'hass.entity.device.area.name': 'device area',
+    'hass.entity.device.labels': list([
+      'device label 1',
+      'device label 2',
+      'device label 3',
+    ]),
+    'hass.entity.device.name': 'device name',
+    'hass.entity.domain': 'counter',
+    'hass.entity.friendly_name': 'entity object id',
+    'hass.entity.id': 'counter.entity_object_id',
+    'hass.entity.labels': list([
+      'entity label 1',
+      'entity label 2',
+      'entity label 3',
+    ]),
+    'hass.entity.object.id': 'entity_object_id',
+    'hass.entity.platform': 'entity platform',
+    'hass.entity.value': 'on',
+    'hass.entity.valueas': dict({
+      'boolean': True,
+    }),
+  })
+# ---
+# name: Test_Formatter.Test_Integration_Tests.test_format[With entity no floor-With no device]
+  dict({
+    '@timestamp': '2023-04-12T12:00:00+00:00',
+    'datastream.dataset': 'homeassistant.counter',
+    'datastream.namespace': 'default',
+    'datastream.type': 'metrics',
+    'event.action': 'State change',
+    'event.kind': 'event',
+    'event.type': 'change',
+    'hass.entity.area.id': 'entity_area',
+    'hass.entity.area.name': 'entity area',
+    'hass.entity.attributes': dict({
+      'brightness': 255,
+    }),
+    'hass.entity.device.name': 'ES Integration',
+    'hass.entity.domain': 'counter',
+    'hass.entity.friendly_name': 'entity object id',
+    'hass.entity.id': 'counter.entity_object_id',
+    'hass.entity.labels': list([
+      'entity label 1',
+      'entity label 2',
+      'entity label 3',
+    ]),
+    'hass.entity.object.id': 'entity_object_id',
+    'hass.entity.platform': 'entity platform',
+    'hass.entity.value': 'on',
+    'hass.entity.valueas': dict({
+      'boolean': True,
+    }),
+  })
+# ---
+# name: Test_Formatter.Test_Integration_Tests.test_format[With entity-With device no area and floor]
+  dict({
+    '@timestamp': '2023-04-12T12:00:00+00:00',
+    'datastream.dataset': 'homeassistant.counter',
+    'datastream.namespace': 'default',
+    'datastream.type': 'metrics',
+    'event.action': 'State change',
+    'event.kind': 'event',
+    'event.type': 'change',
+    'hass.entity.area.floor.id': 'entity_floor',
+    'hass.entity.area.floor.name': 'entity floor',
+    'hass.entity.area.id': 'entity_area',
+    'hass.entity.area.name': 'entity area',
+    'hass.entity.attributes': dict({
+      'brightness': 255,
+    }),
+    'hass.entity.device.labels': list([
+      'device label 1',
+      'device label 2',
+      'device label 3',
+    ]),
+    'hass.entity.device.name': 'device name',
+    'hass.entity.domain': 'counter',
+    'hass.entity.friendly_name': 'entity object id',
+    'hass.entity.id': 'counter.entity_object_id',
+    'hass.entity.labels': list([
+      'entity label 1',
+      'entity label 2',
+      'entity label 3',
+    ]),
+    'hass.entity.object.id': 'entity_object_id',
+    'hass.entity.platform': 'entity platform',
+    'hass.entity.value': 'on',
+    'hass.entity.valueas': dict({
+      'boolean': True,
+    }),
+  })
+# ---
+# name: Test_Formatter.Test_Integration_Tests.test_format[With entity-With device no area, floor, or labels]
+  dict({
+    '@timestamp': '2023-04-12T12:00:00+00:00',
+    'datastream.dataset': 'homeassistant.counter',
+    'datastream.namespace': 'default',
+    'datastream.type': 'metrics',
+    'event.action': 'State change',
+    'event.kind': 'event',
+    'event.type': 'change',
+    'hass.entity.area.floor.id': 'entity_floor',
+    'hass.entity.area.floor.name': 'entity floor',
+    'hass.entity.area.id': 'entity_area',
+    'hass.entity.area.name': 'entity area',
+    'hass.entity.attributes': dict({
+      'brightness': 255,
+    }),
+    'hass.entity.device.name': 'device name',
+    'hass.entity.domain': 'counter',
+    'hass.entity.friendly_name': 'entity object id',
+    'hass.entity.id': 'counter.entity_object_id',
+    'hass.entity.labels': list([
+      'entity label 1',
+      'entity label 2',
+      'entity label 3',
+    ]),
+    'hass.entity.object.id': 'entity_object_id',
+    'hass.entity.platform': 'entity platform',
+    'hass.entity.value': 'on',
+    'hass.entity.valueas': dict({
+      'boolean': True,
+    }),
+  })
+# ---
+# name: Test_Formatter.Test_Integration_Tests.test_format[With entity-With device no floor]
+  dict({
+    '@timestamp': '2023-04-12T12:00:00+00:00',
+    'datastream.dataset': 'homeassistant.counter',
+    'datastream.namespace': 'default',
+    'datastream.type': 'metrics',
+    'event.action': 'State change',
+    'event.kind': 'event',
+    'event.type': 'change',
+    'hass.entity.area.floor.id': 'entity_floor',
+    'hass.entity.area.floor.name': 'entity floor',
+    'hass.entity.area.id': 'entity_area',
+    'hass.entity.area.name': 'entity area',
+    'hass.entity.attributes': dict({
+      'brightness': 255,
+    }),
+    'hass.entity.device.area.id': 'device_area',
+    'hass.entity.device.area.name': 'device area',
+    'hass.entity.device.labels': list([
+      'device label 1',
+      'device label 2',
+      'device label 3',
+    ]),
+    'hass.entity.device.name': 'device name',
+    'hass.entity.domain': 'counter',
+    'hass.entity.friendly_name': 'entity object id',
+    'hass.entity.id': 'counter.entity_object_id',
+    'hass.entity.labels': list([
+      'entity label 1',
+      'entity label 2',
+      'entity label 3',
+    ]),
+    'hass.entity.object.id': 'entity_object_id',
+    'hass.entity.platform': 'entity platform',
+    'hass.entity.value': 'on',
+    'hass.entity.valueas': dict({
+      'boolean': True,
+    }),
+  })
+# ---
+# name: Test_Formatter.Test_Integration_Tests.test_format[With entity-With device]
+  dict({
+    '@timestamp': '2023-04-12T12:00:00+00:00',
+    'datastream.dataset': 'homeassistant.counter',
+    'datastream.namespace': 'default',
+    'datastream.type': 'metrics',
+    'event.action': 'State change',
+    'event.kind': 'event',
+    'event.type': 'change',
+    'hass.entity.area.floor.id': 'entity_floor',
+    'hass.entity.area.floor.name': 'entity floor',
+    'hass.entity.area.id': 'entity_area',
+    'hass.entity.area.name': 'entity area',
+    'hass.entity.attributes': dict({
+      'brightness': 255,
+    }),
+    'hass.entity.device.area.floor.id': 'device_floor',
+    'hass.entity.device.area.floor.name': 'device floor',
+    'hass.entity.device.area.id': 'device_area',
+    'hass.entity.device.area.name': 'device area',
+    'hass.entity.device.labels': list([
+      'device label 1',
+      'device label 2',
+      'device label 3',
+    ]),
+    'hass.entity.device.name': 'device name',
+    'hass.entity.domain': 'counter',
+    'hass.entity.friendly_name': 'entity object id',
+    'hass.entity.id': 'counter.entity_object_id',
+    'hass.entity.labels': list([
+      'entity label 1',
+      'entity label 2',
+      'entity label 3',
+    ]),
+    'hass.entity.object.id': 'entity_object_id',
+    'hass.entity.platform': 'entity platform',
+    'hass.entity.value': 'on',
+    'hass.entity.valueas': dict({
+      'boolean': True,
+    }),
+  })
+# ---
+# name: Test_Formatter.Test_Integration_Tests.test_format[With entity-With no device]
+  dict({
+    '@timestamp': '2023-04-12T12:00:00+00:00',
+    'datastream.dataset': 'homeassistant.counter',
+    'datastream.namespace': 'default',
+    'datastream.type': 'metrics',
+    'event.action': 'State change',
+    'event.kind': 'event',
+    'event.type': 'change',
+    'hass.entity.area.floor.id': 'entity_floor',
+    'hass.entity.area.floor.name': 'entity floor',
+    'hass.entity.area.id': 'entity_area',
+    'hass.entity.area.name': 'entity area',
+    'hass.entity.attributes': dict({
+      'brightness': 255,
+    }),
+    'hass.entity.device.name': 'ES Integration',
+    'hass.entity.domain': 'counter',
+    'hass.entity.friendly_name': 'entity object id',
+    'hass.entity.id': 'counter.entity_object_id',
+    'hass.entity.labels': list([
+      'entity label 1',
+      'entity label 2',
+      'entity label 3',
+    ]),
+    'hass.entity.object.id': 'entity_object_id',
+    'hass.entity.platform': 'entity platform',
+    'hass.entity.value': 'on',
+    'hass.entity.valueas': dict({
+      'boolean': True,
+    }),
+  })
+# ---
+# name: Test_Formatter.Test_Integration_Tests.test_state_to_extended_details
+  dict({
+    'hass.entity.area.floor.id': 'entity_floor',
+    'hass.entity.area.floor.name': 'entity floor',
+    'hass.entity.area.id': 'entity_area',
+    'hass.entity.area.name': 'entity area',
+    'hass.entity.device.area.floor.id': 'device_floor',
+    'hass.entity.device.area.floor.name': 'device floor',
+    'hass.entity.device.area.id': 'device_area',
+    'hass.entity.device.area.name': 'device area',
+    'hass.entity.device.labels': list([
+      'device label 1',
+      'device label 2',
+      'device label 3',
+    ]),
+    'hass.entity.device.name': 'device name',
+    'hass.entity.friendly_name': 'entity object id',
+    'hass.entity.labels': list([
+      'entity label 1',
+      'entity label 2',
+      'entity label 3',
+    ]),
+    'hass.entity.platform': 'entity platform',
+  })
+# ---
 # name: Test_Formatter.Test_Unit_Tests.test_state_to_attributes_objects
   dict({
     'orig_attributes': dict({

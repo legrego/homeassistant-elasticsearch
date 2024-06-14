@@ -8,7 +8,7 @@
         "editor.defaultFormatter": "charliermarsh.ruff",
         "editor.formatOnSaveMode": "modifications",
         "editor.rulers": [
-        110
+            110
         ]
     },
     "debug.saveBeforeStart": "none",
@@ -48,5 +48,6 @@
     "ruff.format.args": [
         "--config=./.ruff.toml"
     ],
-    "ruff.showNotifications": "onWarning"
+    "ruff.showNotifications": "onWarning",
+    "python.analysis.autoImportCompletions": true
 }

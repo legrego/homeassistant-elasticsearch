@@ -31,12 +31,21 @@ from homeassistant.util import dt as dt_util
 from homeassistant.util.logging import async_create_catching_coro
 
 from custom_components.elasticsearch.const import (
+    CONST_ENTITY_DETAILS_TO_ES_DOCUMENT as EXTENDED_DETAILS_TO_ES_DOCUMENT,
+)
+from custom_components.elasticsearch.const import (
+    CONST_ENTITY_DETAILS_TO_ES_DOCUMENT_KEYS as KEYS_TO_KEEP,
+)
+from custom_components.elasticsearch.const import (
     DATASTREAM_DATASET_PREFIX,
     DATASTREAM_NAMESPACE,
     DATASTREAM_TYPE,
     StateChangeType,
 )
-from custom_components.elasticsearch.entity_details import EntityDetails
+from custom_components.elasticsearch.entity_details import (
+    ExtendedEntityDetails,
+    ExtendedRegistryEntry,
+)
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 from custom_components.elasticsearch.logger import LOGGER as BASE_LOGGER
 from custom_components.elasticsearch.logger import log_enter_exit_debug
@@ -391,19 +400,148 @@ class Pipeline:
             """Initialize the formatter."""
             self._logger = log if log else BASE_LOGGER
             self._static_fields: dict[str, Any] = {}
-            self._entity_details = EntityDetails(hass, self._logger)
+            self._extended_entity_details = ExtendedEntityDetails(hass, self._logger)
 
         @log_enter_exit_debug
         async def async_init(self, static_fields: dict[str, Any]) -> None:
             """Initialize the formatter."""
             self._static_fields = static_fields
 
+        def format(self, time: datetime, state: State, reason: StateChangeType) -> dict[str, Any]:
+            """Format the state change into a document."""
+
+            document = {
+                "@timestamp": time.isoformat(),
+                "event.action": reason.to_publish_reason(),
+                "event.kind": "event",
+                "event.type": "info" if reason == StateChangeType.NO_CHANGE else "change",
+                "hass.entity.attributes": self._state_to_attributes(state),
+                "hass.entity.domain": state.domain,
+                "hass.entity.id": state.entity_id,
+                "hass.entity.value": state.state,
+                "hass.entity.valueas": self.state_to_coerced_value(state),
+                "hass.entity.object.id": state.object_id,
+                **Pipeline.Formatter.domain_to_datastream(state.domain),
+                **self._state_to_extended_details(state),
+                **self._static_fields,
+            }
+
+            # Return the document with null and [] values removed
+            return {k: v for k, v in document.items() if v is not None and len(v) != 0}
+
+        # Methods for assembling the document
+
+        def _state_to_extended_details(self, state: State) -> dict:
+            """Gather entity details from the state object and return a mapped dictionary ready to be put in an elasticsearch document."""
+
+            extended_registry_entry: ExtendedRegistryEntry | None = self._extended_entity_details.async_get(
+                state.entity_id,
+            )
+
+            if extended_registry_entry is None:
+                raise
+
+            entry_dict = extended_registry_entry.to_dict(flatten=True, keep_keys=KEYS_TO_KEEP)
+
+            # The logic for friendly name is in the state for some reason
+            entry_dict.update(
+                {
+                    "friendly_name": state.name,
+                },
+            )
+
+            return {
+                f"hass.entity.{k}": entry_dict.get(v)
+                for k, v in EXTENDED_DETAILS_TO_ES_DOCUMENT.items()
+                if (entry_dict.get(v) is not None and len(entry_dict.get(v, [])) != 0)
+            }
+
+        def _state_to_attributes(self, state: State) -> dict:
+            """Convert the attributes of a State object into a dictionary compatible with Elasticsearch mappings."""
+
+            attributes = {}
+
+            for key, value in state.attributes.items():
+                if key in SKIP_ATTRIBUTES:
+                    continue
+
+                if not isinstance(value, ALLOWED_ATTRIBUTE_TYPES):
+                    self._logger.debug(
+                        "Not publishing attribute [%s] of disallowed type [%s] from entity [%s].",
+                        key,
+                        type(value),
+                        state.entity_id,
+                    )
+                    continue
+
+                new_key = self.normalize_attribute_name(key)
+
+                if new_key in attributes:
+                    self._logger.warning(
+                        "Attribute [%s] shares a key [%s] with another attribute for entity [%s]. Discarding previous attribute value.",
+                        key,
+                        new_key,
+                        state.entity_id,
+                    )
+
+                new_value = value
+
+                if isinstance(value, dict):
+                    new_value = json.dumps(value)
+                elif isinstance(value, set):
+                    new_value = list(value)
+                elif (
+                    isinstance(value, list | tuple)
+                    and len(value) > 0
+                    and isinstance(value[0], tuple | dict | set | list)
+                ):
+                    new_value = json.dumps(value)
+
+                attributes[new_key] = new_value
+
+            return attributes
+
+        def state_to_coerced_value(self, state: State) -> dict:
+            """Coerce the state value into a dictionary of possible types."""
+            value = state.state
+
+            success, result = self.try_state_as_boolean(state)
+            if success and result is not None:
+                return {"boolean": result}
+
+            success, result = self.try_state_as_number(state)
+            if success and result is not None:
+                return {"float": result}
+
+            success, result = self.try_state_as_datetime(state)
+            if success and result is not None:
+                return {
+                    "datetime": result.isoformat(),
+                    "date": result.date().isoformat(),
+                    "time": result.time().isoformat(),
+                }
+
+            return {"string": value}
+
+        # Static converter helpers
+
         @staticmethod
         @lru_cache(maxsize=128)
-        def _sanitize_domain(domain: str) -> str:
+        def sanitize_domain(domain: str) -> str:
             """Sanitize the domain name."""
             # Only allow alphanumeric characters a-z 0-9 and underscores
             return re.sub(r"[^a-z0-9_]", "", domain.lower())[0:128]
+
+        @staticmethod
+        def domain_to_datastream(domain: str) -> dict:
+            """Convert the state into a datastream."""
+            return {
+                "datastream.type": DATASTREAM_TYPE,
+                "datastream.dataset": DATASTREAM_DATASET_PREFIX
+                + "."
+                + Pipeline.Formatter.sanitize_domain(domain),
+                "datastream.namespace": DATASTREAM_NAMESPACE,
+            }
 
         @staticmethod
         @lru_cache(maxsize=4096)
@@ -421,6 +559,7 @@ class Pipeline:
 
             return replaced_string.lower()
 
+        # Methods for value coercion
         @classmethod
         def try_state_as_number(cls, state: State) -> tuple[bool, float | None]:
             """Try to coerce our state to a number and return true if we can, false if we can't."""
@@ -490,167 +629,6 @@ class Pipeline:
             """Try to coerce our state to a datetime."""
 
             return dt_util.parse_datetime(state.state, raise_on_error=True)
-
-        def _state_to_entity_details(self, state: State) -> dict:
-            """Gather entity details from the state object and return a mapped dictionary ready to be put in an elasticsearch document."""
-
-            entity_details = self._entity_details.async_get(state.entity_id)
-
-            if entity_details is None:
-                return {}
-
-            entity = entity_details.entity
-
-            entity_capabilities = entity.capabilities or {}
-            entity_area = entity_details.entity_area
-            entity_floor = entity_details.entity_floor
-
-            entity_additions = {
-                "labels": entity_details.entity_labels,
-                "name": entity.name or entity.original_name,
-                "friendly_name": state.name,
-                "platform": entity.platform,
-                "unit_of_measurement": str(entity.unit_of_measurement),
-                "area.floor.id": entity_floor.floor_id if entity_floor else None,
-                "area.floor.name": entity_floor.name if entity_floor else None,
-                "area.id": entity_area.id if entity_area else None,
-                "area.name": entity_area.name if entity_area else None,
-                "state.class": entity_capabilities.get("state_class"),
-            }
-
-            entity_additions = {
-                k: str(v)
-                for k, v in entity_additions.items()
-                if (v is not None and v != "None" and len(v) != 0)
-            }
-
-            device = entity_details.device
-            device_floor = entity_details.device_floor
-            device_area = entity_details.device_area
-
-            device_additions = {
-                "class": entity.device_class or entity.original_device_class,
-                "id": (device.id if device else None),
-                "labels": entity_details.device_labels,
-                "name": (device.name if device else None),
-                "friendly_name": (device.name_by_user if device else None),
-                "area.floor.id": device_floor.floor_id if device_floor else None,
-                "area.floor.name": device_floor.name if device_floor else None,
-                "area.id": device_area.id if device_area else None,
-                "area.name": device_area.name if device_area else None,
-            }
-
-            device_additions = {
-                k: str(v)
-                for k, v in device_additions.items()
-                if (v is not None and v != "None" and len(v) != 0)
-            }
-
-            return {**entity_additions, "device": {**device_additions}}
-
-        def _state_to_attributes(self, state: State) -> dict:
-            """Convert the attributes of a State object into a dictionary compatible with Elasticsearch mappings."""
-
-            attributes = {}
-
-            for key, value in state.attributes.items():
-                if key in SKIP_ATTRIBUTES:
-                    continue
-
-                if not isinstance(value, ALLOWED_ATTRIBUTE_TYPES):
-                    self._logger.debug(
-                        "Not publishing attribute [%s] of disallowed type [%s] from entity [%s].",
-                        key,
-                        type(value),
-                        state.entity_id,
-                    )
-                    continue
-
-                new_key = self.normalize_attribute_name(key)
-
-                if new_key in attributes:
-                    self._logger.warning(
-                        "Attribute [%s] shares a key [%s] with another attribute for entity [%s]. Discarding previous attribute value.",
-                        key,
-                        new_key,
-                        state.entity_id,
-                    )
-
-                new_value = value
-
-                if isinstance(value, dict):
-                    new_value = json.dumps(value)
-                elif isinstance(value, set):
-                    new_value = list(value)
-                elif (
-                    isinstance(value, list | tuple)
-                    and len(value) > 0
-                    and isinstance(value[0], tuple | dict | set | list)
-                ):
-                    new_value = json.dumps(value)
-
-                attributes[new_key] = new_value
-
-            return attributes
-
-        def state_to_coerced_value(self, state: State) -> dict:
-            """Coerce the state value into a dictionary of possible types."""
-            value = state.state
-
-            success, result = self.try_state_as_boolean(state)
-            if success and result is not None:
-                return {"boolean": result}
-
-            success, result = self.try_state_as_number(state)
-            if success and result is not None:
-                return {"float": result}
-
-            success, result = self.try_state_as_datetime(state)
-            if success and result is not None:
-                return {
-                    "datetime": result.isoformat(),
-                    "date": result.date().isoformat(),
-                    "time": result.time().isoformat(),
-                }
-
-            return {"string": value}
-
-        def state_to_datastream(self, state: State) -> dict:
-            """Convert the state into a datastream."""
-            return {
-                "type": DATASTREAM_TYPE,
-                "dataset": DATASTREAM_DATASET_PREFIX + "." + self._sanitize_domain(state.domain),
-                "namespace": DATASTREAM_NAMESPACE,
-            }
-
-        def format(self, time: datetime, state: State, reason: StateChangeType) -> dict[str, Any]:
-            """Format the state change into a document."""
-
-            base_document = {
-                "@timestamp": time.isoformat(),
-                "event": {
-                    "action": reason.to_publish_reason(),
-                    "kind": "event",
-                    "type": "info" if reason == StateChangeType.NO_CHANGE else "change",
-                },
-                "hass.entity": {
-                    "attributes": self._state_to_attributes(state),
-                    "domain": state.domain,
-                    "id": state.entity_id,
-                    "value": state.state,
-                    "valueas": self.state_to_coerced_value(state),
-                    "object.id": state.object_id,
-                },
-                "datastream": self.state_to_datastream(state),
-            }
-
-            # Add static attributes
-            base_document.update(self._static_fields)
-
-            # Add additional device and entity fields
-            base_document.update(self._state_to_entity_details(state))
-
-            return base_document
 
     class Publisher:
         """Publishes documents to Elasticsearch."""

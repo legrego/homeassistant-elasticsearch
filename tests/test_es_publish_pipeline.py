@@ -11,7 +11,6 @@ from homeassistant.core import Event, HomeAssistant, State
 from homeassistant.util import dt as dt_util
 from syrupy.assertion import SnapshotAssertion
 
-from custom_components.elasticsearch.entity_details import FullEntityDetails
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 from custom_components.elasticsearch.es_publish_pipeline import (
     EventQueue,
@@ -19,6 +18,7 @@ from custom_components.elasticsearch.es_publish_pipeline import (
     PipelineSettings,
     StateChangeType,
 )
+from tests import const
 from tests.const import MOCK_NOON_APRIL_12TH_2023
 
 
@@ -41,6 +41,20 @@ def filterer(settings: PipelineSettings):
     """Return a Pipeline.Filterer instance."""
 
     return Pipeline.Filterer(settings=settings)
+
+
+@pytest.fixture
+def freeze_time(freezer: FrozenDateTimeFactory):
+    """Freeze time so we can properly assert on payload contents."""
+
+    frozen_time = dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023)
+    if frozen_time is None:
+        msg = "Invalid date string"
+        raise ValueError(msg)
+
+    freezer.move_to(frozen_time)
+
+    return freezer
 
 
 class Test_Filterer:
@@ -247,7 +261,7 @@ class Test_Manager:
             manager._settings = mock.Mock()
             manager._settings.publish_frequency = None
 
-            # self._logger.warning("No publish frequency set. Disabling publishing.")
+            # Check for self._logger.warning("No publish frequency set. Disabling publishing.")
             manager._logger.warning = mock.Mock()
 
             await manager.async_init(mock_config_entry)
@@ -257,10 +271,10 @@ class Test_Manager:
             manager.stop()
 
         @pytest.mark.asyncio()
-        async def test_sip_queue(self, manager, freezer: FrozenDateTimeFactory):
+        async def test_sip_queue(self, manager, freeze_time: FrozenDateTimeFactory):
             """Test the _sip_queue method of the Pipeline.Manager class."""
             # Create some sample data
-            freezer.tick()
+            freeze_time.tick()
 
             # Mock the filterer
             manager._filterer = MagicMock()
@@ -403,19 +417,6 @@ class Test_Poller:
         yield poller
 
         poller.stop()
-
-    @pytest.fixture
-    def freeze_time(self, freezer: FrozenDateTimeFactory):
-        """Freeze time so we can properly assert on payload contents."""
-
-        frozen_time = dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023)
-        if frozen_time is None:
-            msg = "Invalid date string"
-            raise ValueError(msg)
-
-        freezer.move_to(frozen_time)
-
-        return freezer
 
     class Test_Unit_Tests:
         """Run the unit tests of the Poller class."""
@@ -729,7 +730,7 @@ class Test_Formatter:
 
         def test_init(self, formatter):
             """Test the initialization of the Formatter."""
-            assert formatter._entity_details is not None
+            assert formatter._extended_entity_details is not None
             assert formatter._static_fields == {}
 
         @pytest.mark.asyncio()
@@ -809,69 +810,6 @@ class Test_Formatter:
                 "transformed_attributes": transformed_attributes,
             } == snapshot
 
-        def test_state_to_entity_details(self, formatter):
-            """Test converting a state to entity details."""
-
-            entity_details = MagicMock(spec=FullEntityDetails)
-
-            entity_details.capabilities = {"state_class": "measurement"}
-
-            entity_details.entity = MagicMock()
-            entity_details.entity.name = "Living Room Light"
-            entity_details.entity.original_name = "Living Room Light"
-            entity_details.entity.unit_of_measurement = "lm"
-            entity_details.entity.platform = "light"
-            entity_details.entity.device_class = "light"
-            entity_details.entity_labels = ["light"]
-
-            entity_details.entity_area = MagicMock()
-            entity_details.entity_area.id = "living_room"
-            entity_details.entity_area.name = "Living Room"
-
-            entity_details.entity_floor = MagicMock()
-            entity_details.entity_floor.floor_id = "1"
-            entity_details.entity_floor.name = "First Floor"
-
-            entity_details.device = MagicMock()
-            entity_details.device.name = "Living Room Light"
-            entity_details.device.name_by_user = "Living Room Light"
-            entity_details.device_labels = ["light"]
-
-            entity_details.device_area = MagicMock()
-            entity_details.device_area.id = "living_room"
-            entity_details.device_area.name = "Living Room"
-
-            entity_details.device_floor = MagicMock()
-            entity_details.device_floor.floor_id = "1"
-            entity_details.device_floor.name = "First Floor"
-
-            with patch.object(formatter._entity_details, "async_get", return_value=entity_details):
-                state = State("light.living_room", "on", {"brightness": 255})
-
-                entity_details = formatter._state_to_entity_details(state)
-
-                assert entity_details == {
-                    "area.floor.id": "1",
-                    "area.floor.name": "First Floor",
-                    "area.id": "living_room",
-                    "area.name": "Living Room",
-                    "friendly_name": "living room",
-                    "labels": "['light']",
-                    "name": "Living Room Light",
-                    "platform": "light",
-                    "unit_of_measurement": "lm",
-                    "device": {
-                        "area.floor.id": "1",
-                        "area.floor.name": "First Floor",
-                        "area.id": "living_room",
-                        "area.name": "Living Room",
-                        "class": "light",
-                        "friendly_name": "Living Room Light",
-                        "labels": "['light']",
-                        "name": "Living Room Light",
-                    },
-                }
-
         def test_state_to_coerced_value_string(self, formatter):
             """Test converting a state to a coerced value."""
             state = State("light.living_room", "tomato")
@@ -916,35 +854,98 @@ class Test_Formatter:
                 "time": "12:00:00",
             }
 
-        def test_state_to_datastream(self, formatter):
+        def test_domain_to_datastream(self, formatter):
             """Test converting a state to a datastream."""
-            state = State("light.living_room", "on")
-            datastream = formatter.state_to_datastream(state)
+            datastream = formatter.domain_to_datastream(const.TEST_ENTITY_DOMAIN)
             assert datastream == {
-                "type": "metrics",
-                "dataset": "homeassistant.light",
-                "namespace": "default",
+                "datastream.type": "metrics",
+                "datastream.dataset": f"homeassistant.{const.TEST_ENTITY_DOMAIN}",
+                "datastream.namespace": "default",
             }
 
     class Test_Integration_Tests:
         """Run the integration tests of the Formatter class."""
 
-        def test_format(self, formatter):
-            """Test formatting a state change document."""
+        def test_state_to_extended_details(
+            self,
+            formatter,
+            entity,
+            entity_object_id,
+            entity_area_name,
+            entity_floor_name,
+            entity_labels,
+            device_name,
+            device_area_name,
+            device_floor_name,
+            device_labels,
+            snapshot,
+        ):
+            """Test converting a state to entity details."""
+
+            state = State(entity_id=entity.entity_id, state="on", attributes={"brightness": 255})
+
+            entity_details = formatter._state_to_extended_details(state)
+
+            assert entity_details["hass.entity.area.name"] == entity_area_name
+            assert entity_details["hass.entity.area.floor.name"] == entity_floor_name
+            assert entity_details["hass.entity.device.labels"] == device_labels
+            assert entity_details["hass.entity.device.name"] == device_name
+            assert entity_details["hass.entity.labels"] == entity_labels
+            assert entity_details["hass.entity.platform"] == entity.platform
+
+            assert entity_details == snapshot
+
+        @pytest.mark.parametrize(
+            const.TEST_DEVICE_COMBINATION_FIELD_NAMES,
+            const.TEST_DEVICE_COMBINATIONS,
+            ids=const.TEST_DEVICE_COMBINATION_IDS,
+        )
+        @pytest.mark.parametrize(
+            const.TEST_ENTITY_COMBINATION_FIELD_NAMES,
+            const.TEST_ENTITY_COMBINATIONS,
+            ids=const.TEST_ENTITY_COMBINATION_IDS,
+        )
+        def test_format(
+            self,
+            formatter,
+            entity,
+            entity_object_id,
+            entity_area_name,
+            entity_floor_name,
+            entity_domain: str,
+            entity_labels,
+            device_name,
+            device_area_name,
+            device_floor_name,
+            device_labels,
+            freeze_time: FrozenDateTimeFactory,
+            snapshot,
+        ):
+            """Test converting a state to entity details."""
+
             time = datetime.now(tz=UTC)
-            state = State("light.living_room", "on", {"brightness": 255})
+            state = State(entity_id=entity.entity_id, state="on", attributes={"brightness": 255})
             reason = StateChangeType.STATE
+
             document = formatter.format(time, state, reason)
+
             assert document["@timestamp"] == time.isoformat()
-            assert document["event"]["action"] == "State change"
-            assert document["hass.entity"]["attributes"] == {"brightness": 255}
-            assert document["hass.entity"]["domain"] == "light"
-            assert document["hass.entity"]["id"] == "light.living_room"
-            assert document["hass.entity"]["value"] == "on"
-            assert document["hass.entity"]["valueas"] == {"boolean": True}
-            assert document["hass.entity"]["object.id"] == "living_room"
-            assert document["datastream"] == {
-                "type": "metrics",
-                "dataset": "homeassistant.light",
-                "namespace": "default",
-            }
+
+            assert document["datastream.dataset"] == f"homeassistant.{entity.domain}"
+            assert document["datastream.type"] == "metrics"
+            assert document["datastream.namespace"] == "default"
+
+            assert document["event.action"] == "State change"
+            assert document["event.kind"] == "event"
+            assert document["event.type"] == "change"
+
+            assert document["hass.entity.friendly_name"] is not None
+            assert document["hass.entity.domain"] == entity.domain
+            assert document["hass.entity.id"] is not None
+            assert document["hass.entity.object.id"] == entity_object_id
+            assert document["hass.entity.value"] == "on"
+            assert document["hass.entity.valueas"] == {"boolean": True}
+
+            assert document["datastream.namespace"] == "default"
+
+            assert document == snapshot

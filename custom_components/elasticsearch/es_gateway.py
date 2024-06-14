@@ -89,7 +89,7 @@ class ElasticsearchGateway(ABC):
         self._initialized: bool = False
 
     @log_enter_exit_debug
-    async def async_init(self, config_entry: ConfigEntry = None) -> None:
+    async def async_init(self, config_entry: ConfigEntry | None = None) -> None:
         """I/O bound init."""
 
         # if not await self.test_connection():
