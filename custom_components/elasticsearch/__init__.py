@@ -25,9 +25,11 @@ from .const import (
 )
 from .es_integration import ElasticIntegration
 
+type ElasticIntegrationConfigEntry = ConfigEntry[ElasticIntegration]
+
 
 @async_log_enter_exit_debug
-async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:  # pylint: disable=unused-argument
+async def async_migrate_entry(hass: HomeAssistant, config_entry: ElasticIntegrationConfigEntry) -> bool:  # pylint: disable=unused-argument
     """Migrate old entry."""
 
     latest_version = ElasticFlowHandler.VERSION
@@ -60,7 +62,7 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
 
 
 @async_log_enter_exit_debug
-async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+async def async_setup_entry(hass: HomeAssistant, config_entry: ElasticIntegrationConfigEntry) -> bool:
     """Set up integration via config flow."""
     init = await _async_init_integration(hass, config_entry)
 
@@ -70,7 +72,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
 
 
 @async_log_enter_exit_debug
-async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+async def async_unload_entry(hass: HomeAssistant, config_entry: ElasticIntegrationConfigEntry) -> bool:
     """Teardown integration."""
     existing_instances = hass.data.get(DOMAIN)
     if existing_instances is None:
@@ -87,13 +89,16 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
 
 
 @async_log_enter_exit_debug
-async def async_config_entry_updated(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
+async def async_config_entry_updated(
+    hass: HomeAssistant,
+    config_entry: ElasticIntegrationConfigEntry,
+) -> None:
     """Respond to config changes."""
     await _async_init_integration(hass, config_entry)
 
 
 @async_log_enter_exit_debug
-async def _async_init_integration(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+async def _async_init_integration(hass: HomeAssistant, config_entry: ElasticIntegrationConfigEntry) -> bool:
     """Initialize integration."""
     await async_unload_entry(hass=hass, config_entry=config_entry)
 
@@ -134,7 +139,7 @@ async def _async_init_integration(hass: HomeAssistant, config_entry: ConfigEntry
 
 @log_enter_exit_debug
 def migrate_data_and_options_to_version(
-    config_entry: ConfigEntry,
+    config_entry: ElasticIntegrationConfigEntry,
     desired_version: int,
 ) -> tuple[dict, dict, int]:
     """Migrate a config entry from its current version to a desired version."""

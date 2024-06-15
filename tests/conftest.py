@@ -1,5 +1,3 @@
-# type: ignore noqa: PGH003
-
 """Global fixtures for elastic integration."""
 # Fixtures allow you to replace functions with a Mock object. You can perform
 # many options via the Mock to reflect a particular behavior from the original
@@ -17,7 +15,6 @@
 # See here for more info: https://docs.pytest.org/en/latest/fixture.html (note that
 # pytest includes fixtures OOB which you can use as defined on this page)
 
-import contextlib
 from asyncio import get_running_loop
 from collections.abc import AsyncGenerator
 from contextlib import contextmanager
@@ -27,6 +24,12 @@ from unittest import mock
 from unittest.mock import patch
 
 import pytest
+from custom_components.elasticsearch.config_flow import ElasticFlowHandler
+from custom_components.elasticsearch.es_gateway import (
+    Elasticsearch7Gateway,
+    Elasticsearch8Gateway,
+    ElasticsearchGateway,
+)
 from homeassistant.core import HomeAssistant, State
 from homeassistant.helpers.area_registry import AreaEntry, AreaRegistry
 from homeassistant.helpers.device_registry import DeviceRegistry
@@ -38,37 +41,22 @@ from pytest_homeassistant_custom_component.common import (  # noqa: F401
     mock_config_flow,
     mock_integration,  # https://github.com/home-assistant/core/blob/dbd3147c9b5fa4c05bf9280133d3fa8824a9d934/tests/components/hardkernel/test_config_flow.py#L12
 )
-
-# We need to import these to make sure the fixtures are registered
 from pytest_homeassistant_custom_component.plugins import (  # noqa: F401
     aioclient_mock,
-    device_registry,
     enable_event_loop_debug,
-    entity_registry,
-    floor_registry,
-    hass,
-    hass_client,
-    issue_registry,
-    label_registry,
     skip_stop_scripts,
     snapshot,
     verify_cleanup,
 )
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
-from custom_components.elasticsearch.config_flow import ElasticFlowHandler
-from custom_components.elasticsearch.es_gateway import (
-    Elasticsearch7Gateway,
-    Elasticsearch8Gateway,
-    ElasticsearchGateway,
-)
 from tests import const
 
 pytest_plugins = "pytest_homeassistant_custom_component"
 
 
 @contextmanager
-def mock_es_aiohttp_client():
+def mock_es_aiohttp_client() -> AiohttpClientMocker:
     """Context manager to mock aiohttp client."""
     mocker = AiohttpClientMocker()
 
@@ -101,7 +89,7 @@ def auto_enable_custom_integrations(enable_custom_integrations) -> None:
 # notifications. These calls would fail without this fixture since the persistent_notification
 # integration is never loaded during a test.
 @pytest.fixture(name="skip_notifications", autouse=True)
-def skip_notifications_fixture():
+def skip_notifications_fixture() -> None:
     """Skip notification calls."""
     with (
         patch("homeassistant.components.persistent_notification.async_create"),
@@ -118,7 +106,7 @@ class MockEntityState(State):
         hass: HomeAssistant,
         entity_id: str,
         state: str,
-        attributes: map | None = None,
+        attributes: dict[str, Any] | None = None,
         last_changed: datetime | None = None,
         last_updated: datetime | None = None,
         validate_entity_id: bool | None = False,
@@ -177,14 +165,14 @@ class MockEntityState(State):
         await self.hass.async_block_till_done()
 
 
-def mock_entity_state(hass: HomeAssistant) -> MockEntityState:
-    """Mock an entity state in the state machine."""
-    return MockEntityState()
+# def mock_entity_state(hass: HomeAssistant) -> MockEntityState:
+#     """Mock an entity state in the state machine."""
+#     return MockEntityState()
 
 
-def mock_gateway(hass: HomeAssistant) -> Elasticsearch7Gateway:
-    """Mock an Elasticsearch gateway."""
-    return mock.create_autospec(Elasticsearch7Gateway)
+# def mock_gateway(hass: HomeAssistant) -> Elasticsearch7Gateway:
+#     """Mock an Elasticsearch gateway."""
+#     return mock.create_autospec(Elasticsearch7Gateway)
 
 
 @pytest.fixture(params=[Elasticsearch7Gateway, Elasticsearch8Gateway])
@@ -255,11 +243,10 @@ async def initialized_gateway(
             "_get_cluster_info",
             return_value=mock_cluster_info,
         ),
-        # Conditionally mock the connection test
-        mock.patch.object(uninitialized_gateway, "test_connection", return_value=True)
-        if mock_test_connection
-        else contextlib.nullcontext(),
     ):
+        if mock_test_connection:
+            mock.patch.object(uninitialized_gateway, "test_connection", return_value=True)
+
         await uninitialized_gateway.async_init(config_entry=mock_config_entry)
 
     initialized_gateway = uninitialized_gateway
@@ -295,13 +282,13 @@ async def uninitialized_integration(
 
 
 @pytest.fixture
-async def data() -> AsyncGenerator[dict, Any]:
+async def data() -> dict:
     """Return a mock data dict."""
     return const.TEST_CONFIG_ENTRY_BASE_DATA
 
 
 @pytest.fixture
-async def options() -> AsyncGenerator[dict, Any]:
+async def options() -> dict:
     """Return a mock options dict."""
     return const.TEST_CONFIG_ENTRY_BASE_OPTIONS
 
@@ -399,7 +386,7 @@ async def device_area(
     if device_area_name is None:
         return None
 
-    extra_settings = {}
+    extra_settings: dict[str, Any] = {}
     if device_floor is not None:
         extra_settings["floor_id"] = device_floor.floor_id
 

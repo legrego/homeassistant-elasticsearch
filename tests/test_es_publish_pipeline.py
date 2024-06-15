@@ -6,11 +6,6 @@ from unittest import mock
 from unittest.mock import MagicMock, patch
 
 import pytest
-from freezegun.api import FrozenDateTimeFactory
-from homeassistant.core import Event, HomeAssistant, State
-from homeassistant.util import dt as dt_util
-from syrupy.assertion import SnapshotAssertion
-
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 from custom_components.elasticsearch.es_publish_pipeline import (
     EventQueue,
@@ -18,6 +13,11 @@ from custom_components.elasticsearch.es_publish_pipeline import (
     PipelineSettings,
     StateChangeType,
 )
+from freezegun.api import FrozenDateTimeFactory
+from homeassistant.core import Event, HomeAssistant, State
+from homeassistant.util import dt as dt_util
+from syrupy.assertion import SnapshotAssertion
+
 from tests import const
 from tests.const import MOCK_NOON_APRIL_12TH_2023
 
@@ -37,13 +37,6 @@ def settings():
 
 
 @pytest.fixture
-def filterer(settings: PipelineSettings):
-    """Return a Pipeline.Filterer instance."""
-
-    return Pipeline.Filterer(settings=settings)
-
-
-@pytest.fixture
 def freeze_time(freezer: FrozenDateTimeFactory):
     """Freeze time so we can properly assert on payload contents."""
 
@@ -60,98 +53,119 @@ def freeze_time(freezer: FrozenDateTimeFactory):
 class Test_Filterer:
     """Test the Pipeline.Filterer class."""
 
+    # Overwrite the pipeline filterer fixture to override the entity exists filter
+
+    @pytest.fixture
+    def filterer(self, hass: HomeAssistant, settings: PipelineSettings):
+        """Return a Pipeline.Filterer instance."""
+
+        return Pipeline.Filterer(hass=hass, settings=settings)
+
+    @pytest.fixture
+    def patched_filterer(self, hass: HomeAssistant, filterer):
+        """Return a Pipeline.Filterer instance."""
+        filterer._passes_entity_exists_filter = MagicMock(return_value=True)
+
+        return filterer
+
     class Test_Integration_Tests:
         """Run the integration tests of the Filterer class."""
 
-        async def test_passes_filter_with_allowed_change_type_and_included_entity(self, filterer):
+        async def test_passes_filter_with_allowed_change_type_and_included_entity(self, patched_filterer):
             """Test that a state change with an allowed change type and included entity passes the filter."""
             state = State("light.living_room", "on")
-            filterer._change_detection_type = [StateChangeType.STATE.name]
-            filterer._included_entities = ["light.living_room"]
-            assert filterer.passes_filter(state, StateChangeType.STATE) is True
+            patched_filterer._change_detection_type = [StateChangeType.STATE.name]
+            patched_filterer._included_entities = ["light.living_room"]
+            assert patched_filterer.passes_filter(state, StateChangeType.STATE) is True
 
-        async def test_passes_filter_with_allowed_change_type_and_excluded_entity(self, filterer):
+        async def test_passes_filter_with_allowed_change_type_and_excluded_entity(self, patched_filterer):
             """Test that a state change with an allowed change type and excluded entity does not pass the filter."""
             state = State("light.living_room", "on")
-            filterer._change_detection_type = [StateChangeType.STATE.name]
-            filterer._excluded_entities = ["light.living_room"]
-            assert filterer.passes_filter(state, StateChangeType.STATE) is False
+            patched_filterer._change_detection_type = [StateChangeType.STATE.name]
+            patched_filterer._excluded_entities = ["light.living_room"]
+            assert patched_filterer.passes_filter(state, StateChangeType.STATE) is False
 
-        async def test_passes_filter_with_disallowed_change_type(self, filterer):
+        async def test_passes_filter_with_disallowed_change_type(self, patched_filterer):
             """Test that a state change with an allowed change type and excluded entity does not pass the filter."""
             state = State("light.living_room", "on")
-            filterer._change_detection_type = [StateChangeType.NO_CHANGE.name]
-            filterer._excluded_entities = ["light.living_room"]
-            assert filterer.passes_filter(state, StateChangeType.STATE) is False
+            patched_filterer._change_detection_type = [StateChangeType.NO_CHANGE.name]
+            patched_filterer._excluded_entities = ["light.living_room"]
+            assert patched_filterer.passes_filter(state, StateChangeType.STATE) is False
 
     class Test_Unit_Tests:
         """Run the unit tests of the Filterer class."""
 
-        async def test_passes_entity_domain_filters_included_entity(self, filterer):
+        async def test_passes_entity_domain_filters_included_entity(self, patched_filterer):
             """Test that a state change for an included entity passes the filter."""
             state = State("light.living_room", "on")
-            filterer._included_entities = ["light.living_room"]
-            assert filterer._passes_entity_domain_filters(state.entity_id, state.domain) is True
+            patched_filterer._included_entities = ["light.living_room"]
+            assert patched_filterer._passes_entity_domain_filters(state.entity_id, state.domain) is True
 
-        async def test_passes_entity_domain_filters_not_included_entity(self, filterer):
+        async def test_passes_entity_domain_filters_not_included_entity(self, patched_filterer):
             """Test that a state change for an entity that doesnt match any filters."""
             state = State("switch.living_room", "on")
-            filterer._included_entities = ["light.living_room"]
-            assert filterer._passes_entity_domain_filters(state.entity_id, state.domain) is False
+            patched_filterer._included_entities = ["light.living_room"]
+            assert patched_filterer._passes_entity_domain_filters(state.entity_id, state.domain) is False
 
-        async def test_passes_entity_domain_filters_excluded_entity(self, filterer):
+        async def test_passes_entity_domain_filters_excluded_entity(self, patched_filterer):
             """Test that a state change for an excluded entity does not pass the filter."""
             state = State("light.living_room", "on")
-            filterer._excluded_entities = ["light.living_room"]
-            assert filterer._passes_entity_domain_filters(state.entity_id, state.domain) is False
+            patched_filterer._excluded_entities = ["light.living_room"]
+            assert patched_filterer._passes_entity_domain_filters(state.entity_id, state.domain) is False
 
-        async def test_passes_entity_domain_filters_included_domain(self, filterer):
+        async def test_passes_entity_domain_filters_included_domain(self, patched_filterer):
             """Test that a state change for an included domain passes the filter."""
             state = State("light.living_room", "on")
-            filterer._included_domains = ["light"]
-            assert filterer._passes_entity_domain_filters(state.entity_id, state.domain) is True
+            patched_filterer._included_domains = ["light"]
+            assert patched_filterer._passes_entity_domain_filters(state.entity_id, state.domain) is True
 
-        async def test_passes_entity_domain_filters_excluded_domain(self, filterer):
+        async def test_passes_entity_domain_filters_excluded_domain(self, patched_filterer):
             """Test that a state change for an excluded domain does not pass the filter."""
             state = State("light.living_room", "on")
-            filterer._excluded_domains = ["light"]
-            assert filterer._passes_entity_domain_filters(state.entity_id, state.domain) is False
+            patched_filterer._excluded_domains = ["light"]
+            assert patched_filterer._passes_entity_domain_filters(state.entity_id, state.domain) is False
 
-        async def test_passes_entity_domain_filters_no_included_entities_or_domains(self, filterer):
+        async def test_passes_entity_domain_filters_no_included_entities_or_domains(self, patched_filterer):
             """Test that a state change passes the filter when no included entities or domains are specified."""
             state = State("light.living_room", "on")
-            assert filterer._passes_entity_domain_filters(state.entity_id, state.domain) is True
+            assert patched_filterer._passes_entity_domain_filters(state.entity_id, state.domain) is True
 
         async def test_passes_entity_domain_filters_no_included_entities_or_domains_with_excluded_entity(
             self,
-            filterer,
+            patched_filterer,
         ):
             """Test that a state change does not pass the filter when no included entities or domains are specified and the entity is excluded."""
             state = State("light.living_room", "on")
-            filterer._excluded_entities = ["light.living_room"]
-            assert filterer._passes_entity_domain_filters(state.entity_id, state.domain) is False
+            patched_filterer._excluded_entities = ["light.living_room"]
+            assert patched_filterer._passes_entity_domain_filters(state.entity_id, state.domain) is False
 
         async def test_passes_entity_domain_filters_no_included_entities_or_domains_with_excluded_domain(
             self,
-            filterer,
+            patched_filterer,
         ):
             """Test that a state change does not pass the filter when no included entities or domains are specified and the domain is excluded."""
             state = State("light.living_room", "on")
-            filterer._excluded_domains = ["light"]
-            assert filterer._passes_entity_domain_filters(state.entity_id, state.domain) is False
+            patched_filterer._excluded_domains = ["light"]
+            assert patched_filterer._passes_entity_domain_filters(state.entity_id, state.domain) is False
 
-        async def test_passes_change_detection_type_filter_true(self, filterer):
+        async def test_passes_change_detection_type_filter_true(self, patched_filterer):
             """Test that a state change with an allowed change type passes the filter."""
-            filterer._change_detection_type = [StateChangeType.STATE.name]
-            assert filterer._passes_change_detection_type_filter(StateChangeType.STATE) is True
+            patched_filterer._change_detection_type = [StateChangeType.STATE.name]
+            assert patched_filterer._passes_change_detection_type_filter(StateChangeType.STATE) is True
 
-            filterer._change_detection_type = [StateChangeType.NO_CHANGE.name]
-            assert filterer._passes_change_detection_type_filter(StateChangeType.NO_CHANGE) is True
+            patched_filterer._change_detection_type = [StateChangeType.NO_CHANGE.name]
+            assert patched_filterer._passes_change_detection_type_filter(StateChangeType.NO_CHANGE) is True
 
-        async def test_passes_change_detection_type_filter_false(self, filterer):
+        async def test_passes_change_detection_type_filter_false(self, patched_filterer):
             """Test that a state change with an allowed change type passes the filter."""
-            filterer._change_detection_type = [StateChangeType.ATTRIBUTE.name]
-            assert filterer._passes_change_detection_type_filter(StateChangeType.STATE) is False
+            patched_filterer._change_detection_type = [StateChangeType.ATTRIBUTE.name]
+            assert patched_filterer._passes_change_detection_type_filter(StateChangeType.STATE) is False
+
+        async def test_passes_entity_exists_filter(self, entity_registry, filterer):
+            """Test that a state change for an entity that exists passes the filter."""
+            state = State("light.living_room", "on")
+            assert filterer._passes_entity_exists_filter(state.entity_id) is False
+            # now add to the entity registry and check again
 
 
 class Test_Manager:
@@ -270,7 +284,7 @@ class Test_Manager:
 
             manager.stop()
 
-        @pytest.mark.asyncio()
+        @pytest.mark.asyncio
         async def test_sip_queue(self, manager, freeze_time: FrozenDateTimeFactory):
             """Test the _sip_queue method of the Pipeline.Manager class."""
             # Create some sample data
@@ -308,7 +322,7 @@ class Test_Manager:
             # Assert that the result contains the formatted data
             assert result == [{"timestamp": timestamp, "state": state, "reason": reason}]
 
-        @pytest.mark.asyncio()
+        @pytest.mark.asyncio
         async def test_sip_queue_filtered(self, manager, freezer: FrozenDateTimeFactory):
             """Test the _sip_queue method of the Pipeline.Manager class."""
             # Create some sample data
@@ -346,7 +360,7 @@ class Test_Manager:
             # Assert that the result contains the formatted data
             assert result == []
 
-        @pytest.mark.asyncio()
+        @pytest.mark.asyncio
         async def test_publish(self, hass, manager):
             """Test the _publish method of the Pipeline.Manager class."""
             # Create a mock sip_queue generator
@@ -427,7 +441,7 @@ class Test_Poller:
             assert poller._queue is not None
             assert poller._cancel_poller is None
 
-        @pytest.mark.asyncio()
+        @pytest.mark.asyncio
         async def test_async_init(self, poller: Pipeline.Poller):
             """Test the async initialization of the Poller."""
 
@@ -471,7 +485,7 @@ class Test_Poller:
     class Test_Integration_Tests:
         """Run the integration tests of the Poller class."""
 
-        @pytest.mark.asyncio()
+        @pytest.mark.asyncio
         @pytest.mark.parametrize(
             "states",
             [
@@ -551,7 +565,7 @@ class Test_Listener:
     class Test_Unit_Tests:
         """Run the unit tests of the Listener class."""
 
-        @pytest.mark.asyncio()
+        @pytest.mark.asyncio
         async def test_listener_init(self, hass, queue):
             """Test the initialization of the Listener."""
             listener = Pipeline.Listener(hass=hass, queue=queue)
@@ -560,7 +574,7 @@ class Test_Listener:
             assert listener._queue == queue
             assert listener._cancel_listener is None
 
-        @pytest.mark.asyncio()
+        @pytest.mark.asyncio
         async def test_listener_async_init(self, hass, listener):
             """Test the async initialization of the Listener."""
             with (
@@ -574,7 +588,7 @@ class Test_Listener:
                     listener._handle_event,
                 )
 
-        @pytest.mark.asyncio()
+        @pytest.mark.asyncio
         async def test_listener_handle_event(self, hass, listener, event):
             """Test handling a state_changed event."""
             listener._queue.put = MagicMock()
@@ -585,7 +599,7 @@ class Test_Listener:
                 (event.time_fired, event.data["new_state"], StateChangeType.STATE),
             )
 
-        @pytest.mark.asyncio()
+        @pytest.mark.asyncio
         async def test_listener_handle_event_empty_new_state(self, hass, listener, event):
             """Test handling a state_changed event."""
             listener._queue.put = MagicMock()
@@ -659,16 +673,14 @@ class Test_Publisher:
 
             assert publisher._format_datastream_name.cache_info().hits == 1
 
-        @pytest.mark.asyncio()
+        @pytest.mark.asyncio
         async def test_add_action_and_meta_data(self, publisher):
             """Test converting document to elasticsearch action."""
 
             doc: dict = {
-                "datastream": {
-                    "type": "metrics",
-                    "dataset": "homeassistant.light",
-                    "namespace": "default",
-                },
+                "datastream.type": "metrics",
+                "datastream.dataset": "homeassistant.light",
+                "datastream.namespace": "default",
                 "event": {
                     "action": "State change",
                 },
@@ -694,7 +706,7 @@ class Test_Publisher:
 
             assert action is not None
 
-        @pytest.mark.asyncio()
+        @pytest.mark.asyncio
         async def test_publish(self, publisher, mock_gateway):
             """Test publishing a document."""
 
@@ -733,7 +745,7 @@ class Test_Formatter:
             assert formatter._extended_entity_details is not None
             assert formatter._static_fields == {}
 
-        @pytest.mark.asyncio()
+        @pytest.mark.asyncio
         async def test_async_init(self, formatter):
             """Test the async initialization of the Formatter."""
 

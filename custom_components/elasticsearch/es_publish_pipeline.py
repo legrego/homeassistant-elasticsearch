@@ -26,6 +26,7 @@ from homeassistant.const import (
     STATE_UNLOCKED,
 )
 from homeassistant.core import Event, EventStateChangedData, HomeAssistant, State, callback
+from homeassistant.helpers import entity_registry
 from homeassistant.helpers import state as state_helper
 from homeassistant.util import dt as dt_util
 from homeassistant.util.logging import async_create_catching_coro
@@ -142,7 +143,11 @@ class Pipeline:
                 settings=self._settings,
             )
 
-            self._filterer: Pipeline.Filterer = Pipeline.Filterer(log=self._logger, settings=settings)
+            self._filterer: Pipeline.Filterer = Pipeline.Filterer(
+                hass=self._hass,
+                log=self._logger,
+                settings=settings,
+            )
             self._formatter: Pipeline.Formatter = Pipeline.Formatter(hass=self._hass, log=self._logger)
             self._publisher: Pipeline.Publisher = Pipeline.Publisher(
                 hass=self._hass,
@@ -202,7 +207,13 @@ class Pipeline:
                 if not self._filterer.passes_filter(state, reason):
                     continue
 
-                yield self._formatter.format(timestamp, state, reason)
+                try:
+                    yield self._formatter.format(timestamp, state, reason)
+                except Exception:
+                    self._logger.exception(
+                        "Error formatting document for entity [%s]. Skipping document.",
+                        state.entity_id,
+                    )
 
         async def _publish(self) -> None:
             """Publish the documents to Elasticsearch."""
@@ -228,6 +239,7 @@ class Pipeline:
 
         def __init__(
             self,
+            hass: HomeAssistant,
             settings: PipelineSettings,
             log: Logger = BASE_LOGGER,
         ) -> None:
@@ -239,6 +251,8 @@ class Pipeline:
             self._excluded_domains: list[str] = settings.excluded_domains
             self._excluded_entities: list[str] = settings.excluded_entities
             self._change_detection_type: list[StateChangeType] = settings.change_detection_type
+
+            self._entity_registry = entity_registry.async_get(hass)
 
         @log_enter_exit_debug
         async def async_init(self) -> None:
@@ -253,6 +267,9 @@ class Pipeline:
             if not self._passes_entity_domain_filters(entity_id=state.entity_id, domain=state.domain):
                 return False
 
+            if not self._passes_entity_exists_filter(entity_id=state.entity_id):
+                return False
+
             return True
 
         def _passes_change_detection_type_filter(self, reason: StateChangeType) -> bool:
@@ -263,6 +280,20 @@ class Pipeline:
                 return True
 
             return reason.value in self._change_detection_type
+
+        def _passes_entity_exists_filter(self, entity_id: str) -> bool:
+            """Check the entity registry and make sure we can see the entity before proceeding."""
+
+            entity = self._entity_registry.async_get(entity_id)
+
+            if entity is None:
+                self._logger.debug(
+                    "Entity [%s] not found in registry. Skipping document.",
+                    entity_id,
+                )
+                return False
+
+            return True
 
         def _passes_entity_domain_filters(self, entity_id: str, domain: str) -> bool:
             """Determine if a state change should be published."""
@@ -666,9 +697,9 @@ class Pipeline:
                 yield {
                     "_op_type": "create",
                     "_index": self._format_datastream_name(
-                        datastream_type=document["datastream"]["type"],
-                        datastream_dataset=document["datastream"]["dataset"],
-                        datastream_namespace=document["datastream"]["namespace"],
+                        datastream_type=document["datastream.type"],
+                        datastream_dataset=document["datastream.dataset"],
+                        datastream_namespace=document["datastream.namespace"],
                     ),
                     "_source": document,
                 }

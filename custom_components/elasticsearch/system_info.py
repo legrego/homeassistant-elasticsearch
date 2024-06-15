@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 from homeassistant.components.hassio.coordinator import get_host_info
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.system_info import async_get_system_info
 
 from .logger import LOGGER
 
@@ -29,7 +30,7 @@ class SystemInfo:
 
     async def _get_system_info(self) -> dict:
         try:
-            return await self._hass.helpers.system_info.async_get_system_info()
+            return await async_get_system_info(self._hass)
         except Exception as err:
             msg = "Unknown error retrieving system info"
             LOGGER.exception(msg)

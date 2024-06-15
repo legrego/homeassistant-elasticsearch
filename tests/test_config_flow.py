@@ -5,6 +5,11 @@ from unittest.mock import MagicMock
 
 import aiohttp
 import pytest
+from custom_components.elasticsearch.const import (
+    CONF_INDEX_MODE,
+    DOMAIN,
+    INDEX_MODE_DATASTREAM,
+)
 from homeassistant import data_entry_flow
 from homeassistant.config_entries import SOURCE_REAUTH, SOURCE_USER
 from homeassistant.const import (
@@ -19,11 +24,6 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 from syrupy.assertion import SnapshotAssertion
 
-from custom_components.elasticsearch.const import (
-    CONF_INDEX_MODE,
-    DOMAIN,
-    INDEX_MODE_DATASTREAM,
-)
 from tests.conftest import mock_config_entry
 from tests.test_util.es_startup_mocks import mock_es_initialization
 
@@ -83,7 +83,7 @@ class Test_Integration_Tests:
             "options": result["options"],
         }
 
-    @pytest.mark.asyncio()
+    @pytest.mark.asyncio
     async def test_no_auth_flow_unsupported_version(
         self,
         hass: HomeAssistant,
@@ -114,7 +114,7 @@ class Test_Integration_Tests:
         assert result["step_id"] == "no_auth"
         assert result["errors"]["base"] == "unsupported_version"
 
-    @pytest.mark.asyncio()
+    @pytest.mark.asyncio
     async def test_no_auth_flow_with_tls_error(
         self,
         hass: HomeAssistant,
@@ -155,7 +155,7 @@ class Test_Integration_Tests:
         assert result["step_id"] == "no_auth"
         assert "data" not in result
 
-    @pytest.mark.asyncio()
+    @pytest.mark.asyncio
     async def test_flow_fails_es_unavailable(
         self,
         hass: HomeAssistant,
@@ -186,7 +186,7 @@ class Test_Integration_Tests:
         assert result["step_id"] == "no_auth"
         assert "data" not in result
 
-    @pytest.mark.asyncio()
+    @pytest.mark.asyncio
     async def test_flow_fails_unauthorized(self, hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker):
         """Test user config flow fails if connection cannot be established."""
         result = await hass.config_entries.flow.async_init(
@@ -213,7 +213,7 @@ class Test_Integration_Tests:
         assert result["step_id"] == "no_auth"
         assert "data" not in result
 
-    @pytest.mark.asyncio()
+    @pytest.mark.asyncio
     async def test_basic_auth_flow(
         self,
         hass: HomeAssistant,
@@ -263,7 +263,7 @@ class Test_Integration_Tests:
             "options": result["options"],
         } == snapshot
 
-    @pytest.mark.asyncio()
+    @pytest.mark.asyncio
     async def test_basic_auth_flow_unauthorized(
         self,
         hass: HomeAssistant,
@@ -305,7 +305,7 @@ class Test_Integration_Tests:
         assert result["step_id"] == "basic_auth"
         assert "data" not in result
 
-    @pytest.mark.asyncio()
+    @pytest.mark.asyncio
     async def test_basic_auth_flow_missing_index_privilege(
         self,
         hass: HomeAssistant,
@@ -347,7 +347,7 @@ class Test_Integration_Tests:
         assert result["step_id"] == "basic_auth"
         assert "data" not in result
 
-    @pytest.mark.asyncio()
+    @pytest.mark.asyncio
     async def test_reauth_flow_basic(self, hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker):
         """Test reauth flow with basic credentials."""
         es_url = "http://test_reauth_flow_basic:9200"
@@ -436,7 +436,7 @@ class Test_Integration_Tests:
             "verify_ssl": True,
         }
 
-    @pytest.mark.asyncio()
+    @pytest.mark.asyncio
     async def test_reauth_flow_api_key(self, hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker):
         """Test reauth flow with API Key credentials."""
         es_url = "http://test_reauth_flow_api_key:9200"
@@ -519,7 +519,7 @@ class Test_Integration_Tests:
             "verify_ssl": True,
         }
 
-    @pytest.mark.asyncio()
+    @pytest.mark.asyncio
     async def test_api_key_flow(self, hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker):
         """Test user config flow with minimum fields."""
 
@@ -561,7 +561,7 @@ class Test_Integration_Tests:
         assert result["data"]["verify_ssl"] is True
         assert "health_sensor_enabled" not in result["data"]
 
-    @pytest.mark.asyncio()
+    @pytest.mark.asyncio
     async def test_api_key_flow_fails_unauthorized(
         self,
         hass: HomeAssistant,
@@ -601,7 +601,7 @@ class Test_Integration_Tests:
         assert result["step_id"] == "api_key"
         assert "data" not in result
 
-    @pytest.mark.asyncio()
+    @pytest.mark.asyncio
     async def test_modern_options_flow(
         self,
         hass: HomeAssistant,

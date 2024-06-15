@@ -1,7 +1,6 @@
 """Tests for the Elasticsearch integration diagnostics."""
 
 import pytest
-
 from custom_components.elasticsearch.diagnostics import async_get_config_entry_diagnostics
 
 

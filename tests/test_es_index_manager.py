@@ -3,10 +3,9 @@
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from homeassistant.core import HomeAssistant
-
 from custom_components.elasticsearch.es_gateway import Elasticsearch8Gateway
 from custom_components.elasticsearch.es_index_manager import IndexManager
+from homeassistant.core import HomeAssistant
 
 
 @pytest.fixture
@@ -40,7 +39,7 @@ class Test_IndexManager_Sync:
         assert index_manager._gateway == mock_gateway
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 class Test_IndexManager_Async:
     """Test the IndexManager class async methods."""
 
@@ -64,7 +63,7 @@ class Test_IndexManager_Async:
 
         assert result
 
-    @pytest.mark.asyncio()
+    @pytest.mark.asyncio
     async def test_create_index_template(self, index_manager, snapshot):
         """Test the _create_index_template method."""
         # Mock the _needs_index_template method to return False

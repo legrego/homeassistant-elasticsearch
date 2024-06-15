@@ -6,12 +6,6 @@ from unittest import mock
 from unittest.mock import AsyncMock
 
 import pytest
-from elasticsearch7 import TransportError as TransportError7
-from elasticsearch7._async.client import AsyncElasticsearch as AsyncElasticsearch7
-from homeassistant.core import HomeAssistant
-from pytest_homeassistant_custom_component.common import MockConfigEntry
-from syrupy.assertion import SnapshotAssertion
-
 from custom_components.elasticsearch.errors import (
     ESIntegrationException,
     InsufficientPrivileges,
@@ -23,6 +17,12 @@ from custom_components.elasticsearch.es_gateway import (
     Elasticsearch8Gateway,
     ElasticsearchGateway,
 )
+from elasticsearch7 import TransportError as TransportError7
+from elasticsearch7._async.client import AsyncElasticsearch as AsyncElasticsearch7
+from homeassistant.core import HomeAssistant
+from pytest_homeassistant_custom_component.common import MockConfigEntry
+from syrupy.assertion import SnapshotAssertion
+
 from tests.const import (
     CLUSTER_INFO_7DOT11_RESPONSE_BODY,
     CLUSTER_INFO_7DOT17_RESPONSE_BODY,
@@ -60,7 +60,7 @@ class Test_Elasticsearch_Gateway:
         for task in config_entry._background_tasks:
             task.cancel("Tests finished")
 
-    @pytest.mark.asyncio()
+    @pytest.mark.asyncio
     async def test_async_init(
         self,
         hass: HomeAssistant,
@@ -86,7 +86,7 @@ class Test_Elasticsearch_Gateway:
 
         await uninitialized_gateway.stop()
 
-    @pytest.mark.asyncio()
+    @pytest.mark.asyncio
     async def test_async_init_with_monitor(
         self,
         hass: HomeAssistant,
@@ -115,7 +115,7 @@ class Test_Elasticsearch_Gateway:
 
         await initialized_gateway.stop()
 
-    @pytest.mark.asyncio()
+    @pytest.mark.asyncio
     @pytest.mark.parametrize("minimum_privileges", [{}])
     async def test_async_init_with_insufficient_privileges(
         self,
@@ -141,7 +141,7 @@ class Test_Elasticsearch_Gateway:
         assert uninitialized_gateway._capabilities is not None
         assert uninitialized_gateway._cancel_connection_monitor is None
 
-    @pytest.mark.asyncio()
+    @pytest.mark.asyncio
     async def test_async_init_successful(self, hass: HomeAssistant, mock_config_entry, uninitialized_gateway):
         """Test async_init when initialization is successful."""
         uninitialized_gateway._get_cluster_info = AsyncMock(return_value={"version": {"number": "7.11"}})
@@ -156,7 +156,7 @@ class Test_Elasticsearch_Gateway:
         assert initialized_gateway._capabilities is not None
         assert initialized_gateway._cancel_connection_monitor is None
 
-    @pytest.mark.asyncio()
+    @pytest.mark.asyncio
     async def test_async_init_connection_test_failed(
         self,
         hass: HomeAssistant,
@@ -175,7 +175,7 @@ class Test_Elasticsearch_Gateway:
         assert uninitialized_gateway._capabilities == {}
         assert uninitialized_gateway._cancel_connection_monitor is None
 
-    @pytest.mark.asyncio()
+    @pytest.mark.asyncio
     async def test_async_init_unsupported_version(self, hass: HomeAssistant, mock_config_entry):
         """Test async_init when the Elasticsearch version is unsupported."""
         gateway = Elasticsearch7Gateway(hass=hass, url="http://localhost:9200")
@@ -190,7 +190,7 @@ class Test_Elasticsearch_Gateway:
         assert not gateway._capabilities[CAPABILITIES.SUPPORTED]
         assert gateway._cancel_connection_monitor is None
 
-    @pytest.mark.asyncio()
+    @pytest.mark.asyncio
     async def test_async_init_insufficient_privileges(self, hass: HomeAssistant, mock_config_entry):
         """Test async_init when there are insufficient privileges."""
         gateway = Elasticsearch7Gateway(hass=hass, url="http://localhost:9200", minimum_privileges="test")
@@ -205,7 +205,7 @@ class Test_Elasticsearch_Gateway:
         assert gateway._capabilities is not None
         assert gateway._cancel_connection_monitor is None
 
-    @pytest.mark.asyncio()
+    @pytest.mark.asyncio
     @pytest.mark.parametrize("mock_test_connection", [False])
     async def test_test_success(
         self,

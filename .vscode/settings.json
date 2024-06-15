@@ -29,10 +29,17 @@
     "github.copilot.editor.enableAutoCompletions": true,
     "python.analysis.autoSearchPaths": false,
     "python.analysis.inlayHints.pytestParameters": true,
-    "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.typeCheckingMode": "standard",
     "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
     "python.experiments.optInto": [
         "pythonTestAdapter"
+    ],
+    "python.analysis.ignore": [
+        "**/.venv/**",
+        "**/.cache/**",
+        "**/.git/**",
+        "**/.cache/**",
+        "**/.**"
     ],
     "python.formatting.blackPath": "/usr/local/py-utils/bin/black",
     "python.terminal.activateEnvInCurrentTerminal": true,
@@ -49,5 +56,8 @@
         "--config=./.ruff.toml"
     ],
     "ruff.showNotifications": "onWarning",
-    "python.analysis.autoImportCompletions": true
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.autoFormatStrings": true,
+    "python.analysis.inlayHints.functionReturnTypes": true,
+    "python.analysis.inlayHints.variableTypes": true,
 }

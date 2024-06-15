@@ -2,19 +2,16 @@
 """Test Entity Details."""
 
 import pytest
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers import (
-    device_registry,
-)
-from homeassistant.helpers.area_registry import AreaEntry
-from homeassistant.helpers.device_registry import DeviceEntry
-from homeassistant.helpers.floor_registry import FloorEntry
-
 from custom_components.elasticsearch.const import CONST_ENTITY_DETAILS_TO_ES_DOCUMENT_KEYS as KEYS_TO_KEEP
 from custom_components.elasticsearch.entity_details import (
     ExtendedDeviceEntry,
     ExtendedRegistryEntry,
 )
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.area_registry import AreaEntry
+from homeassistant.helpers.device_registry import DeviceEntry, DeviceRegistry
+from homeassistant.helpers.floor_registry import FloorEntry
+
 from tests import const
 
 # Helper functions for the snapshot
@@ -134,11 +131,12 @@ class Test_ExtendedRegistryEntry:
         hass: HomeAssistant,
         device: DeviceEntry,
         extended_registry_entry: ExtendedRegistryEntry,
+        device_registry: DeviceRegistry,
     ):
         """Test the device property getter fails if the device_id on the entity doesnt exist."""
 
         # Remove the device from the registry
-        device_registry.async_get(hass).async_remove_device(device_id=device.id)
+        device_registry.async_remove_device(device_id=device.id)
 
         assert hasattr(extended_registry_entry, "device")
 

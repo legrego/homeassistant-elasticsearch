@@ -4,12 +4,13 @@
 		"vscode": {
 			"extensions": [
 				"charliermarsh.ruff",
-				"github.vscode-pull-request-github",
-				"ms-python.debugpy",
-				"ms-python.python",
+				"esbenp.prettier-vscode",
+				"GitHub.copilot",
+				"GitHub.vscode-pull-request-github",
+				"ms-python.pylint",
 				"ms-python.vscode-pylance",
 				"redhat.vscode-yaml",
-				"ryanluker.vscode-coverage-gutters",
+				"visualstudioexptteam.vscodeintellicode"
 			]
 		}
 	},

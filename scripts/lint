@@ -4,5 +4,5 @@ set -e
 
 cd "$(dirname "$0")/.."
 
-ruff format . --config .ruff.toml
-ruff check . --fix --config .ruff.toml
+ruff format .
+ruff check . --fix

@@ -5,7 +5,6 @@ import time
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from custom_components.elasticsearch.logger import LOGGER as BASE_LOGGER
 from custom_components.elasticsearch.loop import LoopHandler
 
@@ -49,7 +48,7 @@ class Test_loop_handler_sync:
         assert loop_handler._should_keep_running.call_count == 1
 
 
-@pytest.mark.asyncio()
+@pytest.mark.asyncio
 class Test_loop_handler:
     """Test the LoopHandler class."""
 

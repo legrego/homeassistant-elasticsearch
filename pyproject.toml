@@ -17,6 +17,8 @@ colorlog = "==6.8.2"
 homeassistant = "==2024.6.0b8"
 ruff = ">=0.0.291"
 pip = ">=21.0,<24.1"
+pydantic = ">=1.10.0"
+mypy-dev = ">=1.11.0a6"
 
 [tool.poetry.group.docs.dependencies]
 mkdocs-material = ">=9.5.17"
@@ -35,12 +37,15 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.isort]
-multi_line_output = 3
-include_trailing_comma = true
-force_grid_wrap = 0
-use_parentheses = true
+combine-as-imports = true
 ensure_newline_before_comments = true
+force_grid_wrap = 0
+force-sort-within-sections = true
+include_trailing_comma = true
 line_length = 110
+multi_line_output = 3
+split-on-trailing-comma = false
+use_parentheses = true
 
 [tool.coverage.html]
 directory = "test_results/cov_html"
@@ -61,3 +66,14 @@ addopts = [
 filterwarnings = ["ignore:ssl.PROTOCOL_TLS is deprecated:DeprecationWarning"]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+norecursedirs = [
+    ".git",
+    ".venv",
+    ".cache",
+    ".pytest_cache",
+    ".ruff_cache",
+]
+
+
+[tool.pylint.FORMAT]
+expected-line-ending-format = "LF"
