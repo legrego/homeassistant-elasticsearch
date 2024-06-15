@@ -30,6 +30,24 @@ class Test_loop_handler_sync:
         assert mock_func.call_count >= 1
         assert loop_handler._should_keep_running.call_count >= 2
 
+    def test_loop_handler_start_exception(self):
+        """Test starting the loop handler."""
+
+        # Create a mock function that throws an exception
+        mock_func = MagicMock(side_effect=Exception("Test exception"))
+
+        # Create a LoopHandler instance with a frequency of 1 second
+        loop_handler = LoopHandler(mock_func, "test_loop", 1)
+        loop_handler._should_keep_running = MagicMock(side_effect=[True, False])
+
+        # Start the loop handler
+        with pytest.raises(Exception):  # noqa: B017
+            asyncio.run(loop_handler.start())
+
+        # Assert that the mock function was called at least once
+        assert mock_func.call_count >= 1
+        assert loop_handler._should_keep_running.call_count == 1
+
 
 @pytest.mark.asyncio()
 class Test_loop_handler:

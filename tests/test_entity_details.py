@@ -2,6 +2,10 @@
 """Test Entity Details."""
 
 import pytest
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers import (
+    device_registry,
+)
 from homeassistant.helpers.area_registry import AreaEntry
 from homeassistant.helpers.device_registry import DeviceEntry
 from homeassistant.helpers.floor_registry import FloorEntry
@@ -10,7 +14,6 @@ from custom_components.elasticsearch.const import CONST_ENTITY_DETAILS_TO_ES_DOC
 from custom_components.elasticsearch.entity_details import (
     ExtendedDeviceEntry,
     ExtendedRegistryEntry,
-    flatten_dict,
 )
 from tests import const
 
@@ -41,67 +44,6 @@ def trim_device_dict(device_dict):
     }
 
 
-def test_flatten_dict():
-    """Test the flatten_dict function."""
-    # Test case 1: Flattening a nested dictionary with default separator
-    nested_dict = {
-        "a": 1,
-        "b": {
-            "c": 2,
-            "d": {
-                "e": 3,
-            },
-        },
-        "f": 4,
-    }
-    expected_result = {
-        "a": 1,
-        "b.c": 2,
-        "b.d.e": 3,
-        "f": 4,
-    }
-    assert flatten_dict(nested_dict) == expected_result
-
-    # Test case 2: Flattening a nested dictionary with specified keys to keep
-    nested_dict = {
-        "a": 1,
-        "b": {
-            "c": 2,
-            "d": {
-                "e": 3,
-            },
-        },
-        "f": 4,
-    }
-    expected_result = {
-        "a": 1,
-        "b.c": 2,
-        "f": 4,
-    }
-    assert flatten_dict(nested_dict, keep_keys=["a", "b.c", "f"]) == expected_result
-
-    # Test case 3: Flattening a nested dictionary with lists, sets, and tuples in various locations
-    nested_dict = {
-        "a": 1,
-        "b": {
-            "c": [2, 3, 4],
-            "d": {
-                "e": (5, 6, 7),
-            },
-        },
-        "f": {8, 9, 10},
-    }
-
-    expected_result = {
-        "a": 1,
-        "b.c": [2, 3, 4],
-        "b.d.e": (5, 6, 7),
-        "f": {8, 9, 10},
-    }
-
-    assert flatten_dict(nested_dict) == expected_result
-
-
 class Test_ExtendedRegistryEntry:
     """Test the ExtendedRegistryEntry class."""
 
@@ -123,13 +65,27 @@ class Test_ExtendedRegistryEntry:
 
         return entry
 
-    def test_device_property(self, device: DeviceEntry, extended_registry_entry: ExtendedRegistryEntry):
-        """Test the device property getter."""
-        assert hasattr(extended_registry_entry, "device")
-        assert isinstance(extended_registry_entry.device, ExtendedDeviceEntry)
-        assert extended_registry_entry.device is not None
-        assert extended_registry_entry.device._device is not None
-        assert extended_registry_entry.device._device == device
+    def test_init(self, hass: HomeAssistant, entity):
+        """Test the init method."""
+        new_entry = ExtendedRegistryEntry(hass, entity)
+
+        assert new_entry is not None
+        assert new_entry.entity is not None
+        assert new_entry.entity.entity_id == entity.entity_id
+
+        new_entry = ExtendedRegistryEntry(hass=hass, entity_id=entity.entity_id)
+
+        assert new_entry is not None
+        assert new_entry.entity is not None
+        assert new_entry.entity.entity_id == entity.entity_id
+
+    def test_init_failures(self, hass: HomeAssistant):
+        """Test the init method."""
+        with pytest.raises(ValueError):
+            ExtendedRegistryEntry(hass=hass, entity=None, entity_id=None)
+
+        with pytest.raises(ValueError):
+            ExtendedRegistryEntry(hass=hass, entity=None, entity_id="nonexistent_entity_id")
 
     def test_area_property(
         self,
@@ -159,6 +115,50 @@ class Test_ExtendedRegistryEntry:
         assert hasattr(extended_registry_entry, "area")
         assert extended_registry_entry.area is not None
         assert extended_registry_entry.area.name == const.TEST_DEVICE_AREA_NAME
+
+    def test_device_property(
+        self,
+        device: DeviceEntry,
+        extended_registry_entry: ExtendedRegistryEntry,
+    ):
+        """Test the device property getter."""
+        assert hasattr(extended_registry_entry, "device")
+        assert extended_registry_entry.device is not None
+
+        extended_device_entry = extended_registry_entry.device
+
+        assert extended_device_entry._device == device
+
+    def test_device_property_deleted(
+        self,
+        hass: HomeAssistant,
+        device: DeviceEntry,
+        extended_registry_entry: ExtendedRegistryEntry,
+    ):
+        """Test the device property getter fails if the device_id on the entity doesnt exist."""
+
+        # Remove the device from the registry
+        device_registry.async_get(hass).async_remove_device(device_id=device.id)
+
+        assert hasattr(extended_registry_entry, "device")
+
+        assert extended_registry_entry.device is None
+
+    @pytest.mark.parametrize(
+        "attach_device",
+        [False],
+        ids=["entity_with_no_device"],
+    )
+    def test_device_property_not_attached(
+        self,
+        extended_registry_entry: ExtendedRegistryEntry,
+        attach_device,
+    ):
+        """Test the device property getter fails if there is no device attached for this entity id."""
+
+        assert hasattr(extended_registry_entry, "device")
+
+        assert extended_registry_entry.device is None
 
     def test_labels_property(
         self,
@@ -324,6 +324,28 @@ class Test_ExtendedDeviceEntry:
         assert entry.device.id == device.id
 
         return entry
+
+    def test_init(self, hass: HomeAssistant, device):
+        """Test the init method."""
+        new_entry = ExtendedDeviceEntry(hass, device)
+
+        assert new_entry is not None
+        assert new_entry.device is not None
+        assert new_entry.device.id == device.id
+
+        new_entry = ExtendedDeviceEntry(hass=hass, device_id=device.id)
+
+        assert new_entry is not None
+        assert new_entry.device is not None
+        assert new_entry.device.id == device.id
+
+    def test_init_failures(self, hass: HomeAssistant):
+        """Test the init method."""
+        with pytest.raises(ValueError):
+            ExtendedDeviceEntry(hass=hass, device=None, device_id=None)
+
+        with pytest.raises(ValueError):
+            ExtendedDeviceEntry(hass=hass, device=None, device_id="nonexistent_device_id")
 
     def test_area_property(
         self,

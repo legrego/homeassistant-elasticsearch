@@ -63,21 +63,21 @@ class Test_Filterer:
     class Test_Integration_Tests:
         """Run the integration tests of the Filterer class."""
 
-        def test_passes_filter_with_allowed_change_type_and_included_entity(self, filterer):
+        async def test_passes_filter_with_allowed_change_type_and_included_entity(self, filterer):
             """Test that a state change with an allowed change type and included entity passes the filter."""
             state = State("light.living_room", "on")
             filterer._change_detection_type = [StateChangeType.STATE.name]
             filterer._included_entities = ["light.living_room"]
             assert filterer.passes_filter(state, StateChangeType.STATE) is True
 
-        def test_passes_filter_with_allowed_change_type_and_excluded_entity(self, filterer):
+        async def test_passes_filter_with_allowed_change_type_and_excluded_entity(self, filterer):
             """Test that a state change with an allowed change type and excluded entity does not pass the filter."""
             state = State("light.living_room", "on")
             filterer._change_detection_type = [StateChangeType.STATE.name]
             filterer._excluded_entities = ["light.living_room"]
             assert filterer.passes_filter(state, StateChangeType.STATE) is False
 
-        def test_passes_filter_with_disallowed_change_type(self, filterer):
+        async def test_passes_filter_with_disallowed_change_type(self, filterer):
             """Test that a state change with an allowed change type and excluded entity does not pass the filter."""
             state = State("light.living_room", "on")
             filterer._change_detection_type = [StateChangeType.NO_CHANGE.name]
@@ -87,42 +87,42 @@ class Test_Filterer:
     class Test_Unit_Tests:
         """Run the unit tests of the Filterer class."""
 
-        def test_passes_entity_domain_filters_included_entity(self, filterer):
+        async def test_passes_entity_domain_filters_included_entity(self, filterer):
             """Test that a state change for an included entity passes the filter."""
             state = State("light.living_room", "on")
             filterer._included_entities = ["light.living_room"]
             assert filterer._passes_entity_domain_filters(state.entity_id, state.domain) is True
 
-        def test_passes_entity_domain_filters_not_included_entity(self, filterer):
+        async def test_passes_entity_domain_filters_not_included_entity(self, filterer):
             """Test that a state change for an entity that doesnt match any filters."""
             state = State("switch.living_room", "on")
             filterer._included_entities = ["light.living_room"]
             assert filterer._passes_entity_domain_filters(state.entity_id, state.domain) is False
 
-        def test_passes_entity_domain_filters_excluded_entity(self, filterer):
+        async def test_passes_entity_domain_filters_excluded_entity(self, filterer):
             """Test that a state change for an excluded entity does not pass the filter."""
             state = State("light.living_room", "on")
             filterer._excluded_entities = ["light.living_room"]
             assert filterer._passes_entity_domain_filters(state.entity_id, state.domain) is False
 
-        def test_passes_entity_domain_filters_included_domain(self, filterer):
+        async def test_passes_entity_domain_filters_included_domain(self, filterer):
             """Test that a state change for an included domain passes the filter."""
             state = State("light.living_room", "on")
             filterer._included_domains = ["light"]
             assert filterer._passes_entity_domain_filters(state.entity_id, state.domain) is True
 
-        def test_passes_entity_domain_filters_excluded_domain(self, filterer):
+        async def test_passes_entity_domain_filters_excluded_domain(self, filterer):
             """Test that a state change for an excluded domain does not pass the filter."""
             state = State("light.living_room", "on")
             filterer._excluded_domains = ["light"]
             assert filterer._passes_entity_domain_filters(state.entity_id, state.domain) is False
 
-        def test_passes_entity_domain_filters_no_included_entities_or_domains(self, filterer):
+        async def test_passes_entity_domain_filters_no_included_entities_or_domains(self, filterer):
             """Test that a state change passes the filter when no included entities or domains are specified."""
             state = State("light.living_room", "on")
             assert filterer._passes_entity_domain_filters(state.entity_id, state.domain) is True
 
-        def test_passes_entity_domain_filters_no_included_entities_or_domains_with_excluded_entity(
+        async def test_passes_entity_domain_filters_no_included_entities_or_domains_with_excluded_entity(
             self,
             filterer,
         ):
@@ -131,7 +131,7 @@ class Test_Filterer:
             filterer._excluded_entities = ["light.living_room"]
             assert filterer._passes_entity_domain_filters(state.entity_id, state.domain) is False
 
-        def test_passes_entity_domain_filters_no_included_entities_or_domains_with_excluded_domain(
+        async def test_passes_entity_domain_filters_no_included_entities_or_domains_with_excluded_domain(
             self,
             filterer,
         ):
@@ -140,7 +140,7 @@ class Test_Filterer:
             filterer._excluded_domains = ["light"]
             assert filterer._passes_entity_domain_filters(state.entity_id, state.domain) is False
 
-        def test_passes_change_detection_type_filter_true(self, filterer):
+        async def test_passes_change_detection_type_filter_true(self, filterer):
             """Test that a state change with an allowed change type passes the filter."""
             filterer._change_detection_type = [StateChangeType.STATE.name]
             assert filterer._passes_change_detection_type_filter(StateChangeType.STATE) is True
@@ -148,7 +148,7 @@ class Test_Filterer:
             filterer._change_detection_type = [StateChangeType.NO_CHANGE.name]
             assert filterer._passes_change_detection_type_filter(StateChangeType.NO_CHANGE) is True
 
-        def test_passes_change_detection_type_filter_false(self, filterer):
+        async def test_passes_change_detection_type_filter_false(self, filterer):
             """Test that a state change with an allowed change type passes the filter."""
             filterer._change_detection_type = [StateChangeType.ATTRIBUTE.name]
             assert filterer._passes_change_detection_type_filter(StateChangeType.STATE) is False
@@ -175,7 +175,7 @@ class Test_Manager:
     class Test_Unit_Tests:
         """Run the unit tests of the Manager class."""
 
-        def test_init(self, manager, snapshot: SnapshotAssertion):
+        async def test_init(self, manager, snapshot: SnapshotAssertion):
             """Test the initialization of the manager."""
 
             assert manager._filterer is not None
@@ -383,7 +383,7 @@ class Test_Manager:
                     },
                 )
 
-        def test_stop(self, manager):
+        async def test_stop(self, manager):
             """Test stopping the manager."""
 
             with (
@@ -397,7 +397,7 @@ class Test_Manager:
                 poller_stop.assert_called_once()
                 publisher_stop.assert_called_once()
 
-        def test_del(self, manager):
+        async def test_del(self, manager):
             """Test cleaning up the manager."""
             with patch.object(manager, "stop") as manager_stop:
                 manager.stop()
@@ -421,7 +421,7 @@ class Test_Poller:
     class Test_Unit_Tests:
         """Run the unit tests of the Poller class."""
 
-        def test_init(self, poller: Pipeline.Poller):
+        async def test_init(self, poller: Pipeline.Poller):
             """Test the initialization of the Poller."""
             assert poller._hass is not None
             assert poller._queue is not None
@@ -461,7 +461,7 @@ class Test_Poller:
                 poller.stop()
                 cancel_poller.cancel.assert_called_once()
 
-        def test_cleanup(self, poller: Pipeline.Poller):
+        async def test_cleanup(self, poller: Pipeline.Poller):
             """Test cleaning up the poller."""
 
             with patch.object(poller, "stop") as stop:
@@ -596,7 +596,7 @@ class Test_Listener:
 
             listener._queue.put.assert_not_called()
 
-        def test_listener_stop(self, listener):
+        async def test_listener_stop(self, listener):
             """Test stopping the Listener."""
 
             with patch.object(listener, "_cancel_listener") as cancel_listener:
@@ -604,7 +604,7 @@ class Test_Listener:
 
                 cancel_listener.assert_called_once()
 
-        def test_listener_cleanup(self, listener):
+        async def test_listener_cleanup(self, listener):
             """Test cleaning up the Listener."""
             with patch.object(listener, "_cancel_listener") as cancel_listener:
                 listener.__del__()
@@ -637,7 +637,7 @@ class Test_Publisher:
     class Test_Unit_Tests:
         """Run the unit tests of the Publisher class."""
 
-        def test_format_datastream_name(self, publisher):
+        async def test_format_datastream_name(self, publisher):
             """Test formatting a datastream name."""
             datastream_type = "metrics"
             dataset = "homeassistant.light"
@@ -728,7 +728,7 @@ class Test_Formatter:
     class Test_Unit_Tests:
         """Run the unit tests of the Formatter class."""
 
-        def test_init(self, formatter):
+        async def test_init(self, formatter):
             """Test the initialization of the Formatter."""
             assert formatter._extended_entity_details is not None
             assert formatter._static_fields == {}
@@ -750,13 +750,13 @@ class Test_Formatter:
 
             assert formatter._static_fields == static_fields
 
-        def test_state_to_attributes(self, formatter):
+        async def test_state_to_attributes(self, formatter):
             """Test converting a state to attributes."""
             state = State("light.living_room", "on", {"brightness": 255, "color_temp": 4000})
             attributes = formatter._state_to_attributes(state)
             assert attributes == {"brightness": 255, "color_temp": 4000}
 
-        def test_state_to_attributes_skip(self, formatter):
+        async def test_state_to_attributes_skip(self, formatter):
             """Test converting a state to attributes."""
 
             class CustomAttributeClass:
@@ -777,7 +777,7 @@ class Test_Formatter:
             attributes = formatter._state_to_attributes(state)
             assert attributes == {"brightness": 255, "color_temp": 4000}
 
-        def test_state_to_attributes_duplicate_sanitize(self, formatter):
+        async def test_state_to_attributes_duplicate_sanitize(self, formatter):
             """Test converting a state to attributes."""
             # Patch the logger and make sure we print a debug message
 
@@ -791,7 +791,7 @@ class Test_Formatter:
                 assert attributes == {"brightness": 255, "color_temp": 4000}
                 warning.assert_called_once()
 
-        def test_state_to_attributes_objects(self, formatter, snapshot: SnapshotAssertion):
+        async def test_state_to_attributes_objects(self, formatter, snapshot: SnapshotAssertion):
             """Test converting a state to attributes."""
             # Test attributes that are dicts, sets, and lists
             orig_attributes = {
@@ -810,13 +810,13 @@ class Test_Formatter:
                 "transformed_attributes": transformed_attributes,
             } == snapshot
 
-        def test_state_to_coerced_value_string(self, formatter):
+        async def test_state_to_coerced_value_string(self, formatter):
             """Test converting a state to a coerced value."""
             state = State("light.living_room", "tomato")
             coerced_value = formatter.state_to_coerced_value(state)
             assert coerced_value == {"string": "tomato"}
 
-        def test_state_to_coerced_value_boolean(self, formatter):
+        async def test_state_to_coerced_value_boolean(self, formatter):
             """Test converting a state to a coerced value."""
             state = State("binary_sensor.motion", "on")
             coerced_value = formatter.state_to_coerced_value(state)
@@ -826,13 +826,13 @@ class Test_Formatter:
             coerced_value = formatter.state_to_coerced_value(state)
             assert coerced_value == {"boolean": False}
 
-        def test_state_to_coerced_value_float(self, formatter):
+        async def test_state_to_coerced_value_float(self, formatter):
             """Test converting a state to a coerced value."""
             state = State("sensor.temperature", "25.5")
             coerced_value = formatter.state_to_coerced_value(state)
             assert coerced_value == {"float": 25.5}
 
-        def test_state_to_coerced_value_float_fail(self, formatter):
+        async def test_state_to_coerced_value_float_fail(self, formatter):
             """Test converting a state to a coerced value."""
             # set state to infinity
             state = State("sensor.temperature", str(float("inf")))
@@ -844,7 +844,7 @@ class Test_Formatter:
             coerced_value = formatter.state_to_coerced_value(state)
             assert coerced_value == {"string": "nan"}
 
-        def test_state_to_coerced_value_datetime(self, formatter):
+        async def test_state_to_coerced_value_datetime(self, formatter):
             """Test converting a state to a coerced value."""
             state = State("sensor.last_updated", "2023-04-12T12:00:00Z")
             coerced_value = formatter.state_to_coerced_value(state)
@@ -854,7 +854,7 @@ class Test_Formatter:
                 "time": "12:00:00",
             }
 
-        def test_domain_to_datastream(self, formatter):
+        async def test_domain_to_datastream(self, formatter):
             """Test converting a state to a datastream."""
             datastream = formatter.domain_to_datastream(const.TEST_ENTITY_DOMAIN)
             assert datastream == {
@@ -866,7 +866,7 @@ class Test_Formatter:
     class Test_Integration_Tests:
         """Run the integration tests of the Formatter class."""
 
-        def test_state_to_extended_details(
+        async def test_state_to_extended_details(
             self,
             formatter,
             entity,
@@ -895,6 +895,18 @@ class Test_Formatter:
 
             assert entity_details == snapshot
 
+        async def test_state_to_extended_details_exception(
+            self,
+            formatter,
+            snapshot,
+        ):
+            """Test converting a state to entity details."""
+
+            state = State(entity_id="tomato.pancakes", state="on", attributes={"brightness": 255})
+
+            with pytest.raises(ValueError):
+                formatter._state_to_extended_details(state)
+
         @pytest.mark.parametrize(
             const.TEST_DEVICE_COMBINATION_FIELD_NAMES,
             const.TEST_DEVICE_COMBINATIONS,
@@ -905,7 +917,7 @@ class Test_Formatter:
             const.TEST_ENTITY_COMBINATIONS,
             ids=const.TEST_ENTITY_COMBINATION_IDS,
         )
-        def test_format(
+        async def test_format(
             self,
             formatter,
             entity,
@@ -947,5 +959,43 @@ class Test_Formatter:
             assert document["hass.entity.valueas"] == {"boolean": True}
 
             assert document["datastream.namespace"] == "default"
+
+            assert document == snapshot
+
+        @pytest.mark.parametrize(
+            "reason_type",
+            [
+                StateChangeType.STATE,
+                StateChangeType.ATTRIBUTE,
+                StateChangeType.NO_CHANGE,
+            ],
+            ids=[
+                "state",
+                "attribute",
+                "no_change",
+            ],
+        )
+        async def test_format_reason_types(
+            self,
+            formatter,
+            entity,
+            reason_type: StateChangeType,
+            freeze_time: FrozenDateTimeFactory,
+            snapshot,
+        ):
+            """Test converting a state to entity details."""
+
+            time = datetime.now(tz=UTC)
+            state = State(entity_id=entity.entity_id, state="on", attributes={"brightness": 255})
+            reason = reason_type
+
+            document = formatter.format(time, state, reason)
+
+            assert document["event.action"] == reason_type.to_publish_reason()
+            assert document["event.kind"] == "event"
+            if reason_type == StateChangeType.NO_CHANGE:
+                assert document["event.type"] == "info"
+            else:
+                assert document["event.type"] == "change"
 
             assert document == snapshot

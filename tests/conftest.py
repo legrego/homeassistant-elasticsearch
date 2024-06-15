@@ -540,6 +540,12 @@ async def entity_area(
 
 
 @pytest.fixture
+async def attach_device():
+    """Return whether to attach a device to an entity."""
+    return True
+
+
+@pytest.fixture
 async def entity(
     mock_config_entry: MockConfigEntry,
     entity_registry: EntityRegistry,
@@ -550,7 +556,7 @@ async def entity(
     entity_labels: list[str],
     entity_platform: str,
     device,
-    attach_device: bool = True,
+    attach_device: bool,
 ):
     """Mock an entity."""
     entity_registry.async_get_or_create(
@@ -559,6 +565,7 @@ async def entity(
         unique_id=entity_id,
         suggested_object_id=entity_object_id,
         platform=entity_platform,
+        original_device_class=const.TEST_ENTITY_DEVICE_CLASS,
     )
 
     if entity_labels is not None and len(entity_labels) > 0:

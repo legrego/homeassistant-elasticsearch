@@ -14,31 +14,7 @@ from homeassistant.helpers.device_registry import DeviceEntry
 from homeassistant.helpers.entity_registry import RegistryEntry
 
 from .logger import LOGGER as BASE_LOGGER
-
-
-def flatten_dict(d: dict, parent_key: str = "", sep: str = ".", keep_keys: list[str] | None = None) -> dict:
-    """Flatten an n-level nested dictionary using periods."""
-
-    flattened_dict = {}
-
-    for k, v in d.items():
-        new_key = f"{parent_key}{sep}{k}" if parent_key != "" else k
-
-        if isinstance(v, dict):
-            flattened_dict.update(
-                flatten_dict(
-                    d=v,
-                    parent_key=new_key,
-                    sep=sep,
-                ),
-            )
-        else:
-            flattened_dict[new_key] = v
-
-    if keep_keys is not None:
-        return {k: v for k, v in flattened_dict.items() if k in keep_keys}
-
-    return flattened_dict
+from .utils import flatten_dict
 
 
 class ExtendedDeviceEntry:
@@ -205,15 +181,12 @@ class ExtendedRegistryEntry:
             as_dict["device"] = self.device.to_dict()
 
         if self._entity.device_class or self._entity.original_device_class:
-            as_dict["device"]["device_class"] = (
-                self._entity.device_class or self._entity.original_device_class
-            )
+            as_dict["device_class"] = self._entity.device_class or self._entity.original_device_class
 
         if flatten:
             return flatten_dict(as_dict, keep_keys=keep_keys)
 
         return as_dict
-
 
 
 class ExtendedEntityDetails:
@@ -228,7 +201,7 @@ class ExtendedEntityDetails:
         self._hass: HomeAssistant = hass
         self._logger: Logger = logger
 
-    def async_get(self, entity_id: str) -> ExtendedRegistryEntry | None:
+    def async_get(self, entity_id: str) -> ExtendedRegistryEntry:
         """Retrieve entity details."""
 
         return ExtendedRegistryEntry(self._hass, entity_id=entity_id)

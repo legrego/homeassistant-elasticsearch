@@ -434,12 +434,9 @@ class Pipeline:
         def _state_to_extended_details(self, state: State) -> dict:
             """Gather entity details from the state object and return a mapped dictionary ready to be put in an elasticsearch document."""
 
-            extended_registry_entry: ExtendedRegistryEntry | None = self._extended_entity_details.async_get(
+            extended_registry_entry: ExtendedRegistryEntry = self._extended_entity_details.async_get(
                 state.entity_id,
             )
-
-            if extended_registry_entry is None:
-                raise
 
             entry_dict = extended_registry_entry.to_dict(flatten=True, keep_keys=KEYS_TO_KEEP)
 

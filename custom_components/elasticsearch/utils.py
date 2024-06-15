@@ -1,9 +1,26 @@
 """Utilities."""
 
-from homeassistant.config_entries import ConfigEntry
 
+def flatten_dict(d: dict, parent_key: str = "", sep: str = ".", keep_keys: list[str] | None = None) -> dict:
+    """Flatten an n-level nested dictionary using periods."""
 
-def get_merged_config(config_entry: ConfigEntry) -> dict:
-    """Merge config from setup & options into a single dict."""
+    flattened_dict = {}
 
-    return {**config_entry.data, **config_entry.options}
+    for k, v in d.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key != "" else k
+
+        if isinstance(v, dict):
+            flattened_dict.update(
+                flatten_dict(
+                    d=v,
+                    parent_key=new_key,
+                    sep=sep,
+                ),
+            )
+        else:
+            flattened_dict[new_key] = v
+
+    if keep_keys is not None:
+        return {k: v for k, v in flattened_dict.items() if k in keep_keys}
+
+    return flattened_dict

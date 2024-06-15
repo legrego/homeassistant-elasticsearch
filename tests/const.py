@@ -13,6 +13,7 @@ TEST_ENTITY_AREA_NAME = "entity area"
 TEST_ENTITY_FLOOR_NAME = "entity floor"
 TEST_ENTITY_LABELS = ["entity label 1", "entity label 2", "entity label 3"]
 TEST_ENTITY_PLATFORM = "entity platform"
+TEST_ENTITY_DEVICE_CLASS = "entity device class"
 
 TEST_ENTITY_OBJECT_ID_0 = "entity_object_id"
 TEST_ENTITY_OBJECT_ID_1 = "entity_object_id_1"

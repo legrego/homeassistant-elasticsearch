@@ -15,7 +15,6 @@ from custom_components.elasticsearch.const import (
     CONF_EXCLUDED_DOMAINS,
 )
 from custom_components.elasticsearch.const import DOMAIN as ELASTIC_DOMAIN
-from custom_components.elasticsearch.utils import get_merged_config
 from tests.test_util.es_startup_mocks import mock_es_initialization
 
 
@@ -101,7 +100,7 @@ async def test_update_entry(hass: HomeAssistant, es_aioclient_mock: AiohttpClien
     assert len(config_entries) == 1
 
     updated_entry = config_entries[0]
-    merged_config = get_merged_config(updated_entry)
+    merged_config = {**updated_entry.data, **updated_entry.options}
 
     expected_config = {
         "url": es_url,
