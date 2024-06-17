@@ -231,7 +231,7 @@ class Test_Manager:
                         version="1.0.0",
                         arch="x86",
                         os_name="Linux",
-                        hostname="localhost",
+                        hostname="my_es_host",
                     ),
                 )
 
@@ -246,7 +246,7 @@ class Test_Manager:
                     "agent.version": "1.0.0",
                     "host.architecture": "x86",
                     "host.os.name": "Linux",
-                    "host.hostname": "localhost",
+                    "host.hostname": "my_es_host",
                 }
 
                 manager._listener.async_init.assert_awaited_once()
@@ -258,10 +258,10 @@ class Test_Manager:
 
                 manager.stop()
 
-        async def test_async_init_no_publish(self, manager, mock_config_entry):
+        async def test_async_init_no_publish(self, manager, config_entry):
             """Test the async initialization of the manager."""
 
-            mock_config_entry.options = {}
+            config_entry.options = {}
             manager._listener = mock.Mock()
             manager._listener.async_init = mock.AsyncMock()
             manager._poller = mock.Mock()
@@ -278,7 +278,7 @@ class Test_Manager:
             # Check for self._logger.warning("No publish frequency set. Disabling publishing.")
             manager._logger.warning = mock.Mock()
 
-            await manager.async_init(mock_config_entry)
+            await manager.async_init(config_entry)
 
             manager._logger.warning.assert_called_once_with("No publish frequency set. Disabling publishing.")
 
@@ -704,7 +704,7 @@ class Test_Publisher:
                     "_source": doc,
                 }
 
-            assert action is not None
+                assert action is not None
 
         @pytest.mark.asyncio
         async def test_publish(self, publisher, mock_gateway):
@@ -753,7 +753,7 @@ class Test_Formatter:
                 "agent.version": "1.0.0",
                 "host.architecture": "x86",
                 "host.os.name": "Linux",
-                "host.hostname": "localhost",
+                "host.hostname": "my_es_host",
             }
 
             await formatter.async_init(

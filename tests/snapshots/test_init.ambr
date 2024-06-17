@@ -1,5 +1,5 @@
 # serializer version: 1
-# name: test_config_migration_v1tov2
+# name: Test_Config_Migration.test_config_migration_v1tov2
   dict({
     'after_data': dict({
       'publish_mode': 'Any changes',
@@ -17,7 +17,7 @@
     'before_version': 1,
   })
 # ---
-# name: test_config_migration_v1tov5
+# name: Test_Config_Migration.test_config_migration_v1tov5
   dict({
     'after_data': dict({
       'index_mode': 'index',
@@ -60,7 +60,7 @@
     'before_version': 1,
   })
 # ---
-# name: test_config_migration_v2tov3
+# name: Test_Config_Migration.test_config_migration_v2tov3
   dict({
     'after_data': dict({
       'url': 'http://migration-test:9200',
@@ -77,7 +77,7 @@
     'before_version': 2,
   })
 # ---
-# name: test_config_migration_v3tov4
+# name: Test_Config_Migration.test_config_migration_v3tov4
   dict({
     'after_data': dict({
       'index_mode': 'index',
@@ -96,7 +96,7 @@
     'before_version': 3,
   })
 # ---
-# name: test_config_migration_v4tov5
+# name: Test_Config_Migration.test_config_migration_v4tov5
   dict({
     'after_data': dict({
       'url': 'http://migration-test:9200',
@@ -137,7 +137,7 @@
     'before_version': 4,
   })
 # ---
-# name: test_config_migration_v5tov6
+# name: Test_Config_Migration.test_config_migration_v5tov6
   dict({
     'after_data': dict({
       'url': 'http://migration-test:9200',

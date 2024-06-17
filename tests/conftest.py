@@ -14,33 +14,24 @@
 #
 # See here for more info: https://docs.pytest.org/en/latest/fixture.html (note that
 # pytest includes fixtures OOB which you can use as defined on this page)
+from __future__ import annotations
 
 from asyncio import get_running_loop
-from collections.abc import AsyncGenerator
 from contextlib import contextmanager
-from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING
 from unittest import mock
 from unittest.mock import patch
 
 import pytest
 from custom_components.elasticsearch.config_flow import ElasticFlowHandler
+from custom_components.elasticsearch.const import DOMAIN as ES_DOMAIN
 from custom_components.elasticsearch.es_gateway import (
     Elasticsearch7Gateway,
     Elasticsearch8Gateway,
-    ElasticsearchGateway,
 )
-from homeassistant.core import HomeAssistant, State
-from homeassistant.helpers.area_registry import AreaEntry, AreaRegistry
-from homeassistant.helpers.device_registry import DeviceRegistry
-from homeassistant.helpers.entity_registry import EntityRegistry
-from homeassistant.helpers.floor_registry import FloorEntry, FloorRegistry
+from homeassistant.loader import async_get_integration
 from homeassistant.setup import async_setup_component
-from pytest_homeassistant_custom_component.common import (  # noqa: F401
-    MockConfigEntry,
-    mock_config_flow,
-    mock_integration,  # https://github.com/home-assistant/core/blob/dbd3147c9b5fa4c05bf9280133d3fa8824a9d934/tests/components/hardkernel/test_config_flow.py#L12
-)
+from pytest_homeassistant_custom_component.common import MockConfigEntry  # noqa: F401
 from pytest_homeassistant_custom_component.plugins import (  # noqa: F401
     aioclient_mock,
     enable_event_loop_debug,
@@ -54,9 +45,58 @@ from tests import const
 
 pytest_plugins = "pytest_homeassistant_custom_component"
 
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator, Awaitable, Callable, Generator
+    from typing import TYPE_CHECKING, Any
+
+    from custom_components.elasticsearch.es_gateway import (
+        ElasticsearchGateway,
+    )
+    from homeassistant.core import HomeAssistant
+    from homeassistant.helpers.area_registry import AreaEntry, AreaRegistry
+    from homeassistant.helpers.device_registry import DeviceRegistry
+    from homeassistant.helpers.entity_registry import EntityRegistry
+    from homeassistant.helpers.floor_registry import FloorEntry, FloorRegistry
+    from homeassistant.loader import ComponentProtocol, Integration
+
+
+@pytest.fixture(name="integration_setup")
+async def mock_integration_setup(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+) -> Callable[[], Awaitable[bool]]:
+    """Fixture to set up the integration."""
+    config_entry.add_to_hass(hass)
+
+    async def run() -> bool:
+        result = await hass.config_entries.async_setup(config_entry.entry_id)
+
+        await hass.async_block_till_done()
+
+        return result
+
+    return run
+
+
+@pytest.fixture
+async def running_integration(hass: HomeAssistant) -> Integration:
+    """Set up the integration for testing."""
+
+    return await async_get_integration(hass, ES_DOMAIN)
+
+
+@pytest.fixture
+async def component(hass: HomeAssistant, integration: Integration) -> ComponentProtocol:
+    """Set up the component for testing."""
+
+    return await integration.async_get_component()
+
+
+# Archived Mocks
+
 
 @contextmanager
-def mock_es_aiohttp_client() -> AiohttpClientMocker:
+def mock_es_aiohttp_client() -> Generator[AiohttpClientMocker, Any, Any]:
     """Context manager to mock aiohttp client."""
     mocker = AiohttpClientMocker()
 
@@ -89,7 +129,7 @@ def auto_enable_custom_integrations(enable_custom_integrations) -> None:
 # notifications. These calls would fail without this fixture since the persistent_notification
 # integration is never loaded during a test.
 @pytest.fixture(name="skip_notifications", autouse=True)
-def skip_notifications_fixture() -> None:
+def skip_notifications_fixture() -> Generator[Any, Any, Any]:
     """Skip notification calls."""
     with (
         patch("homeassistant.components.persistent_notification.async_create"),
@@ -98,81 +138,16 @@ def skip_notifications_fixture() -> None:
         yield
 
 
-class MockEntityState(State):
-    """Mock entity state."""
-
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        entity_id: str,
-        state: str,
-        attributes: dict[str, Any] | None = None,
-        last_changed: datetime | None = None,
-        last_updated: datetime | None = None,
-        validate_entity_id: bool | None = False,
-    ) -> None:
-        """Initialize the mock entity state."""
-        if last_changed is None:
-            last_changed = datetime.now()  # noqa: DTZ005
-
-        if last_updated is None:
-            last_updated = datetime.now()  # noqa: DTZ005
-
-        self.hass = hass
-
-        super().__init__(
-            entity_id=entity_id,
-            state=state,
-            attributes=attributes,
-            last_changed=last_changed,
-            last_updated=last_updated,
-            validate_entity_id=validate_entity_id,
-        )
-
-    def as_dict(self):
-        """Return a dict representation of the State.
-
-        Async friendly.
-
-        To be used for JSON serialization.
-        Ensures: state == State.from_dict(state.as_dict())
-        """
-        last_changed_isoformat = self.last_changed.isoformat()
-        if self.last_changed == self.last_updated:
-            last_updated_isoformat = last_changed_isoformat
-        else:
-            last_updated_isoformat = self.last_updated.isoformat()
-        return {
-            "entity_id": self.entity_id,
-            "state": self.state,
-            "attributes": self.attributes,
-            "last_changed": last_changed_isoformat,
-            "last_updated": last_updated_isoformat,
-        }
-
-    def to_publish(self):
-        """Return a dict to publish."""
-        return {
-            "entity_id": self.entity_id,
-            "new_state": self.state,
-            "attributes": self.attributes,
-        }
-
-    async def add_to_hass(self):
-        """Add the state to Homeassistant."""
-        self.hass.states.async_set(**(self.to_publish()))
-
-        await self.hass.async_block_till_done()
+@pytest.fixture
+async def url() -> str:
+    """Return a url."""
+    return const.MOCK_ELASTICSEARCH_URL
 
 
-# def mock_entity_state(hass: HomeAssistant) -> MockEntityState:
-#     """Mock an entity state in the state machine."""
-#     return MockEntityState()
-
-
-# def mock_gateway(hass: HomeAssistant) -> Elasticsearch7Gateway:
-#     """Mock an Elasticsearch gateway."""
-#     return mock.create_autospec(Elasticsearch7Gateway)
+@pytest.fixture
+async def use_connection_monitor() -> bool:
+    """Return whether to use the connection monitor."""
+    return False
 
 
 @pytest.fixture(params=[Elasticsearch7Gateway, Elasticsearch8Gateway])
@@ -180,11 +155,11 @@ async def uninitialized_gateway(
     hass: HomeAssistant,
     request: pytest.FixtureRequest,
     minimum_privileges: dict,
+    use_connection_monitor: bool,
+    url: str,
     username: str | None = None,
     password: str | None = None,
     api_key: str | None = None,
-    use_connection_monitor: bool = False,
-    url: str = "http://localhost:9200",
 ) -> AsyncGenerator[ElasticsearchGateway, Any]:
     """Return a gateway instance."""
 
@@ -223,6 +198,11 @@ async def mock_cluster_info(
     """Return a mock cluster info response body."""
     return getattr(const, f"CLUSTER_INFO_{major_version}DOT{minor_version}_RESPONSE_BODY")
 
+@pytest.fixture
+async def mock_test_connection():
+    """Return whether to mock the test_connection method."""
+    return True
+
 
 @pytest.fixture
 async def initialized_gateway(
@@ -230,24 +210,19 @@ async def initialized_gateway(
     request: pytest.FixtureRequest,
     minimum_privileges: dict,
     use_connection_monitor: bool,
-    mock_config_entry,
+    config_entry,
     mock_cluster_info: dict,
     uninitialized_gateway: ElasticsearchGateway,
-    mock_test_connection: bool = True,
-    url: str = "http://localhost:9200",
+    mock_test_connection: bool,
+    url: str,
 ):
     """Return a gateway instance."""
-    with (
-        mock.patch.object(
-            uninitialized_gateway,
-            "_get_cluster_info",
-            return_value=mock_cluster_info,
-        ),
-    ):
-        if mock_test_connection:
-            mock.patch.object(uninitialized_gateway, "test_connection", return_value=True)
+    uninitialized_gateway._get_cluster_info = mock.AsyncMock(return_value=mock_cluster_info)
 
-        await uninitialized_gateway.async_init(config_entry=mock_config_entry)
+    if mock_test_connection:
+        uninitialized_gateway.test_connection = mock.AsyncMock(return_value=True)
+
+    await uninitialized_gateway.async_init(config_entry=config_entry)
 
     initialized_gateway = uninitialized_gateway
 
@@ -256,29 +231,29 @@ async def initialized_gateway(
     # We do not need to shutdown the gateway as it is shutdown by the uninitialized_gateway fixture
 
 
-@pytest.fixture
-async def initialized_integration(
-    hass: HomeAssistant,
-    mock_config_entry: MockConfigEntry,
-) -> MockConfigEntry:
-    """Set up the integration for testing."""
-    mock_config_entry.add_to_hass(hass)
+# @pytest.fixture
+# async def initialized_integration(
+#     hass: HomeAssistant,
+#     config_entry: MockConfigEntry,
+# ) -> MockConfigEntry:
+#     """Set up the integration for testing."""
+#     config_entry.add_to_hass(hass)
 
-    await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
+#     await hass.config_entries.async_setup(config_entry.entry_id)
+#     await hass.async_block_till_done()
 
-    return mock_config_entry
+#     return config_entry
 
 
 @pytest.fixture
 async def uninitialized_integration(
     hass: HomeAssistant,
-    mock_config_entry: MockConfigEntry,
+    config_entry: MockConfigEntry,
 ) -> MockConfigEntry:
-    """Set up the IPP integration for testing."""
-    mock_config_entry.add_to_hass(hass)
+    """Set up the integration for testing."""
+    config_entry.add_to_hass(hass)
 
-    return mock_config_entry
+    return config_entry
 
 
 @pytest.fixture
@@ -292,15 +267,20 @@ async def options() -> dict:
     """Return a mock options dict."""
     return const.TEST_CONFIG_ENTRY_BASE_OPTIONS
 
+@pytest.fixture
+async def add_to_hass() -> bool:
+    """Return whether to add the config entry to hass."""
+    return True
+
 
 @pytest.fixture
-async def mock_config_entry(
+async def config_entry(
     hass: HomeAssistant,
     data: dict,
     options: dict,
+    add_to_hass: bool,
     version: int = ElasticFlowHandler.VERSION,
-    add_to_hass: bool = True,
-) -> AsyncGenerator[MockConfigEntry, Any]:
+) -> MockConfigEntry:
     """Create a mock config entry and add it to hass."""
 
     entry = MockConfigEntry(
@@ -311,13 +291,16 @@ async def mock_config_entry(
         version=version,
     )
 
+    setattr(entry, "runtime_data", None)
+
     if add_to_hass:
         entry.add_to_hass(hass)
 
-    yield entry
+    return entry
 
     # Unload the config entry
-    del hass.config_entries._entries[entry.entry_id]
+
+    # await hass.config_entries.async_unload(entry.entry_id)
 
 
 # Fixtures for a new_component
@@ -377,7 +360,7 @@ async def device_floor_name():
 
 @pytest.fixture
 async def device_area(
-    area_registry: AreaRegistry,
+    area_registry,
     device_floor: FloorEntry,
     device_area_name: str,
 ):
@@ -399,7 +382,7 @@ async def device_area(
 
 @pytest.fixture
 async def device(
-    mock_config_entry: MockConfigEntry,
+    config_entry: MockConfigEntry,
     device_registry: DeviceRegistry,
     device_name: str,
     device_area: AreaEntry,
@@ -408,8 +391,8 @@ async def device(
     """Mock a device."""
 
     device = device_registry.async_get_or_create(
-        config_entry_id=mock_config_entry.entry_id,
-        connections={},
+        config_entry_id=config_entry.entry_id,
+        connections=None,
         identifiers={
             (
                 "device_name",
@@ -425,7 +408,7 @@ async def device(
         device_registry.async_update_device(device_id=device.id, area_id=device_area.id)
 
     if device_labels is not None and len(device_labels) > 0:
-        device_registry.async_update_device(device_id=device.id, labels=device_labels)
+        device_registry.async_update_device(device_id=device.id, labels={*device_labels})
 
     return device_registry.async_get(device.id)
 
@@ -534,7 +517,7 @@ async def attach_device():
 
 @pytest.fixture
 async def entity(
-    mock_config_entry: MockConfigEntry,
+    config_entry: MockConfigEntry,
     entity_registry: EntityRegistry,
     entity_domain: str,
     entity_id: str,
@@ -547,7 +530,7 @@ async def entity(
 ):
     """Mock an entity."""
     entity_registry.async_get_or_create(
-        config_entry=mock_config_entry,
+        config_entry=config_entry,
         domain=entity_domain,
         unique_id=entity_id,
         suggested_object_id=entity_object_id,
@@ -556,7 +539,7 @@ async def entity(
     )
 
     if entity_labels is not None and len(entity_labels) > 0:
-        entity_registry.async_update_entity(entity_id=entity_id, labels=entity_labels)
+        entity_registry.async_update_entity(entity_id=entity_id, labels={*entity_labels})
 
     if entity_area is not None:
         entity_registry.async_update_entity(entity_id=entity_id, area_id=entity_area.id)

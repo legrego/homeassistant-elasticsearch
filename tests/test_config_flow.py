@@ -24,11 +24,11 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 from syrupy.assertion import SnapshotAssertion
 
-from tests.conftest import mock_config_entry
+from tests.conftest import config_entry
 from tests.test_util.es_startup_mocks import mock_es_initialization
 
 
-async def _setup_config_entry(hass: HomeAssistant, mock_entry: mock_config_entry):
+async def _setup_config_entry(hass: HomeAssistant, mock_entry: config_entry):
     mock_entry.add_to_hass(hass)
     assert await async_setup_component(hass, DOMAIN, {}) is True
     await hass.async_block_till_done()
@@ -609,7 +609,7 @@ class Test_Integration_Tests:
     ) -> None:
         """Test options config flow."""
 
-        es_url = "http://localhost:9200"
+        es_url = "http://my_es_host:9200"
 
         mock_es_initialization(es_aioclient_mock, url=es_url)
 

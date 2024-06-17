@@ -1,18 +1,28 @@
 """Support for sending event data to an Elasticsearch cluster."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from elasticsearch.config_flow import ElasticFlowHandler
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
+
+if TYPE_CHECKING:
+    from homeassistant.core import HomeAssistant
+    from homeassistant.exceptions import IntegrationError
 
 from custom_components.elasticsearch.errors import (
     AuthenticationRequired,
+    CannotConnect,
+    ESIntegrationException,
     InsufficientPrivileges,
     UnsupportedVersion,
 )
 from custom_components.elasticsearch.logger import (
     LOGGER,
     async_log_enter_exit_debug,
+    async_log_enter_exit_info,
     have_child,
     log_enter_exit_debug,
 )
@@ -27,27 +37,82 @@ from .es_integration import ElasticIntegration
 
 type ElasticIntegrationConfigEntry = ConfigEntry[ElasticIntegration]
 
+@async_log_enter_exit_info
+async def async_setup_entry(hass: HomeAssistant, config_entry: ElasticIntegrationConfigEntry) -> bool:
+    """Set up integration via config flow."""
+
+    # Create an specific logger for this config entry
+    _logger = have_child(name=config_entry.title)
+
+    _logger.info("Initializing integration for %s", config_entry.title)
+
+    try:
+        integration = ElasticIntegration(hass=hass, config_entry=config_entry, log=_logger)
+        await integration.async_init()
+    except UnsupportedVersion as err:
+        raise ConfigEntryNotReady(err) from None
+    except CannotConnect as err:
+        raise ConfigEntryNotReady(err) from None
+    except AuthenticationRequired as err:
+        raise ConfigEntryAuthFailed(err) from None
+    except Exception as err:
+        msg = "Unknown error occurred"
+        _logger.exception(msg)
+        raise ConfigEntryNotReady(err) from None
+
+    config_entry.runtime_data = integration
+
+    return True
+
+async def async_unload_entry(hass: HomeAssistant, config_entry: ElasticIntegrationConfigEntry) -> bool:
+    """Teardown integration."""
+
+    if (
+        hasattr(config_entry, "runtime_data")
+        and config_entry.runtime_data is not None
+        and isinstance(config_entry.runtime_data, ElasticIntegration)
+    ):
+        integration = config_entry.runtime_data
+
+        await integration.async_shutdown()
+    else:
+        LOGGER.warning(
+            "Called to unload config entry %s, but it doesn't appear to be loaded", config_entry.title
+        )
+
+    return True
+
+def integration_err_to_config_entry_err(err: ESIntegrationException) -> IntegrationError:
+    """Convert integration error to config entry error."""
+    if isinstance(err, UnsupportedVersion):
+        return ConfigEntryNotReady()
+    if isinstance(err, AuthenticationRequired):
+        return ConfigEntryAuthFailed()
+    if isinstance(err, InsufficientPrivileges):
+        return ConfigEntryAuthFailed()
+    if isinstance(err, CannotConnect):
+        return ConfigEntryNotReady()
+    if isinstance(err, Exception):
+        return ConfigEntryNotReady()
+    return err
+
 
 @async_log_enter_exit_debug
-async def async_migrate_entry(hass: HomeAssistant, config_entry: ElasticIntegrationConfigEntry) -> bool:  # pylint: disable=unused-argument
-    """Migrate old entry."""
-
-    latest_version = ElasticFlowHandler.VERSION
-
-    if config_entry.version == latest_version:
+async def async_migrate_entry(hass: HomeAssistant, config_entry: ElasticIntegrationConfigEntry) -> bool:
+    """Handle migration of config entry."""
+    if config_entry.version == ElasticFlowHandler.VERSION:
         return True
 
-    migrated_data, migrated_options, migrated_version = migrate_data_and_options_to_version(
-        config_entry,
-        latest_version,
-    )
-
-    if migrated_version != latest_version:
-        LOGGER.error(
+    try:
+        migrated_data, migrated_options, migrated_version = migrate_data_and_options_to_version(
+            config_entry,
+            ElasticFlowHandler.VERSION,
+        )
+    except ValueError:
+        LOGGER.exception(
             "Migration failed attempting to migrate from version %s to version %s. Ended on %s.",
             config_entry.version,
-            latest_version,
-            migrated_version,
+            ElasticFlowHandler.VERSION,
         )
         return False
 
@@ -57,82 +122,6 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ElasticIntegrat
         options=migrated_options,
         version=migrated_version,
     )
-
-    return True
-
-
-@async_log_enter_exit_debug
-async def async_setup_entry(hass: HomeAssistant, config_entry: ElasticIntegrationConfigEntry) -> bool:
-    """Set up integration via config flow."""
-    init = await _async_init_integration(hass, config_entry)
-
-    config_entry.add_update_listener(async_config_entry_updated)
-
-    return init
-
-
-@async_log_enter_exit_debug
-async def async_unload_entry(hass: HomeAssistant, config_entry: ElasticIntegrationConfigEntry) -> bool:
-    """Teardown integration."""
-    existing_instances = hass.data.get(DOMAIN)
-    if existing_instances is None:
-        return True
-
-    existing_instance = existing_instances.get(config_entry.entry_id)
-
-    if isinstance(existing_instance, ElasticIntegration):
-        LOGGER.debug("Shutting down previous integration")
-        await existing_instance.async_shutdown()
-        hass.data[DOMAIN][config_entry.entry_id] = None
-
-    return True
-
-
-@async_log_enter_exit_debug
-async def async_config_entry_updated(
-    hass: HomeAssistant,
-    config_entry: ElasticIntegrationConfigEntry,
-) -> None:
-    """Respond to config changes."""
-    await _async_init_integration(hass, config_entry)
-
-
-@async_log_enter_exit_debug
-async def _async_init_integration(hass: HomeAssistant, config_entry: ElasticIntegrationConfigEntry) -> bool:
-    """Initialize integration."""
-    await async_unload_entry(hass=hass, config_entry=config_entry)
-
-    _logger = have_child(name=config_entry.title)
-    _logger.info("Initializing integration for %s", config_entry.title)
-
-    try:
-        integration = ElasticIntegration(hass=hass, config_entry=config_entry, log=_logger)
-        await integration.async_init()
-    except UnsupportedVersion as err:
-        msg = "Unsupported Elasticsearch version detected"
-        _logger.exception(msg)
-        raise ConfigEntryNotReady(msg) from err
-    except AuthenticationRequired as err:
-        msg = "Missing or invalid credentials"
-        _logger.exception(msg)
-        raise ConfigEntryAuthFailed(msg) from err
-    except InsufficientPrivileges as err:
-        msg = "Account does not have sufficient privileges"
-        _logger.exception(msg)
-        raise ConfigEntryAuthFailed from err
-    except ConnectionError as err:
-        msg = "Error connecting to Elasticsearch"
-        _logger.exception(msg)
-        raise ConfigEntryNotReady(msg) from err
-    except Exception as err:  # pylint disable=broad-exception-caught
-        msg = "Exception during component initialization"
-        _logger.exception(msg)
-        raise ConfigEntryNotReady(msg) from err
-
-    if hass.data.get(DOMAIN) is None:
-        hass.data[DOMAIN] = {}
-
-    hass.data[DOMAIN][config_entry.entry_id] = integration
 
     return True
 

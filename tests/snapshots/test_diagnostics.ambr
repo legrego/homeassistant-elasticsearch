@@ -1,5 +1,5 @@
 # serializer version: 1
-# name: test_async_get_config_entry_diagnostics[Only URL and username]
+# name: test_async_get_config_entry_diagnostics[options0-Only URL and username]
   dict({
     'data': dict({
       'url': 'https://example.com',
@@ -9,7 +9,7 @@
     }),
   })
 # ---
-# name: test_async_get_config_entry_diagnostics[Only URL]
+# name: test_async_get_config_entry_diagnostics[options0-Only URL]
   dict({
     'data': dict({
       'url': 'https://example.com',
@@ -18,7 +18,7 @@
     }),
   })
 # ---
-# name: test_async_get_config_entry_diagnostics[URL and all auth params]
+# name: test_async_get_config_entry_diagnostics[options0-URL and all auth params]
   dict({
     'data': dict({
       'api_key': '**REDACTED**',

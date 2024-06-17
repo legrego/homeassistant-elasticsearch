@@ -14,7 +14,7 @@ def mock_gateway(hass: HomeAssistant) -> Elasticsearch8Gateway:
 
     gateway_settings: dict = {
         "hass": hass,
-        "url": "https://localhost:9200",
+        "url": "https://my_es_host:9200",
     }
 
     return Elasticsearch8Gateway(**gateway_settings)

@@ -380,10 +380,10 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             )
         except UntrustedCertificate:
             errors["base"] = "untrusted_connection"
-        except AuthenticationRequired:
-            errors = await self._handle_authentication_required(api_key)
         except InsufficientPrivileges:
             errors["base"] = "insufficient_privileges"
+        except AuthenticationRequired:
+            errors = await self._handle_authentication_required(api_key)
         except CannotConnect:
             errors["base"] = "cannot_connect"
         except UnsupportedVersion:

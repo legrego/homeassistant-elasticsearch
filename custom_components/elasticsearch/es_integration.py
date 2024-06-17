@@ -10,13 +10,13 @@ from custom_components.elasticsearch.es_publish_pipeline import Pipeline, Pipeli
 from .es_gateway import Elasticsearch7Gateway
 from .es_index_manager import IndexManager
 from .logger import LOGGER as BASE_LOGGER
-from .logger import async_log_enter_exit_debug, async_log_enter_exit_info, log_enter_exit_info
+from .logger import async_log_enter_exit_debug, log_enter_exit_debug
 
 
 class ElasticIntegration:
     """Integration for publishing entity state change events to Elasticsearch."""
 
-    @log_enter_exit_info
+    @log_enter_exit_debug
     def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry, log: Logger = BASE_LOGGER) -> None:
         """Integration initialization."""
 
@@ -54,7 +54,6 @@ class ElasticIntegration:
 
             raise
 
-    @async_log_enter_exit_info
     async def async_shutdown(self) -> bool:  # pylint disable=unused-argument
         """Async shutdown procedure."""
         try:
