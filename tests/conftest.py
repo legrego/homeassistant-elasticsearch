@@ -1,4 +1,5 @@
 """Global fixtures for elastic integration."""
+
 # Fixtures allow you to replace functions with a Mock object. You can perform
 # many options via the Mock to reflect a particular behavior from the original
 # function that you want to see without going through the function's actual logic.
@@ -198,6 +199,7 @@ async def mock_cluster_info(
     """Return a mock cluster info response body."""
     return getattr(const, f"CLUSTER_INFO_{major_version}DOT{minor_version}_RESPONSE_BODY")
 
+
 @pytest.fixture
 async def mock_test_connection():
     """Return whether to mock the test_connection method."""
@@ -266,6 +268,7 @@ async def data() -> dict:
 async def options() -> dict:
     """Return a mock options dict."""
     return const.TEST_CONFIG_ENTRY_BASE_OPTIONS
+
 
 @pytest.fixture
 async def add_to_hass() -> bool:

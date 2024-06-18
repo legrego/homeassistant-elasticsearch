@@ -22,13 +22,13 @@ class InsufficientPrivileges(AuthenticationRequired):
 class CannotConnect(ESIntegrationConnectionException):
     """Unable to connect to the cluster."""
 
+
 class UntrustedCertificate(CannotConnect):
     """Received a untrusted certificate error."""
 
 
 class ClientError(ESIntegrationConnectionException):
     """Connected with a Client Error."""
-
 
 
 class UnsupportedVersion(ESIntegrationConnectionException):

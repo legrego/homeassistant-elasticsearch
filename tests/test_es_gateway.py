@@ -245,36 +245,6 @@ class Test_Elasticsearch_Gateway:
         ):
             assert not await initialized_gateway.test_connection()
 
-    @pytest.mark.parametrize("minimum_privileges", [None, {}])
-    async def test_build_gateway_parameters(self, hass: HomeAssistant, minimum_privileges: dict | None):
-        """Test build_gateway_parameters."""
-        hass = mock.Mock()
-        config_entry = mock.Mock()
-        config_entry.data = {
-            "url": "http://my_es_host:9200",
-            "username": "admin",
-            "password": "password",
-            "verify_ssl": True,
-            "ca_certs": "/path/to/ca_certs",
-            "timeout": 30,
-        }
-        """ Test build_gateway_parameters."""
-
-        parameters = ElasticsearchGateway.build_gateway_parameters(
-            hass=hass,
-            config_entry=config_entry,
-            minimum_privileges=minimum_privileges,
-        )
-
-        assert parameters["hass"] == hass
-        assert parameters["url"] == "http://my_es_host:9200"
-        assert parameters["username"] == "admin"
-        assert parameters["password"] == "password"  # noqa: S105
-        assert parameters["verify_certs"] is True
-        assert parameters["ca_certs"] == "/path/to/ca_certs"
-        assert parameters["request_timeout"] == 30
-        assert parameters["minimum_privileges"] == minimum_privileges
-
     @pytest.mark.parametrize(
         ("name", "cluster_info"),
         [
@@ -310,7 +280,7 @@ class Test_Elasticsearch_Gateway:
             "capabilities": uninitialized_gateway._capabilities,
         } == snapshot
 
-    def test_has_capability(self, hass: HomeAssistant, uninitialized_gateway: ElasticsearchGateway):
+    async def test_has_capability(self, hass: HomeAssistant, uninitialized_gateway: ElasticsearchGateway):
         """Test has_capability."""
         uninitialized_gateway._capabilities = {
             "supported": True,
@@ -327,7 +297,7 @@ class Test_Elasticsearch_Gateway:
         assert uninitialized_gateway.has_capability("max_primary_shard_size") is False
         assert uninitialized_gateway.has_capability("invalid_capability") is False
 
-    def test_client(self, hass: HomeAssistant, uninitialized_gateway: ElasticsearchGateway):
+    async def test_client(self, hass: HomeAssistant, uninitialized_gateway: ElasticsearchGateway):
         """Test Getter for client."""
         uninitialized_gateway._client = mock.Mock(spec=AsyncElasticsearch7)
 

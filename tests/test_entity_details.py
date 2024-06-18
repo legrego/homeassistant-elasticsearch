@@ -62,7 +62,7 @@ class Test_ExtendedRegistryEntry:
 
         return entry
 
-    def test_init(self, hass: HomeAssistant, entity):
+    async def test_init(self, hass: HomeAssistant, entity):
         """Test the init method."""
         new_entry = ExtendedRegistryEntry(hass, entity)
 
@@ -76,7 +76,7 @@ class Test_ExtendedRegistryEntry:
         assert new_entry.entity is not None
         assert new_entry.entity.entity_id == entity.entity_id
 
-    def test_init_failures(self, hass: HomeAssistant):
+    async def test_init_failures(self, hass: HomeAssistant):
         """Test the init method."""
         with pytest.raises(ValueError):
             ExtendedRegistryEntry(hass=hass, entity=None, entity_id=None)
@@ -84,7 +84,7 @@ class Test_ExtendedRegistryEntry:
         with pytest.raises(ValueError):
             ExtendedRegistryEntry(hass=hass, entity=None, entity_id="nonexistent_entity_id")
 
-    def test_area_property(
+    async def test_area_property(
         self,
         entity_area: AreaEntry,
         extended_registry_entry: ExtendedRegistryEntry,
@@ -100,7 +100,7 @@ class Test_ExtendedRegistryEntry:
         [None],
         ids=["passthrough"],
     )
-    def test_entity_area_property_from_device(
+    async def test_entity_area_property_from_device(
         self,
         entity_area_name,
         entity,
@@ -113,7 +113,7 @@ class Test_ExtendedRegistryEntry:
         assert extended_registry_entry.area is not None
         assert extended_registry_entry.area.name == const.TEST_DEVICE_AREA_NAME
 
-    def test_device_property(
+    async def test_device_property(
         self,
         device: DeviceEntry,
         extended_registry_entry: ExtendedRegistryEntry,
@@ -126,7 +126,7 @@ class Test_ExtendedRegistryEntry:
 
         assert extended_device_entry._device == device
 
-    def test_device_property_deleted(
+    async def test_device_property_deleted(
         self,
         hass: HomeAssistant,
         device: DeviceEntry,
@@ -147,7 +147,7 @@ class Test_ExtendedRegistryEntry:
         [False],
         ids=["entity_with_no_device"],
     )
-    def test_device_property_not_attached(
+    async def test_device_property_not_attached(
         self,
         extended_registry_entry: ExtendedRegistryEntry,
         attach_device,
@@ -158,7 +158,7 @@ class Test_ExtendedRegistryEntry:
 
         assert extended_registry_entry.device is None
 
-    def test_labels_property(
+    async def test_labels_property(
         self,
         entity_labels: list,
         extended_registry_entry: ExtendedRegistryEntry,
@@ -173,7 +173,7 @@ class Test_ExtendedRegistryEntry:
 
         assert extended_registry_entry.labels == const.TEST_ENTITY_LABELS
 
-    def test_floor_property(
+    async def test_floor_property(
         self,
         entity_floor: FloorEntry,
         extended_registry_entry: ExtendedRegistryEntry,
@@ -185,7 +185,7 @@ class Test_ExtendedRegistryEntry:
         assert extended_registry_entry.floor == entity_floor
         assert extended_registry_entry.floor.name == const.TEST_ENTITY_FLOOR_NAME
 
-    def test_to_dict(
+    async def test_to_dict(
         self,
         extended_registry_entry: ExtendedRegistryEntry,
         snapshot,
@@ -196,7 +196,7 @@ class Test_ExtendedRegistryEntry:
 
         assert trim_entity_dict(extended_registry_entry.to_dict()) == snapshot
 
-    def test_to_flattened_dict(
+    async def test_to_flattened_dict(
         self,
         extended_registry_entry: ExtendedRegistryEntry,
         entity_area_name,
@@ -323,7 +323,7 @@ class Test_ExtendedDeviceEntry:
 
         return entry
 
-    def test_init(self, hass: HomeAssistant, device):
+    async def test_init(self, hass: HomeAssistant, device):
         """Test the init method."""
         new_entry = ExtendedDeviceEntry(hass, device)
 
@@ -337,7 +337,7 @@ class Test_ExtendedDeviceEntry:
         assert new_entry.device is not None
         assert new_entry.device.id == device.id
 
-    def test_init_failures(self, hass: HomeAssistant):
+    async def test_init_failures(self, hass: HomeAssistant):
         """Test the init method."""
         with pytest.raises(ValueError):
             ExtendedDeviceEntry(hass=hass, device=None, device_id=None)
@@ -345,7 +345,7 @@ class Test_ExtendedDeviceEntry:
         with pytest.raises(ValueError):
             ExtendedDeviceEntry(hass=hass, device=None, device_id="nonexistent_device_id")
 
-    def test_area_property(
+    async def test_area_property(
         self,
         extended_device_entry: ExtendedRegistryEntry,
     ):
@@ -354,7 +354,7 @@ class Test_ExtendedDeviceEntry:
         assert extended_device_entry.area is not None
         assert extended_device_entry.area.name == const.TEST_DEVICE_AREA_NAME
 
-    def test_floor_property(
+    async def test_floor_property(
         self,
         extended_device_entry: ExtendedRegistryEntry,
     ):
@@ -364,7 +364,7 @@ class Test_ExtendedDeviceEntry:
         assert extended_device_entry.floor is not None
         assert extended_device_entry.floor.name == const.TEST_DEVICE_FLOOR_NAME
 
-    def test_labels_property(
+    async def test_labels_property(
         self,
         device_labels,
         extended_device_entry: ExtendedRegistryEntry,
@@ -379,7 +379,7 @@ class Test_ExtendedDeviceEntry:
 
         assert extended_device_entry.labels == const.TEST_DEVICE_LABELS
 
-    def test_to_dict(
+    async def test_to_dict(
         self,
         extended_device_entry: ExtendedRegistryEntry,
         snapshot,
@@ -390,7 +390,7 @@ class Test_ExtendedDeviceEntry:
 
         assert trim_device_dict(extended_device_entry.to_dict()) == snapshot
 
-    def test_to_flattened_dict(
+    async def test_to_flattened_dict(
         self,
         extended_device_entry: ExtendedRegistryEntry,
         snapshot,

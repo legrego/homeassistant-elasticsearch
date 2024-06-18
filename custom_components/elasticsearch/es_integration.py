@@ -1,16 +1,26 @@
 """Support for sending event data to an Elasticsearch cluster."""
 
-from logging import Logger
+from __future__ import annotations
 
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from typing import TYPE_CHECKING
 
+from elasticsearch.const import ES_CHECK_PERMISSIONS_DATASTREAM
+from elasticsearch.errors import ESIntegrationException
+
+from custom_components.elasticsearch.es_datastream_manager import IndexManager
+from custom_components.elasticsearch.es_gateway import Elasticsearch7Gateway
 from custom_components.elasticsearch.es_publish_pipeline import Pipeline, PipelineSettings
+from custom_components.elasticsearch.logger import LOGGER as BASE_LOGGER
+from custom_components.elasticsearch.logger import async_log_enter_exit_debug, log_enter_exit_debug
 
-from .es_gateway import Elasticsearch7Gateway
-from .es_index_manager import IndexManager
-from .logger import LOGGER as BASE_LOGGER
-from .logger import async_log_enter_exit_debug, log_enter_exit_debug
+if TYPE_CHECKING:
+    from logging import Logger
+    from typing import Any
+
+    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.core import HomeAssistant
+
+    from custom_components.elasticsearch.es_gateway import Elasticsearch7Gateway
 
 
 class ElasticIntegration:
@@ -27,17 +37,22 @@ class ElasticIntegration:
 
         self._logger.info("Initializing integration.")
 
-        gateway_parameters = Elasticsearch7Gateway.build_gateway_parameters(
+        # Initialize our Elasticsearch Gateway
+        gateway_parameters = self.build_gateway_parameters(
             hass,
             config_entry=self._config_entry,
         )
         self._gateway = Elasticsearch7Gateway(log=self._logger, **gateway_parameters)
 
-        manager_parameters = self.build_pipeline_manager_parameters(config_entry=self._config_entry)
+        # Initialize our publishing pipeline
+        manager_parameters = self.build_pipeline_manager_parameters(
+            hass=self._hass, gateway=self._gateway, config_entry=self._config_entry
+        )
         self._pipeline_manager = Pipeline.Manager(log=self._logger, **manager_parameters)
 
-        index_parameters = self.build_index_manager_parameters()
-        self._index_manager = IndexManager(log=self._logger, **index_parameters)
+        # Initialize our Datastream manager
+        index_parameters = self.build_datastream_manager_parameters(hass=self._hass, gateway=self._gateway)
+        self._datastream_manager = IndexManager(log=self._logger, **index_parameters)
 
     @async_log_enter_exit_debug
     async def async_init(self) -> None:
@@ -45,10 +60,10 @@ class ElasticIntegration:
 
         try:
             await self._gateway.async_init(config_entry=self._config_entry)
-            await self._index_manager.async_init()
+            await self._datastream_manager.async_init()
             await self._pipeline_manager.async_init(config_entry=self._config_entry)
 
-        except Exception:
+        except ESIntegrationException:
             self._logger.exception("Error initializing integration")
             await self.async_shutdown()
 
@@ -67,13 +82,35 @@ class ElasticIntegration:
             self._logger.exception("Error stopping pipeline manager")
 
         try:
-            self._index_manager.stop()
+            self._datastream_manager.stop()
         except Exception:
             self._logger.exception("Error stopping index manager")
 
         return True
 
-    def build_pipeline_manager_parameters(self, config_entry: ConfigEntry) -> dict:
+    @classmethod
+    def build_gateway_parameters(
+        cls,
+        hass: HomeAssistant,
+        config_entry: ConfigEntry,
+        minimum_privileges: dict[str, Any] | None = ES_CHECK_PERMISSIONS_DATASTREAM,
+    ) -> dict:
+        """Build the parameters for the Elasticsearch gateway."""
+        return {
+            "hass": hass,
+            "url": config_entry.data.get("url"),
+            "username": config_entry.data.get("username"),
+            "password": config_entry.data.get("password"),
+            "api_key": config_entry.data.get("api_key"),
+            "verify_certs": config_entry.data.get("verify_ssl"),
+            "ca_certs": config_entry.data.get("ca_certs"),
+            "request_timeout": config_entry.data.get("timeout"),
+            "minimum_privileges": minimum_privileges,
+            "use_connection_monitor": config_entry.data.get("use_connection_monitor", True),
+        }
+
+    @classmethod
+    def build_pipeline_manager_parameters(cls, hass, gateway, config_entry: ConfigEntry) -> dict:
         """Build the parameters for the Elasticsearch pipeline manager."""
 
         if config_entry.options is None:
@@ -90,11 +127,12 @@ class ElasticIntegration:
             publish_frequency=config_entry.options["publish_frequency"],
         )
 
-        return {"hass": self._hass, "gateway": self._gateway, "settings": settings}
+        return {"hass": hass, "gateway": gateway, "settings": settings}
 
-    def build_index_manager_parameters(self) -> dict:
+    @classmethod
+    def build_datastream_manager_parameters(cls, hass, gateway) -> dict:
         """Build the parameters for the Elasticsearch index manager."""
         return {
-            "hass": self._hass,
-            "gateway": self._gateway,
+            "hass": hass,
+            "gateway": gateway,
         }

@@ -1,9 +1,10 @@
 """Encapsulates Elasticsearch operations."""
 
+from __future__ import annotations
+
+import asyncio  # pragma: no cover
 import sys
 from abc import ABC, abstractmethod
-from collections.abc import AsyncGenerator
-from logging import Logger
 from typing import TYPE_CHECKING, Any, NoReturn
 
 from elasticsearch7 import AuthenticationException as AuthenticationException7
@@ -16,8 +17,6 @@ from elasticsearch8 import TransportError as TransportError8
 from elasticsearch8._async.client import AsyncElasticsearch as AsyncElasticsearch8
 from elasticsearch8.helpers import async_streaming_bulk as async_streaming_bulk8
 from elasticsearch8.serializer import JSONSerializer as JSONSerializer8
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
 from homeassistant.util.logging import async_create_catching_coro
 
 from custom_components.elasticsearch.const import (
@@ -39,7 +38,11 @@ from .logger import LOGGER as BASE_LOGGER
 from .logger import async_log_enter_exit_debug, log_enter_exit_debug
 
 if TYPE_CHECKING:
-    import asyncio  # pragma: no cover
+    from collections.abc import AsyncGenerator
+    from logging import Logger
+
+    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.core import HomeAssistant
 
 
 class ElasticsearchGateway(ABC):
@@ -100,7 +103,8 @@ class ElasticsearchGateway(ABC):
 
         # Enforce minimum version
         if self.has_capability(CAPABILITIES.SUPPORTED) is False:
-            raise UnsupportedVersion
+            msg = "Unsupported version of Elasticsearch"
+            raise UnsupportedVersion(msg)
 
         # if we have minimum privileges, enforce them
         if self._minimum_privileges is not None:
@@ -134,7 +138,7 @@ class ElasticsearchGateway(ABC):
     def capabilities(self) -> dict:
         """Return the underlying ES Capabilities."""
         if self._capabilities == {}:
-            msg = "Capabilities have not been initialized Call async_init first."
+            msg = "Capabilities have not been initialized, call async_init first."
             raise ValueError(msg)
 
         return self._capabilities
@@ -233,27 +237,6 @@ class ElasticsearchGateway(ABC):
 
         return True
 
-    @classmethod
-    def build_gateway_parameters(
-        cls,
-        hass: HomeAssistant,
-        config_entry: ConfigEntry,
-        minimum_privileges: dict[str, Any] | None = ES_CHECK_PERMISSIONS_DATASTREAM,
-    ) -> dict:
-        """Build the parameters for the Elasticsearch gateway."""
-        return {
-            "hass": hass,
-            "url": config_entry.data.get("url"),
-            "username": config_entry.data.get("username"),
-            "password": config_entry.data.get("password"),
-            "api_key": config_entry.data.get("api_key"),
-            "verify_certs": config_entry.data.get("verify_ssl"),
-            "ca_certs": config_entry.data.get("ca_certs"),
-            "request_timeout": config_entry.data.get("timeout"),
-            "minimum_privileges": minimum_privileges,
-            "use_connection_monitor": config_entry.data.get("use_connection_monitor", True),
-        }
-
     @log_enter_exit_debug
     @abstractmethod
     async def stop(self) -> None:
@@ -317,7 +300,6 @@ class ElasticsearchGateway(ABC):
             return False
         else:
             return True
-
 
     async def _get_cluster_info(self) -> dict:
         """Retrieve info about the connected elasticsearch cluster."""
@@ -427,6 +409,7 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
         use_connection_monitor: bool = True,
         log: Logger = BASE_LOGGER,
     ):
+        """Initialize the Elasticsearch Gateway."""
         super().__init__(
             hass=hass,
             url=url,
@@ -559,19 +542,19 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
         )
 
         if err is None:
-            t, v, tb = sys.exc_info()
+            _, v, _ = sys.exc_info()
         else:
-            t, v = type(err), err
+            v = err
 
         new_err: Exception = ESIntegrationException(msg)
 
-        if isinstance(v,AuthenticationException):
+        if isinstance(v, AuthenticationException):
             new_err = AuthenticationRequired(msg)
 
-        elif isinstance(v,AuthorizationException):
+        elif isinstance(v, AuthorizationException):
             new_err = InsufficientPrivileges(msg)
 
-        elif isinstance(v,TransportError):
+        elif isinstance(v, TransportError):
             if isinstance(v.info, client_exceptions.ClientConnectorCertificateError):  # type: ignore  # noqa: PGH003
                 new_err = UntrustedCertificate(msg)
             elif isinstance(v.info, client_exceptions.ClientConnectorError):  # type: ignore  # noqa: PGH003
@@ -579,7 +562,7 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
             else:
                 new_err = CannotConnect(msg)
 
-        elif isinstance(v,ApiError):
+        elif isinstance(v, ApiError):
             new_err = ESIntegrationException(msg)
 
         raise new_err from v
@@ -601,7 +584,8 @@ class Elasticsearch7Gateway(ElasticsearchGateway):
         minimum_privileges: dict[str, Any] | None = None,
         use_connection_monitor: bool = True,
         log: Logger = BASE_LOGGER,
-    ):
+    ) -> None:
+        """Initialize the Elasticsearch Gateway."""
         super().__init__(
             hass=hass,
             url=url,
@@ -737,19 +721,19 @@ class Elasticsearch7Gateway(ElasticsearchGateway):
         )
 
         if err is None:
-            t, v, tb = sys.exc_info()
+            _, v, _ = sys.exc_info()
         else:
-            t, v = type(err), err
+            v = err
 
         new_err: Exception = ESIntegrationException(msg)
 
-        if isinstance(v,AuthenticationException):
+        if isinstance(v, AuthenticationException):
             new_err = AuthenticationRequired(msg)
 
-        elif isinstance(v,AuthorizationException):
+        elif isinstance(v, AuthorizationException):
             new_err = InsufficientPrivileges(msg)
 
-        elif isinstance(v,TransportError):
+        elif isinstance(v, TransportError):
             if isinstance(v.info, client_exceptions.ClientConnectorCertificateError):  # type: ignore  # noqa: PGH003
                 new_err = UntrustedCertificate(msg)
             elif isinstance(v.info, client_exceptions.ClientConnectorError):  # type: ignore  # noqa: PGH003
@@ -757,7 +741,7 @@ class Elasticsearch7Gateway(ElasticsearchGateway):
             else:
                 new_err = CannotConnect(msg)
 
-        elif isinstance(v,ElasticsearchException):
+        elif isinstance(v, ElasticsearchException):
             new_err = ESIntegrationException(msg)
 
         raise new_err from v

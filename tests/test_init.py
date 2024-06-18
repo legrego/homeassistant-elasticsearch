@@ -1,3 +1,5 @@
+"""Tests for the Elasticsearch integration initialization."""
+
 from collections.abc import Awaitable, Callable
 from unittest import mock
 from unittest.mock import AsyncMock
@@ -18,7 +20,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.loader import ComponentProtocol, Integration
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import (
-    ConfigEntry,
     MockConfigEntry,
     MockModule,
 )
@@ -347,6 +348,8 @@ class Test_Setup:
 
 
 class Test_Public_Methods:
+    """Test the public methods of the Elasticsearch integration initialization."""
+
     @pytest.fixture
     def block_async_init(self):
         """Block async init."""
@@ -617,6 +620,40 @@ class Test_Public_Methods:
             assert updated_config_entry.version == ElasticFlowHandler.VERSION
 
 
+class Test_Private_Methods:
+    """Test the private methods of the Elasticsearch integration initialization."""
+
+    @pytest.mark.parametrize("minimum_privileges", [None, {}])
+    async def test_build_gateway_parameters(self, hass: HomeAssistant, minimum_privileges: dict | None):
+        """Test build_gateway_parameters."""
+        hass = mock.Mock()
+        config_entry = mock.Mock()
+        config_entry.data = {
+            "url": "http://my_es_host:9200",
+            "username": "admin",
+            "password": "password",
+            "verify_ssl": True,
+            "ca_certs": "/path/to/ca_certs",
+            "timeout": 30,
+        }
+        """ Test build_gateway_parameters."""
+
+        parameters = ElasticIntegration.build_gateway_parameters(
+            hass=hass,
+            config_entry=config_entry,
+            minimum_privileges=minimum_privileges,
+        )
+
+        assert parameters["hass"] == hass
+        assert parameters["url"] == "http://my_es_host:9200"
+        assert parameters["username"] == "admin"
+        assert parameters["password"] == "password"  # noqa: S105
+        assert parameters["verify_certs"] is True
+        assert parameters["ca_certs"] == "/path/to/ca_certs"
+        assert parameters["request_timeout"] == 30
+        assert parameters["minimum_privileges"] == minimum_privileges
+
+
 class Test_Common_Failures_e2e:
     """Test the common failures that users run into when initializing the integration."""
 
@@ -639,8 +676,7 @@ class Test_Common_Failures_e2e:
         assert config_entry.version == ElasticFlowHandler.VERSION
 
         assert config_entry.state is ConfigEntryState.SETUP_RETRY
-        assert config_entry.reason == "Unsupported Elasticsearch version detected"
-
+        assert config_entry.reason == "Unsupported version of Elasticsearch"
 
     async def test_authentication_failure(
         self, hass: HomeAssistant, integration_setup, es_aioclient_mock: AiohttpClientMocker, config_entry
@@ -659,9 +695,8 @@ class Test_Common_Failures_e2e:
 
         assert config_entry.version == ElasticFlowHandler.VERSION
 
-        assert config_entry.state is ConfigEntryState.SETUP_RETRY
+        assert config_entry.state is ConfigEntryState.SETUP_ERROR
         assert config_entry.reason == "Error connecting to Elasticsearch"
-
 
     async def test_connection_failure(
         self, hass: HomeAssistant, integration_setup, es_aioclient_mock: AiohttpClientMocker, config_entry
@@ -682,6 +717,7 @@ class Test_Common_Failures_e2e:
 
         assert config_entry.state is ConfigEntryState.SETUP_RETRY
         assert config_entry.reason == "Error connecting to Elasticsearch"
+
 
 # Replace the following old tests
 

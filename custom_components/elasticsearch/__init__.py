@@ -2,21 +2,17 @@
 
 from __future__ import annotations
 
+from logging import Logger
 from typing import TYPE_CHECKING
 
 from elasticsearch.config_flow import ElasticFlowHandler
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 
-if TYPE_CHECKING:
-    from homeassistant.core import HomeAssistant
-    from homeassistant.exceptions import IntegrationError
-
 from custom_components.elasticsearch.errors import (
     AuthenticationRequired,
     CannotConnect,
     ESIntegrationException,
-    InsufficientPrivileges,
     UnsupportedVersion,
 )
 from custom_components.elasticsearch.logger import (
@@ -30,39 +26,44 @@ from custom_components.elasticsearch.logger import (
 from .const import (
     CONF_HEALTH_SENSOR_ENABLED,
     CONF_INDEX_MODE,
-    DOMAIN,
     INDEX_MODE_LEGACY,
 )
 from .es_integration import ElasticIntegration
 
+if TYPE_CHECKING:
+    from homeassistant.core import HomeAssistant
+    from homeassistant.exceptions import IntegrationError
+
 type ElasticIntegrationConfigEntry = ConfigEntry[ElasticIntegration]
+
 
 @async_log_enter_exit_info
 async def async_setup_entry(hass: HomeAssistant, config_entry: ElasticIntegrationConfigEntry) -> bool:
     """Set up integration via config flow."""
 
     # Create an specific logger for this config entry
-    _logger = have_child(name=config_entry.title)
+    _logger: Logger = have_child(name=config_entry.title)
 
     _logger.info("Initializing integration for %s", config_entry.title)
 
     try:
         integration = ElasticIntegration(hass=hass, config_entry=config_entry, log=_logger)
         await integration.async_init()
-    except UnsupportedVersion as err:
-        raise ConfigEntryNotReady(err) from None
-    except CannotConnect as err:
-        raise ConfigEntryNotReady(err) from None
+    except (UnsupportedVersion, CannotConnect) as err:
+        raise ConfigEntryNotReady(err) from err
     except AuthenticationRequired as err:
-        raise ConfigEntryAuthFailed(err) from None
+        raise ConfigEntryAuthFailed(err) from err
+    except ESIntegrationException as err:
+        raise ConfigEntryNotReady(err) from err
     except Exception as err:
         msg = "Unknown error occurred"
         _logger.exception(msg)
-        raise ConfigEntryNotReady(err) from None
+        raise IntegrationError(err) from err
 
     config_entry.runtime_data = integration
 
     return True
+
 
 async def async_unload_entry(hass: HomeAssistant, config_entry: ElasticIntegrationConfigEntry) -> bool:
     """Teardown integration."""
@@ -81,20 +82,6 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ElasticIntegrati
         )
 
     return True
-
-def integration_err_to_config_entry_err(err: ESIntegrationException) -> IntegrationError:
-    """Convert integration error to config entry error."""
-    if isinstance(err, UnsupportedVersion):
-        return ConfigEntryNotReady()
-    if isinstance(err, AuthenticationRequired):
-        return ConfigEntryAuthFailed()
-    if isinstance(err, InsufficientPrivileges):
-        return ConfigEntryAuthFailed()
-    if isinstance(err, CannotConnect):
-        return ConfigEntryNotReady()
-    if isinstance(err, Exception):
-        return ConfigEntryNotReady()
-    return err
 
 
 @async_log_enter_exit_debug
