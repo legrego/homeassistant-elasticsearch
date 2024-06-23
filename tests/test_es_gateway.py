@@ -314,9 +314,8 @@ class Test_Exception_Conversion:
         if expected_response is None:
             assert await gateway.info() == CLUSTER_INFO_8DOT11_RESPONSE_BODY
         else:
-            with pytest.raises(expected_response) as err:
+            with pytest.raises(expected_response):
                 await gateway.info()
-
 
     @pytest.mark.parametrize(
         ("aiohttp_exception", "expected_exception"),
@@ -374,7 +373,7 @@ class Test_Exception_Conversion:
 
         es_aioclient_mock.get(f"{TEST_CONFIG_ENTRY_DATA_URL}", exc=aiohttp_exception)
 
-        with pytest.raises(expected_exception) as err:
+        with pytest.raises(expected_exception):
             await gateway.info()
 
         # assert str(err.value) == msg

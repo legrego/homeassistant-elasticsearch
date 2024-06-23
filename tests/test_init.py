@@ -44,7 +44,6 @@ if TYPE_CHECKING:
 MODULE = "custom_components.elasticsearch"
 
 
-
 @pytest.fixture
 async def flow():
     """Set up the config flow for testing."""
@@ -637,6 +636,7 @@ class Test_Public_Methods:
 
 class Test_Private_Methods:
     """Test the private methods of the Elasticsearch integration initialization."""
+
 
 class Test_Common_Failures_e2e:
     """Test the common failures that users run into when initializing the integration."""

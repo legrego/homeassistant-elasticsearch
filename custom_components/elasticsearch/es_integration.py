@@ -117,4 +117,3 @@ class ElasticIntegration:
         )
 
         return {"hass": hass, "gateway": gateway, "settings": settings}
-

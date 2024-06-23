@@ -35,6 +35,7 @@ if TYPE_CHECKING:
 
 type ElasticIntegrationConfigEntry = ConfigEntry[ElasticIntegration]
 
+
 @async_log_enter_exit_info
 async def async_setup_entry(hass: HomeAssistant, config_entry: ElasticIntegrationConfigEntry) -> bool:
     """Set up integration via config flow."""

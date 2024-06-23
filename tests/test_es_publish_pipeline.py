@@ -411,7 +411,6 @@ class Test_Manager:
                 ),
                 patch.object(manager._publisher, "publish") as publisher_publish,
                 patch.object(manager._filterer, "passes_filter", side_effect=[True, False]),
-
             ):
                 manager._publisher._gateway.ping = AsyncMock(return_value=True)
 

@@ -47,7 +47,6 @@ class ElasticsearchGateway(ABC):
 
     _logger = BASE_LOGGER
 
-
     def __init__(
         self,
         gateway_settings: GatewaySettings,

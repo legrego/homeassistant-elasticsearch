@@ -237,7 +237,7 @@ class Pipeline:
 
         async def _publish(self) -> None:
             """Publish the documents to Elasticsearch."""
-            if await self._publisher._gateway.ping():
+            if await self._gateway.ping():
                 try:
                     await self._publisher.publish(iterable=self._sip_queue())
                 except IndexingError:

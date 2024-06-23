@@ -268,6 +268,8 @@ class Test_Public_Methods:
 
 
 class Test_Integration_Tests:
+    """Integration Tests for Config Flow."""
+
     async def test_user_done(self, hass, elastic_flow, es_aioclient_mock):
         """Test user initiated step."""
 

@@ -1,5 +1,6 @@
 """Utilities."""
 
+
 def compare_version(current_major, current_minor, reference_major: int, reference_minor: int) -> bool:
     """Determine if this version of ES meets the minimum version requirements."""
     return current_major > reference_major or (
