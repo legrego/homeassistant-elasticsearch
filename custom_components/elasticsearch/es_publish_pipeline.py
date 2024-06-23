@@ -49,6 +49,7 @@ from custom_components.elasticsearch.entity_details import (
     ExtendedEntityDetails,
     ExtendedRegistryEntry,
 )
+from custom_components.elasticsearch.errors import IndexingError
 from custom_components.elasticsearch.logger import LOGGER as BASE_LOGGER
 from custom_components.elasticsearch.logger import log_enter_exit_debug
 from custom_components.elasticsearch.loop import LoopHandler
@@ -237,7 +238,12 @@ class Pipeline:
         async def _publish(self) -> None:
             """Publish the documents to Elasticsearch."""
             if await self._publisher._gateway.ping():
-                await self._publisher.publish(iterable=self._sip_queue())
+                try:
+                    await self._publisher.publish(iterable=self._sip_queue())
+                except IndexingError:
+                    self._logger.exception("Indexing error while publishing documents.")
+                except Exception:
+                    self._logger.exception("Unknown error publishing documents.")
 
         @log_enter_exit_debug
         def stop(self) -> None:

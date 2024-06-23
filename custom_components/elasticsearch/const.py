@@ -4,6 +4,7 @@ from enum import Enum
 from typing import Any
 
 DOMAIN: str = "elasticsearch"
+ELASTIC_DOMAIN: str = "elasticsearch"
 
 CONF_PUBLISH_FREQUENCY: str = "publish_frequency"
 CONF_POLLING_FREQUENCY: str = "polling_frequency"

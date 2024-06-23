@@ -83,6 +83,22 @@ class ElasticsearchGateway(ABC):
         """Return the Home Assistant instance."""
         return self.settings.url
 
+    @classmethod
+    @abstractmethod
+    async def async_init_then_stop(
+        cls,
+        url: str,
+        username: str | None = None,
+        password: str | None = None,
+        api_key: str | None = None,
+        verify_certs: bool = True,
+        ca_certs: str | None = None,
+        request_timeout: int = 30,
+        minimum_privileges: dict[str, Any] = {},
+        log: Logger = BASE_LOGGER,
+    ) -> None:
+        """Initialize the gateway and then stop it."""
+
     # @classmethod
     # async def test_prospective_settings(
     #     cls,

@@ -10,13 +10,14 @@ import elasticsearch8
 from aiohttp import client_exceptions
 from elastic_transport import ObjectApiResponse
 from elasticsearch8._async.client import AsyncElasticsearch
-from elasticsearch8.helpers import async_streaming_bulk
+from elasticsearch8.helpers import BulkIndexError, async_streaming_bulk
 from elasticsearch8.serializer import JSONSerializer
 
 from custom_components.elasticsearch.errors import (
     AuthenticationRequired,
     CannotConnect,
     ClientError,
+    IndexingError,
     InsufficientPrivileges,
     ServerError,
     SSLError,
@@ -93,6 +94,40 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
         self._client = self._settings.to_client()
 
         await super().async_init()
+
+    @classmethod
+    async def async_init_then_stop(
+        cls,
+        url: str,
+        username: str | None = None,
+        password: str | None = None,
+        api_key: str | None = None,
+        verify_certs: bool = True,
+        ca_certs: str | None = None,
+        request_timeout: int = 30,
+        minimum_privileges: dict[str, Any] = {},
+        log: Logger = BASE_LOGGER,
+    ) -> None:
+        """Initialize the gateway and then stop it."""
+
+        gateway = cls(
+            Gateway8Settings(
+                url=url,
+                username=username,
+                password=password,
+                api_key=api_key,
+                verify_certs=verify_certs,
+                ca_certs=ca_certs,
+                request_timeout=request_timeout,
+                minimum_privileges=minimum_privileges,
+            ),
+            log=log,
+        )
+
+        try:
+            await gateway.async_init()
+        finally:
+            await gateway.stop()
 
     @property
     def client(self) -> AsyncElasticsearch:
@@ -187,8 +222,8 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
 
     async def stop(self) -> None:
         """Stop the gateway."""
-        await self.client.transport.close()
-        await self.client.close()
+        if self._client is not None:
+            await self.client.close()
 
     # Functions for handling errors and response conversion
 
@@ -205,6 +240,10 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
         """Convert an internal error from the elasticsearch package into one of our own."""
         try:
             yield
+
+        except BulkIndexError as err:
+            msg = "Error indexing data"
+            raise IndexingError(msg) from err
 
         except elasticsearch8.AuthenticationException as err:
             msg = "Authentication error connecting to Elasticsearch"
@@ -223,19 +262,25 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
                 msg = "Connection error connecting to Elasticsearch"
                 raise CannotConnect(msg) from err
 
-            if isinstance(err.errors[0].errors[0], client_exceptions.ClientConnectorCertificateError):
+            if not isinstance(err.errors[0], elasticsearch8.TransportError):
+                msg = "Unknown transport error connecting to Elasticsearch"
+                raise CannotConnect(msg) from err
+
+            sub_error: elasticsearch8.TransportError = err.errors[0]
+
+            if isinstance(sub_error.errors[0], client_exceptions.ClientConnectorCertificateError):
                 msg = "Untrusted certificate connecting to Elasticsearch"
                 raise UntrustedCertificate(msg) from err
 
-            if issubclass(type(err.errors[0].errors[0]), client_exceptions.ServerFingerprintMismatch):
+            if issubclass(type(sub_error.errors[0]), client_exceptions.ServerFingerprintMismatch):
                 msg = "SSL certificate does not match expected fingerprint"
                 raise SSLError(msg) from err
 
-            if issubclass(type(err.errors[0].errors[0]), client_exceptions.ServerConnectionError):
+            if issubclass(type(sub_error.errors[0]), client_exceptions.ServerConnectionError):
                 msg = "Server error connecting to Elasticsearch"
                 raise ServerError(msg) from err
 
-            if issubclass(type(err.errors[0].errors[0]), client_exceptions.ClientError):
+            if issubclass(type(sub_error.errors[0]), client_exceptions.ClientError):
                 msg = "Client error connecting to Elasticsearch"
                 raise ClientError(msg) from err
 
@@ -251,58 +296,22 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
                 msg = "Unknown transport error connecting to Elasticsearch"
                 raise CannotConnect(msg) from err
 
-            msg = f"Error connecting to Elasticsearch: {err.errors[0].status}"
+            if not isinstance(err.errors[0], elasticsearch8.TransportError):
+                msg = "Unknown transport error connecting to Elasticsearch"
+                raise CannotConnect(msg) from err
+
+            sub_error: elasticsearch8.TransportError = err.errors[0]
+
+            if hasattr(sub_error, "status"):
+                msg = f"Error connecting to Elasticsearch: {getattr(sub_error, "status")}"
+                raise CannotConnect(msg) from err
+
+            msg = "Unknown transport error connecting to Elasticsearch"
             raise CannotConnect(msg) from err
 
         except elasticsearch8.ApiError as err:
             msg = "Unknown API Error connecting to Elasticsearch"
             raise CannotConnect(msg) from err
-
-        # except elasticsearch8.AuthenticationException as err:
-        #     msg = "Authentication error connecting to Elasticsearch"
-        #     raise AuthenticationRequired(msg) from err
-
-        # except elasticsearch8.AuthorizationException as err:
-        #     msg = "Authorization error connecting to Elasticsearch"
-        #     raise InsufficientPrivileges(msg) from err
-
-        # except elasticsearch8.SSLError as err:
-        #     if len(err.errors) == 0:
-        #         msg = "SSL error connecting to Elasticsearch"
-        #         raise CannotConnect(msg) from err
-
-        #     if isinstance(err.errors[0], client_exceptions.ClientConnectorCertificateError):
-        #         msg = "Untrusted certificate connecting to Elasticsearch"
-        #         raise UntrustedCertificate(msg) from err
-
-        #     msg = "Unknown SSL error connecting to Elasticsearch"
-        #     raise ClientError(msg) from err
-
-        # except elasticsearch8.TransportError as err:
-        #     if len(err.errors) == 0:
-        #         msg = "Error connecting to Elasticsearch"
-        #         raise CannotConnect(msg) from err
-
-        #     if isinstance(err.errors[0], elastic_transport.TlsError):
-        #         if isinstance(err.errors[0].errors[0], client_exceptions.ClientConnectorCertificateError):
-        #             msg = "Untrusted certificate connecting to Elasticsearch"
-        #             raise UntrustedCertificate(msg) from err
-        #         else:
-        #             msg = "Unknown TLS error connecting to Elasticsearch"
-        #             raise ClientError(msg) from err
-        #     if isinstance(err.errors[0], client_exceptions.ClientConnectorCertificateError):
-        #         msg = "Untrusted certificate connecting to Elasticsearch"
-        #         raise UntrustedCertificate(msg) from err
-        #     if isinstance(err.errors[0], client_exceptions.ClientConnectorError):
-        #         msg = "Client error connecting to Elasticsearch"
-        #         raise ClientError(msg) from err
-
-        #     msg = "Error connecting to Elasticsearch"
-        #     raise CannotConnect(msg) from err
-
-        # except elasticsearch8.ApiError as err:
-        #     msg = "Unexpected error during request to Elasticsearch"
-        #     raise ESIntegrationException(msg) from err
 
         except Exception:
             BASE_LOGGER.exception("Unknown and unexpected exception occurred.")

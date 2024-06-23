@@ -10,7 +10,7 @@ import elasticsearch7
 from aiohttp import client_exceptions
 from elastic_transport import ObjectApiResponse
 from elasticsearch7._async.client import AsyncElasticsearch
-from elasticsearch7.helpers import async_streaming_bulk
+from elasticsearch7.helpers import BulkIndexError, async_streaming_bulk
 from elasticsearch7.serializer import JSONSerializer
 
 from custom_components.elasticsearch.errors import (
@@ -18,6 +18,7 @@ from custom_components.elasticsearch.errors import (
     CannotConnect,
     ClientError,
     ESIntegrationException,
+    IndexingError,
     InsufficientPrivileges,
     ServerError,
     SSLError,
@@ -93,6 +94,39 @@ class Elasticsearch7Gateway(ElasticsearchGateway):
         self._client = self._settings.to_client()
 
         await super().async_init()
+
+    @classmethod
+    async def async_init_then_stop(
+        cls,
+        url: str,
+        username: str | None = None,
+        password: str | None = None,
+        api_key: str | None = None,
+        verify_certs: bool = True,
+        ca_certs: str | None = None,
+        request_timeout: int = 30,
+        minimum_privileges: dict[str, Any] = {},
+        log: Logger = BASE_LOGGER,
+    ) -> None:
+        """Initialize the gateway and then stop it."""
+
+        gateway = cls(
+            Gateway7Settings(
+                url=url,
+                username=username,
+                password=password,
+                api_key=api_key,
+                verify_certs=verify_certs,
+                ca_certs=ca_certs,
+                request_timeout=request_timeout,
+                minimum_privileges=minimum_privileges,
+            ),
+            log=log,
+        )
+        try:
+            await gateway.async_init()
+        finally:
+            await gateway.stop()
 
     @property
     def client(self) -> AsyncElasticsearch:
@@ -171,6 +205,7 @@ class Elasticsearch7Gateway(ElasticsearchGateway):
                 client=self.client,
                 actions=actions,
                 yield_ok=True,
+                max_retries=3,
             ):
                 count += 1
                 action, outcome = result.popitem()
@@ -184,7 +219,8 @@ class Elasticsearch7Gateway(ElasticsearchGateway):
 
     async def stop(self) -> None:
         """Stop the gateway."""
-        await self.client.close()
+        if self._client is not None:
+            await self.client.close()
 
     # Functions for handling errors and response conversion
 
@@ -201,6 +237,10 @@ class Elasticsearch7Gateway(ElasticsearchGateway):
         """Convert an internal error from the elasticsearch package into one of our own."""
         try:
             yield
+
+        except BulkIndexError as err:
+            msg = "Error indexing data"
+            raise IndexingError(msg) from err
 
         except elasticsearch7.AuthenticationException as err:
             msg = "Authentication error connecting to Elasticsearch"

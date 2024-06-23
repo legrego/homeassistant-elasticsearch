@@ -1,3 +1,4 @@
+# pylint: disable=redefined-outer-name
 """Global fixtures for elastic integration."""
 
 # Fixtures allow you to replace functions with a Mock object. You can perform
@@ -18,25 +19,25 @@
 from __future__ import annotations
 
 from asyncio import get_running_loop
-from collections.abc import Generator
 from contextlib import contextmanager, suppress
 from typing import TYPE_CHECKING
 from unittest import mock
 from unittest.mock import AsyncMock, MagicMock, patch
 
+# import custom_components.elasticsearch  # noqa: F401
 import pytest
 from aiohttp import ClientSession, TCPConnector
 from custom_components.elasticsearch.config_flow import ElasticFlowHandler
-from custom_components.elasticsearch.const import DOMAIN as ES_DOMAIN
 from custom_components.elasticsearch.es_gateway_7 import Elasticsearch7Gateway, Gateway7Settings
 from custom_components.elasticsearch.es_gateway_8 import Elasticsearch8Gateway, Gateway8Settings
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.json import json_dumps
-from homeassistant.loader import async_get_integration
-from homeassistant.setup import async_setup_component
-from pytest_homeassistant_custom_component.common import MockConfigEntry  # noqa: F401
+from pytest_homeassistant_custom_component.common import (
+    MockConfigEntry,  # noqa: F401
+)
 from pytest_homeassistant_custom_component.plugins import (  # noqa: F401
     aioclient_mock,
-    enable_event_loop_debug,
+    # enable_event_loop_debug,
     skip_stop_scripts,
     snapshot,
     verify_cleanup,
@@ -46,47 +47,16 @@ from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClien
 from tests import const
 
 if TYPE_CHECKING:
-    from collections.abc import Awaitable, Callable, Generator
-    from typing import TYPE_CHECKING, Any
+    from collections.abc import Generator
+    from typing import Any
 
-    from homeassistant.core import HomeAssistant
     from homeassistant.helpers.area_registry import AreaEntry, AreaRegistry
     from homeassistant.helpers.device_registry import DeviceRegistry
     from homeassistant.helpers.entity_registry import EntityRegistry
     from homeassistant.helpers.floor_registry import FloorEntry, FloorRegistry
-    from homeassistant.loader import ComponentProtocol, Integration
 
+MODULE = "custom_components.elasticsearch"
 
-@pytest.fixture(name="integration_setup")
-async def mock_integration_setup(
-    hass: HomeAssistant,
-    config_entry: MockConfigEntry,
-) -> Callable[[], Awaitable[bool]]:
-    """Fixture to set up the integration."""
-    config_entry.add_to_hass(hass)
-
-    async def run() -> bool:
-        result = await hass.config_entries.async_setup(config_entry.entry_id)
-
-        await hass.async_block_till_done()
-
-        return result
-
-    return run
-
-
-@pytest.fixture
-async def running_integration(hass: HomeAssistant) -> Integration:
-    """Set up the integration for testing."""
-
-    return await async_get_integration(hass, ES_DOMAIN)
-
-
-@pytest.fixture
-async def component(hass: HomeAssistant, integration: Integration) -> ComponentProtocol:
-    """Set up the component for testing."""
-
-    return await integration.async_get_component()
 
 @pytest.fixture
 def gateway_config() -> dict:
@@ -148,11 +118,6 @@ async def initialized_gateway(gateway: Elasticsearch7Gateway | Elasticsearch8Gat
         yield gateway
 
     await gateway.stop()
-
-
-# Archived Mocks
-
-sessions: list[ClientSession] = []
 
 
 @contextmanager
@@ -219,113 +184,6 @@ def skip_notifications_fixture() -> Generator[Any, Any, Any]:
 
 
 @pytest.fixture
-async def url() -> str:
-    """Return a url."""
-    return const.TEST_CONFIG_ENTRY_DATA_URL
-
-
-# @pytest.fixture(params=[Elasticsearch7Gateway, Elasticsearch8Gateway])
-# async def uninitialized_gateway(
-#     hass: HomeAssistant,
-#     request: pytest.FixtureRequest,
-#     minimum_privileges: dict,
-#     url: str,
-#     username: str | None = None,
-#     password: str | None = None,
-#     api_key: str | None = None,
-# ) -> AsyncGenerator[ElasticsearchGateway, Any]:
-#     """Return a gateway instance."""
-
-#     gateway_type: type[ElasticsearchGateway] = request.param
-
-#     # create an extra settings dict that only populates with username, password, or api_key when they are not None
-#     extra_settings: dict[str, Any] = {
-#         key: value
-#         for key, value in {
-#             "username": username,
-#             "password": password,
-#             "api_key": api_key,
-#         }.items()
-#         if value is not None
-#     }
-
-#     gateway = gateway_type(
-#         hass=hass,
-#         url=url,
-#         minimum_privileges=minimum_privileges,
-#         **extra_settings,
-#     )
-
-#     yield gateway
-
-#     if gateway._initialized:
-#         await gateway.stop()
-
-
-# @pytest.fixture
-# async def mock_cluster_info(
-#     major_version: int = 8,
-#     minor_version: int = 11,
-# ):
-#     """Return a mock cluster info response body."""
-#     return getattr(const, f"CLUSTER_INFO_{major_version}DOT{minor_version}_RESPONSE_BODY")
-
-
-# @pytest.fixture
-# async def mock_test_connection():
-#     """Return whether to mock the test_connection method."""
-#     return True
-
-
-# @pytest.fixture
-# async def initialized_gateway(
-#     hass: HomeAssistant,
-#     request: pytest.FixtureRequest,
-#     minimum_privileges: dict,
-#     config_entry,
-#     mock_cluster_info: dict,
-#     uninitialized_gateway: ElasticsearchGateway,
-#     mock_test_connection: bool,
-#     url: str,
-# ):
-#     """Return a gateway instance."""
-#     uninitialized_gateway.info = mock.AsyncMock(return_value=mock_cluster_info)
-
-#     await uninitialized_gateway.async_init(config_entry=config_entry)
-
-#     initialized_gateway = uninitialized_gateway
-
-#     return initialized_gateway  # noqa: RET504
-
-# We do not need to shutdown the gateway as it is shutdown by the uninitialized_gateway fixture
-
-
-# @pytest.fixture
-# async def initialized_integration(
-#     hass: HomeAssistant,
-#     config_entry: MockConfigEntry,
-# ) -> MockConfigEntry:
-#     """Set up the integration for testing."""
-#     config_entry.add_to_hass(hass)
-
-#     await hass.config_entries.async_setup(config_entry.entry_id)
-#     await hass.async_block_till_done()
-
-#     return config_entry
-
-
-@pytest.fixture
-async def uninitialized_integration(
-    hass: HomeAssistant,
-    config_entry: MockConfigEntry,
-) -> MockConfigEntry:
-    """Set up the integration for testing."""
-    config_entry.add_to_hass(hass)
-
-    return config_entry
-
-
-@pytest.fixture
 async def data() -> dict:
     """Return a mock data dict."""
     return const.TEST_CONFIG_ENTRY_BASE_DATA
@@ -350,7 +208,7 @@ async def config_entry(
     options: dict,
     add_to_hass: bool,
     version: int = ElasticFlowHandler.VERSION,
-) -> MockConfigEntry:
+):
     """Create a mock config entry and add it to hass."""
 
     entry = MockConfigEntry(
@@ -366,40 +224,11 @@ async def config_entry(
     if add_to_hass:
         entry.add_to_hass(hass)
 
-    return entry
-
+    try:
+        yield entry
+    finally:
+        await hass.config_entries.async_remove(entry.entry_id)
     # Unload the config entry
-
-    # await hass.config_entries.async_unload(entry.entry_id)
-
-
-# Fixtures for a new_component
-@pytest.fixture
-async def new_component_domain() -> str:
-    """Return a new component domain."""
-    return const.TEST_ENTITY_DOMAIN
-
-
-@pytest.fixture
-async def new_component_config() -> dict:
-    """Return a new component config."""
-    return {
-        const.TEST_ENTITY_DOMAIN: {
-            const.TEST_ENTITY_OBJECT_ID_0: {},
-            const.TEST_ENTITY_OBJECT_ID_1: {},
-            const.TEST_ENTITY_OBJECT_ID_2: {},
-            const.TEST_ENTITY_OBJECT_ID_3: {},
-            const.TEST_ENTITY_OBJECT_ID_4: {},
-        },
-    }
-
-
-@pytest.fixture
-async def new_component(hass: HomeAssistant, new_component_domain: str, new_component_config: dict) -> None:
-    """Mock a component in hass."""
-
-    assert await async_setup_component(hass, new_component_domain, new_component_config)
-    await hass.async_block_till_done()
 
 
 # New Device Fixtures

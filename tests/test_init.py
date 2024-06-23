@@ -1,10 +1,11 @@
 """Tests for the Elasticsearch integration initialization."""
 
-from collections.abc import Awaitable, Callable
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 from unittest import mock
 from unittest.mock import AsyncMock
 
-import custom_components.elasticsearch  # noqa: F401
 import pytest
 from custom_components.elasticsearch import (
     async_migrate_entry,
@@ -15,15 +16,12 @@ from custom_components.elasticsearch import (
 from custom_components.elasticsearch.config_flow import ElasticFlowHandler
 from custom_components.elasticsearch.const import DOMAIN as ELASTIC_DOMAIN
 from custom_components.elasticsearch.es_integration import ElasticIntegration
-from homeassistant.config_entries import ConfigEntry, ConfigEntryState, ConfigFlow
-from homeassistant.core import HomeAssistant
-from homeassistant.loader import ComponentProtocol, Integration
+from homeassistant.config_entries import ConfigEntryState, ConfigFlow
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import (
-    MockConfigEntry,
+    MockConfigEntry,  # noqa: F401
     MockModule,
 )
-from pytest_homeassistant_custom_component.common import mock_component as new_mock_component
 from pytest_homeassistant_custom_component.common import (
     mock_config_flow as new_mock_config_flow,
 )
@@ -36,13 +34,25 @@ from syrupy.assertion import SnapshotAssertion
 
 from tests import const
 
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
+    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.core import HomeAssistant
+    from homeassistant.loader import ComponentProtocol, Integration
+
 MODULE = "custom_components.elasticsearch"
 
 
+
 @pytest.fixture
-def module():
-    """Return the module."""
-    return custom_components.elasticsearch
+async def flow():
+    """Set up the config flow for testing."""
+
+    class MockFlow(ConfigFlow):
+        """Test flow."""
+
+    return MockFlow
 
 
 @pytest.fixture
@@ -60,7 +70,20 @@ async def mock_module(hass: HomeAssistant) -> MockModule:
 
 
 @pytest.fixture
-async def mock_integration(hass: HomeAssistant, mock_module: MockModule, mock_config_flow) -> Integration:
+async def mock_platform(hass: HomeAssistant):
+    """Set up the platform for testing."""
+    return new_mock_platform(hass, f"{ELASTIC_DOMAIN}.config_flow")
+
+
+@pytest.fixture
+def config_flow(mock_platform, flow):
+    """Set up the Elastic Integration config flow."""
+    with new_mock_config_flow(ELASTIC_DOMAIN, flow):
+        yield
+
+
+@pytest.fixture
+async def mock_integration(hass: HomeAssistant, config_flow, mock_module: MockModule) -> Integration:
     """Mock an integration which has the same root methods but does not have a config_flow.
 
     Use this to simplify mocking of the root methods of __init__.py.
@@ -70,29 +93,21 @@ async def mock_integration(hass: HomeAssistant, mock_module: MockModule, mock_co
 
 
 @pytest.fixture
-async def mock_platform(hass: HomeAssistant):
-    """Set up the platform for testing."""
-    return new_mock_platform(hass, f"{ELASTIC_DOMAIN}.config_flow")
+async def integration_setup(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+) -> Callable[[], Awaitable[bool]]:
+    """Fixture to set up the integration."""
+    config_entry.add_to_hass(hass)
 
+    async def run() -> bool:
+        result = await hass.config_entries.async_setup(config_entry.entry_id)
 
-class MockFlow(ConfigFlow):
-    """Test flow."""
+        await hass.async_block_till_done()
 
+        return result
 
-@pytest.fixture
-async def mock_config_flow(hass: HomeAssistant, mock_platform):
-    """Set up the config flow for testing."""
-
-    with new_mock_config_flow(ELASTIC_DOMAIN, MockFlow):
-        yield
-
-
-@pytest.fixture
-async def mock_component(hass: HomeAssistant, mock_integration: Integration) -> ComponentProtocol:
-    """Set up the component for testing."""
-    new_mock_component(hass, ELASTIC_DOMAIN)
-
-    return await mock_integration.async_get_component()
+    return run
 
 
 class Test_Config_Migration:

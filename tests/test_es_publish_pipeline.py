@@ -234,12 +234,10 @@ class Test_Manager:
                 "static_fields": manager._static_fields,
             } == snapshot
 
-        async def test_async_init(self, manager):
+        async def test_async_init(self, manager, config_entry):
             """Test the async initialization of the manager."""
-            config_entry = mock.Mock()
-            manager._settings.change_detection_type = ["STATE"]
 
-            config_entry.async_create_background_task = mock.Mock()
+            manager._settings.change_detection_type = ["STATE"]
 
             manager._listener = mock.Mock()
             manager._listener.async_init = mock.AsyncMock()
@@ -282,8 +280,6 @@ class Test_Manager:
                 manager._poller.async_init.assert_awaited_once()
                 manager._formatter.async_init.assert_awaited_once_with(manager._static_fields)
                 manager._publisher.async_init.assert_awaited_once()
-
-                config_entry.async_create_background_task.assert_called_once()
 
                 manager.stop()
 
@@ -476,13 +472,11 @@ class Test_Poller:
             assert poller._cancel_poller is None
 
         @pytest.mark.asyncio
-        async def test_async_init(self, poller: Pipeline.Poller):
+        async def test_async_init(self, poller: Pipeline.Poller, config_entry):
             """Test the async initialization of the Poller."""
 
-            config_entry = mock.Mock()
             with (
                 patch("custom_components.elasticsearch.es_publish_pipeline.LoopHandler") as loop_handler,
-                patch.object(config_entry, "async_create_background_task") as create_background_task,
             ):
                 # Ensure we don't start a coroutine that never finishes
                 loop_handler_instance = loop_handler.return_value
@@ -500,7 +494,6 @@ class Test_Poller:
                 )
 
                 loop_handler_instance.start.assert_called_once()
-                create_background_task.assert_called_once()
 
         async def test_stop(self, poller: Pipeline.Poller):
             """Test stopping the poller."""

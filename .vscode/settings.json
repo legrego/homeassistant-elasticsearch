@@ -44,9 +44,7 @@
     "python.formatting.blackPath": "/usr/local/py-utils/bin/black",
     "python.terminal.activateEnvInCurrentTerminal": true,
     "python.testing.pytestArgs": [
-        "--continue-on-collection-errors",
-        "--disable-socket",
-        "--allow-unix-socket"
+        "tests"
     ],
     "python.testing.pytestEnabled": true,
     "python.testing.unittestEnabled": false,

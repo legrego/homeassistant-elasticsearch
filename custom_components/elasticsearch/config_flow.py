@@ -78,6 +78,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
     VERSION = 6
     CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_PUSH
+    GATEWAY = Elasticsearch7Gateway
 
     def __init__(self) -> None:
         """Initialize the Elastic flow."""
@@ -94,11 +95,11 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         """
         if user_input is not None:
             # If the URL has an https schema, test the connection and see if we get an untrusted certificate error
-            prospective_settings: dict = {"hass": self.hass, "url": user_input.get(CONF_URL)}
+            prospective_settings: dict = {"url": user_input.get(CONF_URL)}
             self._prospective_config.update(user_input)
 
             try:
-                await Elasticsearch7Gateway.test_prospective_settings(**prospective_settings)
+                await Elasticsearch7Gateway.async_init_then_stop(**prospective_settings)
 
             except UntrustedCertificate:
                 return await self.async_step_certificate_issues()
@@ -107,7 +108,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             except AuthenticationRequired:
                 return await self.async_step_authentication_issues()
 
-            return await self.async_step_complete()
+            return self.async_step_complete()
 
         return self.async_show_form(
             step_id="user",
@@ -130,42 +131,44 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         """Check to see if we need to ask the user for more specific SSL settings."""
 
         if user_input is not None:
-            self._prospective_config.update(user_input)
+            try:
+                await Elasticsearch7Gateway.async_init_then_stop(
+                    url=self._prospective_config[CONF_URL],
+                    verify_certs=self._prospective_config.get(CONF_VERIFY_SSL, True),
+                    ca_certs=self._prospective_config.get(CONF_SSL_CA_PATH),
+                )
 
-        # Test the Elasticsearch Connection information we have so far to check for TLS errors
-        try:
-            await Elasticsearch7Gateway.test_prospective_settings(
-                hass=self.hass,
-                url=self._prospective_config[CONF_URL],
-                verify_certs=self._prospective_config.get(CONF_VERIFY_SSL, True),
-                ca_certs=self._prospective_config.get(CONF_SSL_CA_PATH),
-            )
+                if user_input is not None:
+                    self._prospective_config.update(user_input)
 
-            # If we get here, we have a valid connection, so we can complete our flow
-            return await self.async_step_complete()
+                # If we get here, we have a valid connection, so we can complete our flow
+                return self.async_step_complete()
 
-        except UntrustedCertificate:
-            return self.async_show_form(
-                step_id="certificate_issues",
-                data_schema=vol.Schema(
-                    {
-                        vol.Required(**SCHEMA_VERIFY_SSL): BooleanSelector(
-                            BooleanSelectorConfig(),
-                        ),
-                        vol.Optional(**SCHEMA_SSL_CA_PATH): TextSelector(
-                            TextSelectorConfig(
-                                type=TextSelectorType.TEXT,
-                            )
-                        ),
-                        # To do: Switch to this vol.Optional(**SCHEMA_SSL_CA_PATH): FileSelector(FileSelectorConfig(accept=".pem,.crt")),
-                    },
-                ),
-                errors=errors,
-            )
-        except CannotConnect:
-            return self.async_abort(reason="cannot_connect")
-        except AuthenticationRequired:
-            return await self.async_step_authentication_issues()
+            except UntrustedCertificate:
+                return await self.async_step_certificate_issues(errors={"base": "untrusted_certificate"})
+
+            except CannotConnect:
+                return self.async_abort(reason="cannot_connect")
+            except AuthenticationRequired:
+                return await self.async_step_authentication_issues()
+
+        return self.async_show_form(
+            step_id="certificate_issues",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(**SCHEMA_VERIFY_SSL): BooleanSelector(
+                        BooleanSelectorConfig(),
+                    ),
+                    vol.Optional(**SCHEMA_SSL_CA_PATH): TextSelector(
+                        TextSelectorConfig(
+                            type=TextSelectorType.TEXT,
+                        )
+                    ),
+                    # To do: Switch to this vol.Optional(**SCHEMA_SSL_CA_PATH): FileSelector(FileSelectorConfig(accept=".pem,.crt")),
+                },
+            ),
+            errors=errors,
+        )
 
     @async_log_enter_exit_info
     async def async_step_authentication_issues(self, user_input: dict | None = None) -> ConfigFlowResult:
@@ -208,8 +211,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
         if user_input is not None:
             try:
-                await Elasticsearch7Gateway.test_prospective_settings(
-                    hass=self.hass,
+                await Elasticsearch7Gateway.async_init_then_stop(
                     url=self._prospective_config[CONF_URL],
                     username=user_input.get(CONF_USERNAME),
                     password=user_input.get(CONF_PASSWORD),
@@ -252,8 +254,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
         if user_input is not None:
             try:
-                await Elasticsearch7Gateway.test_prospective_settings(
-                    hass=self.hass,
+                await Elasticsearch7Gateway.async_init_then_stop(
                     url=self._prospective_config[CONF_URL],
                     api_key=user_input.get(CONF_API_KEY),
                     verify_certs=self._prospective_config.get(CONF_VERIFY_SSL, True),

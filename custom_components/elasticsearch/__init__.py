@@ -32,10 +32,8 @@ from .es_integration import ElasticIntegration
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
-    from homeassistant.exceptions import IntegrationError
 
 type ElasticIntegrationConfigEntry = ConfigEntry[ElasticIntegration]
-
 
 @async_log_enter_exit_info
 async def async_setup_entry(hass: HomeAssistant, config_entry: ElasticIntegrationConfigEntry) -> bool:
