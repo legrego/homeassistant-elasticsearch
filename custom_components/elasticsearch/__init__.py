@@ -5,10 +5,10 @@ from __future__ import annotations
 from logging import Logger
 from typing import TYPE_CHECKING
 
-from elasticsearch.config_flow import ElasticFlowHandler
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
+from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady, IntegrationError
 
+from custom_components.elasticsearch.config_flow import ElasticFlowHandler
 from custom_components.elasticsearch.errors import (
     AuthenticationRequired,
     CannotConnect,

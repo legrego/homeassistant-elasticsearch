@@ -1,9 +1,7 @@
 """Config flow for Elastic."""
 
-from dataclasses import dataclass
 from typing import Any
 
-import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry, ConfigFlowResult
@@ -16,20 +14,30 @@ from homeassistant.const import (
     CONF_VERIFY_SSL,
 )
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.data_entry_flow import FlowResult
-from homeassistant.helpers.selector import selector
+from homeassistant.helpers.selector import (
+    BooleanSelector,
+    BooleanSelectorConfig,
+    NumberSelector,
+    NumberSelectorConfig,
+    SelectSelector,
+    SelectSelectorConfig,
+    TargetSelector,
+    TargetSelectorConfig,
+    TextSelector,
+    TextSelectorConfig,
+    TextSelectorType,
+)
 
 from custom_components.elasticsearch.const import (
-    CONF_CHANGE_DETECTION_ENABLED,
+    CONF_AUTHENTICATION_TYPE,
     CONF_CHANGE_DETECTION_TYPE,
-    CONF_EXCLUDED_DOMAINS,
-    CONF_EXCLUDED_ENTITIES,
-    CONF_INCLUDED_DOMAINS,
-    CONF_INCLUDED_ENTITIES,
+    CONF_EXCLUDE_TARGETS,
+    CONF_INCLUDE_TARGETS,
     CONF_POLLING_FREQUENCY,
     CONF_PUBLISH_FREQUENCY,
     CONF_SSL_CA_PATH,
-    ES_CHECK_PERMISSIONS_DATASTREAM,
+    CONF_TARGETS_TO_EXCLUDE,
+    CONF_TARGETS_TO_INCLUDE,
     ONE_MINUTE,
     StateChangeType,
 )
@@ -37,112 +45,32 @@ from custom_components.elasticsearch.const import DOMAIN as ELASTIC_DOMAIN
 from custom_components.elasticsearch.errors import (
     AuthenticationRequired,
     CannotConnect,
-    ClientError,
     InsufficientPrivileges,
-    UnsupportedVersion,
     UntrustedCertificate,
 )
-from custom_components.elasticsearch.es_gateway import Elasticsearch7Gateway
+from custom_components.elasticsearch.es_gateway_7 import Elasticsearch7Gateway
 
-from .logger import LOGGER, async_log_enter_exit_debug
+from .logger import (
+    async_log_enter_exit_debug,
+    async_log_enter_exit_info,
+    log_enter_exit_debug,
+    log_enter_exit_info,
+)
 
 CONFIG_TO_REDACT = {CONF_API_KEY, CONF_PASSWORD, CONF_USERNAME}
 
-DEFAULT_URL = "http://localhost:9200"
-
-DEFAULT_PUBLISH_FREQUENCY = ONE_MINUTE
-DEFAULT_POLLING_FREQUENCY = ONE_MINUTE
-
-DEFAULT_CHANGE_DETECTION_ENABLED = True
-DEFAULT_CHANGE_DETECTION_TYPE = [StateChangeType.STATE.value, StateChangeType.ATTRIBUTE.value]
-DEFAULT_VERIFY_SSL = True
-DEFAULT_TIMEOUT_SECONDS = 30
-
-
-def build_new_options(existing_options: dict | None = None, user_input: dict | None = None) -> dict:
-    """Build the entire options validation schema."""
-    if user_input is None:
-        user_input = {}
-    if existing_options is None:
-        existing_options = {}
-    return {
-        CONF_CHANGE_DETECTION_ENABLED: user_input.get(
-            CONF_CHANGE_DETECTION_ENABLED,
-            existing_options.get(CONF_CHANGE_DETECTION_ENABLED, DEFAULT_CHANGE_DETECTION_ENABLED),
-        ),
-        CONF_CHANGE_DETECTION_TYPE: user_input.get(
-            CONF_CHANGE_DETECTION_TYPE,
-            existing_options.get(CONF_CHANGE_DETECTION_TYPE, DEFAULT_CHANGE_DETECTION_TYPE),
-        ),
-        CONF_POLLING_FREQUENCY: user_input.get(
-            CONF_POLLING_FREQUENCY,
-            existing_options.get(CONF_POLLING_FREQUENCY, DEFAULT_POLLING_FREQUENCY),
-        ),
-        CONF_PUBLISH_FREQUENCY: user_input.get(
-            CONF_PUBLISH_FREQUENCY,
-            existing_options.get(CONF_PUBLISH_FREQUENCY, DEFAULT_PUBLISH_FREQUENCY),
-        ),
-        CONF_EXCLUDED_DOMAINS: user_input.get(
-            CONF_EXCLUDED_DOMAINS,
-            existing_options.get(CONF_EXCLUDED_DOMAINS, []),
-        ),
-        CONF_EXCLUDED_ENTITIES: user_input.get(
-            CONF_EXCLUDED_ENTITIES,
-            existing_options.get(CONF_EXCLUDED_ENTITIES, []),
-        ),
-        CONF_INCLUDED_DOMAINS: user_input.get(
-            CONF_INCLUDED_DOMAINS,
-            existing_options.get(CONF_INCLUDED_DOMAINS, []),
-        ),
-        CONF_INCLUDED_ENTITIES: user_input.get(
-            CONF_INCLUDED_ENTITIES,
-            existing_options.get(CONF_INCLUDED_ENTITIES, []),
-        ),
-    }
-
-
-def build_new_data(existing_data: dict | None = None, user_input: dict | None = None) -> dict:
-    """Build the entire data validation schema."""
-    if user_input is None:
-        user_input = {}
-    if existing_data is None:
-        existing_data = {}
-
-    data: dict = {
-        CONF_URL: user_input.get(CONF_URL, existing_data.get(CONF_URL, DEFAULT_URL)),
-        CONF_TIMEOUT: user_input.get(CONF_TIMEOUT, existing_data.get(CONF_TIMEOUT, DEFAULT_TIMEOUT_SECONDS)),
-        CONF_VERIFY_SSL: user_input.get(
-            CONF_VERIFY_SSL,
-            existing_data.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL),
-        ),
-        CONF_SSL_CA_PATH: user_input.get(CONF_SSL_CA_PATH, existing_data.get(CONF_SSL_CA_PATH, None)),
-    }
-    auth = {
-        CONF_USERNAME: user_input.get(CONF_USERNAME, existing_data.get(CONF_USERNAME, None)),
-        CONF_PASSWORD: user_input.get(CONF_PASSWORD, existing_data.get(CONF_PASSWORD, None)),
-        CONF_API_KEY: user_input.get(CONF_API_KEY, existing_data.get(CONF_API_KEY, None)),
-    }
-
-    # Set auth method based on the user input provided, only save relevant params
-    if auth.get(CONF_USERNAME) or auth.get(CONF_PASSWORD):
-        data[CONF_USERNAME] = auth.get(CONF_USERNAME)
-        data[CONF_PASSWORD] = auth.get(CONF_PASSWORD)
-
-    elif auth.get(CONF_API_KEY):
-        data[CONF_API_KEY] = auth.get(CONF_API_KEY)
-
-    if data.get(CONF_SSL_CA_PATH) and len(str(data.get(CONF_SSL_CA_PATH))) > 0:
-        data[CONF_SSL_CA_PATH] = user_input[CONF_SSL_CA_PATH]
-
-    return data
-
-
-@dataclass
-class ClusterCheckResult:
-    """Result of cluster connection check."""
-
-    success: bool
-    errors: dict | None
+# Data Flow values
+SCHEMA_URL: dict[Any, Any] = {"schema": CONF_URL, "default": "http://localhost:9200"}
+SCHEMA_AUTHENTICATION_TYPE: dict[Any, Any] = {
+    "schema": CONF_AUTHENTICATION_TYPE,
+    "default": CONF_API_KEY,
+}
+SCHEMA_USERNAME = {"schema": CONF_USERNAME, "default": None}
+SCHEMA_PASSWORD = {"schema": CONF_PASSWORD, "default": None}
+SCHEMA_VERIFY_SSL = {"schema": CONF_VERIFY_SSL, "default": True}
+SCHEMA_SSL_CA_PATH: dict[str, Any] = {"schema": CONF_SSL_CA_PATH}
+SCHEMA_API_KEY = {"schema": CONF_API_KEY, "default": None}
+SCHEMA_TIMEOUT = {"schema": CONF_TIMEOUT, "default": 30}
 
 
 class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
@@ -151,309 +79,252 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
     VERSION = 6
     CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_PUSH
 
+    def __init__(self) -> None:
+        """Initialize the Elastic flow."""
+        self._reauth_entry: ConfigEntry | None = None
+        self._prospective_config: dict[str, Any] = self.init_data or {}
+
+    @async_log_enter_exit_info
+    async def async_step_user(
+        self, user_input: dict | None = None, errors: dict | None = None
+    ) -> ConfigFlowResult:  # noqa: ARG002
+        """Handle a flow initialized by the user. This is the first step in the flow.
+
+        We will gather the url of the elasticsearch cluster and the desired authentication method.
+        """
+        if user_input is not None:
+            # If the URL has an https schema, test the connection and see if we get an untrusted certificate error
+            prospective_settings: dict = {"hass": self.hass, "url": user_input.get(CONF_URL)}
+            self._prospective_config.update(user_input)
+
+            try:
+                await Elasticsearch7Gateway.test_prospective_settings(**prospective_settings)
+
+            except UntrustedCertificate:
+                return await self.async_step_certificate_issues()
+            except CannotConnect as err:
+                return await self.async_step_user(errors={"base": f"cannot_connect {err}"})
+            except AuthenticationRequired:
+                return await self.async_step_authentication_issues()
+
+            return await self.async_step_complete()
+
+        return self.async_show_form(
+            step_id="user",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(**SCHEMA_URL): TextSelector(
+                        TextSelectorConfig(
+                            type=TextSelectorType.URL,
+                        )
+                    ),
+                },
+            ),
+            errors=errors,
+        )
+
+    @async_log_enter_exit_info
+    async def async_step_certificate_issues(
+        self, user_input: dict | None = None, errors: dict | None = None
+    ) -> ConfigFlowResult:
+        """Check to see if we need to ask the user for more specific SSL settings."""
+
+        if user_input is not None:
+            self._prospective_config.update(user_input)
+
+        # Test the Elasticsearch Connection information we have so far to check for TLS errors
+        try:
+            await Elasticsearch7Gateway.test_prospective_settings(
+                hass=self.hass,
+                url=self._prospective_config[CONF_URL],
+                verify_certs=self._prospective_config.get(CONF_VERIFY_SSL, True),
+                ca_certs=self._prospective_config.get(CONF_SSL_CA_PATH),
+            )
+
+            # If we get here, we have a valid connection, so we can complete our flow
+            return await self.async_step_complete()
+
+        except UntrustedCertificate:
+            return self.async_show_form(
+                step_id="certificate_issues",
+                data_schema=vol.Schema(
+                    {
+                        vol.Required(**SCHEMA_VERIFY_SSL): BooleanSelector(
+                            BooleanSelectorConfig(),
+                        ),
+                        vol.Optional(**SCHEMA_SSL_CA_PATH): TextSelector(
+                            TextSelectorConfig(
+                                type=TextSelectorType.TEXT,
+                            )
+                        ),
+                        # To do: Switch to this vol.Optional(**SCHEMA_SSL_CA_PATH): FileSelector(FileSelectorConfig(accept=".pem,.crt")),
+                    },
+                ),
+                errors=errors,
+            )
+        except CannotConnect:
+            return self.async_abort(reason="cannot_connect")
+        except AuthenticationRequired:
+            return await self.async_step_authentication_issues()
+
+    @async_log_enter_exit_info
+    async def async_step_authentication_issues(self, user_input: dict | None = None) -> ConfigFlowResult:
+        """We require Authentication information to connect to Elasticsearch."""
+
+        if user_input is not None:
+            if user_input[CONF_AUTHENTICATION_TYPE] == "basic_auth":
+                return await self.async_step_basic_auth()
+            if user_input[CONF_AUTHENTICATION_TYPE] == "api_key":
+                return await self.async_step_api_key()
+
+        # Show a form where we ask the user if they want to use API Key or Basic Auth
+        return self.async_show_form(
+            step_id="authentication_issues",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(**SCHEMA_AUTHENTICATION_TYPE): SelectSelector(
+                        SelectSelectorConfig(
+                            options=[
+                                {
+                                    "label": "Authenticate using an API Key",
+                                    "value": "api_key",
+                                },
+                                {
+                                    "label": "Authenticate using Username/Password",
+                                    "value": "basic_auth",
+                                },
+                            ],
+                        )
+                    ),
+                }
+            ),
+        )
+
+    @async_log_enter_exit_info
+    async def async_step_basic_auth(
+        self, user_input: dict | None = None, errors: dict | None = None
+    ) -> ConfigFlowResult:
+        """Prompt the user for the settings required to use Basic Authentication against the Elasticsearch cluster."""
+
+        if user_input is not None:
+            try:
+                await Elasticsearch7Gateway.test_prospective_settings(
+                    hass=self.hass,
+                    url=self._prospective_config[CONF_URL],
+                    username=user_input.get(CONF_USERNAME),
+                    password=user_input.get(CONF_PASSWORD),
+                    verify_certs=self._prospective_config.get(CONF_VERIFY_SSL, True),
+                    ca_certs=self._prospective_config.get(CONF_SSL_CA_PATH),
+                )
+            except InsufficientPrivileges:
+                return await self.async_step_basic_auth(errors={"base": "insufficient_privileges"})
+            except AuthenticationRequired:
+                return await self.async_step_basic_auth(errors={"base": "invalid_basic_auth"})
+
+            # We are authenticated, update settings and complete flow
+            self._prospective_config.update(user_input)
+            return self.async_step_complete()
+
+        return self.async_show_form(
+            step_id="basic_auth",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(**SCHEMA_USERNAME): TextSelector(
+                        TextSelectorConfig(
+                            type=TextSelectorType.TEXT,
+                        )
+                    ),
+                    vol.Required(**SCHEMA_PASSWORD): TextSelector(
+                        TextSelectorConfig(
+                            type=TextSelectorType.PASSWORD,
+                        )
+                    ),
+                },
+            ),
+            errors=errors,
+        )
+
+    @async_log_enter_exit_info
+    async def async_step_api_key(
+        self, user_input: dict | None = None, errors: dict | None = None
+    ) -> ConfigFlowResult:
+        """Handle connection to an unsecured Elasticsearch cluster."""
+
+        if user_input is not None:
+            try:
+                await Elasticsearch7Gateway.test_prospective_settings(
+                    hass=self.hass,
+                    url=self._prospective_config[CONF_URL],
+                    api_key=user_input.get(CONF_API_KEY),
+                    verify_certs=self._prospective_config.get(CONF_VERIFY_SSL, True),
+                    ca_certs=self._prospective_config.get(CONF_SSL_CA_PATH),
+                )
+            except InsufficientPrivileges:
+                return await self.async_step_api_key(errors={"base": "insufficient_privileges"})
+            except AuthenticationRequired:
+                return await self.async_step_api_key(errors={"base": "invalid_api_key"})
+
+            # We are authenticated, update settings and complete flow
+            self._prospective_config.update(user_input)
+            return self.async_step_complete()
+
+        return self.async_show_form(
+            step_id="api_key",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(**SCHEMA_API_KEY): TextSelector(
+                        TextSelectorConfig(
+                            type=TextSelectorType.PASSWORD,
+                        )
+                    ),
+                },
+            ),
+            errors=errors,
+        )
+
+    @log_enter_exit_info
+    def async_step_complete(self) -> ConfigFlowResult:
+        """Handle the completion of the flow."""
+        default_options = ElasticOptionsFlowHandler.default_options
+
+        return self.async_create_entry(
+            title="ES_Integration", data=self._prospective_config, options=default_options
+        )
+
     @staticmethod
     @callback
     def async_get_options_flow(config_entry: ConfigEntry) -> config_entries.OptionsFlow:
         """Get the options flow for this handler."""
         return ElasticOptionsFlowHandler(config_entry)
 
-    def __init__(self) -> None:
-        """Initialize the Elastic flow."""
-        self._cluster_check_result: ClusterCheckResult | None = None
-
-    # Build the first step of the flow
-    async def async_step_user(self, user_input: dict | None = None) -> ConfigFlowResult:  # noqa: ARG002
-        """Handle a flow initialized by the user."""
-
-        return self.async_show_menu(
-            step_id="user",
-            menu_options={
-                "api_key": "Authenticate via API Key",
-                "basic_auth": "Authenticate via username/password",
-                "no_auth": "No authentication",
-            },
-        )
-
-    async def _handle_auth_flow(
-        self,
-        auth_type: str,
-        user_input: dict | None,
-        data: dict | None = None,
-        options: dict | None = None,
-        retry: bool = True,
-    ) -> ConfigFlowResult:
-        # Combines the logic from all the async_step_*_auth methods into a single method
-
-        def build_auth_schema(
-            data: dict,
-            auth_type: str,
-            errors: dict | None = None,
-            skip_common: bool | None = False,
-        ) -> dict:
-            """Build the authentication schema."""
-
-            schema = {}
-            if not skip_common:
-                schema.update(
-                    {vol.Required(CONF_URL, default=data.get(CONF_URL, "http://localhost:9200")): str},
-                )
-
-            if errors and errors["base"] == "untrusted_connection":
-                schema.update(
-                    {
-                        vol.Required(
-                            CONF_VERIFY_SSL,
-                            default=data.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL),
-                        ): bool,
-                        vol.Optional(CONF_SSL_CA_PATH): str,
-                    },
-                )
-
-            if auth_type == "basic_auth":
-                schema.update(
-                    {
-                        vol.Required(CONF_USERNAME, default=data.get(CONF_USERNAME, "")): str,
-                        vol.Required(CONF_PASSWORD, default=data.get(CONF_PASSWORD, "")): str,
-                    },
-                )
-
-            if auth_type == "api_key":
-                schema.update(
-                    {
-                        vol.Required(CONF_API_KEY, default=data.get(CONF_API_KEY, "")): str,
-                    },
-                )
-
-            if auth_type == "no_auth":
-                pass
-
-            return schema
-
-        effective_data = build_new_data(existing_data=data, user_input=user_input)
-
-        # Handle initial view of form
-        if user_input is None:
-            return self.async_show_form(
-                step_id=auth_type,
-                data_schema=vol.Schema(
-                    build_auth_schema(
-                        auth_type=auth_type,
-                        data=effective_data,
-                        errors=None,
-                    ),
-                ),
-            )
-
-        params = {
-            "url": user_input.get("url"),
-            "verify_certs": user_input.get("verify_ssl", True),
-            "ca_certs": user_input.get("ssl_ca_path"),
-            "verify_permissions": ES_CHECK_PERMISSIONS_DATASTREAM,
-        }
-
-        # Handle testing various authentication methods
-        if auth_type == "basic_auth":
-            params[CONF_USERNAME] = user_input.get(CONF_USERNAME)
-            params[CONF_PASSWORD] = user_input.get(CONF_PASSWORD)
-        if auth_type == "api_key":
-            params[CONF_API_KEY] = user_input.get(CONF_API_KEY)
-
-        result = await self._async_elasticsearch_login(**params)
-
-        # Connection to Elasticsearch was successful. Create the entry.
-        if result.success:
-            return await self._async_create_entry(
-                data={**effective_data},
-                options=build_new_options(options),
-            )
-
-        if retry:
-            # Connection was not successful, reshow this form showing the previous connection error, retaining any user input
-            return self.async_show_form(
-                step_id=auth_type,
-                data_schema=vol.Schema(
-                    build_auth_schema(
-                        auth_type=auth_type,
-                        data=effective_data,
-                        errors=result.errors,
-                    ),
-                ),
-                errors=result.errors,
-            )
-
-        return self.async_abort(reason="cannot_connect")
-
-    async def async_step_no_auth(self, user_input: dict | None) -> FlowResult:
-        """Handle connection to an unsecured Elasticsearch cluster."""
-
-        return await self._handle_auth_flow(user_input=user_input, data=self.init_data, auth_type="no_auth")
-
-    async def async_step_basic_auth(self, user_input: dict | None) -> FlowResult:
-        """Handle connection to an unsecured Elasticsearch cluster."""
-
-        return await self._handle_auth_flow(
-            user_input=user_input,
-            data=self.init_data,
-            auth_type="basic_auth",
-        )
-
-    async def async_step_api_key(self, user_input: dict | None) -> FlowResult:
-        """Handle connection to an unsecured Elasticsearch cluster."""
-
-        return await self._handle_auth_flow(user_input=user_input, data=self.init_data, auth_type="api_key")
-
-    async def async_step_reauth(self, user_input: dict | None) -> FlowResult:
+    async def async_step_reauth(self, user_input: dict | None) -> ConfigFlowResult:
         """Handle reauthorization."""
         entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
         if entry is None:
             return self.async_abort(reason="no_entry")
+        self._reauth_entry = entry
 
-        auth_type = "no_auth"
-        if entry.data.get(CONF_USERNAME):
-            auth_type = "basic_auth"
-
-        if entry.data.get(CONF_API_KEY):
-            auth_type = "api_key"
-
-        return await self._handle_auth_flow(
-            data=dict(entry.data),
-            user_input=user_input,
-            options=dict(entry.options),
-            auth_type=auth_type,
-        )
-
-    async def _async_create_entry(self, data: dict, options: dict) -> ConfigFlowResult:
-        """Create the config entry."""
-
-        entries = self.hass.config_entries.async_entries(ELASTIC_DOMAIN)
-
-        # look at the entries in entries, look at the data conf_url value and if it matches, update the config entry, if it doesnt, make a new one
-
-        for entry in entries:
-            if entry.data.get(CONF_URL) == data.get(CONF_URL):
-                self.hass.config_entries.async_update_entry(entry, data=data, options=options)
-
-                self.hass.async_create_task(self.hass.config_entries.async_reload(entry.entry_id))
-
-                return self.async_abort(reason="updated_entry")
-
-        return self.async_create_entry(title=str(data.get(CONF_URL)), data=data, options=options)
-
-    @async_log_enter_exit_debug
-    async def _async_elasticsearch_login(
-        self,
-        url: str,
-        verify_certs: bool,
-        ca_certs: str,
-        username: str | None = None,
-        password: str | None = None,
-        api_key: str | None = None,
-        timeout: int = 30,
-        verify_permissions: dict[str, Any] | None = None,
-    ) -> ClusterCheckResult:
-        """Handle connection & authentication to Elasticsearch."""
-        errors = {}
-
-        prospective_settings: dict = {
-            "hass": self.hass,
-            "url": url,
-            "username": username,
-            "password": password,
-            "api_key": api_key,
-            "verify_certs": verify_certs,
-            "ca_certs": ca_certs,
-            "request_timeout": timeout,
-            "minimum_privileges": verify_permissions,
-        }
-
-        try:
-            await Elasticsearch7Gateway.test_prospective_settings(**prospective_settings)
-        except ClientError:
-            errors = await self._handle_client_error(
-                url,
-                ca_certs,
-                username,
-                password,
-                api_key,
-                timeout,
-                verify_permissions,
-            )
-        except UntrustedCertificate:
-            errors["base"] = "untrusted_connection"
-        except InsufficientPrivileges:
-            errors["base"] = "insufficient_privileges"
-        except AuthenticationRequired:
-            errors = await self._handle_authentication_required(api_key)
-        except CannotConnect:
-            errors["base"] = "cannot_connect"
-        except UnsupportedVersion:
-            errors["base"] = "unsupported_version"
-        except Exception as ex:  # pylint: disable=broad-except  # noqa: BLE001
-            LOGGER.error(
-                "Unknown error connecting with Elasticsearch cluster. %s",
-                ex,
-            )
-            errors["base"] = "cannot_connect"
-
-        success = not errors
-        return ClusterCheckResult(success, errors)
-
-    async def _handle_client_error(
-        self,
-        url: str,
-        ca_certs: str,
-        username: str | None,
-        password: str | None,
-        api_key: str | None,
-        timeout: int,
-        verify_permissions: dict[str, Any] | None,
-    ) -> dict:
-        """Handle client error when connecting to Elasticsearch."""
-        errors = {}
-
-        # Try to initialize without SSL verification, if this works then there is a self-signed certificate being used
-        try:
-            temp_no_ssl_gateway = Elasticsearch7Gateway(
-                hass=self.hass,
-                url=url,
-                username=username,
-                password=password,
-                api_key=api_key,
-                verify_certs=False,
-                ca_certs=ca_certs,
-                request_timeout=timeout,
-                minimum_privileges=verify_permissions,
-                use_connection_monitor=False,
+        if user_input is None:
+            return self.async_show_form(
+                step_id="reauth_confirm",
+                data_schema=vol.Schema({}),
             )
 
-            await temp_no_ssl_gateway.async_init()
-
-            errors["base"] = "untrusted_connection"
-        except Exception:  # pylint: disable=broad-except  # noqa: BLE001
-            errors["base"] = "client_error"
-        finally:
-            if temp_no_ssl_gateway is not None:
-                await temp_no_ssl_gateway.stop()
-
-        return errors
-
-    async def _handle_authentication_required(
-        self,
-        api_key: str | None,
-    ) -> dict:
-        """Handle authentication required when connecting to Elasticsearch."""
-        errors = {}
-
-        if api_key is not None:
-            errors["base"] = "invalid_api_key"
-        else:
-            errors["base"] = "invalid_basic_auth"
-
-        return errors
+        return await self.async_step_authentication_issues()
 
 
 class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
     """Handle Elastic options."""
+
+    default_options: dict[str, Any] = {
+        CONF_PUBLISH_FREQUENCY: ONE_MINUTE,
+        CONF_POLLING_FREQUENCY: ONE_MINUTE,
+        CONF_CHANGE_DETECTION_TYPE: [StateChangeType.STATE.value, StateChangeType.ATTRIBUTE.value],
+        CONF_INCLUDE_TARGETS: False,
+        CONF_EXCLUDE_TARGETS: False,
+        CONF_TARGETS_TO_INCLUDE: {},
+        CONF_TARGETS_TO_EXCLUDE: {},
+    }
 
     def __init__(self, config_entry: ConfigEntry) -> None:
         """Initialize Elastic options flow."""
@@ -463,75 +334,84 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_init(
         self,
         hass: HomeAssistant,  # noqa: ARG002
-    ) -> ConfigFlowResult:  # pylint disable=unused-argument
+    ) -> ConfigFlowResult:
         """Manage the Elastic options."""
 
-        return await self.async_step_publish_options()
+        return await self.async_step_options()
 
-    async def async_step_publish_options(
+    @async_log_enter_exit_debug
+    async def async_step_options(
         self,
         user_input: dict | None = None,
     ) -> ConfigFlowResult:
         """Publish Options."""
         if user_input is not None:
             self.options.update(user_input)
-            return await self._update_options()
+            self.hass.config_entries.async_schedule_reload(self.config_entry.entry_id)
+            return self.async_create_entry(title="", data=self.options)
 
         return self.async_show_form(
-            step_id="publish_options",
-            data_schema=vol.Schema(await self.async_build_publish_options_schema()),
+            step_id="options",
+            data_schema=self._build_options_schema(),
         )
 
-    async def _update_options(self) -> ConfigFlowResult:
-        """Update config entry options."""
-        return self.async_create_entry(title="", data=self.options)
+    @log_enter_exit_debug
+    def _build_options_schema(self) -> vol.Schema:
+        """Build the options schema."""
 
-    def _get_config_string(self, key: str, default: str) -> str:
-        current: str = self.options.get(key, default)
-        if current is None:
-            return default
-        return current
+        from_options = self.config_entry.options.get
 
-    def _get_config_value(self, key: str, default: object) -> object:
-        current: object = self.options.get(key, default)
-        if current is None:
-            return default
-        return current
+        SCHEMA_PUBLISH_FREQUENCY = {
+            "schema": CONF_PUBLISH_FREQUENCY,
+            "default": from_options(CONF_PUBLISH_FREQUENCY),
+        }
+        SCHEMA_POLLING_FREQUENCY = {
+            "schema": CONF_POLLING_FREQUENCY,
+            "default": from_options(CONF_POLLING_FREQUENCY),
+        }
 
-    async def async_build_publish_options_schema(self) -> dict:
-        """Build the schema for publish options."""
-        domains, entities = await self._async_get_domains_and_entities()
+        SCHEMA_CHANGE_DETECTION_TYPE = {
+            "schema": CONF_CHANGE_DETECTION_TYPE,
+            "default": from_options(CONF_CHANGE_DETECTION_TYPE),
+        }
 
-        current_excluded_domains = self._get_config_value(CONF_EXCLUDED_DOMAINS, [])
-        current_included_domains = self._get_config_value(CONF_INCLUDED_DOMAINS, [])
-        domain_options = self._dedup_list(
-            list(str(domains)) + list(str(current_excluded_domains)) + list(str(current_included_domains)),
-        )
+        SCHEMA_INCLUDE_TARGETS = {
+            "schema": CONF_INCLUDE_TARGETS,
+            "default": from_options(CONF_INCLUDE_TARGETS),
+        }
+        SCHEMA_TARGETS_TO_INCLUDE = {
+            "schema": CONF_TARGETS_TO_INCLUDE,
+            "default": from_options(CONF_TARGETS_TO_INCLUDE),
+        }
 
-        current_excluded_entities = self._get_config_value(CONF_EXCLUDED_ENTITIES, [])
-        current_included_entities = self._get_config_value(CONF_INCLUDED_ENTITIES, [])
-        entity_options = self._dedup_list(
-            list(str(entities)) + list(str(current_excluded_entities)) + list(str(current_included_entities)),
-        )
+        SCHEMA_EXCLUDE_TARGETS = {
+            "schema": CONF_EXCLUDE_TARGETS,
+            "default": from_options(CONF_EXCLUDE_TARGETS),
+        }
+        SCHEMA_TARGETS_TO_EXCLUDE = {
+            "schema": CONF_TARGETS_TO_EXCLUDE,
+            "default": from_options(CONF_TARGETS_TO_EXCLUDE),
+        }
 
-        return {
-            vol.Optional(
-                CONF_PUBLISH_FREQUENCY,
-                default=self._get_config_value(CONF_PUBLISH_FREQUENCY, DEFAULT_PUBLISH_FREQUENCY),  # type: ignore  # noqa: PGH003
-            ): vol.All(vol.Coerce(int), vol.Range(min=1, max=600)),
-            vol.Optional(
-                CONF_POLLING_FREQUENCY,
-                default=self._get_config_value(CONF_POLLING_FREQUENCY, DEFAULT_POLLING_FREQUENCY),  # type: ignore  # noqa: PGH003
-            ): vol.All(vol.Coerce(int), vol.Range(min=1, max=3600)),
-            vol.Required(
-                CONF_CHANGE_DETECTION_TYPE,
-                default=self._get_config_value(CONF_CHANGE_DETECTION_TYPE, DEFAULT_CHANGE_DETECTION_TYPE),  # type: ignore  # noqa: PGH003
-            ): selector(
-                {
-                    "select": {
-                        "multiple": True,
-                        "mode": "list",
-                        "options": [
+        return vol.Schema(
+            {
+                vol.Optional(**SCHEMA_PUBLISH_FREQUENCY): NumberSelector(
+                    NumberSelectorConfig(
+                        min=10,
+                        max=600,
+                        unit_of_measurement="seconds",
+                    )
+                ),
+                vol.Optional(**SCHEMA_POLLING_FREQUENCY): NumberSelector(
+                    NumberSelectorConfig(
+                        min=10,
+                        max=3600,
+                        unit_of_measurement="seconds",
+                    )
+                ),
+                vol.Optional(**SCHEMA_CHANGE_DETECTION_TYPE): SelectSelector(
+                    SelectSelectorConfig(
+                        options=[
                             {
                                 "label": "Track entities with state changes",
                                 "value": StateChangeType.STATE.value,
@@ -541,38 +421,20 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
                                 "value": StateChangeType.ATTRIBUTE.value,
                             },
                         ],
-                    },
-                },
-            ),
-            vol.Required(
-                CONF_EXCLUDED_DOMAINS,
-                default=current_excluded_domains,  # type: ignore  # noqa: PGH003
-            ): cv.multi_select(domain_options),
-            vol.Required(
-                CONF_EXCLUDED_ENTITIES,
-                default=current_excluded_entities,  # type: ignore  # noqa: PGH003
-            ): cv.multi_select(entity_options),
-            vol.Required(
-                CONF_INCLUDED_DOMAINS,
-                default=current_included_domains,  # type: ignore  # noqa: PGH003
-            ): cv.multi_select(domain_options),
-            vol.Required(
-                CONF_INCLUDED_ENTITIES,
-                default=current_included_entities,  # type: ignore  # noqa: PGH003
-            ): cv.multi_select(entity_options),
-        }
-
-    def _dedup_list(self, list_to_dedup: list[str]) -> list:
-        return list(set(list_to_dedup))
-
-    @callback
-    async def _async_get_domains_and_entities(self) -> tuple[list, list]:
-        states = self.hass.states.async_all()
-        domains = set()
-        entity_ids = []
-
-        for state in states:
-            entity_ids.append(state.entity_id)
-            domains.add(state.domain)
-
-        return sorted(domains), sorted(entity_ids)
+                        multiple=True,
+                    )
+                ),
+                vol.Optional(**SCHEMA_INCLUDE_TARGETS): BooleanSelector(
+                    BooleanSelectorConfig(),
+                ),
+                vol.Optional(**SCHEMA_TARGETS_TO_INCLUDE): TargetSelector(
+                    TargetSelectorConfig(),
+                ),
+                vol.Optional(**SCHEMA_EXCLUDE_TARGETS): BooleanSelector(
+                    BooleanSelectorConfig(),
+                ),
+                vol.Optional(**SCHEMA_TARGETS_TO_EXCLUDE): TargetSelector(
+                    TargetSelectorConfig(),
+                ),
+            }
+        )

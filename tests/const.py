@@ -9,6 +9,7 @@ TEST_DEVICE_LABELS = ["device label 1", "device label 2", "device label 3"]
 TEST_DEVICE_NAME = "device name"
 
 TEST_ENTITY_DOMAIN = COUNTER_DOMAIN
+TEST_ENTITY_AREA_ID = "entity_area"
 TEST_ENTITY_AREA_NAME = "entity area"
 TEST_ENTITY_FLOOR_NAME = "entity floor"
 TEST_ENTITY_LABELS = ["entity label 1", "entity label 2", "entity label 3"]
@@ -22,10 +23,15 @@ TEST_ENTITY_OBJECT_ID_3 = "entity_object_id_3"
 TEST_ENTITY_OBJECT_ID_4 = "entity_object_id_4"
 TEST_ENTITY_OBJECT_ID_5 = "entity_object_id_5"
 
-TEST_CONFIG_ENTRY_DATA_URL = "http://es_integration:9200"
+
+TEST_CONFIG_ENTRY_DATA_URL = "http://mock_es_integration:9200"
+TEST_CONFIG_ENTRY_DATA_USERNAME = "hass_writer"
+TEST_CONFIG_ENTRY_DATA_PASSWORD = "changeme"
+TEST_CONFIG_ENTRY_DATA_TIMEOUT = 30
+TEST_CONFIG_ENTRY_DATA_VERIFY_SSL = False
+
 TEST_CONFIG_ENTRY_BASE_DATA = {
     "url": TEST_CONFIG_ENTRY_DATA_URL,
-    "use_connection_monitor": False,
     "timeout": 30,
     "verify_ssl": False,
     "username": "hass_writer",
@@ -36,14 +42,12 @@ TEST_CONFIG_ENTRY_BASE_OPTIONS = {
     "change_detection_type": [],
     "polling_frequency": 60,
     "publish_frequency": 60,
-    "excluded_domains": [],
-    "excluded_entities": [],
-    "included_domains": [],
-    "included_entities": [],
+    "include_targets": False,
+    "exclude_targets": False,
+    "targets_to_include": {},
+    "targets_to_exclude": {},
 }
-TEST_config_entry_DATA_URL = "http://mock_es_integration:9200"
-TEST_config_entry_BASE_DATA = {"url": TEST_config_entry_DATA_URL, "use_connection_monitor": False}
-TEST_config_entry_BASE_OPTIONS = {}
+
 
 TEST_DEVICE_COMBINATION_FIELD_NAMES = (
     "device_name",
@@ -84,8 +88,6 @@ TEST_ENTITY_COMBINATION_IDS = [
     "With entity no area and floor",
     "With entity no area, floor, or labels",
 ]
-
-MOCK_ELASTICSEARCH_URL = "http://es_integration:9200"
 
 MOCK_NOON_APRIL_12TH_2023 = "2023-04-12T12:00:00+00:00"
 

@@ -18,17 +18,23 @@ class AuthenticationRequired(ESIntegrationConnectionException):
 class InsufficientPrivileges(AuthenticationRequired):
     """Credentials are lacking the required privileges."""
 
-
 class CannotConnect(ESIntegrationConnectionException):
     """Unable to connect to the cluster."""
 
+class ServerError(CannotConnect):
+    """Server Error."""
 
-class UntrustedCertificate(CannotConnect):
+
+class ClientError(CannotConnect):
+    """Client Error."""
+
+
+class SSLError(CannotConnect):
+    """Error related to SSL."""
+
+
+class UntrustedCertificate(SSLError):
     """Received a untrusted certificate error."""
-
-
-class ClientError(ESIntegrationConnectionException):
-    """Connected with a Client Error."""
 
 
 class UnsupportedVersion(ESIntegrationConnectionException):

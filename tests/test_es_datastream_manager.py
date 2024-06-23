@@ -1,47 +1,29 @@
 """Tests for the index manager class."""
+# noqa: F401 # pylint: disable=redefined-outer-name
 
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from custom_components.elasticsearch.es_datastream_manager import IndexManager
-from custom_components.elasticsearch.es_gateway import Elasticsearch8Gateway
-from homeassistant.core import HomeAssistant
+from custom_components.elasticsearch.es_datastream_manager import DatastreamManager
 
 
 @pytest.fixture
-def mock_gateway(hass: HomeAssistant) -> Elasticsearch8Gateway:
-    """Mock ElasticsearchGateway instance."""
-
-    gateway_settings: dict = {
-        "hass": hass,
-        "url": "https://my_es_host:9200",
-    }
-
-    return Elasticsearch8Gateway(**gateway_settings)
+async def datastream_manager(initialized_gateway):
+    """Return an DatastreamManager instance."""
+    return DatastreamManager(initialized_gateway)
 
 
-@pytest.fixture
-async def datastream_manager(hass, mock_gateway):
-    """Return an IndexManager instance."""
-    datastream_manager = IndexManager(hass, mock_gateway)
+class Test_DatastreamManager_Sync:
+    """Test the DatastreamManager class sync methods."""
 
-    yield datastream_manager
-
-    datastream_manager.stop()
-
-
-class Test_IndexManager_Sync:
-    """Test the IndexManager class sync methods."""
-
-    async def test_init(self, datastream_manager, hass, mock_gateway):
+    async def test_init(self, datastream_manager, hass, gateway):
         """Test the __init__ method."""
-        assert datastream_manager._hass == hass
-        assert datastream_manager._gateway == mock_gateway
+        assert datastream_manager._gateway == gateway
 
 
 @pytest.mark.asyncio
-class Test_IndexManager_Async:
-    """Test the IndexManager class async methods."""
+class Test_DatastreamManager_Async:
+    """Test the DatastreamManager class async methods."""
 
     async def test_async_init(self, datastream_manager):
         """Test the async_init method."""
@@ -51,11 +33,11 @@ class Test_IndexManager_Async:
 
             datastream_manager._create_index_template.assert_called_once()
 
-    async def test_needs_index_template(self, datastream_manager, mock_gateway):
+    async def test_needs_index_template(self, datastream_manager):
         """Test the _needs_index_template method."""
 
         # Mock the get_index_template method to return a matching template
-        mock_gateway.get_index_template = AsyncMock(
+        datastream_manager._gateway.get_index_template = AsyncMock(
             return_value={"index_templates": [{"name": "datastream_metrics"}]},
         )
 

@@ -7,9 +7,16 @@ DOMAIN: str = "elasticsearch"
 
 CONF_PUBLISH_FREQUENCY: str = "publish_frequency"
 CONF_POLLING_FREQUENCY: str = "polling_frequency"
+CONF_AUTHENTICATION_TYPE: str = "authentication_type"
 
 CONF_CHANGE_DETECTION_ENABLED: str = "change_detection_enabled"
 CONF_CHANGE_DETECTION_TYPE: str = "change_detection_type"
+
+CONF_INCLUDE_TARGETS: str = "include_targets"
+CONF_EXCLUDE_TARGETS: str = "exclude_targets"
+
+CONF_TARGETS_TO_INCLUDE: str = "targets_to_include"
+CONF_TARGETS_TO_EXCLUDE: str = "targets_to_exclude"
 
 CONF_EXCLUDED_DOMAINS: str = "excluded_domains"
 CONF_EXCLUDED_ENTITIES: str = "excluded_entities"

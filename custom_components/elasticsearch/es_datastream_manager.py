@@ -4,8 +4,6 @@ import json
 from logging import Logger
 from pathlib import Path
 
-from homeassistant.core import HomeAssistant
-
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 
 from .const import (
@@ -15,14 +13,13 @@ from .logger import LOGGER as BASE_LOGGER
 from .logger import async_log_enter_exit_debug, log_enter_exit_debug
 
 
-class IndexManager:
+class DatastreamManager:
     """Index management facilities."""
 
     _logger = BASE_LOGGER
 
     def __init__(
         self,
-        hass: HomeAssistant,
         gateway: ElasticsearchGateway,
         log: Logger = BASE_LOGGER,
     ) -> None:
@@ -30,7 +27,6 @@ class IndexManager:
 
         self._logger = log
 
-        self._hass = hass
         self._gateway: ElasticsearchGateway = gateway
 
     @log_enter_exit_debug
@@ -63,11 +59,3 @@ class IndexManager:
             name=DATASTREAM_METRICS_INDEX_TEMPLATE_NAME,
             body=index_template,
         )
-
-    @log_enter_exit_debug
-    def stop(self) -> None:
-        """Stop the index manager."""
-
-    def __del__(self) -> None:
-        """Destructor."""
-        self.stop()

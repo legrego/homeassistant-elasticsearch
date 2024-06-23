@@ -13,7 +13,7 @@ if LOGGER.level == logging.NOTSET:
     LOGGER.setLevel(logging.INFO)
 
 if es_logger.level == logging.NOTSET:
-    es_logger.setLevel(logging.WARNING)
+    es_logger.setLevel(logging.DEBUG)
 
 
 def have_child(name: str) -> logging.Logger:

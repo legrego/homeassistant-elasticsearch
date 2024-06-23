@@ -872,13 +872,21 @@
     'settings': dict({
       'change_detection_type': list([
       ]),
-      'excluded_domains': list([
+      'excluded_areas': list([
+      ]),
+      'excluded_devices': list([
       ]),
       'excluded_entities': list([
       ]),
-      'included_domains': list([
+      'excluded_labels': list([
+      ]),
+      'included_areas': list([
+      ]),
+      'included_devices': list([
       ]),
       'included_entities': list([
+      ]),
+      'included_labels': list([
       ]),
       'polling_frequency': 60,
       'publish_frequency': 60,

@@ -28,7 +28,7 @@ from homeassistant.const import (
     STATE_UNLOCKED,
 )
 from homeassistant.core import Event, EventStateChangedData, HomeAssistant, State, callback
-from homeassistant.helpers import entity_registry
+from homeassistant.helpers import area_registry, device_registry, entity_registry, label_registry
 from homeassistant.helpers import state as state_helper
 from homeassistant.util import dt as dt_util
 from homeassistant.util.logging import async_create_catching_coro
@@ -49,7 +49,6 @@ from custom_components.elasticsearch.entity_details import (
     ExtendedEntityDetails,
     ExtendedRegistryEntry,
 )
-from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 from custom_components.elasticsearch.logger import LOGGER as BASE_LOGGER
 from custom_components.elasticsearch.logger import log_enter_exit_debug
 from custom_components.elasticsearch.loop import LoopHandler
@@ -57,6 +56,8 @@ from custom_components.elasticsearch.system_info import SystemInfo, SystemInfoRe
 
 if TYPE_CHECKING:
     from asyncio import Task  # pragma: no cover
+
+    from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 
 ALLOWED_ATTRIBUTE_TYPES = tuple | dict | set | list | int | float | bool | str | None
 SKIP_ATTRIBUTES = [
@@ -76,33 +77,49 @@ class PipelineSettings:
 
     def __init__(
         self,
-        included_domains: list[str],
+        include_targets: bool,
+        exclude_targets: bool,
+        included_areas: list[str],
+        excluded_areas: list[str],
+        included_labels: list[str],
+        excluded_labels: list[str],
+        included_devices: list[str],
+        excluded_devices: list[str],
         included_entities: list[str],
-        excluded_domains: list[str],
         excluded_entities: list[str],
         change_detection_type: list[StateChangeType],
         polling_frequency: int,
         publish_frequency: int,
     ) -> None:
         """Initialize the settings."""
-        self.included_domains: list[str] = included_domains
-        self.included_entities: list[str] = included_entities
-        self.excluded_domains: list[str] = excluded_domains
-        self.excluded_entities: list[str] = excluded_entities
-        self.change_detection_type: list[StateChangeType] = change_detection_type
         self.publish_frequency: int = publish_frequency
         self.polling_frequency: int = polling_frequency
+        self.change_detection_type: list[StateChangeType] = change_detection_type
+        self.include_targets: bool = include_targets
+        self.exclude_targets: bool = exclude_targets
+        self.included_labels: list[str] = included_labels
+        self.excluded_labels: list[str] = excluded_labels
+        self.included_areas: list[str] = included_areas
+        self.excluded_areas: list[str] = excluded_areas
+        self.included_devices: list[str] = included_devices
+        self.excluded_devices: list[str] = excluded_devices
+        self.included_entities: list[str] = included_entities
+        self.excluded_entities: list[str] = excluded_entities
 
     def to_dict(self) -> dict:
         """Convert the settings to a dictionary."""
         return {
-            "included_domains": self.included_domains,
-            "included_entities": self.included_entities,
-            "excluded_domains": self.excluded_domains,
-            "excluded_entities": self.excluded_entities,
-            "change_detection_type": [i.value for i in self.change_detection_type],
             "publish_frequency": self.publish_frequency,
             "polling_frequency": self.polling_frequency,
+            "change_detection_type": [i.value for i in self.change_detection_type],
+            "included_areas": self.included_areas,
+            "excluded_areas": self.excluded_areas,
+            "included_labels": self.included_labels,
+            "excluded_labels": self.excluded_labels,
+            "included_devices": self.included_devices,
+            "excluded_devices": self.excluded_devices,
+            "included_entities": self.included_entities,
+            "excluded_entities": self.excluded_entities,
         }
 
 
@@ -219,8 +236,8 @@ class Pipeline:
 
         async def _publish(self) -> None:
             """Publish the documents to Elasticsearch."""
-
-            await self._publisher.publish(iterable=self._sip_queue())
+            if await self._publisher._gateway.ping():
+                await self._publisher.publish(iterable=self._sip_queue())
 
         @log_enter_exit_debug
         def stop(self) -> None:
@@ -248,13 +265,23 @@ class Pipeline:
             """Initialize the filterer."""
             self._logger = log if log else BASE_LOGGER
 
-            self._included_domains: list[str] = settings.included_domains
+            self._include_targets: bool = settings.include_targets
+            self._exclude_targets: bool = settings.exclude_targets
+
+            self._included_areas: list[str] = settings.included_areas
+            self._excluded_areas: list[str] = settings.excluded_areas
+            self._included_devices: list[str] = settings.included_devices
+            self._excluded_devices: list[str] = settings.excluded_devices
+            self._included_labels: list[str] = settings.included_labels
+            self._excluded_labels: list[str] = settings.excluded_labels
             self._included_entities: list[str] = settings.included_entities
-            self._excluded_domains: list[str] = settings.excluded_domains
             self._excluded_entities: list[str] = settings.excluded_entities
             self._change_detection_type: list[StateChangeType] = settings.change_detection_type
 
             self._entity_registry = entity_registry.async_get(hass)
+            self._label_registry = label_registry.async_get(hass)
+            self._area_registry = area_registry.async_get(hass)
+            self._device_registry = device_registry.async_get(hass)
 
         @log_enter_exit_debug
         async def async_init(self) -> None:
@@ -264,15 +291,66 @@ class Pipeline:
             """Filter state changes for processing."""
 
             if not self._passes_change_detection_type_filter(reason):
-                return False
-
-            if not self._passes_entity_domain_filters(entity_id=state.entity_id, domain=state.domain):
+                self._logger.debug(
+                    "Entity [%s} state change type [%s] failed filter.", state.entity_id, reason
+                )
                 return False
 
             if not self._passes_entity_exists_filter(entity_id=state.entity_id):
+                self._logger.debug("Entity [%s] not found in registry.", state.entity_id)
+                return False
+
+            if self._exclude_targets and not self._passes_exclude_targets(entity_id=state.entity_id):
+                self._logger.debug("Entity [%s] failed exclude filter.", state.entity_id)
+                return False
+
+            if self._include_targets and not self._passes_include_targets(entity_id=state.entity_id):
+                self._logger.debug("Entity [%s] failed include filter.", state.entity_id)
                 return False
 
             return True
+
+        def _passes_exclude_targets(self, entity_id: str) -> bool:
+            if entity_id in self._excluded_entities:
+                return False
+
+            entity = self._entity_registry.async_get(entity_id)
+
+            # If the entity is not found, we can't check the other filters, so we return False
+            if entity is None:
+                return False
+
+            if entity.device_id in self._excluded_devices:
+                return False
+
+            if entity.area_id in self._excluded_areas:
+                return False
+
+            if any(label in self._excluded_labels for label in entity.labels):
+                return False
+
+            return True
+
+        def _passes_include_targets(self, entity_id: str) -> bool:
+            if entity_id in self._included_entities:
+                return True
+
+            entity = self._entity_registry.async_get(entity_id)
+
+            # If the entity is not found, we can't check the other filters, so we return False
+            if entity is None:
+                return False
+
+            if entity.device_id in self._included_devices:
+                return True
+
+            if entity.area_id in self._included_areas:
+                return True
+
+            if any(label in self._included_labels for label in entity.labels):
+                return True
+
+            return False
 
         def _passes_change_detection_type_filter(self, reason: StateChangeType) -> bool:
             """Determine if a state change should be published."""
@@ -289,35 +367,9 @@ class Pipeline:
             entity = self._entity_registry.async_get(entity_id)
 
             if entity is None:
-                self._logger.debug(
-                    "Entity [%s] not found in registry. Skipping document.",
-                    entity_id,
-                )
                 return False
 
             return True
-
-        def _passes_entity_domain_filters(self, entity_id: str, domain: str) -> bool:
-            """Determine if a state change should be published."""
-
-            if entity_id in self._included_entities:
-                return True
-
-            if entity_id in self._excluded_entities:
-                return False
-
-            if domain in self._included_domains:
-                return True
-
-            if domain in self._excluded_domains:
-                return False
-
-            # If we have no included entities or domains, we should publish everything
-            if len(self._included_entities) == 0 and len(self._included_domains) == 0:
-                return True
-
-            # otherwise, do not publish
-            return False
 
     class Listener:
         """Listens for state changes and queues them for processing."""

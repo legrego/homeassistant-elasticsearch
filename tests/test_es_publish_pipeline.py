@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 from queue import Queue
 from unittest import mock
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
@@ -26,13 +26,19 @@ from tests.const import MOCK_NOON_APRIL_12TH_2023
 def settings():
     """Return a PipelineSettings instance."""
     return PipelineSettings(
+        polling_frequency=60,
+        publish_frequency=60,
+        change_detection_type=[],
+        include_targets=False,
+        exclude_targets=False,
+        included_areas=[],
+        excluded_areas=[],
+        included_labels=[],
+        excluded_labels=[],
+        included_devices=[],
+        excluded_devices=[],
         included_entities=[],
         excluded_entities=[],
-        included_domains=[],
-        excluded_domains=[],
-        change_detection_type=[],
-        publish_frequency=60,
-        polling_frequency=60,
     )
 
 
@@ -75,6 +81,7 @@ class Test_Filterer:
             """Test that a state change with an allowed change type and included entity passes the filter."""
             state = State("light.living_room", "on")
             patched_filterer._change_detection_type = [StateChangeType.STATE.name]
+            patched_filterer._include_targets = True
             patched_filterer._included_entities = ["light.living_room"]
             assert patched_filterer.passes_filter(state, StateChangeType.STATE) is True
 
@@ -82,71 +89,102 @@ class Test_Filterer:
             """Test that a state change with an allowed change type and excluded entity does not pass the filter."""
             state = State("light.living_room", "on")
             patched_filterer._change_detection_type = [StateChangeType.STATE.name]
+
+            patched_filterer._exclude_targets = True
             patched_filterer._excluded_entities = ["light.living_room"]
+
             assert patched_filterer.passes_filter(state, StateChangeType.STATE) is False
 
         async def test_passes_filter_with_disallowed_change_type(self, patched_filterer):
             """Test that a state change with an allowed change type and excluded entity does not pass the filter."""
             state = State("light.living_room", "on")
             patched_filterer._change_detection_type = [StateChangeType.NO_CHANGE.name]
+            patched_filterer._exclude_targets = True
             patched_filterer._excluded_entities = ["light.living_room"]
             assert patched_filterer.passes_filter(state, StateChangeType.STATE) is False
 
     class Test_Unit_Tests:
         """Run the unit tests of the Filterer class."""
 
-        async def test_passes_entity_domain_filters_included_entity(self, patched_filterer):
-            """Test that a state change for an included entity passes the filter."""
-            state = State("light.living_room", "on")
-            patched_filterer._included_entities = ["light.living_room"]
-            assert patched_filterer._passes_entity_domain_filters(state.entity_id, state.domain) is True
-
-        async def test_passes_entity_domain_filters_not_included_entity(self, patched_filterer):
-            """Test that a state change for an entity that doesnt match any filters."""
-            state = State("switch.living_room", "on")
-            patched_filterer._included_entities = ["light.living_room"]
-            assert patched_filterer._passes_entity_domain_filters(state.entity_id, state.domain) is False
-
-        async def test_passes_entity_domain_filters_excluded_entity(self, patched_filterer):
-            """Test that a state change for an excluded entity does not pass the filter."""
-            state = State("light.living_room", "on")
-            patched_filterer._excluded_entities = ["light.living_room"]
-            assert patched_filterer._passes_entity_domain_filters(state.entity_id, state.domain) is False
-
-        async def test_passes_entity_domain_filters_included_domain(self, patched_filterer):
-            """Test that a state change for an included domain passes the filter."""
-            state = State("light.living_room", "on")
-            patched_filterer._included_domains = ["light"]
-            assert patched_filterer._passes_entity_domain_filters(state.entity_id, state.domain) is True
-
-        async def test_passes_entity_domain_filters_excluded_domain(self, patched_filterer):
-            """Test that a state change for an excluded domain does not pass the filter."""
-            state = State("light.living_room", "on")
-            patched_filterer._excluded_domains = ["light"]
-            assert patched_filterer._passes_entity_domain_filters(state.entity_id, state.domain) is False
-
-        async def test_passes_entity_domain_filters_no_included_entities_or_domains(self, patched_filterer):
-            """Test that a state change passes the filter when no included entities or domains are specified."""
-            state = State("light.living_room", "on")
-            assert patched_filterer._passes_entity_domain_filters(state.entity_id, state.domain) is True
-
-        async def test_passes_entity_domain_filters_no_included_entities_or_domains_with_excluded_entity(
+        async def test_passes_exclude_targets(
             self,
             patched_filterer,
+            device,
+            entity,
         ):
-            """Test that a state change does not pass the filter when no included entities or domains are specified and the entity is excluded."""
-            state = State("light.living_room", "on")
-            patched_filterer._excluded_entities = ["light.living_room"]
-            assert patched_filterer._passes_entity_domain_filters(state.entity_id, state.domain) is False
+            """Test that a state change with an excluded target does not pass the filter."""
 
-        async def test_passes_entity_domain_filters_no_included_entities_or_domains_with_excluded_domain(
+            patched_filterer._exclude_targets = True
+
+            assert patched_filterer._passes_exclude_targets(entity.entity_id) is True
+
+            patched_filterer._excluded_entities = [entity.entity_id]
+            patched_filterer._excluded_areas = []
+            patched_filterer._excluded_labels = []
+            patched_filterer._excluded_devices = []
+
+            assert patched_filterer._passes_exclude_targets(entity.entity_id) is False
+
+            patched_filterer._excluded_entities = []
+            patched_filterer._excluded_areas = [entity.area_id]
+            patched_filterer._excluded_labels = []
+            patched_filterer._excluded_devices = []
+
+            assert patched_filterer._passes_exclude_targets(entity.entity_id) is False
+
+            patched_filterer._excluded_entities = []
+            patched_filterer._excluded_areas = []
+            patched_filterer._excluded_labels = entity.labels
+            patched_filterer._excluded_devices = []
+
+            assert patched_filterer._passes_exclude_targets(entity.entity_id) is False
+
+            patched_filterer._excluded_entities = []
+            patched_filterer._excluded_areas = []
+            patched_filterer._excluded_labels = []
+            patched_filterer._excluded_devices = [device.id]
+
+            assert patched_filterer._passes_exclude_targets(entity.entity_id) is False
+
+        async def test_passes_include_targets(
             self,
             patched_filterer,
+            device,
+            entity,
         ):
-            """Test that a state change does not pass the filter when no included entities or domains are specified and the domain is excluded."""
-            state = State("light.living_room", "on")
-            patched_filterer._excluded_domains = ["light"]
-            assert patched_filterer._passes_entity_domain_filters(state.entity_id, state.domain) is False
+            """Test that a state change with an included target passes the filter."""
+
+            patched_filterer._include_targets = True
+
+            assert patched_filterer._passes_include_targets(entity.entity_id) is False
+
+            patched_filterer._included_entities = [entity.entity_id]
+            patched_filterer._included_areas = []
+            patched_filterer._included_labels = []
+            patched_filterer._included_devices = []
+
+            assert patched_filterer._passes_include_targets(entity.entity_id) is True
+
+            patched_filterer._included_entities = []
+            patched_filterer._included_areas = [entity.area_id]
+            patched_filterer._included_labels = []
+            patched_filterer._included_devices = []
+
+            assert patched_filterer._passes_include_targets(entity.entity_id) is True
+
+            patched_filterer._included_entities = []
+            patched_filterer._included_areas = []
+            patched_filterer._included_labels = entity.labels
+            patched_filterer._included_devices = []
+
+            assert patched_filterer._passes_include_targets(entity.entity_id) is True
+
+            patched_filterer._included_entities = []
+            patched_filterer._included_areas = []
+            patched_filterer._included_labels = []
+            patched_filterer._included_devices = [device.id]
+
+            assert patched_filterer._passes_include_targets(entity.entity_id) is True
 
         async def test_passes_change_detection_type_filter_true(self, patched_filterer):
             """Test that a state change with an allowed change type passes the filter."""
@@ -172,18 +210,9 @@ class Test_Manager:
     """Test the Pipeline.Manager class."""
 
     @pytest.fixture
-    def manager(self, hass: HomeAssistant):
+    def manager(self, hass: HomeAssistant, settings):
         """Return a Pipeline.Manager instance."""
         gateway = mock.Mock()
-        settings = PipelineSettings(
-            included_entities=[],
-            excluded_entities=[],
-            included_domains=[],
-            excluded_domains=[],
-            change_detection_type=[],
-            publish_frequency=60,
-            polling_frequency=60,
-        )
         return Pipeline.Manager(hass=hass, gateway=gateway, settings=settings)
 
     class Test_Unit_Tests:
@@ -386,8 +415,13 @@ class Test_Manager:
                 ),
                 patch.object(manager._publisher, "publish") as publisher_publish,
                 patch.object(manager._filterer, "passes_filter", side_effect=[True, False]),
+
             ):
+                manager._publisher._gateway.ping = AsyncMock(return_value=True)
+
                 await manager._publish()
+
+                manager._publisher._gateway.ping.assert_awaited_once()
 
                 publisher_publish.assert_called_once_with(
                     iterable={

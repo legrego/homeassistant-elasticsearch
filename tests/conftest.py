@@ -18,18 +18,19 @@
 from __future__ import annotations
 
 from asyncio import get_running_loop
-from contextlib import contextmanager
+from collections.abc import Generator
+from contextlib import contextmanager, suppress
 from typing import TYPE_CHECKING
 from unittest import mock
-from unittest.mock import patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from aiohttp import ClientSession, TCPConnector
 from custom_components.elasticsearch.config_flow import ElasticFlowHandler
 from custom_components.elasticsearch.const import DOMAIN as ES_DOMAIN
-from custom_components.elasticsearch.es_gateway import (
-    Elasticsearch7Gateway,
-    Elasticsearch8Gateway,
-)
+from custom_components.elasticsearch.es_gateway_7 import Elasticsearch7Gateway, Gateway7Settings
+from custom_components.elasticsearch.es_gateway_8 import Elasticsearch8Gateway, Gateway8Settings
+from homeassistant.helpers.json import json_dumps
 from homeassistant.loader import async_get_integration
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry  # noqa: F401
@@ -44,15 +45,10 @@ from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClien
 
 from tests import const
 
-pytest_plugins = "pytest_homeassistant_custom_component"
-
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Awaitable, Callable, Generator
+    from collections.abc import Awaitable, Callable, Generator
     from typing import TYPE_CHECKING, Any
 
-    from custom_components.elasticsearch.es_gateway import (
-        ElasticsearchGateway,
-    )
     from homeassistant.core import HomeAssistant
     from homeassistant.helpers.area_registry import AreaEntry, AreaRegistry
     from homeassistant.helpers.device_registry import DeviceRegistry
@@ -92,21 +88,104 @@ async def component(hass: HomeAssistant, integration: Integration) -> ComponentP
 
     return await integration.async_get_component()
 
+@pytest.fixture
+def gateway_config() -> dict:
+    """Mock Gateway configuration."""
+    return {
+        "url": const.TEST_CONFIG_ENTRY_DATA_URL,
+        "username": const.TEST_CONFIG_ENTRY_DATA_USERNAME,
+        "password": const.TEST_CONFIG_ENTRY_DATA_PASSWORD,
+        "verify_certs": True,
+        "ca_certs": None,
+        "request_timeout": 30,
+        "minimum_version": None,
+        "minimum_privileges": {},
+    }
+
+
+@pytest.fixture(
+    params=[
+        {
+            "gateway_class": Elasticsearch7Gateway,
+            "gatewaysettings": Gateway7Settings,
+        },
+        {
+            "gateway_class": Elasticsearch8Gateway,
+            "gatewaysettings": Gateway8Settings,
+        },
+    ],
+    ids=["es7", "es8"],
+)
+async def gateway(request, gateway_config):
+    """Mock ElasticsearchGateway instance."""
+
+    gateway_class = request.param["gateway_class"]
+    gateway_settings_class = request.param["gatewaysettings"]
+
+    settings = gateway_settings_class(**gateway_config)
+
+    gateway = gateway_class(gateway_settings=settings)
+
+    with suppress(Exception):
+        yield gateway
+
+    await gateway.stop()
+
+
+@pytest.fixture
+async def initialized_gateway(gateway: Elasticsearch7Gateway | Elasticsearch8Gateway):
+    """Return an initialized ElasticsearchGateway."""
+    gateway.ping = AsyncMock(return_value=True)
+    gateway.info = AsyncMock(return_value=const.CLUSTER_INFO_8DOT11_RESPONSE_BODY)
+    gateway._has_required_privileges = AsyncMock(return_value=True)
+
+    await gateway.async_init()
+
+    if isinstance(gateway, Elasticsearch8Gateway):
+        gateway.client._verified_elasticsearch = MagicMock(return_value=True)
+
+    with suppress(Exception):
+        yield gateway
+
+    await gateway.stop()
+
 
 # Archived Mocks
 
+sessions: list[ClientSession] = []
+
 
 @contextmanager
-def mock_es_aiohttp_client() -> Generator[AiohttpClientMocker, Any, Any]:
+def mock_es_aiohttp_client():
     """Context manager to mock aiohttp client."""
     mocker = AiohttpClientMocker()
 
     def create_session(*args, **kwargs):
-        return mocker.create_session(get_running_loop())
+        session = ClientSession(
+            loop=get_running_loop(),
+            json_serialize=json_dumps,
+        )
+        # Setting directly on `session` will raise deprecation warning
+        object.__setattr__(session, "_request", mocker.match_request)
+        return session
 
-    with mock.patch(
-        "elasticsearch7._async.http_aiohttp.aiohttp.ClientSession",
-        side_effect=create_session,
+    # clean-up closed causes a task unfinished error for tests, so we disable it
+    def create_tcpconnector(*args, **kwargs):
+        return TCPConnector(force_close=True, enable_cleanup_closed=False)
+
+    with (
+        mock.patch(
+            "elasticsearch7._async.http_aiohttp.aiohttp.ClientSession",
+            side_effect=create_session,
+        ),
+        mock.patch(
+            "elastic_transport._node._http_aiohttp.aiohttp.ClientSession",
+            side_effect=create_session,
+        ),
+        mock.patch(
+            "elastic_transport._node._http_aiohttp.aiohttp.TCPConnector",
+            side_effect=create_tcpconnector,
+        ),
     ):
         yield mocker
 
@@ -142,95 +221,83 @@ def skip_notifications_fixture() -> Generator[Any, Any, Any]:
 @pytest.fixture
 async def url() -> str:
     """Return a url."""
-    return const.MOCK_ELASTICSEARCH_URL
+    return const.TEST_CONFIG_ENTRY_DATA_URL
 
 
-@pytest.fixture
-async def use_connection_monitor() -> bool:
-    """Return whether to use the connection monitor."""
-    return False
+# @pytest.fixture(params=[Elasticsearch7Gateway, Elasticsearch8Gateway])
+# async def uninitialized_gateway(
+#     hass: HomeAssistant,
+#     request: pytest.FixtureRequest,
+#     minimum_privileges: dict,
+#     url: str,
+#     username: str | None = None,
+#     password: str | None = None,
+#     api_key: str | None = None,
+# ) -> AsyncGenerator[ElasticsearchGateway, Any]:
+#     """Return a gateway instance."""
+
+#     gateway_type: type[ElasticsearchGateway] = request.param
+
+#     # create an extra settings dict that only populates with username, password, or api_key when they are not None
+#     extra_settings: dict[str, Any] = {
+#         key: value
+#         for key, value in {
+#             "username": username,
+#             "password": password,
+#             "api_key": api_key,
+#         }.items()
+#         if value is not None
+#     }
+
+#     gateway = gateway_type(
+#         hass=hass,
+#         url=url,
+#         minimum_privileges=minimum_privileges,
+#         **extra_settings,
+#     )
+
+#     yield gateway
+
+#     if gateway._initialized:
+#         await gateway.stop()
 
 
-@pytest.fixture(params=[Elasticsearch7Gateway, Elasticsearch8Gateway])
-async def uninitialized_gateway(
-    hass: HomeAssistant,
-    request: pytest.FixtureRequest,
-    minimum_privileges: dict,
-    use_connection_monitor: bool,
-    url: str,
-    username: str | None = None,
-    password: str | None = None,
-    api_key: str | None = None,
-) -> AsyncGenerator[ElasticsearchGateway, Any]:
-    """Return a gateway instance."""
-
-    gateway_type: type[ElasticsearchGateway] = request.param
-
-    # create an extra settings dict that only populates with username, password, or api_key when they are not None
-    extra_settings: dict[str, Any] = {
-        key: value
-        for key, value in {
-            "username": username,
-            "password": password,
-            "api_key": api_key,
-        }.items()
-        if value is not None
-    }
-
-    gateway = gateway_type(
-        hass=hass,
-        url=url,
-        minimum_privileges=minimum_privileges,
-        use_connection_monitor=use_connection_monitor,
-        **extra_settings,
-    )
-
-    yield gateway
-
-    if gateway._initialized:
-        await gateway.stop()
+# @pytest.fixture
+# async def mock_cluster_info(
+#     major_version: int = 8,
+#     minor_version: int = 11,
+# ):
+#     """Return a mock cluster info response body."""
+#     return getattr(const, f"CLUSTER_INFO_{major_version}DOT{minor_version}_RESPONSE_BODY")
 
 
-@pytest.fixture
-async def mock_cluster_info(
-    major_version: int = 8,
-    minor_version: int = 11,
-):
-    """Return a mock cluster info response body."""
-    return getattr(const, f"CLUSTER_INFO_{major_version}DOT{minor_version}_RESPONSE_BODY")
+# @pytest.fixture
+# async def mock_test_connection():
+#     """Return whether to mock the test_connection method."""
+#     return True
 
 
-@pytest.fixture
-async def mock_test_connection():
-    """Return whether to mock the test_connection method."""
-    return True
+# @pytest.fixture
+# async def initialized_gateway(
+#     hass: HomeAssistant,
+#     request: pytest.FixtureRequest,
+#     minimum_privileges: dict,
+#     config_entry,
+#     mock_cluster_info: dict,
+#     uninitialized_gateway: ElasticsearchGateway,
+#     mock_test_connection: bool,
+#     url: str,
+# ):
+#     """Return a gateway instance."""
+#     uninitialized_gateway.info = mock.AsyncMock(return_value=mock_cluster_info)
 
+#     await uninitialized_gateway.async_init(config_entry=config_entry)
 
-@pytest.fixture
-async def initialized_gateway(
-    hass: HomeAssistant,
-    request: pytest.FixtureRequest,
-    minimum_privileges: dict,
-    use_connection_monitor: bool,
-    config_entry,
-    mock_cluster_info: dict,
-    uninitialized_gateway: ElasticsearchGateway,
-    mock_test_connection: bool,
-    url: str,
-):
-    """Return a gateway instance."""
-    uninitialized_gateway._get_cluster_info = mock.AsyncMock(return_value=mock_cluster_info)
+#     initialized_gateway = uninitialized_gateway
 
-    if mock_test_connection:
-        uninitialized_gateway.test_connection = mock.AsyncMock(return_value=True)
+#     return initialized_gateway  # noqa: RET504
 
-    await uninitialized_gateway.async_init(config_entry=config_entry)
-
-    initialized_gateway = uninitialized_gateway
-
-    return initialized_gateway  # noqa: RET504
-
-    # We do not need to shutdown the gateway as it is shutdown by the uninitialized_gateway fixture
+# We do not need to shutdown the gateway as it is shutdown by the uninitialized_gateway fixture
 
 
 # @pytest.fixture
