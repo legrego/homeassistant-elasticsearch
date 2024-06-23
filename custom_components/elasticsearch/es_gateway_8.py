@@ -13,6 +13,7 @@ from elasticsearch8._async.client import AsyncElasticsearch
 from elasticsearch8.helpers import BulkIndexError, async_streaming_bulk
 from elasticsearch8.serializer import JSONSerializer
 
+from custom_components.elasticsearch.const import ES_CHECK_PERMISSIONS_DATASTREAM
 from custom_components.elasticsearch.errors import (
     AuthenticationRequired,
     CannotConnect,
@@ -105,7 +106,7 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
         verify_certs: bool = True,
         ca_certs: str | None = None,
         request_timeout: int = 30,
-        minimum_privileges: dict[str, Any] = {},
+        minimum_privileges: dict[str, Any] = ES_CHECK_PERMISSIONS_DATASTREAM,
         log: Logger = BASE_LOGGER,
     ) -> None:
         """Initialize the gateway and then stop it."""

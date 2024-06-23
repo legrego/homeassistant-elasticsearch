@@ -288,9 +288,18 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         """Handle the completion of the flow."""
         default_options = ElasticOptionsFlowHandler.default_options
 
-        return self.async_create_entry(
-            title="ES_Integration", data=self._prospective_config, options=default_options
-        )
+        if self._reauth_entry is not None:
+            return self.async_update_reload_and_abort(
+                self._reauth_entry,
+                unique_id=self._reauth_entry.unique_id,
+                title=self._reauth_entry.title,
+                data=self._prospective_config,
+                options={**self._reauth_entry.options},
+            )
+
+        title: str = self._prospective_config[CONF_URL]
+
+        return self.async_create_entry(title=title, data=self._prospective_config, options=default_options)
 
     @staticmethod
     @callback
@@ -303,15 +312,17 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
         if entry is None:
             return self.async_abort(reason="no_entry")
+
         self._reauth_entry = entry
 
-        if user_input is None:
-            return self.async_show_form(
-                step_id="reauth_confirm",
-                data_schema=vol.Schema({}),
-            )
+        self._prospective_config = dict(entry.data)
 
-        return await self.async_step_authentication_issues()
+        if self._prospective_config.get(CONF_USERNAME, None) is not None:
+            return await self.async_step_basic_auth()
+        if self._prospective_config.get(CONF_API_KEY, None) is not None:
+            return await self.async_step_api_key()
+
+        return self.async_abort(reason="no_auth")
 
 
 class ElasticOptionsFlowHandler(config_entries.OptionsFlow):

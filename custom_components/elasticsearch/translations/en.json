@@ -1,10 +1,4 @@
 {
-    "issues": {
-        "yaml_migration": {
-            "title": "YAML-based configuration detected, manual migration required",
-            "description": "Your integration is configured via YAML. The integration no longer supports configuring via YAML. You will only be able to configure the integration via the UI and we recommend removing any configurations from `configuration.yaml`. To learn more, please click 'Learn More'."
-        }
-    },
     "config": {
         "abort": {
             "reauth_successful": "Re-authentication was successful"
@@ -23,7 +17,7 @@
                 "title": "Elasticsearch Cluster Information"
             },
             "certificate_issues": {
-                "title": "Untrusted Connection",
+                "title": "Untrusted Certificate with SSL/TLS",
                 "description": "Elasticsearch's server certificate could not be verified. Either disable TLS verification, or specify a custom CA path below.",
                 "data": {
                     "verify_ssl": "Verify TLS certificate (recommended)",
@@ -36,14 +30,6 @@
                 "data": {
                     "basic_auth": "Authenticate via username/password",
                     "api_key": "Authenticate via API Key"
-                }
-            },
-            "no_auth": {
-                "title": "Connect without authenticating",
-                "data": {
-                    "url": "URL",
-                    "verify_ssl": "Verify TLS certificate (recommended)",
-                    "ssl_ca_path": "Fully qualified path to custom certificate authority"
                 }
             },
             "basic_auth": {
@@ -70,12 +56,9 @@
         }
     },
     "options": {
-        "abort": {
-            "configured_via_yaml": "Configuration imported from configuration.yaml. Remove entry from configuration.yaml, restart, and re-add this integration to proceed."
-        },
         "step": {
             "options": {
-                "title": "Elastic",
+                "title": "Elastic Integration Settings",
                 "description": "Configure the polling and publishing settings for the Elastic integration.",
                 "data": {
                     "publish_frequency": "How often to publish to Elasticsearch",

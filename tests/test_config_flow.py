@@ -105,7 +105,7 @@ class Test_Public_Methods:
 
         assert result is not None
         assert "type" in result and result["type"] == FlowResultType.CREATE_ENTRY
-        assert "title" in result and result["title"] == "ES_Integration"
+        assert "title" in result and result["title"] == "http://localhost:9200"
         assert "data" in result and result["data"] == {CONF_URL: "http://localhost:9200"}
         assert "options" in result and result["options"] == ElasticOptionsFlowHandler.default_options
 
@@ -172,7 +172,7 @@ class Test_Public_Methods:
 
         assert result is not None
         assert "type" in result and result["type"] == FlowResultType.CREATE_ENTRY
-        assert "title" in result and result["title"] == "ES_Integration"
+        assert "title" in result and result["title"] == "http://localhost:9200"
         assert "data" in result and result["data"] == {
             CONF_URL: "http://localhost:9200",
             CONF_VERIFY_SSL: False,
@@ -284,7 +284,7 @@ class Test_Integration_Tests:
 
         assert result is not None
         assert "type" in result and result["type"] == FlowResultType.CREATE_ENTRY
-        assert "title" in result and result["title"] == "ES_Integration"
+        assert "title" in result and result["title"] == "http://localhost:9200"
         assert "data" in result and result["data"] == {CONF_URL: "http://localhost:9200"}
         assert "options" in result and result["options"] == ElasticOptionsFlowHandler.default_options
 
@@ -363,7 +363,7 @@ class Test_Integration_Tests:
 
         assert result is not None
         assert "type" in result and result["type"] == FlowResultType.CREATE_ENTRY
-        assert "title" in result and result["title"] == "ES_Integration"
+        assert "title" in result and result["title"] == "http://localhost:9200"
         assert "data" in result and result["data"] == {CONF_URL: "http://localhost:9200"}
         assert "options" in result and result["options"] == ElasticOptionsFlowHandler.default_options
 
@@ -402,7 +402,7 @@ class Test_Integration_Tests:
 
         assert next_result is not None
         assert "type" in next_result and next_result["type"] == FlowResultType.CREATE_ENTRY
-        assert "title" in next_result and next_result["title"] == "ES_Integration"
+        assert "title" in next_result and next_result["title"] == "https://localhost:9200"
         assert "data" in next_result and next_result["data"] == {
             CONF_URL: "https://localhost:9200",
             CONF_VERIFY_SSL: False,
