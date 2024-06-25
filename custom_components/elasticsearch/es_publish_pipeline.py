@@ -187,7 +187,7 @@ class Pipeline:
         async def async_init(self, config_entry: ConfigEntry) -> None:
             """Initialize the manager."""
 
-            if self._settings.publish_frequency is None:
+            if self._settings.publish_frequency is None or self._settings.publish_frequency == 0:
                 self._logger.warning("No publish frequency set. Disabling publishing.")
                 return
 
@@ -210,8 +210,10 @@ class Pipeline:
             if len(self._settings.change_detection_type) != 0:
                 await self._listener.async_init()
 
-            if self._settings.polling_frequency is not None:
+            if self._settings.polling_frequency is not None and self._settings.polling_frequency > 0:
                 await self._poller.async_init(config_entry=config_entry)
+            else:
+                self._logger.debug("No polling frequency set. Disabling polling.")
 
             # Initialize document sinks
             await self._formatter.async_init(self._static_fields)

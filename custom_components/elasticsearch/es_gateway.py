@@ -8,10 +8,8 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 
-from custom_components.elasticsearch.errors import (
-    InsufficientPrivileges,
-)
-from custom_components.elasticsearch.const import ES_CHECK_PERMISSIONS_DATASTREAM
+from custom_components.elasticsearch.errors import InsufficientPrivileges, UnsupportedVersion
+from custom_components.elasticsearch.const import ES_CHECK_PERMISSIONS_DATASTREAM, ELASTIC_MINIMUM_VERSION
 
 from .logger import LOGGER as BASE_LOGGER
 from .logger import log_enter_exit_debug
@@ -65,6 +63,11 @@ class ElasticsearchGateway(ABC):
 
         # Test the connection
         await self.info()
+
+        # Minimum version check
+        if not await self._meets_minimum_version(ELASTIC_MINIMUM_VERSION):
+            msg = f"Elasticsearch version is not supported. Minimum version: {ELASTIC_MINIMUM_VERSION}"
+            raise UnsupportedVersion
 
         # Check minimum privileges
         if not await self._has_required_privileges(self.settings.minimum_privileges):
@@ -131,6 +134,24 @@ class ElasticsearchGateway(ABC):
         """Stop the gateway."""
 
     # Helper methods
+
+    async def _meets_minimum_version(self, minimum_version: tuple[int, int]) -> bool:
+        """Check if the Elasticsearch version is supported."""
+        info = await self.info()
+
+        version_number_parts = info["version"]["number"].split(".")
+
+        current_major = int(version_number_parts[0])
+        current_minor = int(version_number_parts[1])
+
+        minimum_major = minimum_version[0]
+        minimum_minor = minimum_version[1]
+
+        return (
+            current_major >= minimum_major
+            or current_major == minimum_major
+            and current_minor >= minimum_minor
+        )
 
     async def _has_required_privileges(self, privileges) -> bool:
         """Check if the user has the required privileges."""

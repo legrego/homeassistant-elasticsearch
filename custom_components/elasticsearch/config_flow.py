@@ -422,15 +422,17 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
             {
                 vol.Optional(**SCHEMA_PUBLISH_FREQUENCY): NumberSelector(
                     NumberSelectorConfig(
-                        min=10,
+                        min=0,
                         max=600,
+                        step=10,
                         unit_of_measurement="seconds",
                     )
                 ),
                 vol.Optional(**SCHEMA_POLLING_FREQUENCY): NumberSelector(
                     NumberSelectorConfig(
-                        min=10,
+                        min=0,
                         max=3600,
+                        step=10,
                         unit_of_measurement="seconds",
                     )
                 ),

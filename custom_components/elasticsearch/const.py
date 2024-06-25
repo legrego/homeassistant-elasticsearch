@@ -7,6 +7,8 @@ from typing import Any
 DOMAIN: str = "elasticsearch"
 ELASTIC_DOMAIN: str = "elasticsearch"
 
+ELASTIC_MINIMUM_VERSION: tuple[int, int] = (8, 14)
+
 CONF_PUBLISH_FREQUENCY: str = "publish_frequency"
 CONF_POLLING_FREQUENCY: str = "polling_frequency"
 CONF_AUTHENTICATION_TYPE: str = "authentication_type"

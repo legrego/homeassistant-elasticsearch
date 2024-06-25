@@ -19,6 +19,7 @@
                 "data":{
                     "url": "URL to access the Elasticsearch Cluster"
                 }
+
             },
             "certificate_issues": {
                 "title": "Untrusted Certificate with SSL/TLS",
@@ -66,10 +67,11 @@
                 "title": "Elastic Integration Settings",
                 "description": "Configure the polling and publishing settings for the Elastic integration.",
                 "data": {
-                    "publish_frequency": "How often to publish to Elasticsearch",
+                    "publish_frequency": "Send events to Elasticsearch at this interval",
                     "polling_frequency": "Gather all entity states at this interval",
                     "change_detection_enabled": "Detect and publish changes to entities",
                     "change_detection_type": "Choose what types of entity changes to listen for and publish",
+                    "tags": "Tags to apply to all published events",
                     "excluded_domains": "Domains to exclude from publishing. Defaults to none.",
                     "excluded_entities": "Entities to exclude from publishing. Defaults to none.",
                     "included_domains": "Domains to publish. Defaults to all domains.",
@@ -78,8 +80,8 @@
                     "exclude_targets": "Toggle to exclude publishing the set of targets below"
                 },
                 "data_description": {
-                    "publish_frequency": "The interval at which to publish events to Elasticsearch.",
-                    "polling_frequency": "The interval at which to grab all entity states from HomeAssistant."
+                    "publish_frequency": "Set to zero to disable publishing.",
+                    "polling_frequency": "Set to zero to only publish entity changes."
                 }
             }
         }
