@@ -4,12 +4,14 @@ from __future__ import annotations  # noqa: I001
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 
 from custom_components.elasticsearch.errors import (
     InsufficientPrivileges,
 )
+from custom_components.elasticsearch.const import ES_CHECK_PERMISSIONS_DATASTREAM
 
 from .logger import LOGGER as BASE_LOGGER
 from .logger import log_enter_exit_debug
@@ -34,8 +36,9 @@ class GatewaySettings(ABC):
     verify_certs: bool = True
     ca_certs: str | None = None
     request_timeout: int = 30
+    verify_hostname: bool = True
     minimum_version: tuple[int, int] | None = None
-    minimum_privileges: dict[str, Any] | None = None
+    minimum_privileges: MappingProxyType[str, Any] | None = None
 
     @abstractmethod
     def to_client(self) -> AsyncElasticsearch7 | AsyncElasticsearch8:
@@ -91,51 +94,13 @@ class ElasticsearchGateway(ABC):
         password: str | None = None,
         api_key: str | None = None,
         verify_certs: bool = True,
+        verify_hostname: bool = True,
         ca_certs: str | None = None,
         request_timeout: int = 30,
-        minimum_privileges: dict[str, Any] = {},
+        minimum_privileges: MappingProxyType[str, Any] = ES_CHECK_PERMISSIONS_DATASTREAM,
         log: Logger = BASE_LOGGER,
     ) -> None:
         """Initialize the gateway and then stop it."""
-
-    # @classmethod
-    # async def test_prospective_settings(
-    #     cls,
-    #     hass: HomeAssistant,
-    #     url: str,
-    #     username: str | None = None,
-    #     password: str | None = None,
-    #     api_key: str | None = None,
-    #     verify_certs: bool = True,
-    #     ca_certs: str | None = None,
-    #     request_timeout: int = 30,
-    #     minimum_privileges: dict[str, Any] = ES_CHECK_PERMISSIONS_DATASTREAM,
-    #     logger: Logger = BASE_LOGGER,
-    # ) -> bool:
-    #     """Test the settings provided by the user and make sure they work."""
-    #     gateway: ElasticsearchGateway | None = None
-
-    #     try:
-    #         gateway = cls(
-    #             hass=hass,
-    #             url=url,
-    #             username=username,
-    #             password=password,
-    #             api_key=api_key,
-    #             verify_certs=verify_certs,
-    #             ca_certs=ca_certs,
-    #             request_timeout=request_timeout,
-    #             minimum_privileges=minimum_privileges,
-    #         )
-
-    #         await gateway.async_init()
-    #     except ESIntegrationException:
-    #         raise
-    #     except Exception:
-    #         logger.exception("Unknown error testing settings.")
-    #         cls.convert_es_error()
-
-    #     return True
 
     @abstractmethod
     async def info(self) -> dict:

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import ssl
 from contextlib import contextmanager
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 
 import elasticsearch8
@@ -57,17 +59,35 @@ class Gateway8Settings(GatewaySettings):
         settings = {
             "hosts": [self.url],
             "serializer": Encoder(),
-            "verify_certs": self.verify_certs,
-            "ssl_show_warn": self.verify_certs,
-            "ca_certs": self.ca_certs,
             "request_timeout": self.request_timeout,
         }
+
+        if self.verify_certs and not self.verify_hostname:
+            # Construct an SSL context to provide
+            settings["ssl_context"] = ssl.create_default_context()
+            settings["ssl_context"].check_hostname = False
+            settings["ssl_context"].verify_mode = ssl.CERT_REQUIRED
+            settings["ssl_context"].load_default_certs()
+
+            if self.ca_certs:
+                # this isnt working
+                settings["ssl_context"].load_verify_locations(cafile=self.ca_certs)
+            # load self.ca_certs too
+
+        elif self.verify_certs:
+            settings.update(
+                {
+                    "verify_certs": self.verify_certs,
+                    "ssl_show_warn": self.verify_certs,
+                    "ca_certs": self.ca_certs,
+                }
+            )
 
         if self.username:
             settings["basic_auth"] = (self.username, self.password)
 
         if self.api_key:
-            settings["api_key"] = self
+            settings["api_key"] = self.api_key
 
         return AsyncElasticsearch(**settings)
 
@@ -104,9 +124,10 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
         password: str | None = None,
         api_key: str | None = None,
         verify_certs: bool = True,
+        verify_hostname: bool = True,
         ca_certs: str | None = None,
         request_timeout: int = 30,
-        minimum_privileges: dict[str, Any] = ES_CHECK_PERMISSIONS_DATASTREAM,
+        minimum_privileges: MappingProxyType[str, Any] = ES_CHECK_PERMISSIONS_DATASTREAM,
         log: Logger = BASE_LOGGER,
     ) -> None:
         """Initialize the gateway and then stop it."""
@@ -118,6 +139,7 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
                 password=password,
                 api_key=api_key,
                 verify_certs=verify_certs,
+                verify_hostname=verify_hostname,
                 ca_certs=ca_certs,
                 request_timeout=request_timeout,
                 minimum_privileges=minimum_privileges,
@@ -157,7 +179,7 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
     async def info(self) -> dict:
         """Retrieve info about the connected elasticsearch cluster."""
 
-        with self._error_converter(msg="Error connecting to Elasticsearch"):
+        with self._error_converter(msg="Error retrieving cluster info from Elasticsearch"):
             response = await self.client.info()
 
         return self._convert_response(response)
@@ -246,6 +268,11 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
             msg = "Error indexing data"
             raise IndexingError(msg) from err
 
+        except elasticsearch8.UnsupportedProductError as err:
+            # The HTTP response didn't include headers={"x-elastic-product": "Elasticsearch"}
+            msg = "Unsupported product error connecting to Elasticsearch"
+            raise CannotConnect(msg) from err
+
         except elasticsearch8.AuthenticationException as err:
             msg = "Authentication error connecting to Elasticsearch"
             raise AuthenticationRequired(msg) from err
@@ -312,6 +339,8 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
 
         except elasticsearch8.ApiError as err:
             msg = "Unknown API Error connecting to Elasticsearch"
+            if hasattr(err, "status_code"):
+                msg = f"Error connecting to Elasticsearch: {err.status_code}"
             raise CannotConnect(msg) from err
 
         except Exception:

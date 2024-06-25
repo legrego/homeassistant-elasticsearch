@@ -89,6 +89,7 @@ class PipelineSettings:
         included_entities: list[str],
         excluded_entities: list[str],
         change_detection_type: list[StateChangeType],
+        tags: list[str],
         polling_frequency: int,
         publish_frequency: int,
     ) -> None:
@@ -96,6 +97,7 @@ class PipelineSettings:
         self.publish_frequency: int = publish_frequency
         self.polling_frequency: int = polling_frequency
         self.change_detection_type: list[StateChangeType] = change_detection_type
+        self.tags: list[str] = tags
         self.include_targets: bool = include_targets
         self.exclude_targets: bool = exclude_targets
         self.included_labels: list[str] = included_labels
@@ -113,6 +115,7 @@ class PipelineSettings:
             "publish_frequency": self.publish_frequency,
             "polling_frequency": self.polling_frequency,
             "change_detection_type": [i.value for i in self.change_detection_type],
+            "tags": self.tags,
             "included_areas": self.included_areas,
             "excluded_areas": self.excluded_areas,
             "included_labels": self.included_labels,
@@ -146,7 +149,7 @@ class Pipeline:
 
             self._settings: PipelineSettings = settings
 
-            self._static_fields: dict[str, str | float] = {}
+            self._static_fields: dict[str, str | float | list[str]] = {}
 
             self._queue: EventQueue = Queue[tuple[datetime, State, StateChangeType]]()
 
@@ -196,6 +199,9 @@ class Pipeline:
                     self._static_fields["host.os.name"] = result.os_name
                 if result.hostname:
                     self._static_fields["host.hostname"] = result.hostname
+
+            if self._settings.tags != []:
+                self._static_fields["tags"] = self._settings.tags
 
             if len(self._settings.change_detection_type) != 0:
                 await self._listener.async_init()

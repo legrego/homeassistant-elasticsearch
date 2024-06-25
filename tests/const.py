@@ -40,6 +40,7 @@ TEST_CONFIG_ENTRY_BASE_DATA = {
 TEST_CONFIG_ENTRY_BASE_OPTIONS = {
     "change_detection_enabled": True,
     "change_detection_type": [],
+    "tags": [],
     "polling_frequency": 60,
     "publish_frequency": 60,
     "include_targets": False,

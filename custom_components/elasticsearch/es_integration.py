@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from custom_components.elasticsearch.const import ES_CHECK_PERMISSIONS_DATASTREAM
 from custom_components.elasticsearch.errors import ESIntegrationException
 from custom_components.elasticsearch.es_datastream_manager import DatastreamManager
-from custom_components.elasticsearch.es_gateway_7 import Elasticsearch7Gateway, Gateway7Settings
+from custom_components.elasticsearch.es_gateway_8 import Elasticsearch8Gateway, Gateway8Settings
 from custom_components.elasticsearch.es_publish_pipeline import Pipeline, PipelineSettings
 from custom_components.elasticsearch.logger import LOGGER as BASE_LOGGER
 from custom_components.elasticsearch.logger import async_log_enter_exit_debug, log_enter_exit_debug
@@ -35,10 +36,10 @@ class ElasticIntegration:
         self._logger.info("Initializing integration.")
 
         # Initialize our Elasticsearch Gateway
-        gateway_settings: Gateway7Settings = self.build_gateway_parameters(
+        gateway_settings: Gateway8Settings = self.build_gateway_parameters(
             config_entry=self._config_entry,
         )
-        self._gateway = Elasticsearch7Gateway(log=self._logger, gateway_settings=gateway_settings)
+        self._gateway = Elasticsearch8Gateway(log=self._logger, gateway_settings=gateway_settings)
 
         # Initialize our publishing pipeline
         manager_parameters = self.build_pipeline_manager_parameters(
@@ -78,15 +79,16 @@ class ElasticIntegration:
     def build_gateway_parameters(
         cls,
         config_entry: ConfigEntry,
-        minimum_privileges: dict[str, Any] | None = ES_CHECK_PERMISSIONS_DATASTREAM,
-    ) -> Gateway7Settings:
+        minimum_privileges: MappingProxyType[str, Any] | None = ES_CHECK_PERMISSIONS_DATASTREAM,
+    ) -> Gateway8Settings:
         """Build the parameters for the Elasticsearch gateway."""
-        return Gateway7Settings(
+        return Gateway8Settings(
             url=config_entry.data["url"],
             username=config_entry.data.get("username"),
             password=config_entry.data.get("password"),
             api_key=config_entry.data.get("api_key"),
             verify_certs=config_entry.data.get("verify_ssl", False),
+            verify_hostname=config_entry.data.get("ssl_verify_hostname", True),
             ca_certs=config_entry.data.get("ca_certs"),
             request_timeout=config_entry.data.get("timeout", 30),
             minimum_privileges=minimum_privileges,
@@ -104,6 +106,7 @@ class ElasticIntegration:
             polling_frequency=config_entry.options["polling_frequency"],
             publish_frequency=config_entry.options["publish_frequency"],
             change_detection_type=config_entry.options["change_detection_type"],
+            tags=config_entry.options["tags"],
             include_targets=config_entry.options["include_targets"],
             exclude_targets=config_entry.options["exclude_targets"],
             included_areas=config_entry.options["targets_to_include"].get("area_id", []),

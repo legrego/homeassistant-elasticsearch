@@ -36,6 +36,8 @@ from custom_components.elasticsearch.const import (
     CONF_POLLING_FREQUENCY,
     CONF_PUBLISH_FREQUENCY,
     CONF_SSL_CA_PATH,
+    CONF_SSL_VERIFY_HOSTNAME,
+    CONF_TAGS,
     CONF_TARGETS_TO_EXCLUDE,
     CONF_TARGETS_TO_INCLUDE,
     ONE_MINUTE,
@@ -48,7 +50,7 @@ from custom_components.elasticsearch.errors import (
     InsufficientPrivileges,
     UntrustedCertificate,
 )
-from custom_components.elasticsearch.es_gateway_7 import Elasticsearch7Gateway
+from custom_components.elasticsearch.es_gateway_8 import Elasticsearch8Gateway
 
 from .logger import (
     async_log_enter_exit_debug,
@@ -60,7 +62,7 @@ from .logger import (
 CONFIG_TO_REDACT = {CONF_API_KEY, CONF_PASSWORD, CONF_USERNAME}
 
 # Data Flow values
-SCHEMA_URL: dict[Any, Any] = {"schema": CONF_URL, "default": "http://localhost:9200"}
+SCHEMA_URL: dict[Any, Any] = {"schema": CONF_URL, "default": "https://localhost:9200"}
 SCHEMA_AUTHENTICATION_TYPE: dict[Any, Any] = {
     "schema": CONF_AUTHENTICATION_TYPE,
     "default": CONF_API_KEY,
@@ -68,6 +70,7 @@ SCHEMA_AUTHENTICATION_TYPE: dict[Any, Any] = {
 SCHEMA_USERNAME = {"schema": CONF_USERNAME, "default": None}
 SCHEMA_PASSWORD = {"schema": CONF_PASSWORD, "default": None}
 SCHEMA_VERIFY_SSL = {"schema": CONF_VERIFY_SSL, "default": True}
+SCHEMA_SSL_VERIFY_HOSTNAME = {"schema": CONF_SSL_VERIFY_HOSTNAME, "default": True}
 SCHEMA_SSL_CA_PATH: dict[str, Any] = {"schema": CONF_SSL_CA_PATH}
 SCHEMA_API_KEY = {"schema": CONF_API_KEY, "default": None}
 SCHEMA_TIMEOUT = {"schema": CONF_TIMEOUT, "default": 30}
@@ -78,7 +81,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
     VERSION = 6
     CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_PUSH
-    GATEWAY = Elasticsearch7Gateway
+    GATEWAY = Elasticsearch8Gateway
 
     def __init__(self) -> None:
         """Initialize the Elastic flow."""
@@ -99,7 +102,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             self._prospective_config.update(user_input)
 
             try:
-                await Elasticsearch7Gateway.async_init_then_stop(**prospective_settings)
+                await Elasticsearch8Gateway.async_init_then_stop(**prospective_settings)
 
             except UntrustedCertificate:
                 return await self.async_step_certificate_issues()
@@ -132,14 +135,14 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
         if user_input is not None:
             try:
-                await Elasticsearch7Gateway.async_init_then_stop(
+                await Elasticsearch8Gateway.async_init_then_stop(
                     url=self._prospective_config[CONF_URL],
-                    verify_certs=self._prospective_config.get(CONF_VERIFY_SSL, True),
-                    ca_certs=self._prospective_config.get(CONF_SSL_CA_PATH),
+                    verify_certs=user_input.get(CONF_VERIFY_SSL, True),
+                    ca_certs=user_input.get(CONF_SSL_CA_PATH),
+                    verify_hostname=user_input.get(CONF_SSL_VERIFY_HOSTNAME, True),
                 )
 
-                if user_input is not None:
-                    self._prospective_config.update(user_input)
+                self._prospective_config.update(user_input)
 
                 # If we get here, we have a valid connection, so we can complete our flow
                 return self.async_step_complete()
@@ -159,12 +162,15 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                     vol.Required(**SCHEMA_VERIFY_SSL): BooleanSelector(
                         BooleanSelectorConfig(),
                     ),
+                    vol.Optional(**SCHEMA_SSL_VERIFY_HOSTNAME): BooleanSelector(
+                        BooleanSelectorConfig(),
+                    ),
                     vol.Optional(**SCHEMA_SSL_CA_PATH): TextSelector(
                         TextSelectorConfig(
                             type=TextSelectorType.TEXT,
                         )
                     ),
-                    # To do: Switch to this vol.Optional(**SCHEMA_SSL_CA_PATH): FileSelector(FileSelectorConfig(accept=".pem,.crt")),
+                    # To do: consider switching to a file selector to upload the ca cert vol.Optional(**SCHEMA_SSL_CA_PATH): FileSelector(FileSelectorConfig(accept=".pem,.crt")),
                 },
             ),
             errors=errors,
@@ -211,11 +217,12 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
         if user_input is not None:
             try:
-                await Elasticsearch7Gateway.async_init_then_stop(
+                await Elasticsearch8Gateway.async_init_then_stop(
                     url=self._prospective_config[CONF_URL],
                     username=user_input.get(CONF_USERNAME),
                     password=user_input.get(CONF_PASSWORD),
                     verify_certs=self._prospective_config.get(CONF_VERIFY_SSL, True),
+                    verify_hostname=self._prospective_config.get(CONF_SSL_VERIFY_HOSTNAME, True),
                     ca_certs=self._prospective_config.get(CONF_SSL_CA_PATH),
                 )
             except InsufficientPrivileges:
@@ -254,10 +261,11 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
         if user_input is not None:
             try:
-                await Elasticsearch7Gateway.async_init_then_stop(
+                await Elasticsearch8Gateway.async_init_then_stop(
                     url=self._prospective_config[CONF_URL],
                     api_key=user_input.get(CONF_API_KEY),
                     verify_certs=self._prospective_config.get(CONF_VERIFY_SSL, True),
+                    verify_hostname=self._prospective_config.get(CONF_SSL_VERIFY_HOSTNAME, True),
                     ca_certs=self._prospective_config.get(CONF_SSL_CA_PATH),
                 )
             except InsufficientPrivileges:
@@ -336,6 +344,7 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
         CONF_EXCLUDE_TARGETS: False,
         CONF_TARGETS_TO_INCLUDE: {},
         CONF_TARGETS_TO_EXCLUDE: {},
+        CONF_TAGS: [],
     }
 
     def __init__(self, config_entry: ConfigEntry) -> None:
@@ -386,7 +395,10 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
             "schema": CONF_CHANGE_DETECTION_TYPE,
             "default": from_options(CONF_CHANGE_DETECTION_TYPE),
         }
-
+        SCHEMA_TAGS = {
+            "schema": CONF_TAGS,
+            "default": from_options(CONF_TAGS),
+        }
         SCHEMA_INCLUDE_TARGETS = {
             "schema": CONF_INCLUDE_TARGETS,
             "default": from_options(CONF_INCLUDE_TARGETS),
@@ -435,6 +447,9 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
                         ],
                         multiple=True,
                     )
+                ),
+                vol.Optional(**SCHEMA_TAGS): SelectSelector(
+                    SelectSelectorConfig(options=[], custom_value=True, multiple=True)
                 ),
                 vol.Optional(**SCHEMA_INCLUDE_TARGETS): BooleanSelector(
                     BooleanSelectorConfig(),

@@ -42,7 +42,7 @@ from pytest_homeassistant_custom_component.common import (
     mock_platform as new_mock_platform,
 )
 
-from tests.const import CLUSTER_INFO_8DOT11_RESPONSE_BODY
+from tests.const import CLUSTER_INFO_8DOT11_RESPONSE_BODY, TEST_CONFIG_ENTRY_DATA_URL
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigFlowResult
@@ -96,17 +96,17 @@ class Test_Public_Methods:
     ):
         """Test user initiated step."""
         with mock.patch(
-            "custom_components.elasticsearch.es_gateway_7.Elasticsearch7Gateway.async_init_then_stop",
+            "custom_components.elasticsearch.es_gateway_8.Elasticsearch8Gateway.async_init_then_stop",
             return_value=True,
         ):
             result: ConfigFlowResult = await elastic_flow.async_step_user(
-                user_input={CONF_URL: "http://localhost:9200"}
+                user_input={CONF_URL: TEST_CONFIG_ENTRY_DATA_URL}
             )
 
         assert result is not None
         assert "type" in result and result["type"] == FlowResultType.CREATE_ENTRY
-        assert "title" in result and result["title"] == "http://localhost:9200"
-        assert "data" in result and result["data"] == {CONF_URL: "http://localhost:9200"}
+        assert "title" in result and result["title"] == TEST_CONFIG_ENTRY_DATA_URL
+        assert "data" in result and result["data"] == {CONF_URL: TEST_CONFIG_ENTRY_DATA_URL}
         assert "options" in result and result["options"] == ElasticOptionsFlowHandler.default_options
 
         assert result is not None
@@ -129,11 +129,11 @@ class Test_Public_Methods:
 
         # Fill out the form
         with mock.patch(
-            "custom_components.elasticsearch.es_gateway_7.Elasticsearch7Gateway.async_init_then_stop",
+            "custom_components.elasticsearch.es_gateway_8.Elasticsearch8Gateway.async_init_then_stop",
             side_effect=exception(),
         ):
             next_result: ConfigFlowResult = await elastic_flow.async_step_user(
-                user_input={CONF_URL: "http://localhost:9200"}
+                user_input={CONF_URL: TEST_CONFIG_ENTRY_DATA_URL}
             )
 
         assert "step_id" in next_result
@@ -145,7 +145,7 @@ class Test_Public_Methods:
     ):
         """Test user initiated step."""
 
-        elastic_flow._prospective_config = {CONF_URL: "http://localhost:9200"}
+        elastic_flow._prospective_config = {CONF_URL: TEST_CONFIG_ENTRY_DATA_URL}
 
         result: ConfigFlowResult = await elastic_flow.async_step_certificate_issues()
 
@@ -160,21 +160,21 @@ class Test_Public_Methods:
     ):
         """Test user initiated step."""
 
-        elastic_flow._prospective_config = {CONF_URL: "http://localhost:9200"}
+        elastic_flow._prospective_config = {CONF_URL: TEST_CONFIG_ENTRY_DATA_URL}
 
         with mock.patch(
-            "custom_components.elasticsearch.es_gateway_7.Elasticsearch7Gateway.async_init_then_stop",
+            "custom_components.elasticsearch.es_gateway_8.Elasticsearch8Gateway.async_init_then_stop",
             return_value=True,
         ):
             result: ConfigFlowResult = await elastic_flow.async_step_certificate_issues(
-                user_input={CONF_URL: "http://localhost:9200", CONF_VERIFY_SSL: False}
+                user_input={CONF_URL: TEST_CONFIG_ENTRY_DATA_URL, CONF_VERIFY_SSL: False}
             )
 
         assert result is not None
         assert "type" in result and result["type"] == FlowResultType.CREATE_ENTRY
-        assert "title" in result and result["title"] == "http://localhost:9200"
+        assert "title" in result and result["title"] == TEST_CONFIG_ENTRY_DATA_URL
         assert "data" in result and result["data"] == {
-            CONF_URL: "http://localhost:9200",
+            CONF_URL: TEST_CONFIG_ENTRY_DATA_URL,
             CONF_VERIFY_SSL: False,
         }
         assert "options" in result and result["options"] == ElasticOptionsFlowHandler.default_options
@@ -220,10 +220,10 @@ class Test_Public_Methods:
     ):
         """Test user initiated step."""
 
-        elastic_flow._prospective_config = {CONF_URL: "http://localhost:9200"}
+        elastic_flow._prospective_config = {CONF_URL: TEST_CONFIG_ENTRY_DATA_URL}
 
         with mock.patch(
-            "custom_components.elasticsearch.es_gateway_7.Elasticsearch7Gateway.async_init_then_stop",
+            "custom_components.elasticsearch.es_gateway_8.Elasticsearch8Gateway.async_init_then_stop",
             side_effect=exception(),
         ):
             next_result: ConfigFlowResult = await elastic_flow.async_step_basic_auth(
@@ -249,10 +249,10 @@ class Test_Public_Methods:
     ):
         """Test user initiated step."""
 
-        elastic_flow._prospective_config = {CONF_URL: "http://localhost:9200"}
+        elastic_flow._prospective_config = {CONF_URL: TEST_CONFIG_ENTRY_DATA_URL}
 
         with mock.patch(
-            "custom_components.elasticsearch.es_gateway_7.Elasticsearch7Gateway.async_init_then_stop",
+            "custom_components.elasticsearch.es_gateway_8.Elasticsearch8Gateway.async_init_then_stop",
             side_effect=exception(),
         ):
             next_result: ConfigFlowResult = await elastic_flow.async_step_api_key(
@@ -273,28 +273,34 @@ class Test_Integration_Tests:
     async def test_user_done(self, hass, elastic_flow, es_aioclient_mock):
         """Test user initiated step."""
 
-        es_aioclient_mock.get("http://localhost:9200", json=CLUSTER_INFO_8DOT11_RESPONSE_BODY)
+        es_aioclient_mock.get(
+            TEST_CONFIG_ENTRY_DATA_URL,
+            json=CLUSTER_INFO_8DOT11_RESPONSE_BODY,
+            headers={"x-elastic-product": "Elasticsearch"},
+        )
         es_aioclient_mock.post(
-            "http://localhost:9200/_security/user/_has_privileges", json={"has_all_requested": True}
+            TEST_CONFIG_ENTRY_DATA_URL + "/_security/user/_has_privileges", json={"has_all_requested": True}
         )
 
         result: ConfigFlowResult = await elastic_flow.async_step_user(
-            user_input={CONF_URL: "http://localhost:9200"}
+            user_input={CONF_URL: TEST_CONFIG_ENTRY_DATA_URL}
         )
 
         assert result is not None
         assert "type" in result and result["type"] == FlowResultType.CREATE_ENTRY
-        assert "title" in result and result["title"] == "http://localhost:9200"
-        assert "data" in result and result["data"] == {CONF_URL: "http://localhost:9200"}
+        assert "title" in result and result["title"] == TEST_CONFIG_ENTRY_DATA_URL
+        assert "data" in result and result["data"] == {CONF_URL: TEST_CONFIG_ENTRY_DATA_URL}
         assert "options" in result and result["options"] == ElasticOptionsFlowHandler.default_options
 
     async def test_user_authentication_issues_done(self, hass, elastic_flow, es_aioclient_mock):
         """Test user initiated step."""
 
-        es_aioclient_mock.get("http://localhost:9200", status=401)
+        es_aioclient_mock.get(
+            TEST_CONFIG_ENTRY_DATA_URL, status=401, headers={"x-elastic-product": "Elasticsearch"}
+        )
 
         result: ConfigFlowResult = await elastic_flow.async_step_user(
-            user_input={CONF_URL: "http://localhost:9200"}
+            user_input={CONF_URL: TEST_CONFIG_ENTRY_DATA_URL}
         )
 
         assert result is not None
@@ -306,10 +312,12 @@ class Test_Integration_Tests:
     ):
         """Test user initiated step."""
 
-        es_aioclient_mock.get("http://localhost:9200", status=401)
+        es_aioclient_mock.get(
+            TEST_CONFIG_ENTRY_DATA_URL, status=401, headers={"x-elastic-product": "Elasticsearch"}
+        )
 
         result: ConfigFlowResult = await elastic_flow.async_step_user(
-            user_input={CONF_URL: "http://localhost:9200"}
+            user_input={CONF_URL: TEST_CONFIG_ENTRY_DATA_URL}
         )
 
         assert result is not None
@@ -322,14 +330,18 @@ class Test_Integration_Tests:
         """Test user initiated step."""
 
         # Handle a user that does not have the necessary privileges
-        es_aioclient_mock.get("http://localhost:9200", json=CLUSTER_INFO_8DOT11_RESPONSE_BODY)
+        es_aioclient_mock.get(
+            TEST_CONFIG_ENTRY_DATA_URL,
+            json=CLUSTER_INFO_8DOT11_RESPONSE_BODY,
+            headers={"x-elastic-product": "Elasticsearch"},
+        )
         es_aioclient_mock.post(
-            "http://localhost:9200/_security/user/_has_privileges", json={"has_all_requested": False}
+            TEST_CONFIG_ENTRY_DATA_URL + "/_security/user/_has_privileges", json={"has_all_requested": False}
         )
 
         # Now pass input into the form and make sure we get redirected back to this form
         result: ConfigFlowResult = await elastic_flow.async_step_user(
-            user_input={CONF_URL: "http://localhost:9200"}
+            user_input={CONF_URL: TEST_CONFIG_ENTRY_DATA_URL}
         )
 
         assert result is not None
@@ -338,11 +350,11 @@ class Test_Integration_Tests:
 
         # Handle a 403
         es_aioclient_mock.clear_requests()
-        es_aioclient_mock.get("http://localhost:9200", status=403)
+        es_aioclient_mock.get(TEST_CONFIG_ENTRY_DATA_URL, status=403)
 
         # Now pass input into the form and make sure we get redirected back to this form
         result: ConfigFlowResult = await elastic_flow.async_step_user(
-            user_input={CONF_URL: "http://localhost:9200"}
+            user_input={CONF_URL: TEST_CONFIG_ENTRY_DATA_URL}
         )
 
         assert result is not None
@@ -351,37 +363,43 @@ class Test_Integration_Tests:
 
         # Now make it work
         es_aioclient_mock.clear_requests()
-        es_aioclient_mock.get("http://localhost:9200", json=CLUSTER_INFO_8DOT11_RESPONSE_BODY)
+        es_aioclient_mock.get(
+            TEST_CONFIG_ENTRY_DATA_URL,
+            json=CLUSTER_INFO_8DOT11_RESPONSE_BODY,
+            headers={"x-elastic-product": "Elasticsearch"},
+        )
         es_aioclient_mock.post(
-            "http://localhost:9200/_security/user/_has_privileges", json={"has_all_requested": True}
+            TEST_CONFIG_ENTRY_DATA_URL + "/_security/user/_has_privileges", json={"has_all_requested": True}
         )
 
         # Now pass input into the form and make sure we get a new config entry
         result: ConfigFlowResult = await elastic_flow.async_step_user(
-            user_input={CONF_URL: "http://localhost:9200"}
+            user_input={CONF_URL: TEST_CONFIG_ENTRY_DATA_URL}
         )
 
         assert result is not None
         assert "type" in result and result["type"] == FlowResultType.CREATE_ENTRY
-        assert "title" in result and result["title"] == "http://localhost:9200"
-        assert "data" in result and result["data"] == {CONF_URL: "http://localhost:9200"}
+        assert "title" in result and result["title"] == TEST_CONFIG_ENTRY_DATA_URL
+        assert "data" in result and result["data"] == {CONF_URL: TEST_CONFIG_ENTRY_DATA_URL}
         assert "options" in result and result["options"] == ElasticOptionsFlowHandler.default_options
 
     async def test_user_untrusted_cert_done(self, hass, elastic_flow, es_aioclient_mock):
         """Test user initiated step."""
 
         es_aioclient_mock.get(
-            "https://localhost:9200",
+            TEST_CONFIG_ENTRY_DATA_URL,
             exc=client_exceptions.ClientConnectorCertificateError(
                 connection_key=MagicMock(), certificate_error=Exception("AHHHHH")
             ),
+            headers={"x-elastic-product": "Elasticsearch"},
         )
         es_aioclient_mock.post(
-            "https://localhost:9200/_security/user/_has_privileges", json={"has_all_requested": True}
+            TEST_CONFIG_ENTRY_DATA_URL + "/_security/user/_has_privileges",
+            json={"has_all_requested": True},
         )
 
         result: ConfigFlowResult = await elastic_flow.async_step_user(
-            user_input={CONF_URL: "https://localhost:9200"}
+            user_input={CONF_URL: TEST_CONFIG_ENTRY_DATA_URL}
         )
 
         assert result is not None
@@ -390,21 +408,25 @@ class Test_Integration_Tests:
 
         # Bypass Certificate Issues
         es_aioclient_mock.clear_requests()
-        es_aioclient_mock.get("https://localhost:9200", json=CLUSTER_INFO_8DOT11_RESPONSE_BODY)
+        es_aioclient_mock.get(
+            TEST_CONFIG_ENTRY_DATA_URL,
+            json=CLUSTER_INFO_8DOT11_RESPONSE_BODY,
+            headers={"x-elastic-product": "Elasticsearch"},
+        )
         es_aioclient_mock.post(
-            "https://localhost:9200/_security/user/_has_privileges", json={"has_all_requested": True}
+            TEST_CONFIG_ENTRY_DATA_URL + "/_security/user/_has_privileges", json={"has_all_requested": True}
         )
 
         # Now pass input into the form and make sure we get a new config entry
         next_result: ConfigFlowResult = await elastic_flow.async_step_certificate_issues(
-            user_input={CONF_URL: "https://localhost:9200", CONF_VERIFY_SSL: False}
+            user_input={CONF_URL: TEST_CONFIG_ENTRY_DATA_URL, CONF_VERIFY_SSL: False}
         )
 
         assert next_result is not None
         assert "type" in next_result and next_result["type"] == FlowResultType.CREATE_ENTRY
-        assert "title" in next_result and next_result["title"] == "https://localhost:9200"
+        assert "title" in next_result and next_result["title"] == TEST_CONFIG_ENTRY_DATA_URL
         assert "data" in next_result and next_result["data"] == {
-            CONF_URL: "https://localhost:9200",
+            CONF_URL: TEST_CONFIG_ENTRY_DATA_URL,
             CONF_VERIFY_SSL: False,
         }
         assert (
@@ -415,13 +437,14 @@ class Test_Integration_Tests:
         """Test user initiated step."""
 
         es_aioclient_mock.get(
-            "https://localhost:9200",
+            TEST_CONFIG_ENTRY_DATA_URL,
             exc=client_exceptions.ClientConnectorCertificateError(
                 connection_key=MagicMock(), certificate_error=Exception("AHHHHH")
             ),
+            headers={"x-elastic-product": "Elasticsearch"},
         )
 
-        elastic_flow._prospective_config = {CONF_URL: "https://localhost:9200"}
+        elastic_flow._prospective_config = {CONF_URL: TEST_CONFIG_ENTRY_DATA_URL}
 
         result: ConfigFlowResult = await elastic_flow.async_step_certificate_issues()
 
@@ -431,7 +454,7 @@ class Test_Integration_Tests:
 
         # Now pass input into the form and make sure we get redirected back to the same form
         next_result: ConfigFlowResult = await elastic_flow.async_step_certificate_issues(
-            user_input={CONF_URL: "https://localhost:9200"}, errors={"base": "untrusted_certificate"}
+            user_input={CONF_URL: TEST_CONFIG_ENTRY_DATA_URL}, errors={"base": "untrusted_certificate"}
         )
 
         assert next_result is not None
@@ -450,7 +473,7 @@ class Test_Integration_Tests:
     async def test_basic_basic_done(self, elastic_flow, status_code, error, es_aioclient_mock):
         """Test user initiated step."""
 
-        elastic_flow._prospective_config = {CONF_URL: "http://localhost:9200"}
+        elastic_flow._prospective_config = {CONF_URL: TEST_CONFIG_ENTRY_DATA_URL}
 
         result: ConfigFlowResult = await elastic_flow.async_step_basic_auth()
 
@@ -459,7 +482,9 @@ class Test_Integration_Tests:
         assert "step_id" in result and result["step_id"] == "basic_auth"
 
         # Now pass input into the form and make sure we get redirected back to the same form
-        es_aioclient_mock.get("http://localhost:9200", status=status_code)
+        es_aioclient_mock.get(
+            TEST_CONFIG_ENTRY_DATA_URL, status=status_code, headers={"x-elastic-product": "Elasticsearch"}
+        )
 
         next_result: ConfigFlowResult = await elastic_flow.async_step_basic_auth(
             user_input={CONF_USERNAME: "user", CONF_PASSWORD: "password"}
@@ -481,7 +506,7 @@ class Test_Integration_Tests:
     async def test_api_api_done(self, elastic_flow, status_code, error, es_aioclient_mock):
         """Test user initiated step."""
 
-        elastic_flow._prospective_config = {CONF_URL: "http://localhost:9200"}
+        elastic_flow._prospective_config = {CONF_URL: TEST_CONFIG_ENTRY_DATA_URL}
 
         result: ConfigFlowResult = await elastic_flow.async_step_api_key()
 
@@ -490,7 +515,7 @@ class Test_Integration_Tests:
         assert "step_id" in result and result["step_id"] == "api_key"
 
         # Now pass input into the form and make sure we get redirected back to the same form
-        es_aioclient_mock.get("http://localhost:9200", status=status_code)
+        es_aioclient_mock.get(TEST_CONFIG_ENTRY_DATA_URL, status=status_code)
 
         next_result: ConfigFlowResult = await elastic_flow.async_step_api_key(
             user_input={CONF_API_KEY: "1234"}

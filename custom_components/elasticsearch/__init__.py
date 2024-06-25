@@ -23,11 +23,6 @@ from custom_components.elasticsearch.logger import (
     log_enter_exit_debug,
 )
 
-from .const import (
-    CONF_HEALTH_SENSOR_ENABLED,
-    CONF_INDEX_MODE,
-    INDEX_MODE_LEGACY,
-)
 from .es_integration import ElasticIntegration
 
 if TYPE_CHECKING:
@@ -156,16 +151,16 @@ def migrate_to_version_2(data: dict, options: dict) -> tuple[dict, dict]:
 
 def migrate_to_version_3(data: dict, options: dict) -> tuple[dict, dict]:
     """Migrate config to version 3."""
-    if CONF_HEALTH_SENSOR_ENABLED in data:
-        del data[CONF_HEALTH_SENSOR_ENABLED]
+    if "health_sensor_enabled" in data:
+        del data["health_sensor_enabled"]
 
     return data, options
 
 
 def migrate_to_version_4(data: dict, options: dict) -> tuple[dict, dict]:
     """Migrate config to version 4."""
-    if CONF_INDEX_MODE not in data:
-        data[CONF_INDEX_MODE] = INDEX_MODE_LEGACY
+    if "index_mode" not in data:
+        data["index_mode"] = "index"
 
     conf_ilm_max_size = "ilm_max_size"
     if conf_ilm_max_size in data:

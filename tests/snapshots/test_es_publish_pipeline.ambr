@@ -890,6 +890,8 @@
       ]),
       'polling_frequency': 60,
       'publish_frequency': 60,
+      'tags': list([
+      ]),
     }),
     'static_fields': dict({
     }),

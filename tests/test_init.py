@@ -641,27 +641,6 @@ class Test_Private_Methods:
 class Test_Common_Failures_e2e:
     """Test the common failures that users run into when initializing the integration."""
 
-    # async def test_unsupported_es_version(
-    #     self, hass: HomeAssistant, integration_setup, es_aioclient_mock: AiohttpClientMocker, config_entry
-    # ):
-    #     """Test the scenario where the Elasticsearch version is unsupported."""
-
-    #     es_aioclient_mock.get(
-    #         f"{const.TEST_CONFIG_ENTRY_DATA_URL}/",
-    #         status=200,
-    #         json=const.CLUSTER_INFO_UNSUPPORTED_RESPONSE_BODY,
-    #     )
-
-    #     assert config_entry.state is ConfigEntryState.NOT_LOADED
-
-    #     # Load the Config Entry
-    #     assert await integration_setup() is False
-
-    #     assert config_entry.version == ElasticFlowHandler.VERSION
-
-    #     assert config_entry.state is ConfigEntryState.SETUP_RETRY
-    #     assert config_entry.reason == "Unsupported version of Elasticsearch"
-
     async def test_authentication_failure(
         self, hass: HomeAssistant, integration_setup, es_aioclient_mock: AiohttpClientMocker, config_entry
     ):
@@ -689,6 +668,7 @@ class Test_Common_Failures_e2e:
         es_aioclient_mock.get(
             f"{const.TEST_CONFIG_ENTRY_DATA_URL}/",
             status=500,
+            headers={"x-elastic-product": "Elasticsearch"},
         )
 
         assert config_entry.state is ConfigEntryState.NOT_LOADED

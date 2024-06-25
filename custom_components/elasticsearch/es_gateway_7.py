@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 
 import elasticsearch7
@@ -104,9 +105,10 @@ class Elasticsearch7Gateway(ElasticsearchGateway):
         password: str | None = None,
         api_key: str | None = None,
         verify_certs: bool = True,
+        verify_hostname: bool = True,
         ca_certs: str | None = None,
         request_timeout: int = 30,
-        minimum_privileges: dict[str, Any] = ES_CHECK_PERMISSIONS_DATASTREAM,
+        minimum_privileges: MappingProxyType[str, Any] = ES_CHECK_PERMISSIONS_DATASTREAM,
         log: Logger = BASE_LOGGER,
     ) -> None:
         """Initialize the gateway and then stop it."""
@@ -119,6 +121,7 @@ class Elasticsearch7Gateway(ElasticsearchGateway):
                 api_key=api_key,
                 verify_certs=verify_certs,
                 ca_certs=ca_certs,
+                verify_hostname=verify_hostname,
                 request_timeout=request_timeout,
                 minimum_privileges=minimum_privileges,
             ),
@@ -156,7 +159,7 @@ class Elasticsearch7Gateway(ElasticsearchGateway):
     async def info(self) -> dict:
         """Retrieve info about the connected elasticsearch cluster."""
 
-        with self._error_converter(msg="Error connecting to Elasticsearch"):
+        with self._error_converter(msg="Error retrieving cluster info from Elasticsearch"):
             response = await self.client.info()
 
         return self._convert_response(response)

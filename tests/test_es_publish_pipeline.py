@@ -29,6 +29,7 @@ def settings():
         polling_frequency=60,
         publish_frequency=60,
         change_detection_type=[],
+        tags=[],
         include_targets=False,
         exclude_targets=False,
         included_areas=[],
