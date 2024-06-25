@@ -5,7 +5,28 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
-from custom_components.elasticsearch.const import ES_CHECK_PERMISSIONS_DATASTREAM
+from homeassistant.const import (
+    CONF_API_KEY,
+    CONF_PASSWORD,
+    CONF_TIMEOUT,
+    CONF_URL,
+    CONF_USERNAME,
+    CONF_VERIFY_SSL,
+)
+
+from custom_components.elasticsearch.const import (
+    CONF_CHANGE_DETECTION_TYPE,
+    CONF_EXCLUDE_TARGETS,
+    CONF_INCLUDE_TARGETS,
+    CONF_POLLING_FREQUENCY,
+    CONF_PUBLISH_FREQUENCY,
+    CONF_SSL_CA_PATH,
+    CONF_SSL_VERIFY_HOSTNAME,
+    CONF_TAGS,
+    CONF_TARGETS_TO_EXCLUDE,
+    CONF_TARGETS_TO_INCLUDE,
+    ES_CHECK_PERMISSIONS_DATASTREAM,
+)
 from custom_components.elasticsearch.errors import ESIntegrationException
 from custom_components.elasticsearch.es_datastream_manager import DatastreamManager
 from custom_components.elasticsearch.es_gateway_8 import Elasticsearch8Gateway, Gateway8Settings
@@ -83,14 +104,14 @@ class ElasticIntegration:
     ) -> Gateway8Settings:
         """Build the parameters for the Elasticsearch gateway."""
         return Gateway8Settings(
-            url=config_entry.data["url"],
-            username=config_entry.data.get("username"),
-            password=config_entry.data.get("password"),
-            api_key=config_entry.data.get("api_key"),
-            verify_certs=config_entry.data.get("verify_ssl", False),
-            verify_hostname=config_entry.data.get("ssl_verify_hostname", True),
-            ca_certs=config_entry.data.get("ca_certs"),
-            request_timeout=config_entry.data.get("timeout", 30),
+            url=config_entry.data[CONF_URL],
+            username=config_entry.data.get(CONF_USERNAME),
+            password=config_entry.data.get(CONF_PASSWORD),
+            api_key=config_entry.data.get(CONF_API_KEY),
+            verify_certs=config_entry.data.get(CONF_VERIFY_SSL, False),
+            verify_hostname=config_entry.data.get(CONF_SSL_VERIFY_HOSTNAME, False),
+            ca_certs=config_entry.data.get(CONF_SSL_CA_PATH),
+            request_timeout=config_entry.data.get(CONF_TIMEOUT, 30),
             minimum_privileges=minimum_privileges,
         )
 
@@ -103,20 +124,20 @@ class ElasticIntegration:
             raise ValueError(msg)
 
         settings = PipelineSettings(
-            polling_frequency=config_entry.options["polling_frequency"],
-            publish_frequency=config_entry.options["publish_frequency"],
-            change_detection_type=config_entry.options["change_detection_type"],
-            tags=config_entry.options["tags"],
-            include_targets=config_entry.options["include_targets"],
-            exclude_targets=config_entry.options["exclude_targets"],
-            included_areas=config_entry.options["targets_to_include"].get("area_id", []),
-            excluded_areas=config_entry.options["targets_to_exclude"].get("area_id", []),
-            included_labels=config_entry.options["targets_to_include"].get("labels_id", []),
-            excluded_labels=config_entry.options["targets_to_exclude"].get("labels_id", []),
-            included_devices=config_entry.options["targets_to_include"].get("devices_id", []),
-            excluded_devices=config_entry.options["targets_to_exclude"].get("devices_id", []),
-            included_entities=config_entry.options["targets_to_include"].get("entities_id", []),
-            excluded_entities=config_entry.options["targets_to_exclude"].get("entities_id", []),
+            polling_frequency=config_entry.options[CONF_POLLING_FREQUENCY],
+            publish_frequency=config_entry.options[CONF_PUBLISH_FREQUENCY],
+            change_detection_type=config_entry.options[CONF_CHANGE_DETECTION_TYPE],
+            tags=config_entry.options[CONF_TAGS],
+            include_targets=config_entry.options[CONF_INCLUDE_TARGETS],
+            exclude_targets=config_entry.options[CONF_EXCLUDE_TARGETS],
+            included_areas=config_entry.options[CONF_TARGETS_TO_INCLUDE].get("area_id", []),
+            excluded_areas=config_entry.options[CONF_TARGETS_TO_EXCLUDE].get("area_id", []),
+            included_labels=config_entry.options[CONF_TARGETS_TO_INCLUDE].get("labels_id", []),
+            excluded_labels=config_entry.options[CONF_TARGETS_TO_EXCLUDE].get("labels_id", []),
+            included_devices=config_entry.options[CONF_TARGETS_TO_INCLUDE].get("devices_id", []),
+            excluded_devices=config_entry.options[CONF_TARGETS_TO_EXCLUDE].get("devices_id", []),
+            included_entities=config_entry.options[CONF_TARGETS_TO_INCLUDE].get("entities_id", []),
+            excluded_entities=config_entry.options[CONF_TARGETS_TO_EXCLUDE].get("entities_id", []),
         )
 
         return {"hass": hass, "gateway": gateway, "settings": settings}

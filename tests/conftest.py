@@ -30,6 +30,11 @@ from aiohttp import ClientSession, TCPConnector
 from custom_components.elasticsearch.config_flow import ElasticFlowHandler
 from custom_components.elasticsearch.es_gateway_7 import Elasticsearch7Gateway, Gateway7Settings
 from custom_components.elasticsearch.es_gateway_8 import Elasticsearch8Gateway, Gateway8Settings
+from homeassistant.const import (
+    CONF_PASSWORD,
+    CONF_URL,
+    CONF_USERNAME,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.json import json_dumps
 from pytest_homeassistant_custom_component.common import (
@@ -62,9 +67,9 @@ MODULE = "custom_components.elasticsearch"
 def gateway_config() -> dict:
     """Mock Gateway configuration."""
     return {
-        "url": const.TEST_CONFIG_ENTRY_DATA_URL,
-        "username": const.TEST_CONFIG_ENTRY_DATA_USERNAME,
-        "password": const.TEST_CONFIG_ENTRY_DATA_PASSWORD,
+        CONF_URL: const.TEST_CONFIG_ENTRY_DATA_URL,
+        CONF_USERNAME: const.TEST_CONFIG_ENTRY_DATA_USERNAME,
+        CONF_PASSWORD: const.TEST_CONFIG_ENTRY_DATA_PASSWORD,
         "verify_certs": True,
         "ca_certs": None,
         "request_timeout": 30,

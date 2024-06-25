@@ -14,7 +14,11 @@
         },
         "step": {
             "user": {
-                "title": "Elasticsearch Cluster Information"
+                "title": "Elasticsearch Cluster Information",
+                "description": "Please provide the URL to access your elasticsearch cluster in the format http(s)://my_elasticsearch_server:port (https://my_elasticsearch:9200).",
+                "data":{
+                    "url": "URL to access the Elasticsearch Cluster"
+                }
             },
             "certificate_issues": {
                 "title": "Untrusted Certificate with SSL/TLS",

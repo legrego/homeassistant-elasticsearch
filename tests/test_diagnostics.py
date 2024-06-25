@@ -2,23 +2,29 @@
 
 import pytest
 from custom_components.elasticsearch.diagnostics import async_get_config_entry_diagnostics
+from homeassistant.const import (
+    CONF_API_KEY,
+    CONF_PASSWORD,
+    CONF_URL,
+    CONF_USERNAME,
+)
 
 
 @pytest.mark.parametrize(
     "data",
     [
         {
-            "url": "https://example.com",
-            "username": "test_user",
-            "password": "test_password",
-            "api_key": "test_api_key",
+            CONF_URL: "https://example.com",
+            CONF_USERNAME: "test_user",
+            CONF_PASSWORD: "test_password",
+            CONF_API_KEY: "test_api_key",
         },
         {
-            "url": "https://example.com",
-            "username": "test_user",
+            CONF_URL: "https://example.com",
+            CONF_USERNAME: "test_user",
         },
         {
-            "url": "https://example.com",
+            CONF_URL: "https://example.com",
         },
     ],
     ids=["URL and all auth params", "Only URL and username", "Only URL"],

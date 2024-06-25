@@ -1,6 +1,24 @@
 """Test Constants."""
 
+from custom_components.elasticsearch.const import (
+    CONF_CHANGE_DETECTION_ENABLED,
+    CONF_CHANGE_DETECTION_TYPE,
+    CONF_EXCLUDE_TARGETS,
+    CONF_INCLUDE_TARGETS,
+    CONF_POLLING_FREQUENCY,
+    CONF_PUBLISH_FREQUENCY,
+    CONF_TAGS,
+    CONF_TARGETS_TO_EXCLUDE,
+    CONF_TARGETS_TO_INCLUDE,
+)
 from homeassistant.components.counter import DOMAIN as COUNTER_DOMAIN
+from homeassistant.const import (
+    CONF_PASSWORD,
+    CONF_TIMEOUT,
+    CONF_URL,
+    CONF_USERNAME,
+    CONF_VERIFY_SSL,
+)
 
 TEST_DEVICE_AREA_NAME = "device area"
 TEST_DEVICE_FLOOR_NAME = "device floor"
@@ -31,22 +49,22 @@ TEST_CONFIG_ENTRY_DATA_TIMEOUT = 30
 TEST_CONFIG_ENTRY_DATA_VERIFY_SSL = False
 
 TEST_CONFIG_ENTRY_BASE_DATA = {
-    "url": TEST_CONFIG_ENTRY_DATA_URL,
-    "timeout": 30,
-    "verify_ssl": False,
-    "username": "hass_writer",
-    "password": "changeme",
+    CONF_URL: TEST_CONFIG_ENTRY_DATA_URL,
+    CONF_TIMEOUT: 30,
+    CONF_VERIFY_SSL: False,
+    CONF_USERNAME: "hass_writer",
+    CONF_PASSWORD: "changeme",
 }
 TEST_CONFIG_ENTRY_BASE_OPTIONS = {
-    "change_detection_enabled": True,
-    "change_detection_type": [],
-    "tags": [],
-    "polling_frequency": 60,
-    "publish_frequency": 60,
-    "include_targets": False,
-    "exclude_targets": False,
-    "targets_to_include": {},
-    "targets_to_exclude": {},
+    CONF_CHANGE_DETECTION_ENABLED: True,
+    CONF_CHANGE_DETECTION_TYPE: [],
+    CONF_TAGS: [],
+    CONF_POLLING_FREQUENCY: 60,
+    CONF_PUBLISH_FREQUENCY: 60,
+    CONF_INCLUDE_TARGETS: False,
+    CONF_EXCLUDE_TARGETS: False,
+    CONF_TARGETS_TO_INCLUDE: {},
+    CONF_TARGETS_TO_EXCLUDE: {},
 }
 
 

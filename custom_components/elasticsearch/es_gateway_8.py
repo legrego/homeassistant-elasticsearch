@@ -63,7 +63,7 @@ class Gateway8Settings(GatewaySettings):
         }
 
         if self.verify_certs and not self.verify_hostname:
-            # Construct an SSL context to provide
+            # Construct an SSL context to provide custom settings
             settings["ssl_context"] = ssl.create_default_context()
             settings["ssl_context"].check_hostname = False
             settings["ssl_context"].verify_mode = ssl.CERT_REQUIRED
@@ -82,6 +82,8 @@ class Gateway8Settings(GatewaySettings):
                     "ca_certs": self.ca_certs,
                 }
             )
+        elif not self.verify_certs:
+            settings["verify_certs"] = False
 
         if self.username:
             settings["basic_auth"] = (self.username, self.password)

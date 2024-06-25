@@ -98,7 +98,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         """
         if user_input is not None:
             # If the URL has an https schema, test the connection and see if we get an untrusted certificate error
-            prospective_settings: dict = {"url": user_input.get(CONF_URL)}
+            prospective_settings: dict = {CONF_URL: user_input.get(CONF_URL)}
             self._prospective_config.update(user_input)
 
             try:
@@ -153,6 +153,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             except CannotConnect:
                 return self.async_abort(reason="cannot_connect")
             except AuthenticationRequired:
+                self._prospective_config.update(user_input)
                 return await self.async_step_authentication_issues()
 
         return self.async_show_form(
@@ -162,7 +163,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                     vol.Required(**SCHEMA_VERIFY_SSL): BooleanSelector(
                         BooleanSelectorConfig(),
                     ),
-                    vol.Optional(**SCHEMA_SSL_VERIFY_HOSTNAME): BooleanSelector(
+                    vol.Required(**SCHEMA_SSL_VERIFY_HOSTNAME): BooleanSelector(
                         BooleanSelectorConfig(),
                     ),
                     vol.Optional(**SCHEMA_SSL_CA_PATH): TextSelector(

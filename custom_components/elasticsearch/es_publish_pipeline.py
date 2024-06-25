@@ -34,16 +34,20 @@ from homeassistant.util import dt as dt_util
 from homeassistant.util.logging import async_create_catching_coro
 
 from custom_components.elasticsearch.const import (
-    CONST_ENTITY_DETAILS_TO_ES_DOCUMENT as EXTENDED_DETAILS_TO_ES_DOCUMENT,
-)
-from custom_components.elasticsearch.const import (
-    CONST_ENTITY_DETAILS_TO_ES_DOCUMENT_KEYS as KEYS_TO_KEEP,
-)
-from custom_components.elasticsearch.const import (
+    CONF_CHANGE_DETECTION_TYPE,
+    CONF_POLLING_FREQUENCY,
+    CONF_PUBLISH_FREQUENCY,
+    CONF_TAGS,
     DATASTREAM_DATASET_PREFIX,
     DATASTREAM_NAMESPACE,
     DATASTREAM_TYPE,
     StateChangeType,
+)
+from custom_components.elasticsearch.const import (
+    CONST_ENTITY_DETAILS_TO_ES_DOCUMENT as EXTENDED_DETAILS_TO_ES_DOCUMENT,
+)
+from custom_components.elasticsearch.const import (
+    CONST_ENTITY_DETAILS_TO_ES_DOCUMENT_KEYS as KEYS_TO_KEEP,
 )
 from custom_components.elasticsearch.entity_details import (
     ExtendedEntityDetails,
@@ -112,10 +116,10 @@ class PipelineSettings:
     def to_dict(self) -> dict:
         """Convert the settings to a dictionary."""
         return {
-            "publish_frequency": self.publish_frequency,
-            "polling_frequency": self.polling_frequency,
-            "change_detection_type": [i.value for i in self.change_detection_type],
-            "tags": self.tags,
+            CONF_PUBLISH_FREQUENCY: self.publish_frequency,
+            CONF_POLLING_FREQUENCY: self.polling_frequency,
+            CONF_CHANGE_DETECTION_TYPE: [i.value for i in self.change_detection_type],
+            CONF_TAGS: self.tags,
             "included_areas": self.included_areas,
             "excluded_areas": self.excluded_areas,
             "included_labels": self.included_labels,
@@ -201,7 +205,7 @@ class Pipeline:
                     self._static_fields["host.hostname"] = result.hostname
 
             if self._settings.tags != []:
-                self._static_fields["tags"] = self._settings.tags
+                self._static_fields[CONF_TAGS] = self._settings.tags
 
             if len(self._settings.change_detection_type) != 0:
                 await self._listener.async_init()

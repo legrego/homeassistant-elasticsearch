@@ -88,7 +88,7 @@ class Test_Public_Methods:
         assert "step_id" in result and result["step_id"] == "user"
 
         assert "data_schema" in result and result["data_schema"] is not None
-        assert "url" in result["data_schema"].schema
+        assert CONF_URL in result["data_schema"].schema
 
     async def test_step_user_done(
         self,
