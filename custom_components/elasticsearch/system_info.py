@@ -3,8 +3,9 @@
 import socket
 from dataclasses import dataclass
 
-from homeassistant.components.hassio import get_host_info
+from homeassistant.components.hassio.coordinator import get_host_info
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.system_info import async_get_system_info
 
 from .logger import LOGGER
 
@@ -27,24 +28,35 @@ class SystemInfo:
         """System Info init."""
         self._hass: HomeAssistant = hass
 
+    async def _get_system_info(self) -> dict:
+        try:
+            return await async_get_system_info(self._hass)
+        except Exception as err:
+            msg = "Unknown error retrieving system info"
+            LOGGER.exception(msg)
+            raise ValueError(msg) from err
+
+    def _get_host_info(self) -> dict | None:
+        """Retrieve host information from HASS."""
+        return get_host_info(self._hass)
+
     async def async_get_system_info(self) -> SystemInfoResult | None:
         """Retrieve system information from HASS."""
-        try:
-            system_info = await self._hass.helpers.system_info.async_get_system_info()
+        system_info = await self._get_system_info()
 
-            # see homeassistant/helpers/system_info.py in main home-assistant repo
-            if system_info.get("hassio"):
-                hostname = get_host_info(self._hass).get("hostname", None)
-            else:
-                hostname = socket.gethostname()
+        host_info = self._get_host_info()
 
-            return SystemInfoResult(
-                version=system_info.get("version"),
-                arch=system_info.get("arch"),
-                os_name=system_info.get("os_name"),
-                os_version=system_info.get("os_version"),
-                hostname=hostname,
-            )
-        except Exception as err:  # pylint disable=broad-exception-caught
-            LOGGER.exception("Error retrieving system info: %s", err)
-            return None
+        hostname = None
+
+        if host_info is not None and system_info["hassio"] is True:
+            hostname = host_info.get("hostname", None)
+        else:
+            hostname = socket.gethostname()
+
+        return SystemInfoResult(
+            version=system_info["version"],
+            arch=system_info["arch"],
+            os_name=system_info["os_name"],
+            os_version=system_info["os_version"],
+            hostname=hostname,
+        )

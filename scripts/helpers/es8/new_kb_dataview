@@ -18,7 +18,7 @@ kbpassword=$3
 # }
 
 # Create the JSON payload for Dataview creation
-payload=$(echo -n "{\"data_view\":{\"title\":\"metrics-homeassistant.*\",\"name\":\"Homeassistant Metrics\"}}")
+payload=$(echo -n "{\"data_view\":{\"title\":\"metrics-homeassistant.*\",\"allowNoIndex\":true,\"timeFieldName\":\"@timestamp\",\"name\":\"Homeassistant Metrics\"}}")
 
 # Send the payload to Kibana using curl
-curl -k "http://host.docker.internal:5601/api/data_views/data_view" -X POST -H "kbn-xsrf: true" -H "Content-Type: application/json" -d "$payload"
+curl -k "$kburl/api/data_views/data_view" -X POST -u "$kbusername:$kbpassword" -H "kbn-xsrf: true" -H "Content-Type: application/json" -d "$payload"

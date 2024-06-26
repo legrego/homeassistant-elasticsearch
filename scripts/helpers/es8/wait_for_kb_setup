@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-# Wait for Kibana to be ready
+# Wait for Kibana to be ready to setup
 
-# Usage: ./wait_for_kb
+# Usage: ./wait_for_kb_setup
 
 start=$(date +%s)
 

@@ -1,8 +1,0 @@
-[
-  {
-    "change type": "POLLING",
-    "entity_id": "light.living_room",
-    "state": "on",
-    "timestamp": "2023-04-12T12:00:01.000000+0000"
-  }
-]

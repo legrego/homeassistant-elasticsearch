@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+set -e
+
+cd "$(dirname "$0")/.."
+
+# To run a single test simply call this script with tests/test_....py as argument
+
+# Todo: We didnt need to remove this before, but now we do. We should investigate why
+rm -rf tests/snapshots
+
+pytest --snapshot-update "$@"

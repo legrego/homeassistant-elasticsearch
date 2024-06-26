@@ -35,6 +35,8 @@ fi
 # Create a Docker network for Elasticsearch and Kibana
 docker network create elastic >/dev/null
 
+mkdir "$dir/../../../es_env"
+
 echo "Pulling Docker Images for Elasticsearch and Kibana"
 
 echo -n "- Pulling Elasticsearch image for $version"
@@ -54,12 +56,15 @@ echo "Configuring Elasticsearch:"
 echo "- Resetting elastic user account password"
 espwd=$(/bin/bash "$dir/reset_es_pwd" "$escontainer")
 
+echo "- Grabbing certificate from Elasticsearch container"
+/bin/bash "$dir/get_ca_cert" "$escontainer"
+
 echo "- Generating an Enrollment Token for Kibana"
 enrolltoken=$(/bin/bash "$dir/reset_es_enrollment" "$escontainer")
 
 echo "Configuring Kibana:"
-echo -n "- Wait for Kibana ($kbcontainer) to be ready"
-/bin/bash "$dir/wait_for_kb"
+echo -n "- Wait for Kibana ($kbcontainer) to be ready to setup"
+/bin/bash "$dir/wait_for_kb_setup"
 
 echo "- Enrolling Kibana"
 kbcode=$(/bin/bash "$dir/get_kb_code" "$kbcontainer")
@@ -75,13 +80,16 @@ echo "- Creating a user for Home Assistant"
 echo "- Creating an API Key for Home Assistant"
 apikey=$(/bin/bash "$dir/../shared/create_hass_writer_apikey_es" "https://host.docker.internal:9200" "elastic" "$espwd")
 
+echo -n "- Wait for Kibana ($kbcontainer) to be ready"
+/bin/bash "$dir/wait_for_kb_available"
 echo "- Creating a dataview in Kibana"
-apikey=$(/bin/bash "$dir/../shared/new_kb_dataview" "https://host.docker.internal:5601" "elastic" "$espwd")
+/bin/bash "$dir/new_kb_dataview" "http://host.docker.internal:5601" "elastic" "$espwd"
 
 end=$(date +%s)
 
-echo
+echo ""
 echo "---Ready to use!---"
+echo ""
 echo "Elasticsearch"
 echo "  Url: https://host.docker.internal:9200"
 echo "  User: elastic"
@@ -102,12 +110,14 @@ echo "  Setup Code:" "$kbcode"
 echo "  Enrollment Token:" "$enrolltoken"
 echo "  Containers: $escontainer $kbcontainer"
 echo "  Duration: $((end - start)) seconds"
-echo "  Credential File: ../../es_cluster.creds"
+echo ""
+echo "Credentialsand certificate storage"
+echo "  Credential File: ../../../es_env/es_cluster.creds"
+echo "  Certificate File: ../../../es_env/http_ca.crt"
 
 # Save a file with the credentials in the scripts directory which is 2 directories up
-echo "elastic: $espwd" > "$dir/../../es_cluster.creds"
-echo "hass_writer: changeme" >> "$dir/../../es_cluster.creds"
-echo "hass_writer: $apikey" >> "$dir/../../es_cluster.creds"
+echo "elastic: $espwd" > "$dir/../../../es_env/es_cluster.creds"
+echo "elastic: $apikey" >> "$dir/../../../es_env/es_cluster.creds"
+echo "hass_writer: changeme" >> "$dir/../../../es_env/es_cluster.creds"
 
-
-
+chown -R 1000:1000 "$dir/../../../es_env" # make sure we dont save our certs as root
