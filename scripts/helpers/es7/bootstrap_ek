@@ -53,7 +53,7 @@ echo -n "- Wait for Elasticsearch ($escontainer) to be ready"
 
 echo "Configuring Kibana:"
 echo -n "- Wait for Kibana ($kbcontainer) to be ready"
-/bin/bash "$dir/wait_for_kb"
+/bin/bash "$dir/wait_for_kb_setup"
 
 end=$(date +%s)
 

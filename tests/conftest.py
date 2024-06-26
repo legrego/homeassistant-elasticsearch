@@ -111,7 +111,7 @@ async def gateway(request, gateway_config):
 async def initialized_gateway(gateway: Elasticsearch7Gateway | Elasticsearch8Gateway):
     """Return an initialized ElasticsearchGateway."""
     gateway.ping = AsyncMock(return_value=True)
-    gateway.info = AsyncMock(return_value=const.CLUSTER_INFO_8DOT11_RESPONSE_BODY)
+    gateway.info = AsyncMock(return_value=const.CLUSTER_INFO_8DOT14_RESPONSE_BODY)
     gateway._has_required_privileges = AsyncMock(return_value=True)
 
     await gateway.async_init()
@@ -452,3 +452,26 @@ async def entity(
         entity_registry.async_update_entity(entity_id=entity_id, device_id=device.id)
 
     return entity_registry.async_get(entity_id)
+
+@pytest.fixture
+async def state() -> str:
+    """Return a state."""
+    return const.TEST_ENTITY_STATE
+
+
+@pytest.fixture
+async def entity_state(
+    entity_id: str,
+    state: str,
+    attributes: dict[str, Any],
+    last_changed: str,
+    last_updated: str,
+) -> dict[str, Any]:
+    """Return a state."""
+    return {
+        "entity_id": entity_id,
+        "state": state,
+        "attributes": attributes,
+        "last_changed": last_changed,
+        "last_updated": last_updated,
+    }

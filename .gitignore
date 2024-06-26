@@ -6,7 +6,7 @@ pytestdebug.log
 */build/*
 */dist/*
 site/*
-
+es_env
 
 # misc
 .cache

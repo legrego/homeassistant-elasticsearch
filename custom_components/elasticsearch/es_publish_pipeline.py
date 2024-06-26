@@ -64,7 +64,8 @@ if TYPE_CHECKING:
 
     from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 
-ALLOWED_ATTRIBUTE_TYPES = tuple | dict | set | list | int | float | bool | str | None
+ALLOWED_ATTRIBUTE_KEY_TYPES = str
+ALLOWED_ATTRIBUTE_VALUE_TYPES = tuple | dict | set | list | int | float | bool | str | None
 SKIP_ATTRIBUTES = [
     "friendly_name",
     "entity_picture",
@@ -549,7 +550,15 @@ class Pipeline:
                     "friendly_name": state.name,
                 },
             )
-
+            if "latitude" in state.attributes and "longitude" in state.attributes:
+                entry_dict.update(
+                    {
+                        "hass.entity.geo": {
+                            "lat": state.attributes["latitude"],
+                            "lon": state.attributes["longitude"],
+                        }
+                    }
+                )
             return {
                 f"hass.entity.{k}": entry_dict.get(v)
                 for k, v in EXTENDED_DETAILS_TO_ES_DOCUMENT.items()
@@ -562,16 +571,7 @@ class Pipeline:
             attributes = {}
 
             for key, value in state.attributes.items():
-                if key in SKIP_ATTRIBUTES:
-                    continue
-
-                if not isinstance(value, ALLOWED_ATTRIBUTE_TYPES):
-                    self._logger.debug(
-                        "Not publishing attribute [%s] of disallowed type [%s] from entity [%s].",
-                        key,
-                        type(value),
-                        state.entity_id,
-                    )
+                if not self.filter_attribute(state.entity_id, key, value):
                     continue
 
                 new_key = self.normalize_attribute_name(key)
@@ -642,6 +642,28 @@ class Pipeline:
                 + Pipeline.Formatter.sanitize_domain(domain),
                 "datastream.namespace": DATASTREAM_NAMESPACE,
             }
+
+        def filter_attribute(self, entity_id, key, value) -> bool:
+            """Filter out attributes we don't want to publish."""
+            msg: str | None = None
+
+            if key in SKIP_ATTRIBUTES:
+                msg = f"Attribute {key} is a skippable attribute. It has value {value} and is from entity {entity_id}."
+
+            elif not isinstance(key, ALLOWED_ATTRIBUTE_KEY_TYPES):
+                msg = f"Attribute {key} has a disallowed key type {type(key)}. It has value {value} from entity {entity_id}."
+
+            elif not isinstance(value, ALLOWED_ATTRIBUTE_VALUE_TYPES):
+                msg = f"Attribute {key} has a disallowed value type {type(value)}. It has value {value} from entity {entity_id}."
+
+            elif key.strip() == "":
+                msg = f"Attribute {key} is whitespace or empty. It has value {value} from entity {entity_id}."
+
+            if msg is not None:
+                self._logger.debug(msg)
+                return False
+
+            return True
 
         @staticmethod
         @lru_cache(maxsize=4096)

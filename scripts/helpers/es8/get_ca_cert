@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+dir=$(dirname "$0")
+escontainer=$1
+
+# Extract the CA cert from the es01 container
+docker cp $escontainer:/usr/share/elasticsearch/config/certs/http_ca.crt "$dir/../../../es_env/http_ca.crt"

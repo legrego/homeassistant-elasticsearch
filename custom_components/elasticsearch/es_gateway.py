@@ -67,7 +67,7 @@ class ElasticsearchGateway(ABC):
         # Minimum version check
         if not await self._meets_minimum_version(ELASTIC_MINIMUM_VERSION):
             msg = f"Elasticsearch version is not supported. Minimum version: {ELASTIC_MINIMUM_VERSION}"
-            raise UnsupportedVersion
+            raise UnsupportedVersion(msg)
 
         # Check minimum privileges
         if not await self._has_required_privileges(self.settings.minimum_privileges):
@@ -148,9 +148,7 @@ class ElasticsearchGateway(ABC):
         minimum_minor = minimum_version[1]
 
         return (
-            current_major >= minimum_major
-            or current_major == minimum_major
-            and current_minor >= minimum_minor
+            current_major > minimum_major or current_major == minimum_major and current_minor >= minimum_minor
         )
 
     async def _has_required_privileges(self, privileges) -> bool:

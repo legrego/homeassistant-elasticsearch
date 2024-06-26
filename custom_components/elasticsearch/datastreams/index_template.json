@@ -52,6 +52,9 @@
                                 "domain": {
                                     "type": "keyword"
                                 },
+                                "friendly_name": {
+                                    "type": "keyword"
+                                },
                                 "name": {
                                     "type": "keyword"
                                 },

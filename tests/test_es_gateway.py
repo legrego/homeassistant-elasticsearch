@@ -26,7 +26,7 @@ from custom_components.elasticsearch.es_gateway_7 import (
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
 from tests.const import (
-    CLUSTER_INFO_8DOT11_RESPONSE_BODY,
+    CLUSTER_INFO_8DOT14_RESPONSE_BODY,
     TEST_CONFIG_ENTRY_DATA_URL,
 )
 
@@ -56,7 +56,7 @@ class Test_Initialization:
     async def test_async_init(self, gateway: ElasticsearchGateway) -> None:
         """Test the async_init method."""
 
-        gateway.info = AsyncMock(return_value=True)
+        gateway.info = AsyncMock(return_value=CLUSTER_INFO_8DOT14_RESPONSE_BODY)
         gateway._has_required_privileges = AsyncMock(return_value=True)
 
         assert await gateway.async_init() is None
@@ -75,7 +75,7 @@ class Test_Public_Functions:
         es_aioclient_mock.get(
             f"{TEST_CONFIG_ENTRY_DATA_URL}",
             status=200,
-            json=CLUSTER_INFO_8DOT11_RESPONSE_BODY,
+            json=CLUSTER_INFO_8DOT14_RESPONSE_BODY,
             headers={"x-elastic-product": "Elasticsearch"},
         )
 
@@ -195,7 +195,7 @@ class Test_Integration_Tests:
 
         es_aioclient_mock.get(
             url=f"{TEST_CONFIG_ENTRY_DATA_URL}",
-            json=CLUSTER_INFO_8DOT11_RESPONSE_BODY,
+            json=CLUSTER_INFO_8DOT14_RESPONSE_BODY,
             headers={"x-elastic-product": "Elasticsearch"},
         )
 
@@ -238,7 +238,7 @@ class Test_Integration_Tests:
         es_aioclient_mock.get(
             f"{TEST_CONFIG_ENTRY_DATA_URL}",
             status=200,
-            json=CLUSTER_INFO_8DOT11_RESPONSE_BODY,
+            json=CLUSTER_INFO_8DOT14_RESPONSE_BODY,
             headers={"x-elastic-product": "Elasticsearch"},
         )
 
@@ -299,7 +299,7 @@ class Test_Exception_Conversion:
     ) -> None:
         """Test the error converter."""
         temp = gateway.info
-        gateway.info = AsyncMock(return_value=True)
+        gateway.info = AsyncMock(return_value=CLUSTER_INFO_8DOT14_RESPONSE_BODY)
         gateway._has_required_privileges = AsyncMock(return_value=True)
         await gateway.async_init()
         gateway.info = temp
@@ -307,12 +307,12 @@ class Test_Exception_Conversion:
         es_aioclient_mock.get(
             f"{TEST_CONFIG_ENTRY_DATA_URL}",
             status=status_code,
-            json=CLUSTER_INFO_8DOT11_RESPONSE_BODY,
+            json=CLUSTER_INFO_8DOT14_RESPONSE_BODY,
             headers={"x-elastic-product": "Elasticsearch"},
         )
 
         if expected_response is None:
-            assert await gateway.info() == CLUSTER_INFO_8DOT11_RESPONSE_BODY
+            assert await gateway.info() == CLUSTER_INFO_8DOT14_RESPONSE_BODY
         else:
             with pytest.raises(expected_response):
                 await gateway.info()
@@ -366,7 +366,7 @@ class Test_Exception_Conversion:
     ) -> None:
         """Test the error converter."""
         temp = gateway.info
-        gateway.info = AsyncMock(return_value=True)
+        gateway.info = AsyncMock(return_value=CLUSTER_INFO_8DOT14_RESPONSE_BODY)
         gateway._has_required_privileges = AsyncMock(return_value=True)
         await gateway.async_init()
         gateway.info = temp
@@ -734,7 +734,7 @@ class Test_Unit_Tests:
 #             ("7DOT17_CAPABILITIES", CLUSTER_INFO_7DOT17_RESPONSE_BODY),
 #             ("8DOT0_CAPABILITIES", CLUSTER_INFO_8DOT0_RESPONSE_BODY),
 #             ("8DOT8_CAPABILITIES", CLUSTER_INFO_8DOT8_RESPONSE_BODY),
-#             ("8DOT11_CAPABILITIES", CLUSTER_INFO_8DOT11_RESPONSE_BODY),
+#             ("8DOT11_CAPABILITIES", CLUSTER_INFO_8DOT14_RESPONSE_BODY),
 #             ("SERVERLESS_CAPABILITIES", CLUSTER_INFO_SERVERLESS_RESPONSE_BODY),
 #         ],
 #     )

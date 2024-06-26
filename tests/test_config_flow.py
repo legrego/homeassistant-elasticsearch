@@ -42,7 +42,7 @@ from pytest_homeassistant_custom_component.common import (
     mock_platform as new_mock_platform,
 )
 
-from tests.const import CLUSTER_INFO_8DOT11_RESPONSE_BODY, TEST_CONFIG_ENTRY_DATA_URL
+from tests.const import CLUSTER_INFO_8DOT14_RESPONSE_BODY, TEST_CONFIG_ENTRY_DATA_URL
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigFlowResult
@@ -275,7 +275,7 @@ class Test_Integration_Tests:
 
         es_aioclient_mock.get(
             TEST_CONFIG_ENTRY_DATA_URL,
-            json=CLUSTER_INFO_8DOT11_RESPONSE_BODY,
+            json=CLUSTER_INFO_8DOT14_RESPONSE_BODY,
             headers={"x-elastic-product": "Elasticsearch"},
         )
         es_aioclient_mock.post(
@@ -332,7 +332,7 @@ class Test_Integration_Tests:
         # Handle a user that does not have the necessary privileges
         es_aioclient_mock.get(
             TEST_CONFIG_ENTRY_DATA_URL,
-            json=CLUSTER_INFO_8DOT11_RESPONSE_BODY,
+            json=CLUSTER_INFO_8DOT14_RESPONSE_BODY,
             headers={"x-elastic-product": "Elasticsearch"},
         )
         es_aioclient_mock.post(
@@ -365,7 +365,7 @@ class Test_Integration_Tests:
         es_aioclient_mock.clear_requests()
         es_aioclient_mock.get(
             TEST_CONFIG_ENTRY_DATA_URL,
-            json=CLUSTER_INFO_8DOT11_RESPONSE_BODY,
+            json=CLUSTER_INFO_8DOT14_RESPONSE_BODY,
             headers={"x-elastic-product": "Elasticsearch"},
         )
         es_aioclient_mock.post(
@@ -410,7 +410,7 @@ class Test_Integration_Tests:
         es_aioclient_mock.clear_requests()
         es_aioclient_mock.get(
             TEST_CONFIG_ENTRY_DATA_URL,
-            json=CLUSTER_INFO_8DOT11_RESPONSE_BODY,
+            json=CLUSTER_INFO_8DOT14_RESPONSE_BODY,
             headers={"x-elastic-product": "Elasticsearch"},
         )
         es_aioclient_mock.post(

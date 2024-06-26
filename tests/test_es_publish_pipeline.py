@@ -19,7 +19,9 @@ from homeassistant.util import dt as dt_util
 from syrupy.assertion import SnapshotAssertion
 
 from tests import const
-from tests.const import MOCK_NOON_APRIL_12TH_2023
+from tests.const import (
+    MOCK_NOON_APRIL_12TH_2023,
+)
 
 
 @pytest.fixture
@@ -956,6 +958,11 @@ class Test_Formatter:
             const.TEST_ENTITY_COMBINATIONS,
             ids=const.TEST_ENTITY_COMBINATION_IDS,
         )
+        @pytest.mark.parametrize(
+            const.TEST_ENTITY_STATE_ATTRIBUTE_COMBINATION_FIELD_NAMES,
+            const.TEST_ENTITY_STATE_ATTRIBUTE_COMBINATIONS,
+            ids=const.TEST_ENTITY_STATE_ATTRIBUTE_COMBINATION_IDS,
+        )
         async def test_format(
             self,
             formatter,
@@ -969,13 +976,14 @@ class Test_Formatter:
             device_area_name,
             device_floor_name,
             device_labels,
+            attributes: dict,
             freeze_time: FrozenDateTimeFactory,
             snapshot,
         ):
             """Test converting a state to entity details."""
 
             time = datetime.now(tz=UTC)
-            state = State(entity_id=entity.entity_id, state="on", attributes={"brightness": 255})
+            state = State(entity_id=entity.entity_id, state="on", attributes=attributes)
             reason = StateChangeType.STATE
 
             document = formatter.format(time, state, reason)

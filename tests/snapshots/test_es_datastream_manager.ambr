@@ -175,6 +175,9 @@
                     'domain': dict({
                       'type': 'keyword',
                     }),
+                    'friendly_name': dict({
+                      'type': 'keyword',
+                    }),
                     'geo': dict({
                       'properties': dict({
                         'location': dict({
@@ -490,6 +493,9 @@
                       'type': 'object',
                     }),
                     'domain': dict({
+                      'type': 'keyword',
+                    }),
+                    'friendly_name': dict({
                       'type': 'keyword',
                     }),
                     'geo': dict({
