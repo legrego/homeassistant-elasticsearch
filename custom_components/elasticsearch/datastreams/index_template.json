@@ -310,5 +310,5 @@
     "ignore_missing_component_templates": "metrics-homeassistant@custom",
     "priority": 500,
     "data_stream": {},
-    "version": 1
+    "version": 2
 }

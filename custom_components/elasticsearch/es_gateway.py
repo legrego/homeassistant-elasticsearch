@@ -126,6 +126,14 @@ class ElasticsearchGateway(ABC):
         """Update an index template."""
 
     @abstractmethod
+    async def get_datastreams(self, datastream: str) -> dict:
+        """Retrieve datastreams."""
+
+    @abstractmethod
+    async def rollover_datastream(self, datastream: str) -> dict:
+        """Rollover an index."""
+
+    @abstractmethod
     async def bulk(self, actions: AsyncGenerator[dict[str, Any], Any]) -> None:
         """Perform a bulk operation."""
 

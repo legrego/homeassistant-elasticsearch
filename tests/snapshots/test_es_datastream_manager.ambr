@@ -314,7 +314,7 @@
           }),
         }),
       }),
-      'version': 1,
+      'version': 2,
     }),
     'name': 'metrics-homeassistant',
   })
@@ -634,7 +634,7 @@
           }),
         }),
       }),
-      'version': 1,
+      'version': 2,
     }),
     'name': 'metrics-homeassistant',
   })

@@ -200,6 +200,22 @@ class Elasticsearch7Gateway(ElasticsearchGateway):
         return self._convert_response(response)
 
     @async_log_enter_exit_debug
+    async def get_datastreams(self, datastream: str) -> dict:
+        """Retrieve datastreams."""
+        with self._error_converter(msg="Error retrieving datastreams"):
+            response = await self.client.indices.get_data_stream(name=datastream)
+
+        return self._convert_response(response)
+
+    @async_log_enter_exit_debug
+    async def rollover_datastream(self, datastream: str) -> dict:
+        """Rollover an index."""
+        with self._error_converter(msg="Error rolling over datastream"):
+            response = await self.client.indices.rollover(alias=datastream)
+
+        return self._convert_response(response)
+
+    @async_log_enter_exit_debug
     async def bulk(self, actions: AsyncGenerator[dict[str, Any], Any]) -> None:
         """Perform a bulk operation."""
 
