@@ -26,7 +26,6 @@ Use the following command to create an API Key for the Home Assistant component.
           "hass_writer": {
             "cluster": [
               "manage_index_templates",
-              "manage_ilm",
               "monitor"
             ],
             "indices": [
@@ -60,7 +59,6 @@ Use the following command to create an API Key for the Home Assistant component.
         "hass_writer": {
           "cluster": [
             "manage_index_templates",
-            "manage_ilm",
             "monitor"
           ],
           "indices": [

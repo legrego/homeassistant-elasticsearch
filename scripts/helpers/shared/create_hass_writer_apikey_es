@@ -18,15 +18,11 @@ dir=$(dirname "$0")
     "hass_writer": {
         "cluster": [
             "manage_index_templates",
-            "manage_ilm",
             "monitor"
         ],
         "indices": [
             {
                 "names": [
-                    "hass-events*",
-                    "active-hass-index-*",
-                    "all-hass-events",
                     "metrics-homeassistant.*"
                 ],
                     "privileges": [

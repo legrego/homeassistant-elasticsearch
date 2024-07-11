@@ -78,7 +78,7 @@ STATE_CHANGE_TYPE_ATTR: str = PUBLISH_REASON_ATTR_CHANGE
 
 ES_CHECK_PERMISSIONS_DATASTREAM: MappingProxyType[str, Any] = MappingProxyType(
     {
-        "cluster": ["manage_index_templates", "manage_ilm", "monitor"],
+        "cluster": ["manage_index_templates", "monitor"],
         "index": [
             {
                 "names": [

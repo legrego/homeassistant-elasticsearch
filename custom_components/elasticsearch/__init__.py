@@ -227,9 +227,11 @@ def migrate_to_version_6(data: dict, options: dict) -> tuple[dict, dict]:
             options["change_detection_type"] = ["STATE", "ATTRIBUTE"]
 
         if options["publish_mode"] == "Any changes":
+            options["polling_frequency"] = 0
             options["change_detection_type"] = ["STATE", "ATTRIBUTE"]
 
         if options["publish_mode"] == "State changes":
+            options["polling_frequency"] = 0
             options["change_detection_type"] = ["STATE"]
 
         del options["publish_mode"]

@@ -249,6 +249,7 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
             async for ok, result in async_streaming_bulk(
                 client=self.client,
                 actions=actions,
+                raise_on_error=False,
                 yield_ok=True,
             ):
                 count += 1

@@ -16,6 +16,9 @@ from custom_components.elasticsearch.config_flow import (
 )
 from custom_components.elasticsearch.const import (
     CONF_AUTHENTICATION_TYPE,
+    CONF_CHANGE_DETECTION_ENABLED,
+    CONF_POLLING_FREQUENCY,
+    CONF_PUBLISH_FREQUENCY,
     ELASTIC_DOMAIN,
 )
 from custom_components.elasticsearch.errors import (
@@ -525,3 +528,185 @@ class Test_Integration_Tests:
         assert "type" in next_result and next_result["type"] == FlowResultType.FORM
         assert "step_id" in next_result and next_result["step_id"] == "api_key"
         assert "errors" in next_result and next_result["errors"] == error
+
+    async def test_async_step_options(self, hass, config_entry):
+        """Test user initiated step."""
+
+        options_flow = ElasticOptionsFlowHandler(config_entry)
+        result: ConfigFlowResult = await options_flow.async_step_init()
+
+        assert result is not None
+        assert "type" in result and result["type"] == FlowResultType.FORM
+        assert "step_id" in result and result["step_id"] == "options"
+        assert "data_schema" in result and result["data_schema"] is not None
+
+    async def test_async_step_options_done(self, hass, config_entry):
+        """Test user initiated step."""
+
+        options_flow = ElasticOptionsFlowHandler(config_entry)
+
+        await options_flow.async_step_init()
+
+        result: ConfigFlowResult = await options_flow.async_step_options(
+            user_input={
+                CONF_CHANGE_DETECTION_ENABLED: False,
+                CONF_PUBLISH_FREQUENCY: 60,
+                CONF_POLLING_FREQUENCY: 90,
+            }
+        )
+
+        assert result is not None
+        assert "type" in result and result["type"] == FlowResultType.CREATE_ENTRY
+        assert "title" in result and result["title"] == ""
+        assert "data" in result and result["data"] == {
+            "change_detection_enabled": False,
+            "change_detection_type": [],
+            "exclude_targets": False,
+            "include_targets": False,
+            "polling_frequency": 90,
+            "publish_frequency": 60,
+            "tags": [],
+            "targets_to_exclude": {},
+            "targets_to_include": {},
+        }
+
+    # async def test_async_stop_reauth(self, elastic_flow, config_entry):
+    #     """Test user initiated step."""
+
+    #     reuath_flow = ElasticFlowHandler()
+
+    #     await reauth_flow.async_init()
+
+    #     reauth_flow.config_entry = config_entry
+
+    #     result: ConfigFlowResult = await reauth_flow.
+
+    #     assert result is not None
+    #     assert "type" in result and result["type"] == FlowResultType.ABORT
+    #     assert "reason" in result and result["reason"] == "no_entry"
+    #     assert "step_id" in result and result["step_id"] == "reauth"
+
+    # async def async_step_reauth(self, user_input: dict | None) -> ConfigFlowResult:
+    #     """Handle reauthorization."""
+    #     entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
+    #     if entry is None:
+    #         return self.async_abort(reason="no_entry")
+
+    #     self._reauth_entry = entry
+
+    #     self._prospective_config = dict(entry.data)
+
+    #     if self._prospective_config.get(CONF_USERNAME, None) is not None:
+    #         return await self.async_step_basic_auth()
+    #     if self._prospective_config.get(CONF_API_KEY, None) is not None:
+    #         return await self.async_step_api_key()
+
+    #     return self.async_abort(reason="no_auth")
+
+    # @async_log_enter_exit_debug
+    # async def async_step_options(
+    #     self,
+    #     user_input: dict | None = None,
+    # ) -> ConfigFlowResult:
+    #     """Publish Options."""
+    #     if user_input is not None:
+    #         self.options.update(user_input)
+    #         self.hass.config_entries.async_schedule_reload(self.config_entry.entry_id)
+    #         return self.async_create_entry(title="", data=self.options)
+
+    #     return self.async_show_form(
+    #         step_id="options",
+    #         data_schema=self._build_options_schema(),
+    #     )
+
+    # @log_enter_exit_debug
+    # def _build_options_schema(self) -> vol.Schema:
+    #     """Build the options schema."""
+
+    #     from_options = self.config_entry.options.get
+
+    #     SCHEMA_PUBLISH_FREQUENCY = {
+    #         "schema": CONF_PUBLISH_FREQUENCY,
+    #         "default": from_options(CONF_PUBLISH_FREQUENCY),
+    #     }
+    #     SCHEMA_POLLING_FREQUENCY = {
+    #         "schema": CONF_POLLING_FREQUENCY,
+    #         "default": from_options(CONF_POLLING_FREQUENCY),
+    #     }
+
+    #     SCHEMA_CHANGE_DETECTION_TYPE = {
+    #         "schema": CONF_CHANGE_DETECTION_TYPE,
+    #         "default": from_options(CONF_CHANGE_DETECTION_TYPE),
+    #     }
+    #     SCHEMA_TAGS = {
+    #         "schema": CONF_TAGS,
+    #         "default": from_options(CONF_TAGS),
+    #     }
+    #     SCHEMA_INCLUDE_TARGETS = {
+    #         "schema": CONF_INCLUDE_TARGETS,
+    #         "default": from_options(CONF_INCLUDE_TARGETS),
+    #     }
+    #     SCHEMA_TARGETS_TO_INCLUDE = {
+    #         "schema": CONF_TARGETS_TO_INCLUDE,
+    #         "default": from_options(CONF_TARGETS_TO_INCLUDE),
+    #     }
+
+    #     SCHEMA_EXCLUDE_TARGETS = {
+    #         "schema": CONF_EXCLUDE_TARGETS,
+    #         "default": from_options(CONF_EXCLUDE_TARGETS),
+    #     }
+    #     SCHEMA_TARGETS_TO_EXCLUDE = {
+    #         "schema": CONF_TARGETS_TO_EXCLUDE,
+    #         "default": from_options(CONF_TARGETS_TO_EXCLUDE),
+    #     }
+
+    #     return vol.Schema(
+    #         {
+    #             vol.Optional(**SCHEMA_PUBLISH_FREQUENCY): NumberSelector(
+    #                 NumberSelectorConfig(
+    #                     min=0,
+    #                     max=600,
+    #                     step=10,
+    #                     unit_of_measurement="seconds",
+    #                 )
+    #             ),
+    #             vol.Optional(**SCHEMA_POLLING_FREQUENCY): NumberSelector(
+    #                 NumberSelectorConfig(
+    #                     min=0,
+    #                     max=3600,
+    #                     step=10,
+    #                     unit_of_measurement="seconds",
+    #                 )
+    #             ),
+    #             vol.Optional(**SCHEMA_CHANGE_DETECTION_TYPE): SelectSelector(
+    #                 SelectSelectorConfig(
+    #                     options=[
+    #                         {
+    #                             "label": "Track entities with state changes",
+    #                             "value": StateChangeType.STATE.value,
+    #                         },
+    #                         {
+    #                             "label": "Track entities with attribute changes",
+    #                             "value": StateChangeType.ATTRIBUTE.value,
+    #                         },
+    #                     ],
+    #                     multiple=True,
+    #                 )
+    #             ),
+    #             vol.Optional(**SCHEMA_TAGS): SelectSelector(
+    #                 SelectSelectorConfig(options=[], custom_value=True, multiple=True)
+    #             ),
+    #             vol.Optional(**SCHEMA_INCLUDE_TARGETS): BooleanSelector(
+    #                 BooleanSelectorConfig(),
+    #             ),
+    #             vol.Optional(**SCHEMA_TARGETS_TO_INCLUDE): TargetSelector(
+    #                 TargetSelectorConfig(),
+    #             ),
+    #             vol.Optional(**SCHEMA_EXCLUDE_TARGETS): BooleanSelector(
+    #                 BooleanSelectorConfig(),
+    #             ),
+    #             vol.Optional(**SCHEMA_TARGETS_TO_EXCLUDE): TargetSelector(
+    #                 TargetSelectorConfig(),
+    #             ),
+    #         }
+    #     )

@@ -15,6 +15,7 @@ from custom_components.elasticsearch.errors import (
     InsufficientPrivileges,
     ServerError,
     SSLError,
+    UnsupportedVersion,
     UntrustedCertificate,
 )
 from custom_components.elasticsearch.es_gateway import (
@@ -26,7 +27,9 @@ from custom_components.elasticsearch.es_gateway_7 import (
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
 from tests.const import (
+    CLUSTER_INFO_8DOT0_RESPONSE_BODY,
     CLUSTER_INFO_8DOT14_RESPONSE_BODY,
+    CLUSTER_INFO_SERVERLESS_RESPONSE_BODY,
     TEST_CONFIG_ENTRY_DATA_URL,
 )
 
@@ -229,6 +232,65 @@ class Test_Integration_Tests:
 
         with pytest.raises(UntrustedCertificate):
             await gateway.async_init()
+
+    async def test_async_init_mock_elasticsearch_serverless(
+        self, gateway: ElasticsearchGateway, es_aioclient_mock: AiohttpClientMocker
+    ) -> None:
+        """Test the async_init method with unauthorized user."""
+
+        es_aioclient_mock.get(
+            f"{TEST_CONFIG_ENTRY_DATA_URL}",
+            status=200,
+            json=CLUSTER_INFO_SERVERLESS_RESPONSE_BODY,
+            headers={"x-elastic-product": "Elasticsearch"},
+        )
+
+        es_aioclient_mock.post(
+            f"{TEST_CONFIG_ENTRY_DATA_URL}/_security/user/_has_privileges",
+            status=200,
+            json={
+                "has_all_requested": True,
+            },
+        )
+
+        assert await gateway.async_init() is None
+
+    async def test_async_init_mock_elasticsearch_minimum_supported(
+        self, gateway: ElasticsearchGateway, es_aioclient_mock: AiohttpClientMocker
+    ) -> None:
+        """Test the async_init method with unauthorized user."""
+
+        es_aioclient_mock.get(
+            f"{TEST_CONFIG_ENTRY_DATA_URL}",
+            status=200,
+            json=CLUSTER_INFO_8DOT14_RESPONSE_BODY,
+            headers={"x-elastic-product": "Elasticsearch"},
+        )
+
+        es_aioclient_mock.post(
+            f"{TEST_CONFIG_ENTRY_DATA_URL}/_security/user/_has_privileges",
+            status=200,
+            json={
+                "has_all_requested": True,
+            },
+        )
+
+        assert await gateway.async_init() is None
+
+    async def test_async_init_mock_elasticsearch_unsupported(
+        self, gateway: ElasticsearchGateway, es_aioclient_mock: AiohttpClientMocker
+    ) -> None:
+        """Test the async_init method with unauthorized user."""
+
+        es_aioclient_mock.get(
+            f"{TEST_CONFIG_ENTRY_DATA_URL}",
+            status=200,
+            json=CLUSTER_INFO_8DOT0_RESPONSE_BODY,
+            headers={"x-elastic-product": "Elasticsearch"},
+        )
+
+        with pytest.raises(UnsupportedVersion):
+            assert await gateway.async_init() is None
 
     async def test_async_init_mock_elasticsearch_unauthorized(
         self, gateway: ElasticsearchGateway, es_aioclient_mock: AiohttpClientMocker

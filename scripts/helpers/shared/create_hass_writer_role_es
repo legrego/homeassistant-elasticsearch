@@ -17,15 +17,11 @@ dir=$(dirname "$0")
 /bin/bash "$dir/create_role_es" "$esurl" "$esusername" "$espassword" "hass_writer" '{
   "cluster": [
     "manage_index_templates",
-    "manage_ilm",
     "monitor"
   ],
   "indices": [
     {
       "names": [
-        "hass-events*",
-        "active-hass-index-*",
-        "all-hass-events",
         "metrics-homeassistant.*"
       ],
       "privileges": [

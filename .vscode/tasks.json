@@ -63,5 +63,10 @@
             "type": "shell",
             "command": "/bin/bash ./scripts/run_ek_8_13_0"
         },
+        {
+            "label": "Run Elasticsearch 8.14.0 (HTTPS Port 9200) and Kibana 8.14.0 (HTTP Port 5601)",
+            "type": "shell",
+            "command": "/bin/bash ./scripts/run_ek_8_14_0"
+        },
     ]
 }

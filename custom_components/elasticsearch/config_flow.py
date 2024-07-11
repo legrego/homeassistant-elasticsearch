@@ -13,7 +13,7 @@ from homeassistant.const import (
     CONF_USERNAME,
     CONF_VERIFY_SSL,
 )
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import callback
 from homeassistant.helpers.selector import (
     BooleanSelector,
     BooleanSelectorConfig,
@@ -353,13 +353,10 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
         self.config_entry = config_entry
         self.options = dict(config_entry.options)
 
-    async def async_step_init(
-        self,
-        hass: HomeAssistant,  # noqa: ARG002
-    ) -> ConfigFlowResult:
+    async def async_step_init(self, user_input: dict | None = None) -> ConfigFlowResult:
         """Manage the Elastic options."""
 
-        return await self.async_step_options()
+        return await self.async_step_options(user_input=user_input)
 
     @async_log_enter_exit_debug
     async def async_step_options(
@@ -369,7 +366,10 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
         """Publish Options."""
         if user_input is not None:
             self.options.update(user_input)
-            self.hass.config_entries.async_schedule_reload(self.config_entry.entry_id)
+
+            if self.hass is not None:  # workaround: hass is not defined while testing
+                self.hass.config_entries.async_schedule_reload(self.config_entry.entry_id)
+
             return self.async_create_entry(title="", data=self.options)
 
         return self.async_show_form(

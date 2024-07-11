@@ -182,3 +182,47 @@
     'before_version': 5,
   })
 # ---
+# name: Test_Config_Migration.test_config_migration_v5tov6.1
+  dict({
+    'after_data': dict({
+      'url': 'http://migration-test:9200',
+    }),
+    'after_options': dict({
+      'change_detection_type': list([
+        'STATE',
+      ]),
+      'excluded_domains': list([
+      ]),
+      'excluded_entities': list([
+      ]),
+      'included_domains': list([
+      ]),
+      'included_entities': list([
+      ]),
+      'polling_frequency': 0,
+      'publish_frequency': 60,
+    }),
+    'after_version': 6,
+    'before_data': dict({
+      'url': 'http://migration-test:9200',
+    }),
+    'before_options': dict({
+      'excluded_domains': list([
+      ]),
+      'excluded_entities': list([
+      ]),
+      'ilm_enabled': True,
+      'ilm_policy_name': 'test policy',
+      'included_domains': list([
+      ]),
+      'included_entities': list([
+      ]),
+      'index_format': 'test format',
+      'index_mode': 'index',
+      'publish_enabled': True,
+      'publish_frequency': 60,
+      'publish_mode': 'State changes',
+    }),
+    'before_version': 5,
+  })
+# ---

@@ -65,12 +65,12 @@ class ElasticsearchGateway(ABC):
         await self.info()
 
         # Minimum version check
-        if not await self._meets_minimum_version(ELASTIC_MINIMUM_VERSION):
+        if not await self._is_supported_version():
             msg = f"Elasticsearch version is not supported. Minimum version: {ELASTIC_MINIMUM_VERSION}"
             raise UnsupportedVersion(msg)
 
         # Check minimum privileges
-        if not await self._has_required_privileges(self.settings.minimum_privileges):
+        if not await self._has_required_privileges():
             raise InsufficientPrivileges
 
     @property
@@ -143,11 +143,20 @@ class ElasticsearchGateway(ABC):
 
     # Helper methods
 
-    async def _meets_minimum_version(self, minimum_version: tuple[int, int]) -> bool:
+    async def _is_supported_version(self) -> bool:
         """Check if the Elasticsearch version is supported."""
-        info = await self.info()
+        info: dict = await self.info()
 
-        version_number_parts = info["version"]["number"].split(".")
+        return self._is_serverless(info) or self._meets_minimum_version(info, ELASTIC_MINIMUM_VERSION)
+
+    def _is_serverless(self, cluster_info: dict) -> bool:
+        """Check if the Elasticsearch instance is serverless."""
+        return cluster_info["version"]["build_flavor"] == "serverless"
+
+    def _meets_minimum_version(self, cluster_info: dict, minimum_version: tuple[int, int]) -> bool:
+        """Check if the Elasticsearch version is supported."""
+
+        version_number_parts = cluster_info["version"]["number"].split(".")
 
         current_major = int(version_number_parts[0])
         current_minor = int(version_number_parts[1])
@@ -159,8 +168,8 @@ class ElasticsearchGateway(ABC):
             current_major > minimum_major or current_major == minimum_major and current_minor >= minimum_minor
         )
 
-    async def _has_required_privileges(self, privileges) -> bool:
+    async def _has_required_privileges(self) -> bool:
         """Check if the user has the required privileges."""
-        response = await self.has_privileges(privileges=privileges)
+        response = await self.has_privileges(privileges=self.settings.minimum_privileges)
 
         return response.get("has_all_requested", False)

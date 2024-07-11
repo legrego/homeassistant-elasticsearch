@@ -269,8 +269,9 @@ class Test_Config_Migration:
         hass: HomeAssistant,
         snapshot: SnapshotAssertion,
     ):
-        """Test config migration from v4."""
+        """Test config migration from v5."""
 
+        # Publishing On
         assert self._test_config_data_options_migration_to_version(
             before_version=5,
             before_options={
@@ -297,6 +298,41 @@ class Test_Config_Migration:
                 "publish_frequency": 60,
                 "polling_frequency": 60,
                 "change_detection_type": ["STATE", "ATTRIBUTE"],
+            },
+            after_data={
+                "url": "http://migration-test:9200",
+            },
+            after_version=6,
+            snapshot=snapshot,
+        )
+
+        # Polling Off, State Changes only
+        assert self._test_config_data_options_migration_to_version(
+            before_version=5,
+            before_options={
+                "publish_mode": "State changes",
+                "excluded_domains": [],
+                "excluded_entities": [],
+                "included_domains": [],
+                "included_entities": [],
+                "publish_enabled": True,
+                "publish_frequency": 60,
+                "ilm_enabled": True,
+                "ilm_policy_name": "test policy",
+                "index_format": "test format",
+                "index_mode": "index",
+            },
+            before_data={
+                "url": "http://migration-test:9200",
+            },
+            after_options={
+                "excluded_domains": [],
+                "excluded_entities": [],
+                "included_domains": [],
+                "included_entities": [],
+                "publish_frequency": 60,
+                "polling_frequency": 0,
+                "change_detection_type": ["STATE"],
             },
             after_data={
                 "url": "http://migration-test:9200",
@@ -680,6 +716,27 @@ class Test_Common_Failures_e2e:
 
         assert config_entry.state is ConfigEntryState.SETUP_RETRY
         assert config_entry.reason == "Error connecting to Elasticsearch: 500"
+
+    async def test_unsupported_version(
+        self, hass: HomeAssistant, integration_setup, es_aioclient_mock: AiohttpClientMocker, config_entry
+    ):
+        """Test the scenario where the Elasticsearch version is unsupported."""
+
+        es_aioclient_mock.get(
+            f"{const.TEST_CONFIG_ENTRY_DATA_URL}/",
+            json=const.CLUSTER_INFO_8DOT0_RESPONSE_BODY,
+            headers={"x-elastic-product": "Elasticsearch"},
+        )
+
+        assert config_entry.state is ConfigEntryState.NOT_LOADED
+
+        # Load the Config Entry
+        assert await integration_setup() is False
+
+        assert config_entry.version == ElasticFlowHandler.VERSION
+
+        assert config_entry.state is ConfigEntryState.SETUP_RETRY
+        assert config_entry.reason == "Elasticsearch version is not supported. Minimum version: (8, 14)"
 
 
 # Replace the following old tests
