@@ -12,6 +12,7 @@ from custom_components.elasticsearch.const import (
     CONF_TAGS,
     CONF_TARGETS_TO_EXCLUDE,
     CONF_TARGETS_TO_INCLUDE,
+    StateChangeType,
 )
 from homeassistant.components.counter import DOMAIN as COUNTER_DOMAIN
 from homeassistant.const import (
@@ -115,9 +116,23 @@ TEST_CONFIG_ENTRY_BASE_DATA = {
     CONF_USERNAME: "hass_writer",
     CONF_PASSWORD: "changeme",
 }
+
 TEST_CONFIG_ENTRY_BASE_OPTIONS = {
-    CONF_CHANGE_DETECTION_ENABLED: True,
+    CONF_CHANGE_DETECTION_ENABLED: False,
     CONF_CHANGE_DETECTION_TYPE: [],
+    CONF_TAGS: [],
+    CONF_POLLING_FREQUENCY: 0,
+    CONF_PUBLISH_FREQUENCY: 0,
+    CONF_INCLUDE_TARGETS: False,
+    CONF_EXCLUDE_TARGETS: False,
+    CONF_TARGETS_TO_INCLUDE: {},
+    CONF_TARGETS_TO_EXCLUDE: {},
+}
+
+
+TEST_CONFIG_ENTRY_DEFAULT_OPTIONS = {
+    CONF_CHANGE_DETECTION_ENABLED: True,
+    CONF_CHANGE_DETECTION_TYPE: [StateChangeType.STATE.value, StateChangeType.ATTRIBUTE.value],
     CONF_TAGS: [],
     CONF_POLLING_FREQUENCY: 60,
     CONF_PUBLISH_FREQUENCY: 60,
@@ -126,7 +141,6 @@ TEST_CONFIG_ENTRY_BASE_OPTIONS = {
     CONF_TARGETS_TO_INCLUDE: {},
     CONF_TARGETS_TO_EXCLUDE: {},
 }
-
 
 TEST_DEVICE_COMBINATION_FIELD_NAMES = (
     "device_name",

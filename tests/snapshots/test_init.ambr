@@ -1,4 +1,7 @@
 # serializer version: 1
+# name: Test_Common_e2e.test_setup_to_publish
+  b'{"create":{"_index":"metrics-homeassistant.counter-default"}}\n{"@timestamp":"2023-04-12T12:00:00+00:00","event.action":"State change","event.kind":"event","event.type":"change","hass.entity.domain":"counter","hass.entity.id":"counter.entity_object_id","hass.entity.value":"value","hass.entity.valueas":{"string":"value"},"hass.entity.object.id":"entity_object_id","datastream.type":"metrics","datastream.dataset":"homeassistant.counter","datastream.namespace":"default","hass.entity.area.floor.id":"entity_floor","hass.entity.area.floor.name":"entity floor","hass.entity.area.id":"entity_area","hass.entity.area.name":"entity area","hass.entity.labels":["entity label 1","entity label 2","entity label 3"],"hass.entity.friendly_name":"entity object id","hass.entity.platform":"entity platform","hass.entity.device.labels":["device label 1","device label 2","device label 3"],"hass.entity.device.name":"device name","hass.entity.device.area.floor.id":"device_floor","hass.entity.device.area.floor.name":"device floor","hass.entity.device.area.id":"device_area","hass.entity.device.area.name":"device area","agent.version":"2024.6.0b8","host.architecture":"aarch64","host.os.name":"Linux","host.hostname":"6bcae1e9a6b7"}\n'
+# ---
 # name: Test_Config_Migration.test_config_migration_v1tov2
   dict({
     'after_data': dict({

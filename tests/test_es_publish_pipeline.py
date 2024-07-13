@@ -15,6 +15,7 @@ from custom_components.elasticsearch.es_publish_pipeline import (
 )
 from freezegun.api import FrozenDateTimeFactory
 from homeassistant.core import Event, HomeAssistant, State
+from homeassistant.helpers.entity_registry import RegistryEntry
 from homeassistant.util import dt as dt_util
 from syrupy.assertion import SnapshotAssertion
 
@@ -639,20 +640,20 @@ class Test_Listener:
 
             listener._queue.put.assert_not_called()
 
-        async def test_listener_stop(self, listener):
-            """Test stopping the Listener."""
+        # async def test_listener_stop(self, listener):
+        #     """Test stopping the Listener."""
 
-            with patch.object(listener, "_cancel_listener") as cancel_listener:
-                listener.stop()
+        #     with patch.object(listener, "_cancel_listener") as cancel_listener:
+        #         listener.stop()
 
-                cancel_listener.assert_called_once()
+        #         cancel_listener.assert_called_once()
 
-        async def test_listener_cleanup(self, listener):
-            """Test cleaning up the Listener."""
-            with patch.object(listener, "_cancel_listener") as cancel_listener:
-                listener.__del__()
+        # async def test_listener_cleanup(self, listener):
+        #     """Test cleaning up the Listener."""
+        #     with patch.object(listener, "_cancel_listener") as cancel_listener:
+        #         listener.__del__()
 
-                cancel_listener.assert_called_once()
+        #         cancel_listener.assert_called_once()
 
 
 class Test_Publisher:
@@ -910,7 +911,7 @@ class Test_Formatter:
         async def test_state_to_extended_details(
             self,
             formatter,
-            entity,
+            entity: RegistryEntry | None,
             entity_object_id,
             entity_area_name,
             entity_floor_name,

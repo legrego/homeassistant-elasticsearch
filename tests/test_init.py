@@ -14,10 +14,14 @@ from custom_components.elasticsearch import (
     migrate_data_and_options_to_version,
 )
 from custom_components.elasticsearch.config_flow import ElasticFlowHandler
+from custom_components.elasticsearch.const import DATASTREAM_METRICS_INDEX_TEMPLATE_NAME
 from custom_components.elasticsearch.const import DOMAIN as ELASTIC_DOMAIN
 from custom_components.elasticsearch.es_integration import ElasticIntegration
+from freezegun.api import FrozenDateTimeFactory
 from homeassistant.config_entries import ConfigEntryState, ConfigFlow
+from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
+from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import (
     MockConfigEntry,  # noqa: F401
     MockModule,
@@ -672,6 +676,103 @@ class Test_Public_Methods:
 
 class Test_Private_Methods:
     """Test the private methods of the Elasticsearch integration initialization."""
+
+
+class Test_Common_e2e:
+    """Test a full integration setup and execution."""
+
+    @pytest.fixture
+    async def options(self) -> dict:
+        """Return a mock options dict."""
+        return const.TEST_CONFIG_ENTRY_DEFAULT_OPTIONS
+
+    @pytest.fixture
+    def freeze_time(self, freezer: FrozenDateTimeFactory):
+        """Freeze time so we can properly assert on payload contents."""
+
+        frozen_time = dt_util.parse_datetime(const.MOCK_NOON_APRIL_12TH_2023)
+        if frozen_time is None:
+            msg = "Invalid date string"
+            raise ValueError(msg)
+
+        freezer.move_to(frozen_time)
+
+        return freezer
+
+    async def test_setup_to_publish(
+        self,
+        hass: HomeAssistant,
+        integration_setup,
+        es_aioclient_mock: AiohttpClientMocker,
+        config_entry,
+        entity,
+        device,
+        freeze_time,
+        snapshot: SnapshotAssertion,
+    ):
+        """Test the full integration setup and execution."""
+
+        # Mock cluster checks
+        es_aioclient_mock.get(
+            f"{const.TEST_CONFIG_ENTRY_DATA_URL}/",
+            json=const.CLUSTER_INFO_8DOT14_RESPONSE_BODY,
+            headers={"x-elastic-product": "Elasticsearch"},
+        )
+
+        # Mock the user has the required privileges
+        es_aioclient_mock.post(
+            const.TEST_CONFIG_ENTRY_DATA_URL + "/_security/user/_has_privileges",
+            json={"has_all_requested": True},
+        )
+
+        # Mock index template setup
+        es_aioclient_mock.get(
+            f"{const.TEST_CONFIG_ENTRY_DATA_URL}/_index_template/{DATASTREAM_METRICS_INDEX_TEMPLATE_NAME}",
+            status=200,
+            headers={"x-elastic-product": "Elasticsearch"},
+            json={},
+        )
+
+        es_aioclient_mock.put(
+            f"{const.TEST_CONFIG_ENTRY_DATA_URL}/_index_template/{DATASTREAM_METRICS_INDEX_TEMPLATE_NAME}",
+            status=200,
+            headers={"x-elastic-product": "Elasticsearch"},
+            json={},
+        )
+
+        # Mock the bulk request
+        es_aioclient_mock.put(
+            const.TEST_CONFIG_ENTRY_DATA_URL + "/_bulk",
+            status=200,
+            headers={"x-elastic-product": "Elasticsearch"},
+            json={"errors": False},
+        )
+
+        # Load the Config Entry
+        assert await integration_setup() is True
+
+        assert config_entry.state is ConfigEntryState.LOADED
+
+        # Queue an entity state change
+        hass.states.async_set(entity.entity_id, "value")
+
+        # Wait for the publish task to run
+        await hass.async_block_till_done()
+
+        es_aioclient_mock.mock_calls.clear()
+
+        # Manually invoke a publish
+        await config_entry.runtime_data._pipeline_manager._publish()
+
+        # Ensure the bulk request was made (and a ping was performed)
+        assert es_aioclient_mock.call_count == 2
+
+        ping = es_aioclient_mock.mock_calls[0]
+        assert ping[0] == "GET"
+
+        bulk_call = es_aioclient_mock.mock_calls[1]
+        assert bulk_call[0] == "PUT"
+        assert bulk_call[2] == snapshot
 
 
 class Test_Common_Failures_e2e:

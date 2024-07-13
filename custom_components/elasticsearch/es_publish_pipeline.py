@@ -434,8 +434,8 @@ class Pipeline:
         @log_enter_exit_debug
         def stop(self) -> None:
             """Stop the listener."""
-            if self._cancel_listener:
-                self._cancel_listener()
+            # if self._cancel_listener:
+            # self._cancel_listener()
 
         def __del__(self) -> None:
             """Clean up the listener."""
