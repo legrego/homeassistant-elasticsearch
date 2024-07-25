@@ -346,7 +346,78 @@ class Test_Config_Migration:
         )
 
     @pytest.mark.asyncio
-    async def test_config_migration_v1tov5(
+    async def test_config_migration_v6tov7(
+        self,
+        hass: HomeAssistant,
+        snapshot: SnapshotAssertion,
+    ):
+        """Test config migration from v6."""
+
+        assert self._test_config_data_options_migration_to_version(
+            before_version=6,
+            before_options={
+                "excluded_domains": [],
+                "excluded_entities": [],
+                "included_domains": [],
+                "included_entities": [],
+                "publish_frequency": 60,
+                "polling_frequency": 0,
+                "change_detection_type": ["STATE"],
+            },
+            before_data={
+                "url": "http://migration-test:9200",
+            },
+            after_options={
+                "include_targets": False,
+                "exclude_targets": False,
+                "targets_to_include": {},
+                "targets_to_exclude": {},
+                "publish_frequency": 60,
+                "tags": [],
+                "polling_frequency": 0,
+                "change_detection_type": ["STATE"],
+            },
+            after_data={
+                "url": "http://migration-test:9200",
+            },
+            after_version=7,
+            snapshot=snapshot,
+        )
+
+        # Migrate Exclusions
+        assert self._test_config_data_options_migration_to_version(
+            before_version=6,
+            before_options={
+                "excluded_domains": [],
+                "excluded_entities": ["tomato"],
+                "included_domains": [],
+                "included_entities": ["potato"],
+                "publish_frequency": 60,
+                "polling_frequency": 0,
+                "change_detection_type": ["STATE"],
+            },
+            before_data={
+                "url": "http://migration-test:9200",
+            },
+            after_options={
+                "include_targets": True,
+                "exclude_targets": True,
+                "targets_to_include": {"entity_id": ["potato"]},
+                "targets_to_exclude": {"entity_id": ["tomato"]},
+                "publish_frequency": 60,
+                "polling_frequency": 0,
+                "tags": [],
+                "change_detection_type": ["STATE"],
+            },
+            after_data={
+                "url": "http://migration-test:9200",
+            },
+            after_version=7,
+            snapshot=snapshot,
+        )
+
+    @pytest.mark.asyncio
+    async def test_config_migration_v1tov7(
         self,
         hass: HomeAssistant,
         snapshot: SnapshotAssertion,
@@ -371,19 +442,19 @@ class Test_Config_Migration:
                 "publish_mode": "Any changes",
             },
             after_options={
-                "publish_enabled": True,
+                "include_targets": False,
+                "exclude_targets": False,
+                "targets_to_include": {},
+                "targets_to_exclude": {},
                 "publish_frequency": 60,
-                "publish_mode": "Any changes",
-                "excluded_domains": [],
-                "excluded_entities": [],
-                "included_domains": [],
-                "included_entities": [],
+                "tags": [],
+                "polling_frequency": 0,
+                "change_detection_type": ["STATE", "ATTRIBUTE"],
             },
             after_data={
                 "url": "http://migration-test:9200",
-                "index_mode": "index",
             },
-            after_version=5,
+            after_version=7,
             snapshot=snapshot,
         )
 
@@ -604,7 +675,7 @@ class Test_Public_Methods:
 
         assert config_entry.state is ConfigEntryState.NOT_LOADED
 
-        config_entry.version = ElasticFlowHandler.VERSION - 1
+        config_entry.version = 5
 
         # Mock migrate_data_and_options_to_version and make sure it wasn't called during setup
         with (
@@ -774,7 +845,111 @@ class Test_Common_e2e:
         assert bulk_call[0] == "PUT"
         assert bulk_call[2] == snapshot
 
+    class Test_Config_Migration:
+        """TEst config migration e2e."""
+
+        @pytest.fixture
+        def version(self) -> int:
+            """Return the version to migrate from."""
+            return 1
+
+        def data(self) -> dict:
+            """Return the data to migrate from."""
+            return {
+                "url": "http://migration-test:9200",
+                "only_publish_changed": True,
+            }
+
+        def options(self) -> dict:
+            """Return the options to migrate from."""
+            return {}
+
+        async def test_setup_v1_to_publish(
+            self,
+            hass: HomeAssistant,
+            integration_setup,
+            es_aioclient_mock: AiohttpClientMocker,
+            data,
+            options,
+            version,
+            config_entry,
+            entity,
+            device,
+            freeze_time,
+            snapshot: SnapshotAssertion,
+        ):
+            """Test the full integration setup and execution."""
+
+            # Mock cluster checks
+            es_aioclient_mock.get(
+                f"{const.TEST_CONFIG_ENTRY_DATA_URL}/",
+                json=const.CLUSTER_INFO_8DOT14_RESPONSE_BODY,
+                headers={"x-elastic-product": "Elasticsearch"},
+            )
+
+            # Mock the user has the required privileges
+            es_aioclient_mock.post(
+                const.TEST_CONFIG_ENTRY_DATA_URL + "/_security/user/_has_privileges",
+                json={"has_all_requested": True},
+            )
+
+            # Mock index template setup
+            es_aioclient_mock.get(
+                f"{const.TEST_CONFIG_ENTRY_DATA_URL}/_index_template/{DATASTREAM_METRICS_INDEX_TEMPLATE_NAME}",
+                status=200,
+                headers={"x-elastic-product": "Elasticsearch"},
+                json={},
+            )
+
+            es_aioclient_mock.put(
+                f"{const.TEST_CONFIG_ENTRY_DATA_URL}/_index_template/{DATASTREAM_METRICS_INDEX_TEMPLATE_NAME}",
+                status=200,
+                headers={"x-elastic-product": "Elasticsearch"},
+                json={},
+            )
+
+            # Mock the bulk request
+            es_aioclient_mock.put(
+                const.TEST_CONFIG_ENTRY_DATA_URL + "/_bulk",
+                status=200,
+                headers={"x-elastic-product": "Elasticsearch"},
+                json={"errors": False},
+            )
+
+            # Load the Config Entry
+            assert await integration_setup() is True
+
+            assert config_entry.state is ConfigEntryState.LOADED
+
+            assert {
+                "data": config_entry.data,
+                "options": config_entry.options,
+            } == snapshot
+
+            # Queue an entity state change
+            hass.states.async_set(entity.entity_id, "value")
+
+            # Wait for the publish task to run
+            await hass.async_block_till_done()
+
+            es_aioclient_mock.mock_calls.clear()
+
+            # Manually invoke a publish
+            await config_entry.runtime_data._pipeline_manager._publish()
+
+            # Ensure the bulk request was made (and a ping was performed)
+            assert es_aioclient_mock.call_count == 2
+
+            ping = es_aioclient_mock.mock_calls[0]
+            assert ping[0] == "GET"
+
+            bulk_call = es_aioclient_mock.mock_calls[1]
+            assert bulk_call[0] == "PUT"
+            assert bulk_call[2] == snapshot
+
     class Test_Pipeline_Settings:
+        """Test Pipeline Settings."""
+
         @pytest.fixture
         def block_async_init(self):
             """Block async init."""
@@ -919,90 +1094,3 @@ class Test_Common_Failures_e2e:
 
         assert config_entry.state is ConfigEntryState.SETUP_RETRY
         assert config_entry.reason == "Elasticsearch version is not supported. Minimum version: (8, 14)"
-
-
-# Replace the following old tests
-
-
-# @pytest.mark.asyncio
-# async def test_unsupported_version(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker) -> None:
-#     """Test component setup with an unsupported version."""
-#     es_url = "http://unsupported-version:9200"
-
-#     mock_es_initialization(es_aioclient_mock, url=es_url, mock_unsupported_version=True)
-
-#     mock_entry = MockConfigEntry(
-#         unique_id="test_unsupported_version",
-#         domain=ELASTIC_DOMAIN,
-#         version=3,
-#         data={"url": es_url, "use_connection_monitor": False},
-#         options=build_new_options(),
-#         title="ES Config",
-#     )
-
-#     entry = await _setup_config_entry(hass, mock_entry)
-
-#     assert entry.state == ConfigEntryState.SETUP_RETRY
-#     assert entry.reason == "Unsupported Elasticsearch version detected"
-
-
-# async def test_reauth_setup_entry(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker) -> None:
-#     """Test reauth flow triggered by setup entry."""
-
-#     es_url = "http://authentication-error:9200"
-
-#     mock_es_initialization(
-#         es_aioclient_mock,
-#         url=es_url,
-#         mock_authentication_error=True,
-#     )
-
-#     mock_entry = MockConfigEntry(
-#         unique_id="test_authentication_error",
-#         domain=ELASTIC_DOMAIN,
-#         version=3,
-#         data={
-#             "url": es_url,
-#             "username": "username",
-#             "password": "password",
-#         },
-#         options=build_new_options(),
-#         title="ES Config",
-#     )
-
-#     entry = await _setup_config_entry(hass, mock_entry)
-
-#     assert entry.state == ConfigEntryState.SETUP_ERROR
-#     assert entry.reason == "Missing or invalid credentials"
-
-#     flows = hass.config_entries.flow.async_progress()
-#     assert len(flows) == 1
-
-#     flow = flows[0]
-#     assert flow.get("step_id") == "basic_auth"
-#     assert flow.get("handler") == ELASTIC_DOMAIN
-
-#     assert "context" in flow
-#     assert flow["context"].get("source") == SOURCE_REAUTH
-#     assert flow["context"].get("entry_id") == entry.entry_id
-
-
-# @pytest.mark.asyncio
-# async def test_connection_error(hass: HomeAssistant, es_aioclient_mock: AiohttpClientMocker) -> None:
-#     """Test component setup with an unsupported version."""
-#     es_url = "http://connection-error:9200"
-
-#     mock_es_initialization(es_aioclient_mock, url=es_url, mock_connection_error=True)
-
-#     mock_entry = MockConfigEntry(
-#         unique_id="test_connection_error",
-#         domain=ELASTIC_DOMAIN,
-#         version=5,
-#         data={"url": es_url, "use_connection_monitor": False},
-#         title="ES Config",
-#     )
-
-#     entry = await _setup_config_entry(hass, mock_entry)
-
-#     assert entry.state == ConfigEntryState.SETUP_RETRY
-#     assert entry.reason == "Exception during component initialization"

@@ -85,7 +85,7 @@ TRANSLATION_KEY_BASIC_AUTH = "BASIC_AUTH"
 class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
     """Handle an Elastic config flow."""
 
-    VERSION = 6
+    VERSION = 7
     CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_PUSH
     GATEWAY = Elasticsearch8Gateway
 

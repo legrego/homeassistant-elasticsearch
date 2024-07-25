@@ -237,6 +237,7 @@ def migrate_to_version_6(data: dict, options: dict) -> tuple[dict, dict]:
         del options["publish_mode"]
 
     else:
+        options["polling_frequency"] = 0
         options["change_detection_type"] = ["STATE", "ATTRIBUTE"]
 
     # add dedicated settings for polling
@@ -251,6 +252,40 @@ def migrate_to_version_6(data: dict, options: dict) -> tuple[dict, dict]:
     ]
 
     for key in options_to_remove:
+        if key in options:
+            del options[key]
+
+    return data, options
+
+
+def migrate_to_version_7(data: dict, options: dict) -> tuple[dict, dict]:
+    """Migrate config to version 7."""
+
+    # if tags does not exist, set it to an empty array
+    if "tags" not in options:
+        options["tags"] = []
+
+    options["targets_to_include"] = {}
+    options["targets_to_exclude"] = {}
+    options["exclude_targets"] = False
+    options["include_targets"] = False
+
+    if len(options["included_entities"]) != 0:
+        options["include_targets"] = True
+        options["targets_to_include"]["entity_id"] = options["included_entities"]
+
+    if len(options["excluded_entities"]) != 0:
+        options["exclude_targets"] = True
+        options["targets_to_exclude"]["entity_id"] = options["excluded_entities"]
+
+    keys_to_remove = [
+        "excluded_domains",
+        "excluded_entities",
+        "included_domains",
+        "included_entities",
+    ]
+
+    for key in keys_to_remove:
         if key in options:
             del options[key]
 
