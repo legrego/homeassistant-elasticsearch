@@ -158,15 +158,23 @@ class Pipeline:
 
             self._queue: EventQueue = Queue[tuple[datetime, State, StateChangeType]]()
 
+            self._filterer: Pipeline.Filterer = Pipeline.Filterer(
+                hass=self._hass,
+                log=self._logger,
+                settings=settings,
+            )
+
             self._listener: Pipeline.Listener = Pipeline.Listener(
                 hass=self._hass,
                 log=self._logger,
+                filterer=self._filterer,
                 queue=self._queue,
             )
 
             self._poller: Pipeline.Poller = Pipeline.Poller(
                 hass=self._hass,
                 log=self._logger,
+                filterer=self._filterer,
                 queue=self._queue,
                 settings=self._settings,
             )
@@ -236,9 +244,6 @@ class Pipeline:
         async def _sip_queue(self) -> AsyncGenerator[dict[str, Any], Any]:
             while not self._queue.empty():
                 timestamp, state, reason = self._queue.get()
-
-                if not self._filterer.passes_filter(state, reason):
-                    continue
 
                 try:
                     yield self._formatter.format(timestamp, state, reason)
@@ -396,12 +401,14 @@ class Pipeline:
         def __init__(
             self,
             hass: HomeAssistant,
+            filterer: Pipeline.Filterer,
             queue: EventQueue,
             log: Logger = BASE_LOGGER,
         ) -> None:
             """Initialize the listener."""
             self._logger = log if log else BASE_LOGGER
             self._hass: HomeAssistant = hass
+            self._filterer: Pipeline.Filterer = filterer
             self._queue: EventQueue = queue
             self._cancel_listener = None
 
@@ -429,13 +436,15 @@ class Pipeline:
                 else StateChangeType.ATTRIBUTE
             )
 
-            self._queue.put((event.time_fired, new_state, reason))
+            # Ensure we only queue states that pass the filter
+            if self._filterer.passes_filter(new_state, reason):
+                self._queue.put((event.time_fired, new_state, reason))
 
         @log_enter_exit_debug
         def stop(self) -> None:
             """Stop the listener."""
-            # if self._cancel_listener:
-            # self._cancel_listener()
+            if self._cancel_listener:
+                self._cancel_listener()
 
         def __del__(self) -> None:
             """Clean up the listener."""
@@ -447,6 +456,7 @@ class Pipeline:
         def __init__(
             self,
             hass: HomeAssistant,
+            filterer: Pipeline.Filterer,
             queue: EventQueue,
             settings: PipelineSettings,
             log: Logger = BASE_LOGGER,
@@ -457,6 +467,7 @@ class Pipeline:
             self._cancel_poller: Task | None = None
 
             self._queue: EventQueue = queue
+            self._filterer: Pipeline.Filterer = filterer
 
             self._settings: PipelineSettings = settings
 
@@ -485,7 +496,10 @@ class Pipeline:
 
             reason = StateChangeType.NO_CHANGE
 
-            [self._queue.put((now, i, reason)) for i in all_states]
+            # Ensure we only queue states that pass the filter
+            for state in all_states:
+                if self._filterer.passes_filter(state, reason):
+                    self._queue.put((now, state, reason))
 
         @log_enter_exit_debug
         def stop(self) -> None:

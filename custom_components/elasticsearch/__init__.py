@@ -55,10 +55,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ElasticIntegratio
         raise IntegrationError(err) from err
 
     config_entry.runtime_data = integration
-
     return True
 
 
+@async_log_enter_exit_info
 async def async_unload_entry(hass: HomeAssistant, config_entry: ElasticIntegrationConfigEntry) -> bool:
     """Teardown integration."""
 

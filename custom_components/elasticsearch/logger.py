@@ -4,7 +4,7 @@ import logging
 from collections.abc import Callable, Coroutine
 from typing import Any
 
-LOGGER = logging.getLogger("es_integration")
+LOGGER = logging.getLogger("custom_components.elasticsearch")
 es_logger = logging.getLogger("elasticsearch")
 es_logger.name = "elasticsearch-library"
 
@@ -22,7 +22,7 @@ def have_child(name: str) -> logging.Logger:
     # Sanitize the param name only allowing lowercase a-z and 0-9 and replace spaces with underscores
     sanitized_name = "".join([c if c.isalnum() else "" for c in name.replace(" ", "_").lower()])
 
-    parent = logging.getLogger("es_integration")
+    parent = logging.getLogger("custom_components.elasticsearch")
     new_logger = parent.getChild(f"{sanitized_name}")
     new_logger.name = f"{parent.name}-{sanitized_name}"
 
@@ -33,20 +33,16 @@ def have_child(name: str) -> logging.Logger:
 def log_enter_exit_info(func: Callable) -> Callable:
     """Log function start and end."""
 
-    # noinspection PyBroadException
     def decorated_func(*args, **kwargs):  # noqa: ANN202
         logger = getattr(args[0], "_logger", LOGGER) if args and len(args) > 0 else LOGGER
         return call_and_log_enter_exit(func, logger, logging.INFO, *args, **kwargs)
 
     return decorated_func
 
-    # noinspection PyBroadException
-
 
 def async_log_enter_exit_info(func: Callable[..., Coroutine]):  # noqa: ANN201
     """Log function start and end."""
 
-    # noinspection PyBroadException
     async def decorated_func(*args, **kwargs):  # noqa: ANN202
         logger = getattr(args[0], "_logger", LOGGER) if args and len(args) > 0 else LOGGER
         return await call_and_log_enter_exit(func, logger, logging.INFO, *args, **kwargs)
@@ -54,11 +50,9 @@ def async_log_enter_exit_info(func: Callable[..., Coroutine]):  # noqa: ANN201
     return decorated_func
 
 
-# noinspection PyBroadException
 def log_enter_exit_debug(func: Callable) -> Callable:
     """Log function start and end."""
 
-    # noinspection PyBroadException
     def decorated_func(*args, **kwargs):  # noqa: ANN202
         logger = getattr(args[0], "_logger", LOGGER) if args and len(args) > 0 else LOGGER
         return call_and_log_enter_exit(func, logger, logging.DEBUG, *args, **kwargs)
@@ -66,11 +60,9 @@ def log_enter_exit_debug(func: Callable) -> Callable:
     return decorated_func
 
 
-# noinspection PyBroadException
 def async_log_enter_exit_debug(func: Callable[..., Coroutine]):  # noqa: ANN201
     """Log function start and end."""
 
-    # noinspection PyBroadException
     async def decorated_func(*args, **kwargs):  # noqa: ANN202
         logger = getattr(args[0], "_logger", LOGGER) if args and len(args) > 0 else LOGGER
         return await async_call_and_log_enter_exit(func, logger, logging.DEBUG, *args, **kwargs)
@@ -78,7 +70,6 @@ def async_log_enter_exit_debug(func: Callable[..., Coroutine]):  # noqa: ANN201
     return decorated_func
 
 
-# noinspection PyBroadException
 def call_and_log_enter_exit(
     func: Callable,
     logger: logging.Logger,
@@ -101,7 +92,6 @@ def call_and_log_enter_exit(
     return result
 
 
-# noinspection PyBroadException
 async def async_call_and_log_enter_exit(
     func: Callable,
     logger: logging.Logger,

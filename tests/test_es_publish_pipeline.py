@@ -344,50 +344,11 @@ class Test_Manager:
             # Sip queue and append to result using async list comprehension
             [result.append(doc) async for doc in manager._sip_queue()]
 
-            # Assert that the filterer and formatter were called
-            manager._filterer.passes_filter.assert_called_once_with(state, reason)
+            # Assert that the formatter was called
             manager._formatter.format.assert_called_once_with(timestamp, state, reason)
 
             # Assert that the result contains the formatted data
             assert result == [{"timestamp": timestamp, "state": state, "reason": reason}]
-
-        @pytest.mark.asyncio
-        async def test_sip_queue_filtered(self, manager, freezer: FrozenDateTimeFactory):
-            """Test the _sip_queue method of the Pipeline.Manager class."""
-            # Create some sample data
-            freezer.tick()
-
-            # Mock the filterer
-            manager._filterer = MagicMock()
-            manager._filterer.passes_filter.return_value = False
-
-            # Mock the formatter
-
-            timestamp = datetime.now(tz=UTC)
-            state = State("light.living_room", "on")
-            reason = StateChangeType.STATE
-
-            manager._formatter = MagicMock()
-            manager._formatter.format.return_value = {
-                "timestamp": timestamp,
-                "state": state,
-                "reason": reason,
-            }
-
-            # Add the sample data to the queue
-            manager._queue.put((timestamp, state, reason))
-
-            # Call the _sip_queue method
-            result = []
-            # Sip queue and append to result using async list comprehension
-            [result.append(doc) async for doc in manager._sip_queue()]
-
-            # Assert that the filterer and formatter were called
-            manager._filterer.passes_filter.assert_called_once_with(state, reason)
-            manager._formatter.format.assert_not_called()
-
-            # Assert that the result contains the formatted data
-            assert result == []
 
         @pytest.mark.asyncio
         async def test_publish(self, hass, manager):
@@ -460,7 +421,8 @@ class Test_Poller:
         """Return a Pipeline.Poller instance."""
         queue: EventQueue = Queue[tuple[datetime, State, StateChangeType]]()
         settings = MagicMock()
-        poller = Pipeline.Poller(hass, queue, settings)
+        filterer = MagicMock()
+        poller = Pipeline.Poller(hass, filterer, queue, settings)
         yield poller
 
         poller.stop()
@@ -577,7 +539,8 @@ class Test_Listener:
     @pytest.fixture
     def listener(self, hass, queue) -> Pipeline.Listener:
         """Return a Listener instance."""
-        return Pipeline.Listener(hass=hass, queue=queue)
+        filterer = MagicMock(spec=Pipeline.Filterer)
+        return Pipeline.Listener(hass=hass, filterer=filterer, queue=queue)
 
     @pytest.fixture
     def event(self) -> Event:
@@ -595,13 +558,19 @@ class Test_Listener:
     class Test_Unit_Tests:
         """Run the unit tests of the Listener class."""
 
+        @pytest.fixture
+        def mock_filterer(self):
+            """Return a mock Filterer instance."""
+            return MagicMock(spec=Pipeline.Filterer)
+
         @pytest.mark.asyncio
-        async def test_listener_init(self, hass, queue):
+        async def test_listener_init(self, mock_filterer, hass, queue):
             """Test the initialization of the Listener."""
-            listener = Pipeline.Listener(hass=hass, queue=queue)
+            listener = Pipeline.Listener(hass=hass, filterer=mock_filterer, queue=queue)
 
             assert listener._hass == hass
             assert listener._queue == queue
+            assert listener._filterer == mock_filterer
             assert listener._cancel_listener is None
 
         @pytest.mark.asyncio

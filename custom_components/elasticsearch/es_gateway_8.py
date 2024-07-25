@@ -54,7 +54,7 @@ class Gateway8Settings(GatewaySettings):
     """Elasticsearch Gateway settings object."""
 
     def to_client(self) -> AsyncElasticsearch:
-        """Convert the settings to a dictionary suitable for passing to the Elasticsearch client."""
+        """Create an Elasticsearch client from the settings."""
 
         settings = {
             "hosts": [self.url],

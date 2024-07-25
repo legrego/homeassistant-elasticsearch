@@ -774,6 +774,87 @@ class Test_Common_e2e:
         assert bulk_call[0] == "PUT"
         assert bulk_call[2] == snapshot
 
+    class Test_Pipeline_Settings:
+        @pytest.fixture
+        def block_async_init(self):
+            """Block async init."""
+            with mock.patch(
+                f"{MODULE}.es_integration.ElasticIntegration.async_init",
+                return_value=True,
+            ):
+                yield
+
+        @pytest.fixture(autouse=True)
+        async def options(self) -> dict:
+            """Return a mock options dict."""
+            return {
+                const.CONF_CHANGE_DETECTION_ENABLED: True,
+                const.CONF_CHANGE_DETECTION_TYPE: ["STATE", "ATTRIBUTE"],
+                const.CONF_TAGS: ["tags"],
+                const.CONF_POLLING_FREQUENCY: 60,
+                const.CONF_PUBLISH_FREQUENCY: 60,
+                const.CONF_INCLUDE_TARGETS: True,
+                const.CONF_EXCLUDE_TARGETS: True,
+                const.CONF_TARGETS_TO_INCLUDE: {
+                    "entity_id": [
+                        "sensor.include_100b_baker_st_2g",
+                        "sensor.include_u6_enterprise_entryway_memory_utilization",
+                    ],
+                    "device_id": ["include_cd454a1722a83415862249840b60b981"],
+                    "area_id": ["include_bedroom"],
+                    "label_id": ["include_test_label"],
+                },
+                const.CONF_TARGETS_TO_EXCLUDE: {
+                    "entity_id": [
+                        "sensor.exclude_100b_baker_st_2g",
+                        "sensor.exclude_u6_enterprise_entryway_memory_utilization",
+                    ],
+                    "device_id": ["exclude_cd454a1722a83415862249840b60b981"],
+                    "area_id": ["exclude_bedroom"],
+                    "label_id": ["exclude_test_label"],
+                },
+            }
+
+        async def test_config_entry_to_pipeline_settings(
+            self,
+            hass: HomeAssistant,
+            block_async_init,
+            integration_setup,
+            es_aioclient_mock: AiohttpClientMocker,
+            options,
+            config_entry,
+            snapshot: SnapshotAssertion,
+        ):
+            """Test the full integration setup and execution."""
+
+            # Mock cluster checks
+            es_aioclient_mock.get(
+                f"{const.TEST_CONFIG_ENTRY_DATA_URL}/",
+                json=const.CLUSTER_INFO_8DOT14_RESPONSE_BODY,
+                headers={"x-elastic-product": "Elasticsearch"},
+            )
+
+            # Mock the user has the required privileges
+            es_aioclient_mock.post(
+                const.TEST_CONFIG_ENTRY_DATA_URL + "/_security/user/_has_privileges",
+                json={"has_all_requested": True},
+            )
+
+            # Load the Config Entry
+            assert await integration_setup() is True
+
+            assert config_entry.state is ConfigEntryState.LOADED
+
+            # Ensure the pipeline settings are correct
+            updated_config_entry = hass.config_entries.async_get_entry(config_entry.entry_id)
+
+            if updated_config_entry is None:
+                raise ValueError("Config Entry not found")
+
+            pipeline_settings = updated_config_entry.runtime_data._pipeline_manager._settings
+
+            assert pipeline_settings == snapshot
+
 
 class Test_Common_Failures_e2e:
     """Test the common failures that users run into when initializing the integration."""

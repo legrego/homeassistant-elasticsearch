@@ -185,8 +185,8 @@ class Test_Public_Methods:
     @pytest.mark.parametrize(
         ("choice", "step_id"),
         [
-            ("basic_auth", "basic_auth"),
-            ("api_key", "api_key"),
+            ("BASIC_AUTH", "basic_auth"),
+            ("API_KEY", "api_key"),
         ],
     )
     async def test_authentication_issues(

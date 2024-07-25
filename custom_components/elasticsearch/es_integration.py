@@ -132,12 +132,12 @@ class ElasticIntegration:
             exclude_targets=config_entry.options[CONF_EXCLUDE_TARGETS],
             included_areas=config_entry.options[CONF_TARGETS_TO_INCLUDE].get("area_id", []),
             excluded_areas=config_entry.options[CONF_TARGETS_TO_EXCLUDE].get("area_id", []),
-            included_labels=config_entry.options[CONF_TARGETS_TO_INCLUDE].get("labels_id", []),
-            excluded_labels=config_entry.options[CONF_TARGETS_TO_EXCLUDE].get("labels_id", []),
-            included_devices=config_entry.options[CONF_TARGETS_TO_INCLUDE].get("devices_id", []),
-            excluded_devices=config_entry.options[CONF_TARGETS_TO_EXCLUDE].get("devices_id", []),
-            included_entities=config_entry.options[CONF_TARGETS_TO_INCLUDE].get("entities_id", []),
-            excluded_entities=config_entry.options[CONF_TARGETS_TO_EXCLUDE].get("entities_id", []),
+            included_labels=config_entry.options[CONF_TARGETS_TO_INCLUDE].get("label_id", []),
+            excluded_labels=config_entry.options[CONF_TARGETS_TO_EXCLUDE].get("label_id", []),
+            included_devices=config_entry.options[CONF_TARGETS_TO_INCLUDE].get("device_id", []),
+            excluded_devices=config_entry.options[CONF_TARGETS_TO_EXCLUDE].get("device_id", []),
+            included_entities=config_entry.options[CONF_TARGETS_TO_INCLUDE].get("entity_id", []),
+            excluded_entities=config_entry.options[CONF_TARGETS_TO_EXCLUDE].get("entity_id", []),
         )
 
         return {"hass": hass, "gateway": gateway, "settings": settings}

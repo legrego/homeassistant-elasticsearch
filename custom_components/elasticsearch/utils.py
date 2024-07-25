@@ -1,13 +1,6 @@
 """Utilities."""
 
 
-def compare_version(current_major, current_minor, reference_major: int, reference_minor: int) -> bool:
-    """Determine if this version of ES meets the minimum version requirements."""
-    return current_major > reference_major or (
-        current_major == reference_major and current_minor >= reference_minor
-    )
-
-
 def flatten_dict(d: dict, parent_key: str = "", sep: str = ".", keep_keys: list[str] | None = None) -> dict:
     """Flatten an n-level nested dictionary using periods."""
 

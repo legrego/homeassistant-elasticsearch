@@ -76,6 +76,12 @@ SCHEMA_API_KEY = {"schema": CONF_API_KEY, "default": None}
 SCHEMA_TIMEOUT = {"schema": CONF_TIMEOUT, "default": 30}
 
 
+TRANSLATION_KEY_STATE = "STATE"
+TRANSLATION_KEY_ATTRIBUTE = "ATTRIBUTE"
+TRANSLATION_KEY_API_KEY = "API_KEY"
+TRANSLATION_KEY_BASIC_AUTH = "BASIC_AUTH"
+
+
 class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
     """Handle an Elastic config flow."""
 
@@ -182,9 +188,9 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         """We require Authentication information to connect to Elasticsearch."""
 
         if user_input is not None:
-            if user_input[CONF_AUTHENTICATION_TYPE] == "basic_auth":
+            if user_input[CONF_AUTHENTICATION_TYPE] == TRANSLATION_KEY_BASIC_AUTH:
                 return await self.async_step_basic_auth()
-            if user_input[CONF_AUTHENTICATION_TYPE] == "api_key":
+            if user_input[CONF_AUTHENTICATION_TYPE] == TRANSLATION_KEY_API_KEY:
                 return await self.async_step_api_key()
 
         # Show a form where we ask the user if they want to use API Key or Basic Auth
@@ -194,16 +200,8 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                 {
                     vol.Required(**SCHEMA_AUTHENTICATION_TYPE): SelectSelector(
                         SelectSelectorConfig(
-                            options=[
-                                {
-                                    "label": "Authenticate using an API Key",
-                                    "value": "api_key",
-                                },
-                                {
-                                    "label": "Authenticate using Username/Password",
-                                    "value": "basic_auth",
-                                },
-                            ],
+                            translation_key="authentication_issues",
+                            options=[TRANSLATION_KEY_API_KEY, TRANSLATION_KEY_BASIC_AUTH],
                         )
                     ),
                 }
@@ -258,7 +256,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
     async def async_step_api_key(
         self, user_input: dict | None = None, errors: dict | None = None
     ) -> ConfigFlowResult:
-        """Handle connection to an unsecured Elasticsearch cluster."""
+        """Prompt the user for the settings required to use API Key Authentication against the Elasticsearch cluster."""
 
         if user_input is not None:
             try:
@@ -438,16 +436,8 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
                 ),
                 vol.Optional(**SCHEMA_CHANGE_DETECTION_TYPE): SelectSelector(
                     SelectSelectorConfig(
-                        options=[
-                            {
-                                "label": "Track entities with state changes",
-                                "value": StateChangeType.STATE.value,
-                            },
-                            {
-                                "label": "Track entities with attribute changes",
-                                "value": StateChangeType.ATTRIBUTE.value,
-                            },
-                        ],
+                        translation_key="change_detection_type",
+                        options=[TRANSLATION_KEY_STATE, TRANSLATION_KEY_ATTRIBUTE],
                         multiple=True,
                     )
                 ),
