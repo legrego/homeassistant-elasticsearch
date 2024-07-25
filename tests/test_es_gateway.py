@@ -4,7 +4,6 @@
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
-import elasticsearch7
 import elasticsearch8
 import pytest
 from aiohttp import client_exceptions
@@ -21,9 +20,6 @@ from custom_components.elasticsearch.errors import (
 from custom_components.elasticsearch.es_gateway import (
     ElasticsearchGateway,
 )
-from custom_components.elasticsearch.es_gateway_7 import (
-    Elasticsearch7Gateway,
-)
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
 from tests.const import (
@@ -37,9 +33,6 @@ from tests.const import (
 @pytest.fixture
 async def cannot_connect_error(gateway: ElasticsearchGateway):
     """Return a CannotConnect error."""
-
-    if isinstance(gateway, Elasticsearch7Gateway):
-        return elasticsearch7.exceptions.TransportError("There was a transport error", 404, "Not Found")
 
     return elasticsearch8.exceptions.TransportError(
         message="There was a transport error",

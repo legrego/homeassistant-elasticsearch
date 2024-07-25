@@ -28,7 +28,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from aiohttp import ClientSession, TCPConnector
 from custom_components.elasticsearch.config_flow import ElasticFlowHandler
-from custom_components.elasticsearch.es_gateway_7 import Elasticsearch7Gateway, Gateway7Settings
 from custom_components.elasticsearch.es_gateway_8 import Elasticsearch8Gateway, Gateway8Settings
 from homeassistant.const import (
     CONF_PASSWORD,
@@ -81,15 +80,11 @@ def gateway_config() -> dict:
 @pytest.fixture(
     params=[
         {
-            "gateway_class": Elasticsearch7Gateway,
-            "gatewaysettings": Gateway7Settings,
-        },
-        {
             "gateway_class": Elasticsearch8Gateway,
             "gatewaysettings": Gateway8Settings,
         },
     ],
-    ids=["es7", "es8"],
+    ids=["es8"],
 )
 async def gateway(request, gateway_config):
     """Mock ElasticsearchGateway instance."""
@@ -108,7 +103,7 @@ async def gateway(request, gateway_config):
 
 
 @pytest.fixture
-async def initialized_gateway(gateway: Elasticsearch7Gateway | Elasticsearch8Gateway):
+async def initialized_gateway(gateway: Elasticsearch8Gateway):
     """Return an initialized ElasticsearchGateway."""
     gateway.ping = AsyncMock(return_value=True)
     gateway.info = AsyncMock(return_value=const.CLUSTER_INFO_8DOT14_RESPONSE_BODY)
@@ -452,6 +447,7 @@ async def entity(
         entity_registry.async_update_entity(entity_id=entity_id, device_id=device.id)
 
     return entity_registry.async_get(entity_id)
+
 
 @pytest.fixture
 async def state() -> str:
