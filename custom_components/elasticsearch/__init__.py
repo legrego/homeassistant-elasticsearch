@@ -285,6 +285,10 @@ def migrate_to_version_7(data: dict, options: dict) -> tuple[dict, dict]:
         "included_entities",
     ]
 
+    # Lowercase values in array options["change_detection_type"]
+    if "change_detection_type" in options:
+        options["change_detection_type"] = [x.lower() for x in options["change_detection_type"]]
+
     for key in keys_to_remove:
         if key in options:
             del options[key]

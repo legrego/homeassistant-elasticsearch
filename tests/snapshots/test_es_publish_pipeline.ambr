@@ -2806,7 +2806,7 @@
 # name: Test_Poller.Test_Integration_Tests.test_poll[states1]
   list([
     dict({
-      'change type': 'POLLING',
+      'change type': 'polling',
       'entity_id': 'light.living_room',
       'state': 'on',
       'timestamp': HAFakeDatetime(2023, 4, 12, 12, 0, 1, tzinfo=datetime.timezone.utc),
@@ -2816,13 +2816,13 @@
 # name: Test_Poller.Test_Integration_Tests.test_poll[states2]
   list([
     dict({
-      'change type': 'POLLING',
+      'change type': 'polling',
       'entity_id': 'light.living_room',
       'state': 'on',
       'timestamp': HAFakeDatetime(2023, 4, 12, 12, 0, 1, tzinfo=datetime.timezone.utc),
     }),
     dict({
-      'change type': 'POLLING',
+      'change type': 'polling',
       'entity_id': 'switch.living_room',
       'state': 'off',
       'timestamp': HAFakeDatetime(2023, 4, 12, 12, 0, 1, tzinfo=datetime.timezone.utc),

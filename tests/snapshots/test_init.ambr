@@ -11,8 +11,8 @@
     'options': mappingproxy({
       'change_detection_enabled': True,
       'change_detection_type': list([
-        'STATE',
-        'ATTRIBUTE',
+        'state',
+        'attribute',
       ]),
       'exclude_targets': False,
       'include_targets': False,
@@ -99,8 +99,8 @@
     }),
     'after_options': dict({
       'change_detection_type': list([
-        'STATE',
-        'ATTRIBUTE',
+        'state',
+        'attribute',
       ]),
       'exclude_targets': False,
       'include_targets': False,
@@ -310,7 +310,7 @@
     }),
     'after_options': dict({
       'change_detection_type': list([
-        'STATE',
+        'state',
       ]),
       'exclude_targets': False,
       'include_targets': False,
@@ -352,7 +352,7 @@
     }),
     'after_options': dict({
       'change_detection_type': list([
-        'STATE',
+        'state',
       ]),
       'exclude_targets': True,
       'include_targets': True,

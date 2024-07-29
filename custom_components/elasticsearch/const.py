@@ -99,9 +99,9 @@ ES_CHECK_PERMISSIONS_DATASTREAM: MappingProxyType[str, Any] = MappingProxyType(
 class StateChangeType(Enum):
     """Elasticsearch State Change Types constants."""
 
-    STATE = "STATE"
-    ATTRIBUTE = "ATTRIBUTE"
-    NO_CHANGE = "POLLING"
+    STATE = "state"
+    ATTRIBUTE = "attribute"
+    NO_CHANGE = "polling"
 
     def to_publish_reason(self) -> str:
         """Return the publish reason for the state change type."""

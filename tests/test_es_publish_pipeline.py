@@ -84,7 +84,7 @@ class Test_Filterer:
         async def test_passes_filter_with_allowed_change_type_and_included_entity(self, patched_filterer):
             """Test that a state change with an allowed change type and included entity passes the filter."""
             state = State("light.living_room", "on")
-            patched_filterer._change_detection_type = [StateChangeType.STATE.name]
+            patched_filterer._change_detection_type = [StateChangeType.STATE.value]
             patched_filterer._include_targets = True
             patched_filterer._included_entities = ["light.living_room"]
             assert patched_filterer.passes_filter(state, StateChangeType.STATE) is True
@@ -92,7 +92,7 @@ class Test_Filterer:
         async def test_passes_filter_with_allowed_change_type_and_excluded_entity(self, patched_filterer):
             """Test that a state change with an allowed change type and excluded entity does not pass the filter."""
             state = State("light.living_room", "on")
-            patched_filterer._change_detection_type = [StateChangeType.STATE.name]
+            patched_filterer._change_detection_type = [StateChangeType.STATE.value]
 
             patched_filterer._exclude_targets = True
             patched_filterer._excluded_entities = ["light.living_room"]
@@ -192,15 +192,15 @@ class Test_Filterer:
 
         async def test_passes_change_detection_type_filter_true(self, patched_filterer):
             """Test that a state change with an allowed change type passes the filter."""
-            patched_filterer._change_detection_type = [StateChangeType.STATE.name]
+            patched_filterer._change_detection_type = [StateChangeType.STATE.value]
             assert patched_filterer._passes_change_detection_type_filter(StateChangeType.STATE) is True
 
-            patched_filterer._change_detection_type = [StateChangeType.NO_CHANGE.name]
+            patched_filterer._change_detection_type = [StateChangeType.NO_CHANGE.value]
             assert patched_filterer._passes_change_detection_type_filter(StateChangeType.NO_CHANGE) is True
 
         async def test_passes_change_detection_type_filter_false(self, patched_filterer):
             """Test that a state change with an allowed change type passes the filter."""
-            patched_filterer._change_detection_type = [StateChangeType.ATTRIBUTE.name]
+            patched_filterer._change_detection_type = [StateChangeType.ATTRIBUTE.value]
             assert patched_filterer._passes_change_detection_type_filter(StateChangeType.STATE) is False
 
         async def test_passes_entity_exists_filter(self, entity_registry, filterer):

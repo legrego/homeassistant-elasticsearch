@@ -375,7 +375,7 @@ class Test_Config_Migration:
                 "publish_frequency": 60,
                 "tags": [],
                 "polling_frequency": 0,
-                "change_detection_type": ["STATE"],
+                "change_detection_type": ["state"],
             },
             after_data={
                 "url": "http://migration-test:9200",
@@ -407,7 +407,7 @@ class Test_Config_Migration:
                 "publish_frequency": 60,
                 "polling_frequency": 0,
                 "tags": [],
-                "change_detection_type": ["STATE"],
+                "change_detection_type": ["state"],
             },
             after_data={
                 "url": "http://migration-test:9200",
@@ -449,7 +449,7 @@ class Test_Config_Migration:
                 "publish_frequency": 60,
                 "tags": [],
                 "polling_frequency": 0,
-                "change_detection_type": ["STATE", "ATTRIBUTE"],
+                "change_detection_type": ["state", "attribute"],
             },
             after_data={
                 "url": "http://migration-test:9200",

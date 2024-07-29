@@ -88,14 +88,14 @@
     "selector": {
         "authentication_issues": {
             "options": {
-                "API_KEY": "Authenticate using an API Key",
-                "BASIC_AUTH": "Authenticate using Username/Password"
+                "api_key": "Authenticate using an API Key",
+                "basic_auth": "Authenticate using Username/Password"
             }
         },
         "change_detection_type": {
             "options": {
-                "STATE": "Track entities with state changes",
-                "ATTRIBUTE": "Track entities with attribute changes"
+                "state": "Track entities with state changes",
+                "attribute": "Track entities with attribute changes"
             }
         }
     }
