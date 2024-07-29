@@ -757,6 +757,22 @@ class Test_Common_e2e:
         """Return a mock options dict."""
         return const.TEST_CONFIG_ENTRY_DEFAULT_OPTIONS
 
+    @pytest.fixture(autouse=True)
+    def fix_system_info(self):
+        """Return a mock system info."""
+        with mock.patch("custom_components.elasticsearch.es_publish_pipeline.SystemInfo") as system_info:
+            system_info_instance = system_info.return_value
+            system_info_instance.async_get_system_info = mock.AsyncMock(
+                return_value=mock.Mock(
+                    version="1.0.0",
+                    arch="x86",
+                    os_name="Linux",
+                    hostname="my_es_host",
+                ),
+            )
+
+            yield
+
     @pytest.fixture
     def freeze_time(self, freezer: FrozenDateTimeFactory):
         """Freeze time so we can properly assert on payload contents."""
