@@ -156,8 +156,9 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             except UntrustedCertificate:
                 return await self.async_step_certificate_issues(errors={"base": "untrusted_certificate"})
 
-            except CannotConnect:
-                return self.async_abort(reason="cannot_connect")
+            except CannotConnect as err:
+                return await self.async_step_user(errors={"base": f"cannot_connect {err}"})
+
             except AuthenticationRequired:
                 self._prospective_config.update(user_input)
                 return await self.async_step_authentication_issues()
@@ -314,7 +315,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         """Get the options flow for this handler."""
         return ElasticOptionsFlowHandler(config_entry)
 
-    async def async_step_reauth(self, user_input: dict | None) -> ConfigFlowResult:
+    async def async_step_reauth(self, user_input: dict | None = None) -> ConfigFlowResult:
         """Handle reauthorization."""
         entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
         if entry is None:
@@ -325,9 +326,9 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         self._prospective_config = dict(entry.data)
 
         if self._prospective_config.get(CONF_USERNAME, None) is not None:
-            return await self.async_step_basic_auth()
+            return await self.async_step_basic_auth(user_input=user_input)
         if self._prospective_config.get(CONF_API_KEY, None) is not None:
-            return await self.async_step_api_key()
+            return await self.async_step_api_key(user_input=user_input)
 
         return self.async_abort(reason="no_auth")
 
@@ -365,8 +366,8 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             self.options.update(user_input)
 
-            if self.hass is not None:  # workaround: hass is not defined while testing
-                self.hass.config_entries.async_schedule_reload(self.config_entry.entry_id)
+            #if self.hass is not None:  # workaround: hass is not defined while testing
+            self.hass.config_entries.async_schedule_reload(self.config_entry.entry_id)
 
             return self.async_create_entry(title="", data=self.options)
 

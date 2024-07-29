@@ -880,7 +880,7 @@ class Test_Formatter:
         async def test_state_to_extended_details(
             self,
             formatter,
-            entity: RegistryEntry | None,
+            entity: RegistryEntry,
             entity_object_id,
             entity_area_name,
             entity_floor_name,

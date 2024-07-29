@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from unittest import mock
 from unittest.mock import (
+    AsyncMock,
     MagicMock,
 )
 
@@ -273,7 +274,16 @@ class Test_Public_Methods:
 class Test_Integration_Tests:
     """Integration Tests for Config Flow."""
 
-    async def test_user_done(self, hass, elastic_flow, es_aioclient_mock):
+    @pytest.mark.parametrize(
+        "user_input",
+        [
+            {CONF_URL: TEST_CONFIG_ENTRY_DATA_URL},
+            {CONF_URL: TEST_CONFIG_ENTRY_DATA_URL, CONF_API_KEY: "1234"},
+            {CONF_URL: TEST_CONFIG_ENTRY_DATA_URL, CONF_USERNAME: "user", CONF_PASSWORD: "password"},
+        ],
+        ids=["no_auth", "api_key", "basic_auth"],
+    )
+    async def test_user_done(self, hass, user_input, elastic_flow, es_aioclient_mock):
         """Test user initiated step."""
 
         es_aioclient_mock.get(
@@ -285,14 +295,12 @@ class Test_Integration_Tests:
             TEST_CONFIG_ENTRY_DATA_URL + "/_security/user/_has_privileges", json={"has_all_requested": True}
         )
 
-        result: ConfigFlowResult = await elastic_flow.async_step_user(
-            user_input={CONF_URL: TEST_CONFIG_ENTRY_DATA_URL}
-        )
+        result: ConfigFlowResult = await elastic_flow.async_step_user(user_input=user_input)
 
         assert result is not None
         assert "type" in result and result["type"] == FlowResultType.CREATE_ENTRY
         assert "title" in result and result["title"] == TEST_CONFIG_ENTRY_DATA_URL
-        assert "data" in result and result["data"] == {CONF_URL: TEST_CONFIG_ENTRY_DATA_URL}
+        assert "data" in result and result["data"] == user_input
         assert "options" in result and result["options"] == ElasticOptionsFlowHandler.default_options
 
     async def test_user_authentication_issues_done(self, hass, elastic_flow, es_aioclient_mock):
@@ -386,6 +394,24 @@ class Test_Integration_Tests:
         assert "data" in result and result["data"] == {CONF_URL: TEST_CONFIG_ENTRY_DATA_URL}
         assert "options" in result and result["options"] == ElasticOptionsFlowHandler.default_options
 
+    async def test_cert_error_cannot_connect(self, elastic_flow, es_aioclient_mock):
+        """Test user initiated step."""
+
+        elastic_flow._prospective_config = {CONF_URL: TEST_CONFIG_ENTRY_DATA_URL}
+
+        with mock.patch(
+            "custom_components.elasticsearch.es_gateway_8.Elasticsearch8Gateway.async_init_then_stop",
+            side_effect=CannotConnect("specific error"),
+        ):
+            result: ConfigFlowResult = await elastic_flow.async_step_certificate_issues(
+                user_input={CONF_URL: TEST_CONFIG_ENTRY_DATA_URL, CONF_VERIFY_SSL: False}
+            )
+
+        assert result is not None
+        assert "type" in result and result["type"] == FlowResultType.FORM
+        assert "errors" in result and result["errors"] == {"base": "cannot_connect specific error"}
+        assert "step_id" in result and result["step_id"] == "user"
+
     async def test_user_untrusted_cert_done(self, hass, elastic_flow, es_aioclient_mock):
         """Test user initiated step."""
 
@@ -465,6 +491,25 @@ class Test_Integration_Tests:
         assert "step_id" in next_result and next_result["step_id"] == "certificate_issues"
         assert "errors" in next_result and next_result["errors"] == {"base": "untrusted_certificate"}
 
+    async def test_untrusted_auth(self, hass, elastic_flow, es_aioclient_mock):
+        """Test user initiated step."""
+
+        es_aioclient_mock.get(
+            TEST_CONFIG_ENTRY_DATA_URL,
+            status=401,
+            headers={"x-elastic-product": "Elasticsearch"},
+        )
+
+        elastic_flow._prospective_config = {CONF_URL: TEST_CONFIG_ENTRY_DATA_URL}
+
+        next_result: ConfigFlowResult = await elastic_flow.async_step_certificate_issues(
+            user_input={CONF_URL: TEST_CONFIG_ENTRY_DATA_URL}, errors={"base": "untrusted_certificate"}
+        )
+
+        assert next_result is not None
+        assert "type" in next_result and next_result["type"] == FlowResultType.FORM
+        assert "step_id" in next_result and next_result["step_id"] == "authentication_issues"
+
     @pytest.mark.parametrize(
         ("status_code", "error"),
         [
@@ -498,6 +543,26 @@ class Test_Integration_Tests:
         assert "step_id" in next_result and next_result["step_id"] == "basic_auth"
         assert "errors" in next_result and next_result["errors"] == error
 
+        # Now success
+        es_aioclient_mock.clear_requests()
+        es_aioclient_mock.get(
+            TEST_CONFIG_ENTRY_DATA_URL,
+            json=CLUSTER_INFO_8DOT14_RESPONSE_BODY,
+            status=200,
+            headers={"x-elastic-product": "Elasticsearch"},
+        )
+        with mock.patch(
+            "custom_components.elasticsearch.es_gateway_8.Elasticsearch8Gateway.async_init_then_stop",
+            return_value=True,
+        ):
+            next_result: ConfigFlowResult = await elastic_flow.async_step_basic_auth(
+                user_input={CONF_USERNAME: "user", CONF_PASSWORD: "password"}
+            )
+
+        assert next_result is not None
+        assert "type" in next_result and next_result["type"] == FlowResultType.CREATE_ENTRY
+        assert "title" in next_result and next_result["title"] == TEST_CONFIG_ENTRY_DATA_URL
+
     @pytest.mark.parametrize(
         ("status_code", "error"),
         [
@@ -529,10 +594,86 @@ class Test_Integration_Tests:
         assert "step_id" in next_result and next_result["step_id"] == "api_key"
         assert "errors" in next_result and next_result["errors"] == error
 
-    async def test_async_step_options(self, hass, config_entry):
+        # Now success
+        es_aioclient_mock.clear_requests()
+        es_aioclient_mock.get(
+            TEST_CONFIG_ENTRY_DATA_URL,
+            json=CLUSTER_INFO_8DOT14_RESPONSE_BODY,
+            status=200,
+            headers={"x-elastic-product": "Elasticsearch"},
+        )
+        with mock.patch(
+            "custom_components.elasticsearch.es_gateway_8.Elasticsearch8Gateway.async_init_then_stop",
+            return_value=True,
+        ):
+            next_result: ConfigFlowResult = await elastic_flow.async_step_api_key(
+                user_input={CONF_API_KEY: "5678"}
+            )
+
+        assert next_result is not None
+        assert "type" in next_result and next_result["type"] == FlowResultType.CREATE_ENTRY
+        assert "title" in next_result and next_result["title"] == TEST_CONFIG_ENTRY_DATA_URL
+
+    @pytest.mark.parametrize(
+        ("data", "result_type", "step_id"),
+        [
+            ({CONF_URL: TEST_CONFIG_ENTRY_DATA_URL}, FlowResultType.ABORT, None),
+            ({CONF_URL: TEST_CONFIG_ENTRY_DATA_URL, CONF_API_KEY: "1234"}, FlowResultType.FORM, "api_key"),
+            (
+                {CONF_URL: TEST_CONFIG_ENTRY_DATA_URL, CONF_USERNAME: "user", CONF_PASSWORD: "password"},
+                FlowResultType.FORM,
+                "basic_auth",
+            ),
+        ],
+        ids=["no_auth", "api_key", "basic_auth"],
+    )
+    async def test_reauth_done(
+        self, hass, elastic_flow, config_entry, es_aioclient_mock, data, result_type, step_id
+    ):
+        """Test reauthorization."""
+
+        elastic_flow.hass = hass
+        elastic_flow.context = {"source": "reauth", "entry_id": config_entry.entry_id}
+
+        result: ConfigFlowResult = await elastic_flow.async_step_reauth()
+
+        assert result is not None
+        assert "type" in result and result["type"] == result_type
+        if step_id is not None:
+            assert "step_id" in result and result["step_id"] == step_id
+        else:
+            assert "step_id" not in result
+
+    async def test_reauth_missing_entry(self, hass, elastic_flow, config_entry, es_aioclient_mock):
+        """Test reauthorization."""
+
+        elastic_flow.hass = hass
+        elastic_flow.context = {"source": "reauth", "entry_id": "100"}
+
+        result: ConfigFlowResult = await elastic_flow.async_step_reauth()
+
+        assert result is not None
+        assert "type" in result and result["type"] == FlowResultType.ABORT
+
+    async def test_reauth_complete(self, hass, elastic_flow, config_entry, es_aioclient_mock):
+        """Test reauthorization results in reload."""
+
+        elastic_flow.hass = hass
+        elastic_flow.context = {"source": "reauth", "entry_id": config_entry.entry_id}
+        elastic_flow._reauth_entry = config_entry
+
+        elastic_flow.async_update_reload_and_abort = AsyncMock()
+
+        await elastic_flow.async_step_complete()
+
+        elastic_flow.async_update_reload_and_abort.assert_called_once()
+
+    async def test_async_step_options(self, hass, config_entry, elastic_flow):
         """Test user initiated step."""
 
-        options_flow = ElasticOptionsFlowHandler(config_entry)
+        options_flow = elastic_flow.async_get_options_flow(config_entry)
+        options_flow.hass = hass
+
         result: ConfigFlowResult = await options_flow.async_step_init()
 
         assert result is not None
@@ -540,10 +681,11 @@ class Test_Integration_Tests:
         assert "step_id" in result and result["step_id"] == "options"
         assert "data_schema" in result and result["data_schema"] is not None
 
-    async def test_async_step_options_done(self, hass, config_entry):
+    async def test_async_step_options_done(self, hass, config_entry, elastic_flow):
         """Test user initiated step."""
 
-        options_flow = ElasticOptionsFlowHandler(config_entry)
+        options_flow = elastic_flow.async_get_options_flow(config_entry)
+        options_flow.hass = hass
 
         await options_flow.async_step_init()
 
@@ -569,144 +711,3 @@ class Test_Integration_Tests:
             "targets_to_exclude": {},
             "targets_to_include": {},
         }
-
-    # async def test_async_stop_reauth(self, elastic_flow, config_entry):
-    #     """Test user initiated step."""
-
-    #     reuath_flow = ElasticFlowHandler()
-
-    #     await reauth_flow.async_init()
-
-    #     reauth_flow.config_entry = config_entry
-
-    #     result: ConfigFlowResult = await reauth_flow.
-
-    #     assert result is not None
-    #     assert "type" in result and result["type"] == FlowResultType.ABORT
-    #     assert "reason" in result and result["reason"] == "no_entry"
-    #     assert "step_id" in result and result["step_id"] == "reauth"
-
-    # async def async_step_reauth(self, user_input: dict | None) -> ConfigFlowResult:
-    #     """Handle reauthorization."""
-    #     entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
-    #     if entry is None:
-    #         return self.async_abort(reason="no_entry")
-
-    #     self._reauth_entry = entry
-
-    #     self._prospective_config = dict(entry.data)
-
-    #     if self._prospective_config.get(CONF_USERNAME, None) is not None:
-    #         return await self.async_step_basic_auth()
-    #     if self._prospective_config.get(CONF_API_KEY, None) is not None:
-    #         return await self.async_step_api_key()
-
-    #     return self.async_abort(reason="no_auth")
-
-    # @async_log_enter_exit_debug
-    # async def async_step_options(
-    #     self,
-    #     user_input: dict | None = None,
-    # ) -> ConfigFlowResult:
-    #     """Publish Options."""
-    #     if user_input is not None:
-    #         self.options.update(user_input)
-    #         self.hass.config_entries.async_schedule_reload(self.config_entry.entry_id)
-    #         return self.async_create_entry(title="", data=self.options)
-
-    #     return self.async_show_form(
-    #         step_id="options",
-    #         data_schema=self._build_options_schema(),
-    #     )
-
-    # @log_enter_exit_debug
-    # def _build_options_schema(self) -> vol.Schema:
-    #     """Build the options schema."""
-
-    #     from_options = self.config_entry.options.get
-
-    #     SCHEMA_PUBLISH_FREQUENCY = {
-    #         "schema": CONF_PUBLISH_FREQUENCY,
-    #         "default": from_options(CONF_PUBLISH_FREQUENCY),
-    #     }
-    #     SCHEMA_POLLING_FREQUENCY = {
-    #         "schema": CONF_POLLING_FREQUENCY,
-    #         "default": from_options(CONF_POLLING_FREQUENCY),
-    #     }
-
-    #     SCHEMA_CHANGE_DETECTION_TYPE = {
-    #         "schema": CONF_CHANGE_DETECTION_TYPE,
-    #         "default": from_options(CONF_CHANGE_DETECTION_TYPE),
-    #     }
-    #     SCHEMA_TAGS = {
-    #         "schema": CONF_TAGS,
-    #         "default": from_options(CONF_TAGS),
-    #     }
-    #     SCHEMA_INCLUDE_TARGETS = {
-    #         "schema": CONF_INCLUDE_TARGETS,
-    #         "default": from_options(CONF_INCLUDE_TARGETS),
-    #     }
-    #     SCHEMA_TARGETS_TO_INCLUDE = {
-    #         "schema": CONF_TARGETS_TO_INCLUDE,
-    #         "default": from_options(CONF_TARGETS_TO_INCLUDE),
-    #     }
-
-    #     SCHEMA_EXCLUDE_TARGETS = {
-    #         "schema": CONF_EXCLUDE_TARGETS,
-    #         "default": from_options(CONF_EXCLUDE_TARGETS),
-    #     }
-    #     SCHEMA_TARGETS_TO_EXCLUDE = {
-    #         "schema": CONF_TARGETS_TO_EXCLUDE,
-    #         "default": from_options(CONF_TARGETS_TO_EXCLUDE),
-    #     }
-
-    #     return vol.Schema(
-    #         {
-    #             vol.Optional(**SCHEMA_PUBLISH_FREQUENCY): NumberSelector(
-    #                 NumberSelectorConfig(
-    #                     min=0,
-    #                     max=600,
-    #                     step=10,
-    #                     unit_of_measurement="seconds",
-    #                 )
-    #             ),
-    #             vol.Optional(**SCHEMA_POLLING_FREQUENCY): NumberSelector(
-    #                 NumberSelectorConfig(
-    #                     min=0,
-    #                     max=3600,
-    #                     step=10,
-    #                     unit_of_measurement="seconds",
-    #                 )
-    #             ),
-    #             vol.Optional(**SCHEMA_CHANGE_DETECTION_TYPE): SelectSelector(
-    #                 SelectSelectorConfig(
-    #                     options=[
-    #                         {
-    #                             "label": "Track entities with state changes",
-    #                             "value": StateChangeType.STATE.value,
-    #                         },
-    #                         {
-    #                             "label": "Track entities with attribute changes",
-    #                             "value": StateChangeType.ATTRIBUTE.value,
-    #                         },
-    #                     ],
-    #                     multiple=True,
-    #                 )
-    #             ),
-    #             vol.Optional(**SCHEMA_TAGS): SelectSelector(
-    #                 SelectSelectorConfig(options=[], custom_value=True, multiple=True)
-    #             ),
-    #             vol.Optional(**SCHEMA_INCLUDE_TARGETS): BooleanSelector(
-    #                 BooleanSelectorConfig(),
-    #             ),
-    #             vol.Optional(**SCHEMA_TARGETS_TO_INCLUDE): TargetSelector(
-    #                 TargetSelectorConfig(),
-    #             ),
-    #             vol.Optional(**SCHEMA_EXCLUDE_TARGETS): BooleanSelector(
-    #                 BooleanSelectorConfig(),
-    #             ),
-    #             vol.Optional(**SCHEMA_TARGETS_TO_EXCLUDE): TargetSelector(
-    #                 TargetSelectorConfig(),
-    #             ),
-    #         }
-    #     )

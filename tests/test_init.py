@@ -1053,7 +1053,7 @@ class Test_Common_Failures_e2e:
     async def test_authentication_failure(
         self, hass: HomeAssistant, integration_setup, es_aioclient_mock: AiohttpClientMocker, config_entry
     ):
-        """Test the scenario where the Elasticsearch version is unsupported."""
+        """Test the scenario where we fail authentication."""
 
         es_aioclient_mock.get(
             f"{const.TEST_CONFIG_ENTRY_DATA_URL}/",
@@ -1072,7 +1072,7 @@ class Test_Common_Failures_e2e:
     async def test_connection_failure(
         self, hass: HomeAssistant, integration_setup, es_aioclient_mock: AiohttpClientMocker, config_entry
     ):
-        """Test the scenario where the Elasticsearch version is unsupported."""
+        """Test the scenario where we fail to connect to Elasticsearch."""
 
         es_aioclient_mock.get(
             f"{const.TEST_CONFIG_ENTRY_DATA_URL}/",
