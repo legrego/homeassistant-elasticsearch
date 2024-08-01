@@ -366,7 +366,6 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             self.options.update(user_input)
 
-            #if self.hass is not None:  # workaround: hass is not defined while testing
             self.hass.config_entries.async_schedule_reload(self.config_entry.entry_id)
 
             return self.async_create_entry(title="", data=self.options)

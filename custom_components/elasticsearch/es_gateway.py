@@ -6,8 +6,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import TYPE_CHECKING
-
-
 from custom_components.elasticsearch.errors import InsufficientPrivileges, UnsupportedVersion
 from custom_components.elasticsearch.const import ES_CHECK_PERMISSIONS_DATASTREAM, ELASTIC_MINIMUM_VERSION
 
@@ -57,12 +55,15 @@ class ElasticsearchGateway(ABC):
 
         self._logger: Logger = log
 
+        self._previous_ping: bool | None = None
+
     @log_enter_exit_debug
     async def async_init(self) -> None:
         """I/O bound init."""
 
         # Test the connection
         await self.info()
+        self._previous_ping = True
 
         # Minimum version check
         if not await self._is_supported_version():
@@ -108,6 +109,41 @@ class ElasticsearchGateway(ABC):
     @abstractmethod
     async def info(self) -> dict:
         """Retrieve info about the connected elasticsearch cluster."""
+
+    async def check_connection(self) -> bool:
+        """Check if the connection to the Elasticsearch cluster is working."""
+
+        previous_ping = self._previous_ping
+        new_ping = await self.ping()
+
+        # Our first connection check
+        if previous_ping is None:
+            established = new_ping
+            if established:
+                self._logger.info("Connection to Elasticsearch is established.")
+            else:
+                self._logger.error("Failed to establish connection to Elasticsearch.")
+
+            return new_ping
+
+        reestablished: bool = not previous_ping and new_ping
+        maintained = previous_ping and new_ping
+        lost: bool = previous_ping and not new_ping
+        down: bool = not previous_ping and not new_ping
+
+        if maintained:
+            self._logger.debug("Connection to Elasticsearch is still available.")
+
+        if lost:
+            self._logger.error("Connection to Elasticsearch has been lost.")
+
+        if down:
+            self._logger.debug("Connection to Elasticsearch is still down.")
+
+        if reestablished:
+            self._logger.info("Connection to Elasticsearch has been reestablished.")
+
+        return new_ping
 
     @abstractmethod
     async def ping(self) -> bool:

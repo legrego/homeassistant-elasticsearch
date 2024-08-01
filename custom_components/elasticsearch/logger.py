@@ -5,15 +5,20 @@ from collections.abc import Callable, Coroutine
 from typing import Any
 
 LOGGER = logging.getLogger("custom_components.elasticsearch")
-es_logger = logging.getLogger("elasticsearch")
-es_logger.name = "elasticsearch-library"
+es_library_logger = logging.getLogger("elasticsearch")
+es_library_logger.name = "custom_components.elasticsearch.library"
+es_transport_logger = logging.getLogger("elastic_transport")
+es_transport_logger.name = "custom_components.elasticsearch.transport"
 
 # if the logger is already set up, don't change the level
 if LOGGER.level == logging.NOTSET:
     LOGGER.setLevel(logging.INFO)
 
-if es_logger.level == logging.NOTSET:
-    es_logger.setLevel(logging.DEBUG)
+if es_library_logger.level == logging.NOTSET:
+    es_library_logger.setLevel(logging.ERROR)
+
+if es_transport_logger.level == logging.NOTSET:
+    es_transport_logger.setLevel(logging.ERROR)
 
 
 def have_child(name: str) -> logging.Logger:

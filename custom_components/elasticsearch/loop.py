@@ -84,6 +84,6 @@ class LoopHandler:
             try:
                 await self._func()
             except Exception:
-                self._log.exception("Error in loop handler: %s")
+                self._log.exception("Error in loop handler: %s", self._name)
                 self.stop()
                 raise

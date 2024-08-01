@@ -832,7 +832,11 @@ class Test_Common_e2e:
             const.TEST_CONFIG_ENTRY_DATA_URL + "/_bulk",
             status=200,
             headers={"x-elastic-product": "Elasticsearch"},
-            json={"errors": False},
+            json={
+                "took": 7,
+                "errors": False,
+                "items": [],
+            },
         )
 
         # Load the Config Entry
@@ -929,7 +933,7 @@ class Test_Common_e2e:
                 const.TEST_CONFIG_ENTRY_DATA_URL + "/_bulk",
                 status=200,
                 headers={"x-elastic-product": "Elasticsearch"},
-                json={"errors": False},
+                json={"errors": False, "items": []},
             )
 
             # Load the Config Entry

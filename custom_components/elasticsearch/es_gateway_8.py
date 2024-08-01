@@ -170,13 +170,6 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
 
         return self._settings
 
-    # @async_log_enter_exit_debug
-    # async def ping(self) -> bool:
-    #     """Ping the Elasticsearch cluster."""
-
-    #     with self._error_converter(msg=""):
-    #         return await self.client.ping()
-
     @async_log_enter_exit_debug
     async def info(self) -> dict:
         """Retrieve info about the connected elasticsearch cluster."""
@@ -188,13 +181,23 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
 
     @async_log_enter_exit_debug
     async def ping(self) -> bool:
-        """Ping the Elasticsearch cluster."""
+        """Ping the Elasticsearch cluster. Raises only on Authentication issues."""
         try:
             await self.client.info()
+
+        except AuthenticationRequired:
+            self._previous_ping = False
+
+            raise
         except:  # noqa: E722
-            self._logger.exception("Error pinging Elasticsearch")
+            self._previous_ping = False
+
+            self._logger.debug("Error pinging Elasticsearch", exc_info=True)
+
             return False
         else:
+            self._previous_ping = True
+
             return True
 
     @async_log_enter_exit_debug
@@ -246,6 +249,8 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
 
         with self._error_converter("Error performing bulk operation"):
             count = 0
+            okcount = 0
+            errcount = 0
             async for ok, result in async_streaming_bulk(
                 client=self.client,
                 actions=actions,
@@ -255,10 +260,15 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
                 count += 1
                 action, outcome = result.popitem()
                 if not ok:
+                    errcount += 1
                     self._logger.error("failed to %s document %s", action, outcome)
+                else:
+                    okcount += 1
 
-            if count > 0:
-                self._logger.info("Created %s new documents in Elasticsearch.", count)
+            if count > 0 or errcount == 0:
+                self._logger.info("Successfully published %d documents", count)
+            elif errcount > 0:
+                self._logger.error("Failed to publish %d of %d documents", errcount, count)
             else:
                 self._logger.debug("Publish skipped, no new events to publish.")
 
@@ -306,11 +316,11 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
 
         except elasticsearch8.ConnectionError as err:
             if len(err.errors) == 0:
-                msg = "Connection error connecting to Elasticsearch"
+                msg = f"Connection error connecting to Elasticsearch: {err.message}"
                 raise CannotConnect(msg) from err
 
             if not isinstance(err.errors[0], elasticsearch8.TransportError):
-                msg = "Unknown transport error connecting to Elasticsearch"
+                msg = f"Unknown transport error connecting to Elasticsearch: {err.message}"
                 raise CannotConnect(msg) from err
 
             sub_error: elasticsearch8.TransportError = err.errors[0]
@@ -324,11 +334,11 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
                 raise SSLError(msg) from err
 
             if issubclass(type(sub_error.errors[0]), client_exceptions.ServerConnectionError):
-                msg = "Server error connecting to Elasticsearch"
+                msg = f"Server error connecting to Elasticsearch: {err.message}"
                 raise ServerError(msg) from err
 
             if issubclass(type(sub_error.errors[0]), client_exceptions.ClientError):
-                msg = "Client error connecting to Elasticsearch"
+                msg = f"Client error connecting to Elasticsearch: {err.message}"
                 raise ClientError(msg) from err
 
             if isinstance(err, elasticsearch8.SSLError):
@@ -340,11 +350,11 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
 
         except elasticsearch8.TransportError as err:
             if len(err.errors) == 0:
-                msg = "Unknown transport error connecting to Elasticsearch"
+                msg = f"Unknown transport error connecting to Elasticsearch: {err.message}"
                 raise CannotConnect(msg) from err
 
             if not isinstance(err.errors[0], elasticsearch8.TransportError):
-                msg = "Unknown transport error connecting to Elasticsearch"
+                msg = f"Unknown transport error connecting to Elasticsearch: {err.message}"
                 raise CannotConnect(msg) from err
 
             sub_error: elasticsearch8.TransportError = err.errors[0]
@@ -353,7 +363,7 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
                 msg = f"Error connecting to Elasticsearch: {getattr(sub_error, "status")}"
                 raise CannotConnect(msg) from err
 
-            msg = "Unknown transport error connecting to Elasticsearch"
+            msg = f"Unknown transport error connecting to Elasticsearch: {err.message}"
             raise CannotConnect(msg) from err
 
         except elasticsearch8.ApiError as err:

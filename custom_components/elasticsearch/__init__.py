@@ -270,11 +270,11 @@ def migrate_to_version_7(data: dict, options: dict) -> tuple[dict, dict]:
     options["exclude_targets"] = False
     options["include_targets"] = False
 
-    if len(options["included_entities"]) != 0:
+    if "included_entities" in options and len(options["included_entities"]) != 0:
         options["include_targets"] = True
         options["targets_to_include"]["entity_id"] = options["included_entities"]
 
-    if len(options["excluded_entities"]) != 0:
+    if "excluded_entities" in options and len(options["excluded_entities"]) != 0:
         options["exclude_targets"] = True
         options["targets_to_exclude"]["entity_id"] = options["excluded_entities"]
 

@@ -3,5 +3,4 @@ default_config:
 logger:
   default: warning
   logs:
-    es_integration: debug
-    elasticsearch: warning
+    custom_components.elasticsearch: debug

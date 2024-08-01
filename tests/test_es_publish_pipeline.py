@@ -377,11 +377,11 @@ class Test_Manager:
                 patch.object(manager._publisher, "publish") as publisher_publish,
                 patch.object(manager._filterer, "passes_filter", side_effect=[True, False]),
             ):
-                manager._publisher._gateway.ping = AsyncMock(return_value=True)
+                manager._publisher._gateway.check_connection = AsyncMock(return_value=True)
 
                 await manager._publish()
 
-                manager._publisher._gateway.ping.assert_awaited_once()
+                manager._publisher._gateway.check_connection.assert_awaited_once()
 
                 publisher_publish.assert_called_once_with(
                     iterable={

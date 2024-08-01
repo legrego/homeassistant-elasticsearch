@@ -53,7 +53,11 @@ from custom_components.elasticsearch.entity_details import (
     ExtendedEntityDetails,
     ExtendedRegistryEntry,
 )
-from custom_components.elasticsearch.errors import IndexingError
+from custom_components.elasticsearch.errors import (
+    AuthenticationRequired,
+    ESIntegrationConnectionException,
+    IndexingError,
+)
 from custom_components.elasticsearch.logger import LOGGER as BASE_LOGGER
 from custom_components.elasticsearch.logger import log_enter_exit_debug
 from custom_components.elasticsearch.loop import LoopHandler
@@ -151,6 +155,7 @@ class Pipeline:
             self._gateway: ElasticsearchGateway = gateway
 
             self._cancel_publisher: Task | None = None
+            self._config_entry: ConfigEntry | None = None
 
             self._settings: PipelineSettings = settings
 
@@ -241,6 +246,8 @@ class Pipeline:
                 "es_filter_format_publish_task",
             )
 
+            self._config_entry = config_entry
+
         async def _sip_queue(self) -> AsyncGenerator[dict[str, Any], Any]:
             while not self._queue.empty():
                 timestamp, state, reason = self._queue.get()
@@ -255,13 +262,35 @@ class Pipeline:
 
         async def _publish(self) -> None:
             """Publish the documents to Elasticsearch."""
-            if await self._gateway.ping():
-                try:
-                    await self._publisher.publish(iterable=self._sip_queue())
-                except IndexingError:
-                    self._logger.exception("Indexing error while publishing documents.")
-                except Exception:
-                    self._logger.exception("Unknown error publishing documents.")
+            try:
+                if not await self._gateway.check_connection():
+                    self._logger.debug("Skipping publishing as connection is not available.")
+                    return
+
+                await self._publisher.publish(iterable=self._sip_queue())
+
+            except AuthenticationRequired:
+                self._logger.error("Authentication issue in publishing loop. Reloading integration.")
+                self._logger.exception("Authentication issue in publishing loop.")
+
+                if self._config_entry:
+                    self._hass.config_entries.async_schedule_reload(self._config_entry.entry_id)
+
+                raise
+
+            except IndexingError:
+                self._logger.exception("Indexing error while publishing documents.")
+
+                raise
+
+            except ESIntegrationConnectionException:
+                self._logger.debug("Connection error while publishing documents.", exc_info=True)
+                raise
+
+            except Exception:
+                self._logger.exception("Unknown error publishing documents.")
+
+                raise
 
         @log_enter_exit_debug
         def stop(self) -> None:
@@ -445,6 +474,7 @@ class Pipeline:
             """Stop the listener."""
             if self._cancel_listener:
                 self._cancel_listener()
+                self._cancel_listener = None
 
         def __del__(self) -> None:
             """Clean up the listener."""

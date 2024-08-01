@@ -80,8 +80,9 @@ class ElasticIntegration:
             await self._datastream_manager.async_init()
             await self._pipeline_manager.async_init(config_entry=self._config_entry)
 
-        except ESIntegrationException:
-            self._logger.exception("Error initializing integration")
+        except ESIntegrationException as err:
+            self._logger.error("Error initializing integration: %s", err)
+            self._logger.debug("Error initializing integration", exc_info=True)
             await self.async_shutdown()
 
             raise

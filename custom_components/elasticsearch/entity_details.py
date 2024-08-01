@@ -134,7 +134,7 @@ class ExtendedRegistryEntry:
             return ExtendedDeviceEntry(self._hass, device_id=self._entity.device_id)
         except ValueError:
             msg = f"Device not found for entity: {self._entity.entity_id} device: {self._entity.device_id}"
-            self._logger.exception(msg)
+            self._logger.debug(msg, exc_info=True)
             return None
 
     @property
