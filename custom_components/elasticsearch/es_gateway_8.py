@@ -183,10 +183,12 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
     async def ping(self) -> bool:
         """Ping the Elasticsearch cluster. Raises only on Authentication issues."""
         try:
-            await self.client.info()
+            await self.info()
 
         except AuthenticationRequired:
             self._previous_ping = False
+
+            self._logger.debug("Authentication error pinging Elasticsearch", exc_info=True)
 
             raise
         except:  # noqa: E722
@@ -265,10 +267,11 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
                 else:
                     okcount += 1
 
-            if count > 0 or errcount == 0:
-                self._logger.info("Successfully published %d documents", count)
-            elif errcount > 0:
-                self._logger.error("Failed to publish %d of %d documents", errcount, count)
+            if count > 0:
+                if errcount == 0:
+                    self._logger.info("Successfully published %d documents", okcount)
+                elif errcount > 0:
+                    self._logger.error("Failed to publish %d of %d documents", errcount, count)
             else:
                 self._logger.debug("Publish skipped, no new events to publish.")
 
@@ -290,6 +293,24 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
     @contextmanager
     def _error_converter(self, msg: str | None = None):
         """Convert an internal error from the elasticsearch package into one of our own."""
+
+        def append_root_cause(err: elasticsearch8.ApiError, msg: str) -> str:
+            """Append the root cause to the error message."""
+            if not err.info:
+                return msg
+
+            root_cause = err.info.get("error", {}).get("root_cause", [])
+            if not root_cause:
+                return msg
+
+            cause = root_cause[0]
+
+            # Append the values of all of the keys under cause except for `header` as it contains auth info
+            general = msg
+            specifics = "; ".join(f"{k}={v}" for k, v in cause.items() if k != "header")
+
+            return f"{general} ({specifics})"
+
         try:
             yield
 
@@ -304,11 +325,11 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
 
         except elasticsearch8.AuthenticationException as err:
             msg = "Authentication error connecting to Elasticsearch"
-            raise AuthenticationRequired(msg) from err
+            raise AuthenticationRequired(append_root_cause(err, msg)) from err
 
         except elasticsearch8.AuthorizationException as err:
             msg = "Authorization error connecting to Elasticsearch"
-            raise InsufficientPrivileges(msg) from err
+            raise InsufficientPrivileges(append_root_cause(err, msg)) from err
 
         except elasticsearch8.ConnectionTimeout as err:
             msg = "Connection timeout connecting to Elasticsearch"
@@ -370,7 +391,7 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
             msg = "Unknown API Error connecting to Elasticsearch"
             if hasattr(err, "status_code"):
                 msg = f"Error connecting to Elasticsearch: {err.status_code}"
-            raise CannotConnect(msg) from err
+            raise CannotConnect(append_root_cause(err, msg)) from err
 
         except Exception:
             BASE_LOGGER.exception("Unknown and unexpected exception occurred.")

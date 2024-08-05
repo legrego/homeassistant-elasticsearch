@@ -270,8 +270,9 @@ class Pipeline:
                 await self._publisher.publish(iterable=self._sip_queue())
 
             except AuthenticationRequired:
-                self._logger.error("Authentication issue in publishing loop. Reloading integration.")
-                self._logger.exception("Authentication issue in publishing loop.")
+                msg = "Authentication issue in publishing loop. Reloading integration."
+                self._logger.error(msg)
+                self._logger.debug(msg, exc_info=True)
 
                 if self._config_entry:
                     self._hass.config_entries.async_schedule_reload(self._config_entry.entry_id)
@@ -279,18 +280,19 @@ class Pipeline:
                 raise
 
             except IndexingError:
-                self._logger.exception("Indexing error while publishing documents.")
-
-                raise
+                msg = "Indexing error in publishing loop."
+                self._logger.debug(msg, exc_info=True)
+                self._logger.error(msg)
 
             except ESIntegrationConnectionException:
-                self._logger.debug("Connection error while publishing documents.", exc_info=True)
-                raise
+                msg = "Connection error in publishing loop. Reloading integration."
+                self._logger.debug(msg, exc_info=True)
+                self._logger.error(msg)
 
             except Exception:
-                self._logger.exception("Unknown error publishing documents.")
-
-                raise
+                msg = "Unknown error while publishing documents."
+                self._logger.debug(msg, exc_info=True)
+                self._logger.error(msg)
 
         @log_enter_exit_debug
         def stop(self) -> None:

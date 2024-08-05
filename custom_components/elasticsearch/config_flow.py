@@ -52,6 +52,7 @@ from custom_components.elasticsearch.errors import (
 )
 from custom_components.elasticsearch.es_gateway_8 import Elasticsearch8Gateway
 
+from .logger import LOGGER as BASE_LOGGER
 from .logger import (
     async_log_enter_exit_debug,
     async_log_enter_exit_info,
@@ -102,6 +103,10 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
         We will gather the url of the elasticsearch cluster and the desired authentication method.
         """
+
+        if errors is not None:
+            BASE_LOGGER.debug("async_step_user errors: %s", errors)
+
         if user_input is not None:
             # If the URL has an https schema, test the connection and see if we get an untrusted certificate error
             prospective_settings: dict = {CONF_URL: user_input.get(CONF_URL)}
@@ -112,8 +117,9 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
             except UntrustedCertificate:
                 return await self.async_step_certificate_issues()
-            except CannotConnect as err:
-                return await self.async_step_user(errors={"base": f"cannot_connect {err}"})
+            except CannotConnect:
+                BASE_LOGGER.debug("Cannot connect", exc_info=True)
+                return await self.async_step_user(errors={CONF_URL: "cannot_connect"})
             except AuthenticationRequired:
                 return await self.async_step_authentication_issues()
 
@@ -139,6 +145,9 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
     ) -> ConfigFlowResult:
         """Check to see if we need to ask the user for more specific SSL settings."""
 
+        if errors is not None:
+            BASE_LOGGER.debug("async_step_certificate_issues errors: %s", errors)
+
         if user_input is not None:
             try:
                 await Elasticsearch8Gateway.async_init_then_stop(
@@ -154,10 +163,12 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                 return self.async_step_complete()
 
             except UntrustedCertificate:
+                BASE_LOGGER.debug("Certificate issue", exc_info=True)
                 return await self.async_step_certificate_issues(errors={"base": "untrusted_certificate"})
 
-            except CannotConnect as err:
-                return await self.async_step_user(errors={"base": f"cannot_connect {err}"})
+            except CannotConnect:
+                BASE_LOGGER.debug("Cannot connect", exc_info=True)
+                return await self.async_step_user(errors={"base": "cannot_connect"})
 
             except AuthenticationRequired:
                 self._prospective_config.update(user_input)
@@ -215,6 +226,9 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
     ) -> ConfigFlowResult:
         """Prompt the user for the settings required to use Basic Authentication against the Elasticsearch cluster."""
 
+        if errors is not None:
+            BASE_LOGGER.debug("async_step_basic_auth errors: %s", errors)
+
         if user_input is not None:
             try:
                 await Elasticsearch8Gateway.async_init_then_stop(
@@ -226,8 +240,10 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                     ca_certs=self._prospective_config.get(CONF_SSL_CA_PATH),
                 )
             except InsufficientPrivileges:
+                BASE_LOGGER.debug("Insufficient Privileges", exc_info=True)
                 return await self.async_step_basic_auth(errors={"base": "insufficient_privileges"})
             except AuthenticationRequired:
+                BASE_LOGGER.debug("Invalid basic authentication", exc_info=True)
                 return await self.async_step_basic_auth(errors={"base": "invalid_basic_auth"})
 
             # We are authenticated, update settings and complete flow
@@ -259,6 +275,9 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
     ) -> ConfigFlowResult:
         """Prompt the user for the settings required to use API Key Authentication against the Elasticsearch cluster."""
 
+        if errors is not None:
+            BASE_LOGGER.debug("async_step_api_key errors: %s", errors)
+
         if user_input is not None:
             try:
                 await Elasticsearch8Gateway.async_init_then_stop(
@@ -269,9 +288,11 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                     ca_certs=self._prospective_config.get(CONF_SSL_CA_PATH),
                 )
             except InsufficientPrivileges:
-                return await self.async_step_api_key(errors={"base": "insufficient_privileges"})
+                BASE_LOGGER.debug("Insufficient Privileges", exc_info=True)
+                return await self.async_step_api_key(errors={CONF_API_KEY: "insufficient_privileges"})
             except AuthenticationRequired:
-                return await self.async_step_api_key(errors={"base": "invalid_api_key"})
+                BASE_LOGGER.debug("Invalid API Key", exc_info=True)
+                return await self.async_step_api_key(errors={CONF_API_KEY: "invalid_api_key"})
 
             # We are authenticated, update settings and complete flow
             self._prospective_config.update(user_input)
