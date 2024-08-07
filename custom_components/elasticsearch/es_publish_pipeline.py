@@ -282,8 +282,6 @@ class Pipeline:
                 if self._config_entry:
                     self._hass.config_entries.async_schedule_reload(self._config_entry.entry_id)
 
-                raise
-
             except IndexingError:
                 msg = "Indexing error in publishing loop."
                 self._logger.debug(msg, exc_info=True)
@@ -294,7 +292,7 @@ class Pipeline:
                 self._logger.debug(msg, exc_info=True)
                 self._logger.error(msg)
 
-            except Exception:
+            except Exception:  # noqa: BLE001
                 msg = "Unknown error while publishing documents."
                 self._logger.debug(msg, exc_info=True)
                 self._logger.error(msg)
