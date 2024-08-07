@@ -89,6 +89,7 @@ class PipelineSettings:
         self,
         include_targets: bool,
         exclude_targets: bool,
+        debug_filter: bool,
         included_areas: list[str],
         excluded_areas: list[str],
         included_labels: list[str],
@@ -107,6 +108,7 @@ class PipelineSettings:
         self.polling_frequency: int = polling_frequency
         self.change_detection_type: list[StateChangeType] = change_detection_type
         self.tags: list[str] = tags
+        self.debug_filter: bool = debug_filter
         self.include_targets: bool = include_targets
         self.exclude_targets: bool = exclude_targets
         self.included_labels: list[str] = included_labels
@@ -125,6 +127,7 @@ class PipelineSettings:
             CONF_POLLING_FREQUENCY: self.polling_frequency,
             CONF_CHANGE_DETECTION_TYPE: [i.value for i in self.change_detection_type],
             CONF_TAGS: self.tags,
+            "debug_filter": self.debug_filter,
             "included_areas": self.included_areas,
             "excluded_areas": self.excluded_areas,
             "included_labels": self.included_labels,
@@ -189,7 +192,9 @@ class Pipeline:
                 log=self._logger,
                 settings=settings,
             )
-            self._formatter: Pipeline.Formatter = Pipeline.Formatter(hass=self._hass, log=self._logger)
+            self._formatter: Pipeline.Formatter = Pipeline.Formatter(
+                hass=self._hass, settings=self._settings, log=self._logger
+            )
             self._publisher: Pipeline.Publisher = Pipeline.Publisher(
                 hass=self._hass,
                 settings=self._settings,
@@ -322,6 +327,8 @@ class Pipeline:
 
             self._include_targets: bool = settings.include_targets
             self._exclude_targets: bool = settings.exclude_targets
+
+            self._debug_filter: bool = settings.debug_filter
 
             self._included_areas: list[str] = settings.included_areas
             self._excluded_areas: list[str] = settings.excluded_areas
@@ -546,10 +553,15 @@ class Pipeline:
     class Formatter:
         """Formats state changes into documents."""
 
-        def __init__(self, hass: HomeAssistant, log: Logger = BASE_LOGGER) -> None:
+        def __init__(
+            self, hass: HomeAssistant, settings: PipelineSettings, log: Logger = BASE_LOGGER
+        ) -> None:
             """Initialize the formatter."""
             self._logger = log if log else BASE_LOGGER
             self._static_fields: dict[str, Any] = {}
+
+            self._debug_filter: bool = settings.debug_filter
+
             self._extended_entity_details = ExtendedEntityDetails(hass, self._logger)
 
         @log_enter_exit_debug
@@ -618,6 +630,12 @@ class Pipeline:
 
             for key, value in state.attributes.items():
                 if not self.filter_attribute(state.entity_id, key, value):
+                    if self._debug_filter:
+                        self._logger.debug(
+                            "Attribute [%s] failed filter for entity [%s].",
+                            key,
+                            state.entity_id,
+                        )
                     continue
 
                 new_key = self.normalize_attribute_name(key)
@@ -706,7 +724,9 @@ class Pipeline:
                 msg = f"Attribute {key} is whitespace or empty. It has value {value} from entity {entity_id}."
 
             if msg is not None:
-                self._logger.debug(msg)
+                if self._debug_filter:
+                    self._logger.debug(msg)
+
                 return False
 
             return True

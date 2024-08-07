@@ -33,6 +33,7 @@ def settings():
         publish_frequency=60,
         change_detection_type=[],
         tags=[],
+        debug_filter=True,
         include_targets=False,
         exclude_targets=False,
         included_areas=[],
@@ -732,9 +733,9 @@ class Test_Formatter:
     """Test the Pipeline.Formatter class."""
 
     @pytest.fixture
-    def formatter(self, hass: HomeAssistant) -> Pipeline.Formatter:
+    def formatter(self, hass: HomeAssistant, settings: PipelineSettings) -> Pipeline.Formatter:
         """Return a Formatter instance."""
-        return Pipeline.Formatter(hass)
+        return Pipeline.Formatter(hass, settings)
 
     class Test_Unit_Tests:
         """Run the unit tests of the Formatter class."""

@@ -215,8 +215,13 @@ class Test_Public_Methods:
     @pytest.mark.parametrize(
         ("exception", "step_id", "result_type", "error"),
         [
-            (InsufficientPrivileges, "basic_auth", FlowResultType.FORM, {"base": "insufficient_privileges"}),
-            (AuthenticationRequired, "basic_auth", FlowResultType.FORM, {"base": "invalid_basic_auth"}),
+            (
+                InsufficientPrivileges,
+                "basic_auth",
+                FlowResultType.FORM,
+                {"basic_auth": "insufficient_privileges"},
+            ),
+            (AuthenticationRequired, "basic_auth", FlowResultType.FORM, {"basic_auth": "invalid_basic_auth"}),
         ],
     )
     async def test_step_basic_auth(
@@ -244,8 +249,8 @@ class Test_Public_Methods:
     @pytest.mark.parametrize(
         ("exception", "step_id", "result_type", "error"),
         [
-            (InsufficientPrivileges, "api_key", FlowResultType.FORM, {"base": "insufficient_privileges"}),
-            (AuthenticationRequired, "api_key", FlowResultType.FORM, {"base": "invalid_api_key"}),
+            (InsufficientPrivileges, "api_key", FlowResultType.FORM, {"api_key": "insufficient_privileges"}),
+            (AuthenticationRequired, "api_key", FlowResultType.FORM, {"api_key": "invalid_api_key"}),
         ],
     )
     async def test_step_api_key(
@@ -409,7 +414,7 @@ class Test_Integration_Tests:
 
         assert result is not None
         assert "type" in result and result["type"] == FlowResultType.FORM
-        assert "errors" in result and result["errors"] == {"base": "cannot_connect specific error"}
+        assert "errors" in result and result["errors"] == {"base": "cannot_connect"}
         assert "step_id" in result and result["step_id"] == "user"
 
     async def test_user_untrusted_cert_done(self, hass, elastic_flow, es_aioclient_mock):
@@ -513,8 +518,8 @@ class Test_Integration_Tests:
     @pytest.mark.parametrize(
         ("status_code", "error"),
         [
-            (401, {"base": "invalid_basic_auth"}),
-            (403, {"base": "insufficient_privileges"}),
+            (401, {"basic_auth": "invalid_basic_auth"}),
+            (403, {"basic_auth": "insufficient_privileges"}),
         ],
         ids=["401 = invalid_basic_auth", "403 = insufficient_privileges"],
     )
@@ -566,10 +571,10 @@ class Test_Integration_Tests:
     @pytest.mark.parametrize(
         ("status_code", "error"),
         [
-            (401, {"base": "invalid_api_key"}),
-            (403, {"base": "insufficient_privileges"}),
+            (401, {"api_key": "invalid_api_key"}),
+            (403, {"api_key": "insufficient_privileges"}),
         ],
-        ids=["401 = invalid_api_key", "403 = insufficient_privileges"],
+        ids=["401 = invalid basic auth", "403 = insufficient_privileges"],
     )
     async def test_api_api_done(self, elastic_flow, status_code, error, es_aioclient_mock):
         """Test user initiated step."""

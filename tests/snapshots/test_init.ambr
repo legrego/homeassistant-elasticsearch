@@ -36,6 +36,7 @@
       'STATE',
       'ATTRIBUTE',
     ]),
+    debug_filter=False,
     exclude_targets=True,
     excluded_areas=list([
       'exclude_bedroom',

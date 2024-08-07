@@ -2774,6 +2774,7 @@
     'settings': dict({
       'change_detection_type': list([
       ]),
+      'debug_filter': True,
       'excluded_areas': list([
       ]),
       'excluded_devices': list([

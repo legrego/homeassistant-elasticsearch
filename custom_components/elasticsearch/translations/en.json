@@ -4,12 +4,12 @@
             "reauth_successful": "Re-authentication was successful"
         },
         "error": {
-            "cannot_connect": "Failed to connect",
+            "cannot_connect": "Failed to connect to host on port. Is it reachable?",
             "invalid_basic_auth": "Invalid username or password.",
             "invalid_api_key": "Invalid API Key.",
             "insufficient_privileges": "Insufficient privileges for specified user.",
             "missing_credentials": "This cluster requires authentication. Please provide a username and password.",
-            "untrusted_connection": "Elasticsearch's server certificate could not be verified. Either disable TLS verification, or specify a custom CA path below.",
+            "untrusted_certificate": "Elasticsearch's server certificate could not be verified. Either disable TLS verification, or specify a custom CA path below.",
             "unsupported_version": "Unsupported version of Elasticsearch detected. The minimum supported version is 7.11.0."
         },
         "step": {
