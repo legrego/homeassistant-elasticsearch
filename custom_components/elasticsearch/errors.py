@@ -1,72 +1,47 @@
 """Errors for the Elastic component."""
+
 from homeassistant.exceptions import HomeAssistantError
 
 
-class ElasticException(HomeAssistantError):
+class ESIntegrationException(HomeAssistantError):  # noqa: N818
     """Base class for Elastic exceptions."""
 
 
-class AlreadyConfigured(ElasticException):
-    """Cluster is already configured."""
+class IndexingError(ESIntegrationException):
+    """Error indexing data."""
 
 
-class AuthenticationRequired(ElasticException):
+class ESIntegrationConnectionException(ESIntegrationException):
+    """Base class for Elasticsearch exceptions."""
+
+
+class AuthenticationRequired(ESIntegrationConnectionException):
     """Cluster requires authentication."""
 
 
-class InsufficientPrivileges(ElasticException):
+class InsufficientPrivileges(AuthenticationRequired):
     """Credentials are lacking the required privileges."""
 
 
-class CannotConnect(ElasticException):
+class CannotConnect(ESIntegrationConnectionException):
     """Unable to connect to the cluster."""
 
 
-class ClientError(ElasticException):
-    """Connected with a Client Error."""
+class ServerError(CannotConnect):
+    """Server Error."""
 
 
-class UntrustedCertificate(ElasticException):
-    """Connected with untrusted certificate."""
+class ClientError(CannotConnect):
+    """Client Error."""
 
 
-class UnsupportedVersion(ElasticException):
+class SSLError(CannotConnect):
+    """Error related to SSL."""
+
+
+class UntrustedCertificate(SSLError):
+    """Received a untrusted certificate error."""
+
+
+class UnsupportedVersion(ESIntegrationConnectionException):
     """Connected to an unsupported version of Elasticsearch."""
-
-
-def convert_es_error(msg, err):
-    """Convert an internal error from the elasticsearch package into one of our own."""
-    import aiohttp
-    from elasticsearch7 import (
-        AuthenticationException,
-        AuthorizationException,
-        ElasticsearchException,
-        SSLError,
-    )
-    from elasticsearch7 import (
-        ConnectionError as ESConnectionError,
-    )
-
-    if isinstance(err, SSLError):
-          return UntrustedCertificate(msg, err)
-
-    if isinstance(err, ESConnectionError):
-        if isinstance(
-            err.info, aiohttp.client_exceptions.ClientConnectorCertificateError
-        ):
-            return UntrustedCertificate(msg, err)
-
-        if isinstance(err.info, aiohttp.client_exceptions.ClientConnectorError):
-            return ClientError(msg, err)
-        return CannotConnect(msg, err)
-
-    if isinstance(err, AuthenticationException):
-         return AuthenticationRequired(msg, err)
-
-    if isinstance(err, AuthorizationException):
-         return InsufficientPrivileges(msg, err)
-
-    if isinstance(err, ElasticsearchException):
-        return ElasticException(msg, err)
-
-    return err

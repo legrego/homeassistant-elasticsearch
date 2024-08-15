@@ -6,7 +6,7 @@ pytestdebug.log
 */build/*
 */dist/*
 site/*
-
+es_env
 
 # misc
 .cache
@@ -15,10 +15,11 @@ site/*
 .venv
 .vscode/*
 !.vscode/launch.json
+!.vscode/settings.json
 !.vscode/tasks.json
 coverage.xml
 test_results/*
-
+*.creds
 
 # Home Assistant configuration
 config/*

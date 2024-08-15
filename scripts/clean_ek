@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 echo "Performing Environment Clean-up"
+dir=$(dirname "$0")
 
 containers=("kb01" "es01")
 
@@ -22,3 +23,7 @@ if [ -n "$networks" ]; then
   echo "- Removing network $(echo "$networks" | tr -d '\n')"
   docker network rm elastic >/dev/null
 fi
+
+echo "- Clearing cached credentials in es_env"
+
+rm -rf "$dir/../es_env"

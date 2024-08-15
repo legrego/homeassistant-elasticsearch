@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+# This script is used to create a homeassistant-metrics dataview in Kibana
+
+
+kburl=$1
+kbusername=$2
+kbpassword=$3
+
+# set payload equal to:
+# curl -X POST api/data_views/data_view
+# {
+#   "data_view": {
+#     "title": "homeassistant-metrics.*",
+#     "name": "Homeassistant Metrics",
+#     "timeFieldName": "@timestamp",
+#   }
+# }
+
+# Create the JSON payload for Dataview creation
+payload=$(echo -n "{\"data_view\":{\"title\":\"metrics-homeassistant.*\",\"allowNoIndex\":true,\"timeFieldName\":\"@timestamp\",\"name\":\"Homeassistant Metrics\"}}")
+
+# Send the payload to Kibana using curl
+curl -k "$kburl/api/data_views/data_view" -X POST -u "$kbusername:$kbpassword" -H "kbn-xsrf: true" -H "Content-Type: application/json" -d "$payload"

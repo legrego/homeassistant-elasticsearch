@@ -1,196 +1,404 @@
+# type: ignore  # noqa: PGH003
 """Test Entity Details."""
 
 import pytest
-from homeassistant.components.counter import DOMAIN as COUNTER_DOMAIN
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers import (
-    area_registry,
-    device_registry,
-    entity_registry,
-    floor_registry,
-    label_registry,
-)
-from homeassistant.setup import async_setup_component
-from pytest_homeassistant_custom_component.common import MockConfigEntry
-
+from custom_components.elasticsearch.const import CONST_ENTITY_DETAILS_TO_ES_DOCUMENT_KEYS as KEYS_TO_KEEP
 from custom_components.elasticsearch.entity_details import (
-    EntityDetails,
-    FullEntityDetails,
+    ExtendedDeviceEntry,
+    ExtendedRegistryEntry,
 )
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.area_registry import AreaEntry
+from homeassistant.helpers.device_registry import DeviceEntry, DeviceRegistry
+from homeassistant.helpers.floor_registry import FloorEntry
+
+from tests import const
+
+# Helper functions for the snapshot
 
 
-@pytest.mark.asyncio
-async def test_missing_entity(hass: HomeAssistant):
-    """Verify missing entity returns None."""
-    instance = EntityDetails(hass)
-
-    assert instance.async_get("unknown_entity_id") is None
-
-
-@pytest.mark.asyncio
-async def test_entity_without_device(hass: HomeAssistant):
-    """Entity without device returns details."""
-    config = {COUNTER_DOMAIN: {"test_1": {}}}
-    assert await async_setup_component(hass, COUNTER_DOMAIN, config)
-    await hass.async_block_till_done()
-    entity_id = "counter.test_1"
-
-    state = hass.states.get(entity_id)
-    assert int(state.state) == 0
-
-    instance = EntityDetails(hass)
-
-    deets = instance.async_get(entity_id)
-    assert isinstance(deets, FullEntityDetails) is True
-
-    assert deets.entity.entity_id == entity_id
-    assert deets.entity.domain == COUNTER_DOMAIN
-    assert deets.entity_area is None
-    assert deets.device is None
-    assert deets.device_area is None
+def trim_entity_dict(entity_dict):
+    """Trim the entity dict to only the keys we care about."""
+    if entity_dict is None:
+        return None
+    return {
+        "entity_id": entity_dict.get("entity_id", None),
+        "area_id": entity_dict.get("area", {}).get("id", None),
+        "floor_name": entity_dict.get("floor", {}).get("name", None),
+        "labels": entity_dict.get("labels", None),
+    }
 
 
-@pytest.mark.asyncio
-async def test_entity_with_area(hass: HomeAssistant):
-    """Entity without device returns details."""
-    area = area_registry.async_get(hass).async_create("mock")
-
-    config = {COUNTER_DOMAIN: {"test_1": {}}}
-    assert await async_setup_component(hass, COUNTER_DOMAIN, config)
-    entity_id = "counter.test_1"
-    entity_registry.async_get(hass).async_update_entity(entity_id, area_id=area.id)
-
-    state = hass.states.get(entity_id)
-    assert int(state.state) == 0
-
-    instance = EntityDetails(hass)
-
-    deets = instance.async_get(entity_id)
-    assert isinstance(deets, FullEntityDetails) is True
-
-    assert deets.entity.entity_id == entity_id
-    assert deets.entity.domain == COUNTER_DOMAIN
-    assert isinstance(deets.entity_area, area_registry.AreaEntry) is True
-    assert deets.entity_area.id == area.id
-    assert deets.entity_area.name == area.name
-
-    assert deets.device is None
-    assert deets.device_area is None
+def trim_device_dict(device_dict):
+    """Trim the device dict to only the keys we care about."""
+    if device_dict is None:
+        return None
+    return {
+        "name": device_dict.get("name", None),
+        "area_id": device_dict.get("area", {}).get("id", None),
+        "floor_name": device_dict.get("floor", {}).get("name", None),
+        "labels": device_dict.get("labels", None),
+    }
 
 
-@pytest.mark.asyncio
-async def test_entity_with_device(
-    hass: HomeAssistant, mock_config_entry: MockConfigEntry
-):
-    """Entity with device returns details."""
-    entity_area = area_registry.async_get(hass).async_create("entity area")
-    device_area = area_registry.async_get(hass).async_create("device area")
+class Test_ExtendedRegistryEntry:
+    """Test the ExtendedRegistryEntry class."""
 
-    dr = device_registry.async_get(hass)
-    entry = dr.async_get_or_create(
-        config_entry_id=mock_config_entry.entry_id,
-        connections={(device_registry.CONNECTION_NETWORK_MAC, "12:34:56:AB:CD:EF")},
-        identifiers={("bridgeid", "0123")},
-        sw_version="sw-version",
-        name="name",
-        manufacturer="manufacturer",
-        model="model",
-        suggested_area="device area",
+    @pytest.fixture
+    def extended_registry_entry(
+        self,
+        hass,
+        entity,
+        entity_object_id,  # These are used by the parametrize decorator
+        entity_area_name,
+        entity_floor_name,
+        entity_labels,
+    ):
+        """Create an ExtendedRegistryEntry instance."""
+        entry = ExtendedRegistryEntry(hass, entity)
+
+        assert entry.entity is not None
+        assert entry.entity.id == entity.id
+
+        return entry
+
+    async def test_init(self, hass: HomeAssistant, entity):
+        """Test the init method."""
+        new_entry = ExtendedRegistryEntry(hass, entity)
+
+        assert new_entry is not None
+        assert new_entry.entity is not None
+        assert new_entry.entity.entity_id == entity.entity_id
+
+        new_entry = ExtendedRegistryEntry(hass=hass, entity_id=entity.entity_id)
+
+        assert new_entry is not None
+        assert new_entry.entity is not None
+        assert new_entry.entity.entity_id == entity.entity_id
+
+    async def test_init_failures(self, hass: HomeAssistant):
+        """Test the init method."""
+        with pytest.raises(ValueError):
+            ExtendedRegistryEntry(hass=hass, entity=None, entity_id=None)
+
+        with pytest.raises(ValueError):
+            ExtendedRegistryEntry(hass=hass, entity=None, entity_id="nonexistent_entity_id")
+
+    async def test_area_property(
+        self,
+        entity_area: AreaEntry,
+        extended_registry_entry: ExtendedRegistryEntry,
+    ):
+        """Test the area property getter."""
+        assert hasattr(extended_registry_entry, "area")
+        assert extended_registry_entry.area is not None
+        assert extended_registry_entry.area == entity_area
+        assert extended_registry_entry.area.name == const.TEST_ENTITY_AREA_NAME
+
+    @pytest.mark.parametrize(
+        "entity_area_name",
+        [None],
+        ids=["passthrough"],
     )
+    async def test_entity_area_property_from_device(
+        self,
+        entity_area_name,
+        entity,
+        device_area_name,
+        device,
+        extended_registry_entry: ExtendedRegistryEntry,
+    ):
+        """Test the area property getter."""
+        assert hasattr(extended_registry_entry, "area")
+        assert extended_registry_entry.area is not None
+        assert extended_registry_entry.area.name == const.TEST_DEVICE_AREA_NAME
 
-    config = {COUNTER_DOMAIN: {"test_1": {}}}
-    assert await async_setup_component(hass, COUNTER_DOMAIN, config)
-    entity_id = "counter.test_1"
-    entity_registry.async_get(hass).async_update_entity(
-        entity_id, area_id=entity_area.id, device_id=entry.id
+    async def test_device_property(
+        self,
+        device: DeviceEntry,
+        extended_registry_entry: ExtendedRegistryEntry,
+    ):
+        """Test the device property getter."""
+        assert hasattr(extended_registry_entry, "device")
+        assert extended_registry_entry.device is not None
+
+        extended_device_entry = extended_registry_entry.device
+
+        assert extended_device_entry._device == device
+
+    async def test_device_property_deleted(
+        self,
+        hass: HomeAssistant,
+        device: DeviceEntry,
+        extended_registry_entry: ExtendedRegistryEntry,
+        device_registry: DeviceRegistry,
+    ):
+        """Test the device property getter fails if the device_id on the entity doesnt exist."""
+
+        # Remove the device from the registry
+        device_registry.async_remove_device(device_id=device.id)
+
+        assert hasattr(extended_registry_entry, "device")
+
+        assert extended_registry_entry.device is None
+
+    @pytest.mark.parametrize(
+        "attach_device",
+        [False],
+        ids=["entity_with_no_device"],
     )
+    async def test_device_property_not_attached(
+        self,
+        extended_registry_entry: ExtendedRegistryEntry,
+        attach_device,
+    ):
+        """Test the device property getter fails if there is no device attached for this entity id."""
 
-    state = hass.states.get(entity_id)
-    assert int(state.state) == 0
+        assert hasattr(extended_registry_entry, "device")
 
-    instance = EntityDetails(hass)
+        assert extended_registry_entry.device is None
 
-    deets = instance.async_get(entity_id)
-    assert isinstance(deets, FullEntityDetails) is True
+    async def test_labels_property(
+        self,
+        entity_labels: list,
+        extended_registry_entry: ExtendedRegistryEntry,
+    ):
+        """Test the labels property getter."""
+        assert hasattr(extended_registry_entry, "labels")
+        assert extended_registry_entry.labels is not None
 
-    assert deets.entity.entity_id == entity_id
-    assert deets.entity.domain == COUNTER_DOMAIN
-    assert isinstance(deets.entity_area, area_registry.AreaEntry) is True
-    assert deets.entity_area.id == entity_area.id
-    assert deets.entity_area.name == entity_area.name
+        # Verify our labels are not out of order
+        assert extended_registry_entry.labels == sorted(entity_labels)
+        assert sorted(extended_registry_entry.labels) == extended_registry_entry.labels
 
-    assert isinstance(deets.device, device_registry.DeviceEntry) is True
-    assert isinstance(deets.device_area, area_registry.AreaEntry) is True
-    assert deets.device.id == entry.id
-    assert deets.device.name == entry.name
-    assert deets.device_area.id == device_area.id
-    assert deets.device_area.name == device_area.name
+        assert extended_registry_entry.labels == const.TEST_ENTITY_LABELS
 
+    async def test_floor_property(
+        self,
+        entity_floor: FloorEntry,
+        extended_registry_entry: ExtendedRegistryEntry,
+    ):
+        """Test the floor property getter."""
+        # Make sure the area is also present
+        assert hasattr(extended_registry_entry, "floor")
+        assert extended_registry_entry.floor is not None
+        assert extended_registry_entry.floor == entity_floor
+        assert extended_registry_entry.floor.name == const.TEST_ENTITY_FLOOR_NAME
 
-@pytest.mark.asyncio
-async def test_entity_with_floor_and_labels(
-    hass: HomeAssistant, mock_config_entry: MockConfigEntry
-):
-    """Entity with device returns details."""
-    device_floor = floor_registry.async_get(hass).async_create("device floor")
-    entity_floor = floor_registry.async_get(hass).async_create("entity_floor")
+    async def test_to_dict(
+        self,
+        extended_registry_entry: ExtendedRegistryEntry,
+        snapshot,
+    ):
+        """Test the to_dict method."""
 
-    entity_area = area_registry.async_get(hass).async_create(
-        "entity area", floor_id=entity_floor.floor_id
+        assert extended_registry_entry.to_dict() is not None
+
+        assert trim_entity_dict(extended_registry_entry.to_dict()) == snapshot
+
+    async def test_to_flattened_dict(
+        self,
+        extended_registry_entry: ExtendedRegistryEntry,
+        entity_area_name,
+        device_area_name,
+        snapshot,
+    ):
+        """Test to_dict with flatten and keep_keys method."""
+
+        flattened = extended_registry_entry.to_dict(flatten=True, keep_keys=KEYS_TO_KEEP)
+
+        assert flattened is not None
+
+        assert flattened == snapshot
+
+    @pytest.mark.parametrize(
+        const.TEST_DEVICE_COMBINATION_FIELD_NAMES,
+        const.TEST_DEVICE_COMBINATIONS,
+        ids=const.TEST_DEVICE_COMBINATION_IDS,
     )
-    device_area = area_registry.async_get(hass).async_create(
-        "device area", floor_id=device_floor.floor_id
+    @pytest.mark.parametrize(
+        const.TEST_ENTITY_COMBINATION_FIELD_NAMES,
+        const.TEST_ENTITY_COMBINATIONS,
+        ids=const.TEST_ENTITY_COMBINATION_IDS,
     )
+    async def test_entity_device_combinations(
+        self,
+        entity,
+        entity_object_id,
+        entity_area_name,
+        entity_floor_name,
+        entity_labels,
+        device_name,
+        device_area_name,
+        device_floor_name,
+        device_labels,
+        extended_registry_entry,
+        snapshot,
+    ):
+        """Test the entity details edge cases."""
 
-    label_registry.async_get(hass).async_create("device label")
-    label_registry.async_get(hass).async_create("entity label")
+        # Basic entity detail check
+        assert extended_registry_entry.entity is not None
+        assert extended_registry_entry.entity.id == entity.id
 
-    dr = device_registry.async_get(hass)
-    entry = dr.async_get_or_create(
-        config_entry_id=mock_config_entry.entry_id,
-        connections={(device_registry.CONNECTION_NETWORK_MAC, "12:34:56:AB:CD:EF")},
-        identifiers={("bridgeid", "0123")},
-        sw_version="sw-version",
-        name="name",
-        manufacturer="manufacturer",
-        model="model",
-        suggested_area="device area",
-    )
+        as_dict = extended_registry_entry.to_dict()
+        as_flattened_dict = extended_registry_entry.to_dict(flatten=True, keep_keys=KEYS_TO_KEEP)
+        assert as_dict is not None
+        assert as_flattened_dict is not None
 
-    dr.async_update_device(device_id=entry.id, labels={"device label"})
+        # Ensure the dict has the same entries that were used to populate the entities and devices
+        if entity_area_name is not None:
+            assert as_dict["area"] is not None
+            assert as_dict["area"]["name"] == entity_area_name
 
-    config = {COUNTER_DOMAIN: {"test_1": {}}}
-    assert await async_setup_component(hass, COUNTER_DOMAIN, config)
-    entity_id = "counter.test_1"
-    entity_registry.async_get(hass).async_update_entity(
-        entity_id, area_id=entity_area.id, device_id=entry.id, labels={"entity label"}
-    )
+        # Test for entity -> device area fallback
+        if entity_area_name is None and device_area_name is not None:
+            assert as_dict["area"] is not None
+            assert as_dict["area"]["name"] == device_area_name
 
-    state = hass.states.get(entity_id)
-    assert int(state.state) == 0
+        if entity_floor_name is not None:
+            assert as_dict["floor"] is not None
+            assert as_dict["floor"]["name"] == entity_floor_name
 
-    instance = EntityDetails(hass)
+        # Test for entity -> device floor fallback
+        if entity_area_name is None and entity_floor_name is None and device_floor_name is not None:
+            assert as_dict["floor"] is not None
+            assert as_dict["floor"]["name"] == device_floor_name
 
-    deets = instance.async_get(entity_id)
-    assert isinstance(deets, FullEntityDetails) is True
+        if entity_labels is not None:
+            assert as_dict["labels"] is not None
+            assert as_dict["labels"] == entity_labels
 
-    # Deets = FullEntityDetails(entity=RegistryEntry(entity_id='counter.test_1', unique_id='test_1', platform='counter', previous_unique_id=None, aliases=set(), area_id='entity_area', categories={}, capabilities=None, config_entry_id=None, device_class=None, device_id='12149f90d33242dd66a8997d9a67cfed', disabled_by=None, entity_category=None, hidden_by=None, icon=None, id='58ef0ee276405cab93f8fd0fa345fbf2', has_entity_name=False, labels={'entity label'}, name=None, options={}, original_device_class=None, original_icon=None, original_name=None, supported_features=0, translation_key=None, unit_of_measurement=None)
-    # Write assertions for the FullEntityDetails object but exclude ephemeral values like id, unique_id, etc.
+        if device_name is not None:
+            assert as_dict["device"] is not None
+            assert as_dict["device"]["name"] == device_name
 
-    assert deets.entity.entity_id == entity_id
-    assert deets.entity.domain == COUNTER_DOMAIN
-    assert isinstance(deets.entity_area, area_registry.AreaEntry) is True
-    assert deets.entity_area.id == entity_area.id
-    assert deets.entity_area.name == entity_area.name
-    assert deets.entity_floor == entity_floor
+        if device_area_name is not None:
+            assert as_dict["device"]["area"] is not None
+            assert as_dict["device"]["area"]["name"] == device_area_name
 
-    assert isinstance(deets.device, device_registry.DeviceEntry) is True
-    assert isinstance(deets.device_area, area_registry.AreaEntry) is True
-    assert deets.device.id == entry.id
-    assert deets.device.name == entry.name
-    assert deets.device_area.id == device_area.id
-    assert deets.device_area.name == device_area.name
+        if device_floor_name is not None:
+            assert as_dict["device"]["floor"] is not None
+            assert as_dict["device"]["floor"]["name"] == device_floor_name
 
-    assert deets.device_labels == ["device label"]
-    assert deets.entity_labels == ["entity label"]
-    assert deets.device_floor == device_floor
+        if device_labels is not None:
+            assert as_dict["device"]["labels"] is not None
+            assert as_dict["device"]["labels"] == device_labels
+
+        assert {
+            "source_entity": {
+                "entity_id": entity_object_id,
+                "entity_area_name": entity_area_name,
+                "entity_floor_name": entity_floor_name,
+                "entity_labels": entity_labels,
+            },
+            "flattened": as_flattened_dict,
+            "source_device": {
+                "device_name": device_name,
+                "device_area_name": device_area_name,
+                "device_floor_name": device_floor_name,
+                "device_labels": device_labels,
+            },
+        } == snapshot
+
+
+class Test_ExtendedDeviceEntry:
+    """Test the ExtendedDeviceEntry class."""
+
+    @pytest.fixture
+    def extended_device_entry(
+        self,
+        hass,
+        device,
+        device_name,
+        device_area_name,
+        device_floor_name,
+        device_labels,
+    ):
+        """Create an ExtendedDeviceEntry instance."""
+        entry = ExtendedDeviceEntry(hass, device=device)
+
+        assert entry.device is not None
+        assert entry.device.id == device.id
+
+        return entry
+
+    async def test_init(self, hass: HomeAssistant, device):
+        """Test the init method."""
+        new_entry = ExtendedDeviceEntry(hass, device)
+
+        assert new_entry is not None
+        assert new_entry.device is not None
+        assert new_entry.device.id == device.id
+
+        new_entry = ExtendedDeviceEntry(hass=hass, device_id=device.id)
+
+        assert new_entry is not None
+        assert new_entry.device is not None
+        assert new_entry.device.id == device.id
+
+    async def test_init_failures(self, hass: HomeAssistant):
+        """Test the init method."""
+        with pytest.raises(ValueError):
+            ExtendedDeviceEntry(hass=hass, device=None, device_id=None)
+
+        with pytest.raises(ValueError):
+            ExtendedDeviceEntry(hass=hass, device=None, device_id="nonexistent_device_id")
+
+    async def test_area_property(
+        self,
+        extended_device_entry: ExtendedRegistryEntry,
+    ):
+        """Test the area property getter."""
+        assert hasattr(extended_device_entry, "area")
+        assert extended_device_entry.area is not None
+        assert extended_device_entry.area.name == const.TEST_DEVICE_AREA_NAME
+
+    async def test_floor_property(
+        self,
+        extended_device_entry: ExtendedRegistryEntry,
+    ):
+        """Test the floor property getter."""
+        # Make sure the area is also present
+        assert hasattr(extended_device_entry, "floor")
+        assert extended_device_entry.floor is not None
+        assert extended_device_entry.floor.name == const.TEST_DEVICE_FLOOR_NAME
+
+    async def test_labels_property(
+        self,
+        device_labels,
+        extended_device_entry: ExtendedRegistryEntry,
+    ):
+        """Test the labels property getter."""
+        assert hasattr(extended_device_entry, "labels")
+        assert extended_device_entry.labels is not None
+
+        # Verify our labels are not out of order
+        assert extended_device_entry.labels == sorted(device_labels)
+        assert sorted(extended_device_entry.labels) == extended_device_entry.labels
+
+        assert extended_device_entry.labels == const.TEST_DEVICE_LABELS
+
+    async def test_to_dict(
+        self,
+        extended_device_entry: ExtendedRegistryEntry,
+        snapshot,
+    ):
+        """Test the to_dict method."""
+
+        assert extended_device_entry.to_dict() is not None
+
+        assert trim_device_dict(extended_device_entry.to_dict()) == snapshot
+
+    async def test_to_flattened_dict(
+        self,
+        extended_device_entry: ExtendedRegistryEntry,
+        snapshot,
+    ):
+        """Test to_dict with flatten and keep_keys method."""
+
+        flattened = extended_device_entry.to_dict(flatten=True, keep_keys=KEYS_TO_KEEP)
+
+        assert flattened is not None
+
+        assert flattened == snapshot

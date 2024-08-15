@@ -1,61 +1,146 @@
 """Support for sending event data to an Elasticsearch cluster."""
 
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from __future__ import annotations
 
-from custom_components.elasticsearch.errors import convert_es_error
-from custom_components.elasticsearch.es_privilege_check import ESPrivilegeCheck
-from custom_components.elasticsearch.logger import LOGGER
+from types import MappingProxyType
+from typing import TYPE_CHECKING
 
-from .es_doc_publisher import DocumentPublisher
-from .es_gateway import ElasticsearchGateway
-from .es_index_manager import IndexManager
+from homeassistant.const import (
+    CONF_API_KEY,
+    CONF_PASSWORD,
+    CONF_TIMEOUT,
+    CONF_URL,
+    CONF_USERNAME,
+    CONF_VERIFY_SSL,
+)
+
+from custom_components.elasticsearch.const import (
+    CONF_CHANGE_DETECTION_TYPE,
+    CONF_DEBUG_FILTER,
+    CONF_EXCLUDE_TARGETS,
+    CONF_INCLUDE_TARGETS,
+    CONF_POLLING_FREQUENCY,
+    CONF_PUBLISH_FREQUENCY,
+    CONF_SSL_CA_PATH,
+    CONF_SSL_VERIFY_HOSTNAME,
+    CONF_TAGS,
+    CONF_TARGETS_TO_EXCLUDE,
+    CONF_TARGETS_TO_INCLUDE,
+    ES_CHECK_PERMISSIONS_DATASTREAM,
+)
+from custom_components.elasticsearch.errors import ESIntegrationException
+from custom_components.elasticsearch.es_datastream_manager import DatastreamManager
+from custom_components.elasticsearch.es_gateway_8 import Elasticsearch8Gateway, Gateway8Settings
+from custom_components.elasticsearch.es_publish_pipeline import Pipeline, PipelineSettings
+from custom_components.elasticsearch.logger import LOGGER as BASE_LOGGER
+from custom_components.elasticsearch.logger import async_log_enter_exit_debug, log_enter_exit_debug
+
+if TYPE_CHECKING:
+    from logging import Logger
+    from typing import Any
+
+    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.core import HomeAssistant
 
 
 class ElasticIntegration:
     """Integration for publishing entity state change events to Elasticsearch."""
 
-    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry):
+    @log_enter_exit_debug
+    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry, log: Logger = BASE_LOGGER) -> None:
         """Integration initialization."""
 
-        self.hass = hass
-        self.gateway = ElasticsearchGateway(config_entry=config_entry, hass=hass)
-        self.privilege_check = ESPrivilegeCheck(self.gateway, config_entry=config_entry)
-        self.index_manager = IndexManager(
-            hass, config_entry=config_entry, gateway=self.gateway
-        )
-        self.publisher = DocumentPublisher(
-            config_entry=config_entry, gateway=self.gateway, hass=self.hass
-        )
-        self.config_entry = config_entry
+        self._hass = hass
 
-    # TODO investigate helpers.event.async_call_later()
-    async def async_init(self):
+        self._logger = log
+        self._config_entry = config_entry
+
+        self._logger.info("Initializing integration.")
+
+        # Initialize our Elasticsearch Gateway
+        gateway_settings: Gateway8Settings = self.build_gateway_parameters(
+            config_entry=self._config_entry,
+        )
+        self._gateway = Elasticsearch8Gateway(log=self._logger, gateway_settings=gateway_settings)
+
+        # Initialize our publishing pipeline
+        manager_parameters = self.build_pipeline_manager_parameters(
+            hass=self._hass, gateway=self._gateway, config_entry=self._config_entry
+        )
+        self._pipeline_manager = Pipeline.Manager(log=self._logger, **manager_parameters)
+
+        # Initialize our Datastream manager
+        self._datastream_manager = DatastreamManager(log=self._logger, gateway=self._gateway)
+
+    @async_log_enter_exit_debug
+    async def async_init(self) -> None:
         """Async init procedure."""
 
         try:
-            await self.gateway.async_init()
-            await self.privilege_check.enforce_privileges()
-            await self.index_manager.async_setup()
-            await self.publisher.async_init()
-        except Exception as err:
-            try:
-                self.publisher.stop_publisher()
-                await self.gateway.async_stop_gateway()
-            except Exception as shutdown_err:
-                LOGGER.error(
-                    "Error shutting down gateway following failed initialization",
-                    shutdown_err,
-                )
+            await self._gateway.async_init()
+            await self._datastream_manager.async_init()
+            await self._pipeline_manager.async_init(config_entry=self._config_entry)
 
-            raise convert_es_error("Failed to initialize integration", err) from err
+        except ESIntegrationException as err:
+            self._logger.error("Error initializing integration: %s", err)
+            self._logger.debug("Error initializing integration", exc_info=True)
+            await self.async_shutdown()
 
-    async def async_shutdown(
-        self, config_entry: ConfigEntry
-    ):  # pylint disable=unused-argument
+            raise
+
+    async def async_shutdown(self) -> bool:
         """Async shutdown procedure."""
-        LOGGER.debug("async_shutdown: starting shutdown")
-        self.publisher.stop_publisher()
-        await self.gateway.async_stop_gateway()
-        LOGGER.debug("async_shutdown: shutdown complete")
+        try:
+            self._pipeline_manager.stop()
+            await self._gateway.stop()
+        except Exception:
+            self._logger.exception("Error stopping pipeline manager")
+
         return True
+
+    @classmethod
+    def build_gateway_parameters(
+        cls,
+        config_entry: ConfigEntry,
+        minimum_privileges: MappingProxyType[str, Any] | None = ES_CHECK_PERMISSIONS_DATASTREAM,
+    ) -> Gateway8Settings:
+        """Build the parameters for the Elasticsearch gateway."""
+        return Gateway8Settings(
+            url=config_entry.data[CONF_URL],
+            username=config_entry.data.get(CONF_USERNAME),
+            password=config_entry.data.get(CONF_PASSWORD),
+            api_key=config_entry.data.get(CONF_API_KEY),
+            verify_certs=config_entry.data.get(CONF_VERIFY_SSL, False),
+            verify_hostname=config_entry.data.get(CONF_SSL_VERIFY_HOSTNAME, False),
+            ca_certs=config_entry.data.get(CONF_SSL_CA_PATH),
+            request_timeout=config_entry.data.get(CONF_TIMEOUT, 30),
+            minimum_privileges=minimum_privileges,
+        )
+
+    @classmethod
+    def build_pipeline_manager_parameters(cls, hass, gateway, config_entry: ConfigEntry) -> dict:
+        """Build the parameters for the Elasticsearch pipeline manager."""
+
+        if config_entry.options is None:
+            msg = "Config entry options are required for the pipeline manager."
+            raise ValueError(msg)
+
+        settings = PipelineSettings(
+            polling_frequency=config_entry.options[CONF_POLLING_FREQUENCY],
+            publish_frequency=config_entry.options[CONF_PUBLISH_FREQUENCY],
+            change_detection_type=config_entry.options[CONF_CHANGE_DETECTION_TYPE],
+            tags=config_entry.options[CONF_TAGS],
+            debug_filter=config_entry.options.get(CONF_DEBUG_FILTER, False),
+            include_targets=config_entry.options[CONF_INCLUDE_TARGETS],
+            exclude_targets=config_entry.options[CONF_EXCLUDE_TARGETS],
+            included_areas=config_entry.options[CONF_TARGETS_TO_INCLUDE].get("area_id", []),
+            excluded_areas=config_entry.options[CONF_TARGETS_TO_EXCLUDE].get("area_id", []),
+            included_labels=config_entry.options[CONF_TARGETS_TO_INCLUDE].get("label_id", []),
+            excluded_labels=config_entry.options[CONF_TARGETS_TO_EXCLUDE].get("label_id", []),
+            included_devices=config_entry.options[CONF_TARGETS_TO_INCLUDE].get("device_id", []),
+            excluded_devices=config_entry.options[CONF_TARGETS_TO_EXCLUDE].get("device_id", []),
+            included_entities=config_entry.options[CONF_TARGETS_TO_INCLUDE].get("entity_id", []),
+            excluded_entities=config_entry.options[CONF_TARGETS_TO_EXCLUDE].get("entity_id", []),
+        )
+
+        return {"hass": hass, "gateway": gateway, "settings": settings}

@@ -1,12 +1,6 @@
 default_config:
 
 logger:
-  default: info
+  default: warning
   logs:
     custom_components.elasticsearch: debug
-
-# elasticsearch:
-#   url: https://localhost:9200
-#   verify_ssl: false
-#   username: hass
-#   password: changeme

@@ -1,6 +1,7 @@
 """Retrieve entity details."""
 
-from dataclasses import dataclass
+from dataclasses import asdict
+from logging import Logger
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import (
@@ -8,120 +9,199 @@ from homeassistant.helpers import (
     device_registry,
     entity_registry,
     floor_registry,
-    label_registry,
 )
+from homeassistant.helpers.device_registry import DeviceEntry
+from homeassistant.helpers.entity_registry import RegistryEntry
 
-from .logger import LOGGER
-
-
-@dataclass
-class FullEntityDetails:
-    """Details about an entity."""
-
-    entity: entity_registry.RegistryEntry
-    entity_area: area_registry.AreaEntry | None
-    entity_floor: floor_registry.FloorEntry | None
-    entity_labels: list[label_registry.LabelEntry] | None
-
-    device: device_registry.DeviceEntry | None
-    device_area: area_registry.AreaEntry | None
-    device_floor: floor_registry.FloorEntry | None
-    device_labels: list[label_registry.LabelEntry] | None
+from .logger import LOGGER as BASE_LOGGER
+from .utils import flatten_dict
 
 
-class EntityDetails:
-    """Retrieve details about entities for publishing to ES."""
+class ExtendedDeviceEntry:
+    """Extended device class to include area, floor, and labels."""
 
-    def __init__(self, hass: HomeAssistant):
-        """Init EntityDetails."""
-        self._hass = hass
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        device: DeviceEntry | None = None,
+        device_id: str | None = None,
+        logger: Logger = BASE_LOGGER,
+    ) -> None:
+        """Init ExtendedDevice."""
+        self._hass: HomeAssistant = hass
+        self._logger: Logger = logger
 
-        self._registry_entry = entity_registry.async_get(self._hass)
-        self._registry_device = device_registry.async_get(self._hass)
-        self._registry_area = area_registry.async_get(self._hass)
-        self._registry_floor = floor_registry.async_get(self._hass)
-        self._registry_label = label_registry.async_get(self._hass)
+        if device is None and device_id is None:
+            msg = "device or device_id must be provided"
+            raise ValueError(msg)
 
-    def async_get(self, entity_id: str) -> FullEntityDetails | None:
+        if device_id is not None:
+            device = device_registry.async_get(self._hass).async_get(device_id)
+
+        if device is not None:
+            self._device: DeviceEntry = device
+
+        else:
+            msg = f"Device not found: {device_id}"
+            self._logger.debug(msg)
+            raise ValueError(msg)
+
+    @property
+    def device(self) -> DeviceEntry:
+        """Return the Hass DeviceEntry object."""
+        return self._device
+
+    @property
+    def area(self) -> area_registry.AreaEntry | None:
+        """Return the Hass AreaEntry of the area of the device."""
+        if self._device.area_id is None:
+            return None
+
+        return area_registry.async_get(self._hass).async_get_area(self._device.area_id)
+
+    @property
+    def floor(self) -> floor_registry.FloorEntry | None:
+        """Return the Hass FloorEntry of the floor of the device."""
+        if self.area is None or self.area.floor_id is None:
+            return None
+
+        return floor_registry.async_get(self._hass).async_get_floor(self.area.floor_id)
+
+    @property
+    def labels(self) -> list[str]:
+        """Return the labels of the device."""
+        return sorted(self._device.labels)
+
+    def to_dict(self, flatten: bool = False, keep_keys: list[str] | None = None) -> dict:
+        """Convert to dict."""
+
+        as_dict = self._device.dict_repr
+
+        as_dict["labels"] = self.labels
+
+        if self.area is not None:
+            as_dict["area"] = asdict(self.area)
+
+        if self.floor is not None:
+            as_dict["floor"] = asdict(self.floor)
+
+        if flatten:
+            return flatten_dict(as_dict, keep_keys=keep_keys)
+
+        return as_dict
+
+
+class ExtendedRegistryEntry:
+    """Extended entity class to include device, area, floor, and labels."""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        entity: RegistryEntry | None = None,
+        entity_id: str | None = None,
+        logger: Logger = BASE_LOGGER,
+    ) -> None:
+        """Initialize an ExtendedRegistryEntry."""
+        self._hass: HomeAssistant = hass
+        self._logger: Logger = logger
+
+        if entity is None and entity_id is None or entity is not None and entity_id is not None:
+            msg = "only one of entity or entity_id must be provided"
+            raise ValueError(msg)
+
+        if entity_id is not None:
+            entity = entity_registry.async_get(self._hass).async_get(entity_id)
+
+        if entity is not None:
+            self._entity: RegistryEntry = entity
+        else:
+            msg = f"Entity not found: {entity_id}"
+            logger.debug(msg)
+            raise ValueError(msg)
+
+    @property
+    def entity(self) -> RegistryEntry:
+        """Return the Hass RegistryEntry object."""
+        return self._entity
+
+    @property
+    def device(self) -> ExtendedDeviceEntry | None:
+        """Return the ExtendedDeviceEntry object for the entity."""
+        if self._entity.device_id is None:
+            return None
+
+        try:
+            return ExtendedDeviceEntry(self._hass, device_id=self._entity.device_id)
+        except ValueError:
+            msg = f"Device not found for entity: {self._entity.entity_id} device: {self._entity.device_id}"
+            self._logger.debug(msg, exc_info=True)
+            return None
+
+    @property
+    def area(self) -> area_registry.AreaEntry | None:
+        """Return the Hass AreaEntry of the area of the entity."""
+
+        if self._entity.area_id is not None:
+            return area_registry.async_get(self._hass).async_get_area(self._entity.area_id)
+
+        if self.device is not None and self.device.area is not None:
+            return self.device.area
+
+        return None
+
+    @property
+    def floor(self) -> floor_registry.FloorEntry | None:
+        """Return the Hass FloorEntry of the floor of the entity."""
+
+        # use our area if it's present, otherwise fallback to the device's area
+        if self.area is not None and self.area.floor_id is not None:
+            return floor_registry.async_get(self._hass).async_get_floor(self.area.floor_id)
+
+        return None
+
+    @property
+    def labels(self) -> list[str]:
+        """Return the labels of the entity."""
+        return sorted(self._entity.labels)
+
+    def to_dict(self, flatten: bool = False, keep_keys: list[str] | None = None) -> dict:
+        """Convert to dict."""
+
+        as_dict = self._entity.extended_dict
+
+        as_dict["labels"] = self.labels
+
+        if self.area is not None:
+            as_dict["area"] = asdict(self.area)
+
+        if self.floor is not None:
+            as_dict["floor"] = asdict(self.floor)
+
+        if self.device is not None:
+            as_dict["device"] = self.device.to_dict()
+
+        if self._entity.device_class or self._entity.original_device_class:
+            as_dict["device_class"] = self._entity.device_class or self._entity.original_device_class
+
+        if flatten:
+            return flatten_dict(as_dict, keep_keys=keep_keys)
+
+        return as_dict
+
+
+class ExtendedEntityDetails:
+    """Creates extended entity and device entries."""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        logger: Logger = BASE_LOGGER,
+    ) -> None:
+        """Init ExtendedEntity class."""
+        self._hass: HomeAssistant = hass
+        self._logger: Logger = logger
+
+    def async_get(self, entity_id: str) -> ExtendedRegistryEntry:
         """Retrieve entity details."""
 
-        # Use helper functions below to assemble a FullEntityDetails object
-
-        # Get the entity
-        entity = self.async_get_entity(entity_id)
-        if entity is None:
-            LOGGER.debug("Entity not found: %s", entity_id)
-            return None
-
-        entity_label = self.async_get_entity_labels(entity)
-        entity_area = self.async_get_entity_area(entity)
-        entity_floor = self.async_get_area_floor(entity_area)
-
-        # Get the device of the entity
-        device = self.async_get_device(entity.device_id)
-        if device is None:
-            LOGGER.debug("Device not found for entity: %s", entity_id)
-
-        device_label = self.async_get_device_labels(device)
-        device_area = self.async_get_device_area(device)
-        device_floor = self.async_get_area_floor(device_area)
-
-        return FullEntityDetails(
-            entity,
-            entity_area,
-            entity_floor,
-            entity_label,
-            device,
-            device_area,
-            device_floor,
-            device_label,
-        )
-
-    # Entity functions
-    def async_get_entity(self, entity_id: str) -> entity_registry.RegistryEntry | None:
-        """Retrieve entity details."""
-        return self._registry_entry.async_get(entity_id)
-
-    def async_get_entity_area(
-        self, entity: entity_registry.RegistryEntry
-    ) -> area_registry.AreaEntry | None:
-        """Retrieve entity area details."""
-        if entity.area_id is None:
-            return None
-        return self._registry_area.async_get_area(entity.area_id)
-
-    def async_get_entity_labels(
-        self, entity: entity_registry.RegistryEntry
-    ) -> list[label_registry.LabelEntry]:
-        """Retrieve entity label details."""
-        return list(entity.labels)
-
-    # Device functions
-    def async_get_device(self, device_id: str) -> device_registry.DeviceEntry | None:
-        """Retrieve device details."""
-        return self._registry_device.async_get(device_id)
-
-    def async_get_device_area(
-        self, device: device_registry.DeviceEntry
-    ) -> area_registry.AreaEntry | None:
-        """Retrieve device area details."""
-        if device is None or device.area_id is None:
-            return None
-        return self._registry_area.async_get_area(device.area_id)
-
-    def async_get_device_labels(
-        self, device: device_registry.DeviceEntry
-    ) -> list[label_registry.LabelEntry]:
-        """Retrieve device label details."""
-        if device is None:
-            return None
-        return list(device.labels)
-
-    # Other Functions
-    def async_get_area_floor(
-        self, area: area_registry.AreaEntry
-    ) -> floor_registry.FloorEntry | None:
-        """Retrieve entity floor details."""
-        if area is None:
-            return None
-        return self._registry_floor.async_get_floor(area.floor_id)
+        return ExtendedRegistryEntry(self._hass, entity_id=entity_id)

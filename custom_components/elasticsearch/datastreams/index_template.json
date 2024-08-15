@@ -43,9 +43,6 @@
                 "hass": {
                     "type": "object",
                     "properties": {
-                        "object_id": {
-                            "type": "keyword"
-                        },
                         "entity": {
                             "type": "object",
                             "properties": {
@@ -55,6 +52,9 @@
                                 "domain": {
                                     "type": "keyword"
                                 },
+                                "friendly_name": {
+                                    "type": "keyword"
+                                },
                                 "name": {
                                     "type": "keyword"
                                 },
@@ -62,14 +62,12 @@
                                     "type": "object",
                                     "dynamic": true
                                 },
-                                "floor": {
+                                "object": {
                                     "type": "object",
                                     "properties": {
                                         "id": {
-                                            "type": "keyword"
-                                        },
-                                        "name": {
-                                            "type": "keyword"
+                                            "type": "keyword",
+                                            "time_series_dimension": true
                                         }
                                     }
                                 },
@@ -131,8 +129,12 @@
                                 "unit_of_measure": {
                                     "type": "keyword"
                                 },
-                                "class": {
-                                    "type": "keyword"
+                                "state": {
+                                    "properties": {
+                                        "class": {
+                                            "type": "keyword"
+                                        }
+                                    }
                                 },
                                 "labels": {
                                     "type": "keyword"
@@ -140,6 +142,17 @@
                                 "area": {
                                     "type": "object",
                                     "properties": {
+                                        "floor": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "keyword"
+                                                },
+                                                "name": {
+                                                    "type": "keyword"
+                                                }
+                                            }
+                                        },
                                         "id": {
                                             "type": "keyword"
                                         },
@@ -166,17 +179,17 @@
                                         "area": {
                                             "type": "object",
                                             "properties": {
-                                                "id": {
-                                                    "type": "keyword"
+                                                "floor": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "keyword"
+                                                        },
+                                                        "name": {
+                                                            "type": "keyword"
+                                                        }
+                                                    }
                                                 },
-                                                "name": {
-                                                    "type": "keyword"
-                                                }
-                                            }
-                                        },
-                                        "floor": {
-                                            "type": "object",
-                                            "properties": {
                                                 "id": {
                                                     "type": "keyword"
                                                 },
@@ -282,14 +295,20 @@
         },
         "settings": {
             "codec": "best_compression",
+            "index.mode": "time_series",
             "mapping": {
                 "total_fields": {
                     "limit": "10000"
                 }
             }
+        },
+        "lifecycle": {
+            "data_retention": "365d"
         }
     },
+    "composed_of": "metrics-homeassistant@custom",
+    "ignore_missing_component_templates": "metrics-homeassistant@custom",
     "priority": 500,
     "data_stream": {},
-    "version": 1
+    "version": 2
 }

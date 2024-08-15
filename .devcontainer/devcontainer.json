@@ -1,57 +1,52 @@
-// See https://aka.ms/vscode-remote/devcontainer.json for format details.
 {
-	"dockerFile": "Dockerfile",
 	"context": "..",
-	"name": "Elasticsearch integration development",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"charliermarsh.ruff",
+				"esbenp.prettier-vscode",
+				"GitHub.copilot",
+				"GitHub.vscode-pull-request-github",
+				"ms-python.pylint",
+				"ms-python.vscode-pylance",
+				"redhat.vscode-yaml",
+				"visualstudioexptteam.vscodeintellicode"
+			]
+		}
+	},
+	"dockerFile": "Dockerfile",
+	"features": {
+		"ghcr.io/wxw-matt/devcontainer-features/command_runner:0": {},
+		"github-cli": "latest"
+	},
 	"forwardPorts": [
 		5601,
 		8123,
 		9200
 	],
+	"initializeCommand": "ls",
 	"mounts": [
 		"source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind",
 		"source=${localEnv:HOME}/.ssh,target=/root/.ssh,readonly,type=bind"
 	],
-	"runArgs": [
-		"--add-host=host.docker.internal:host-gateway"
-	],
-	"initializeCommand": "ls",
+	"name": "Elasticsearch integration development",
 	"portsAttributes": {
+		"5601": {
+			"label": "Kibana",
+			"onAutoForward": "notify"
+		},
 		"8123": {
 			"label": "Home Assistant",
+			"onAutoForward": "notify"
+		},
+		"9200": {
+			"label": "Elasticsearch",
 			"onAutoForward": "notify"
 		}
 	},
 	"postCreateCommand": "bash ./.devcontainer/post-install.sh",
-	"customizations": {
-		"vscode": {
-			"extensions": [
-				"ms-python.python",
-				"github.vscode-pull-request-github",
-				"ryanluker.vscode-coverage-gutters",
-				"charliermarsh.ruff",
-				"redhat.vscode-yaml"
-			],
-			"settings": {
-				"files.eol": "\n",
-				"editor.tabSize": 4,
-				"python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
-				"python.analysis.autoSearchPaths": false,
-				"python.formatting.blackPath": "/usr/local/py-utils/bin/black",
-				"python.terminal.activateEnvInCurrentTerminal": true,
-				"editor.formatOnPaste": false,
-				"editor.formatOnSave": true,
-				"editor.formatOnType": true,
-				"files.trimTrailingWhitespace": true,
-				"python.experiments.optOutFrom": [
-					"pythonTestAdapter"
-				]
-			}
-		}
-	},
 	"remoteUser": "vscode",
-	"features": {
-		"github-cli": "latest",
-		"ghcr.io/wxw-matt/devcontainer-features/command_runner:0": {}
-	}
+	"runArgs": [
+		"--add-host=host.docker.internal:host-gateway"
+	]
 }

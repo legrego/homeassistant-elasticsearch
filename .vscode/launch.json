@@ -9,12 +9,38 @@
             "type": "debugpy",
             "request": "launch",
             "module": "homeassistant",
-            "justMyCode": false,
+            "justMyCode": true,
             "args": [
                 "--debug",
                 "-c",
                 "config"
             ]
-        }
+        },
+        {
+            "name": "Python: Debug Tests",
+            "type": "debugpy",
+            "request": "launch",
+            "purpose": [
+                "debug-test"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "tests",
+                "--continue-on-collection-errors"
+            ]
+        },
+        {
+            "name": "Python: Run Tests",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "tests",
+                "--continue-on-collection-errors"
+            ]
+        },
     ]
 }
