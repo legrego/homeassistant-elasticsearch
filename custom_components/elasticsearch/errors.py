@@ -3,8 +3,12 @@
 from homeassistant.exceptions import HomeAssistantError
 
 
-class ESIntegrationException(HomeAssistantError):
+class ESIntegrationException(HomeAssistantError):  # noqa: N818
     """Base class for Elastic exceptions."""
+
+
+class IndexingError(ESIntegrationException):
+    """Error indexing data."""
 
 
 class ESIntegrationConnectionException(ESIntegrationException):
@@ -15,7 +19,7 @@ class AuthenticationRequired(ESIntegrationConnectionException):
     """Cluster requires authentication."""
 
 
-class InsufficientPrivileges(ESIntegrationConnectionException):
+class InsufficientPrivileges(AuthenticationRequired):
     """Credentials are lacking the required privileges."""
 
 
@@ -23,12 +27,20 @@ class CannotConnect(ESIntegrationConnectionException):
     """Unable to connect to the cluster."""
 
 
-class ClientError(ESIntegrationConnectionException):
-    """Connected with a Client Error."""
+class ServerError(CannotConnect):
+    """Server Error."""
 
 
-class UntrustedCertificate(ESIntegrationConnectionException):
-    """Connected with untrusted certificate."""
+class ClientError(CannotConnect):
+    """Client Error."""
+
+
+class SSLError(CannotConnect):
+    """Error related to SSL."""
+
+
+class UntrustedCertificate(SSLError):
+    """Received a untrusted certificate error."""
 
 
 class UnsupportedVersion(ESIntegrationConnectionException):

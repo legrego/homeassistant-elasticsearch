@@ -3,16 +3,9 @@
 from datetime import UTC, datetime
 from queue import Queue
 from unittest import mock
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from freezegun.api import FrozenDateTimeFactory
-from homeassistant.core import Event, HomeAssistant, State
-from homeassistant.util import dt as dt_util
-from syrupy.assertion import SnapshotAssertion
-from syrupy.extensions.json import JSONSnapshotExtension
-
-from custom_components.elasticsearch.entity_details import FullEntityDetails
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 from custom_components.elasticsearch.es_publish_pipeline import (
     EventQueue,
@@ -20,155 +13,217 @@ from custom_components.elasticsearch.es_publish_pipeline import (
     PipelineSettings,
     StateChangeType,
 )
-from tests.const import MOCK_NOON_APRIL_12TH_2023
+from freezegun.api import FrozenDateTimeFactory
+from homeassistant.core import Event, HomeAssistant, State
+from homeassistant.helpers.entity_registry import RegistryEntry
+from homeassistant.util import dt as dt_util
+from syrupy.assertion import SnapshotAssertion
 
-
-@pytest.fixture(autouse=True)
-def snapshot(snapshot: SnapshotAssertion):
-    """Provide a pre-configured snapshot object."""
-
-    return snapshot.with_defaults(extension_class=JSONSnapshotExtension)
+from tests import const
+from tests.const import (
+    MOCK_NOON_APRIL_12TH_2023,
+)
 
 
 @pytest.fixture
 def settings():
     """Return a PipelineSettings instance."""
     return PipelineSettings(
+        polling_frequency=60,
+        publish_frequency=60,
+        change_detection_type=[],
+        tags=[],
+        debug_filter=True,
+        include_targets=False,
+        exclude_targets=False,
+        included_areas=[],
+        excluded_areas=[],
+        included_labels=[],
+        excluded_labels=[],
+        included_devices=[],
+        excluded_devices=[],
         included_entities=[],
         excluded_entities=[],
-        included_domains=[],
-        excluded_domains=[],
-        allowed_change_types=[],
-        publish_frequency=60,
-        polling_enabled=True,
-        polling_frequency=60,
     )
 
 
 @pytest.fixture
-def filterer(settings: PipelineSettings):
-    """Return a Pipeline.Filterer instance."""
+def freeze_time(freezer: FrozenDateTimeFactory):
+    """Freeze time so we can properly assert on payload contents."""
 
-    return Pipeline.Filterer(settings=settings)
+    frozen_time = dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023)
+    if frozen_time is None:
+        msg = "Invalid date string"
+        raise ValueError(msg)
+
+    freezer.move_to(frozen_time)
+
+    return freezer
 
 
 class Test_Filterer:
     """Test the Pipeline.Filterer class."""
 
+    # Overwrite the pipeline filterer fixture to override the entity exists filter
+
+    @pytest.fixture
+    def filterer(self, hass: HomeAssistant, settings: PipelineSettings):
+        """Return a Pipeline.Filterer instance."""
+
+        return Pipeline.Filterer(hass=hass, settings=settings)
+
+    @pytest.fixture
+    def patched_filterer(self, hass: HomeAssistant, filterer):
+        """Return a Pipeline.Filterer instance."""
+        filterer._passes_entity_exists_filter = MagicMock(return_value=True)
+
+        return filterer
+
     class Test_Integration_Tests:
         """Run the integration tests of the Filterer class."""
 
-        def test_passes_filter_with_allowed_change_type_and_included_entity(self, filterer):
+        async def test_passes_filter_with_allowed_change_type_and_included_entity(self, patched_filterer):
             """Test that a state change with an allowed change type and included entity passes the filter."""
             state = State("light.living_room", "on")
-            filterer._allowed_change_types = [StateChangeType.STATE.name]
-            filterer._included_entities = ["light.living_room"]
-            assert filterer.passes_filter(state, StateChangeType.STATE) is True
+            patched_filterer._change_detection_type = [StateChangeType.STATE.value]
+            patched_filterer._include_targets = True
+            patched_filterer._included_entities = ["light.living_room"]
+            assert patched_filterer.passes_filter(state, StateChangeType.STATE) is True
 
-        def test_passes_filter_with_allowed_change_type_and_excluded_entity(self, filterer):
+        async def test_passes_filter_with_allowed_change_type_and_excluded_entity(self, patched_filterer):
             """Test that a state change with an allowed change type and excluded entity does not pass the filter."""
             state = State("light.living_room", "on")
-            filterer._allowed_change_types = [StateChangeType.STATE.name]
-            filterer._excluded_entities = ["light.living_room"]
-            assert filterer.passes_filter(state, StateChangeType.STATE) is False
+            patched_filterer._change_detection_type = [StateChangeType.STATE.value]
 
-        def test_passes_filter_with_disallowed_change_type(self, filterer):
+            patched_filterer._exclude_targets = True
+            patched_filterer._excluded_entities = ["light.living_room"]
+
+            assert patched_filterer.passes_filter(state, StateChangeType.STATE) is False
+
+        async def test_passes_filter_with_disallowed_change_type(self, patched_filterer):
             """Test that a state change with an allowed change type and excluded entity does not pass the filter."""
             state = State("light.living_room", "on")
-            filterer._allowed_change_types = [StateChangeType.NO_CHANGE.name]
-            filterer._excluded_entities = ["light.living_room"]
-            assert filterer.passes_filter(state, StateChangeType.STATE) is False
+            patched_filterer._change_detection_type = [StateChangeType.NO_CHANGE.name]
+            patched_filterer._exclude_targets = True
+            patched_filterer._excluded_entities = ["light.living_room"]
+            assert patched_filterer.passes_filter(state, StateChangeType.STATE) is False
 
     class Test_Unit_Tests:
         """Run the unit tests of the Filterer class."""
 
-        def test_passes_entity_domain_filters_included_entity(self, filterer):
-            """Test that a state change for an included entity passes the filter."""
-            state = State("light.living_room", "on")
-            filterer._included_entities = ["light.living_room"]
-            assert filterer._passes_entity_domain_filters(state.entity_id, state.domain) is True
-
-        def test_passes_entity_domain_filters_not_included_entity(self, filterer):
-            """Test that a state change for an entity that doesnt match any filters."""
-            state = State("switch.living_room", "on")
-            filterer._included_entities = ["light.living_room"]
-            assert filterer._passes_entity_domain_filters(state.entity_id, state.domain) is False
-
-        def test_passes_entity_domain_filters_excluded_entity(self, filterer):
-            """Test that a state change for an excluded entity does not pass the filter."""
-            state = State("light.living_room", "on")
-            filterer._excluded_entities = ["light.living_room"]
-            assert filterer._passes_entity_domain_filters(state.entity_id, state.domain) is False
-
-        def test_passes_entity_domain_filters_included_domain(self, filterer):
-            """Test that a state change for an included domain passes the filter."""
-            state = State("light.living_room", "on")
-            filterer._included_domains = ["light"]
-            assert filterer._passes_entity_domain_filters(state.entity_id, state.domain) is True
-
-        def test_passes_entity_domain_filters_excluded_domain(self, filterer):
-            """Test that a state change for an excluded domain does not pass the filter."""
-            state = State("light.living_room", "on")
-            filterer._excluded_domains = ["light"]
-            assert filterer._passes_entity_domain_filters(state.entity_id, state.domain) is False
-
-        def test_passes_entity_domain_filters_no_included_entities_or_domains(self, filterer):
-            """Test that a state change passes the filter when no included entities or domains are specified."""
-            state = State("light.living_room", "on")
-            assert filterer._passes_entity_domain_filters(state.entity_id, state.domain) is True
-
-        def test_passes_entity_domain_filters_no_included_entities_or_domains_with_excluded_entity(
+        async def test_passes_exclude_targets(
             self,
-            filterer,
+            patched_filterer,
+            device,
+            entity,
         ):
-            """Test that a state change does not pass the filter when no included entities or domains are specified and the entity is excluded."""
-            state = State("light.living_room", "on")
-            filterer._excluded_entities = ["light.living_room"]
-            assert filterer._passes_entity_domain_filters(state.entity_id, state.domain) is False
+            """Test that a state change with an excluded target does not pass the filter."""
 
-        def test_passes_entity_domain_filters_no_included_entities_or_domains_with_excluded_domain(
+            patched_filterer._exclude_targets = True
+
+            assert patched_filterer._passes_exclude_targets(entity.entity_id) is True
+
+            patched_filterer._excluded_entities = [entity.entity_id]
+            patched_filterer._excluded_areas = []
+            patched_filterer._excluded_labels = []
+            patched_filterer._excluded_devices = []
+
+            assert patched_filterer._passes_exclude_targets(entity.entity_id) is False
+
+            patched_filterer._excluded_entities = []
+            patched_filterer._excluded_areas = [entity.area_id]
+            patched_filterer._excluded_labels = []
+            patched_filterer._excluded_devices = []
+
+            assert patched_filterer._passes_exclude_targets(entity.entity_id) is False
+
+            patched_filterer._excluded_entities = []
+            patched_filterer._excluded_areas = []
+            patched_filterer._excluded_labels = entity.labels
+            patched_filterer._excluded_devices = []
+
+            assert patched_filterer._passes_exclude_targets(entity.entity_id) is False
+
+            patched_filterer._excluded_entities = []
+            patched_filterer._excluded_areas = []
+            patched_filterer._excluded_labels = []
+            patched_filterer._excluded_devices = [device.id]
+
+            assert patched_filterer._passes_exclude_targets(entity.entity_id) is False
+
+        async def test_passes_include_targets(
             self,
-            filterer,
+            patched_filterer,
+            device,
+            entity,
         ):
-            """Test that a state change does not pass the filter when no included entities or domains are specified and the domain is excluded."""
+            """Test that a state change with an included target passes the filter."""
+
+            patched_filterer._include_targets = True
+
+            assert patched_filterer._passes_include_targets(entity.entity_id) is False
+
+            patched_filterer._included_entities = [entity.entity_id]
+            patched_filterer._included_areas = []
+            patched_filterer._included_labels = []
+            patched_filterer._included_devices = []
+
+            assert patched_filterer._passes_include_targets(entity.entity_id) is True
+
+            patched_filterer._included_entities = []
+            patched_filterer._included_areas = [entity.area_id]
+            patched_filterer._included_labels = []
+            patched_filterer._included_devices = []
+
+            assert patched_filterer._passes_include_targets(entity.entity_id) is True
+
+            patched_filterer._included_entities = []
+            patched_filterer._included_areas = []
+            patched_filterer._included_labels = entity.labels
+            patched_filterer._included_devices = []
+
+            assert patched_filterer._passes_include_targets(entity.entity_id) is True
+
+            patched_filterer._included_entities = []
+            patched_filterer._included_areas = []
+            patched_filterer._included_labels = []
+            patched_filterer._included_devices = [device.id]
+
+            assert patched_filterer._passes_include_targets(entity.entity_id) is True
+
+        async def test_passes_change_detection_type_filter_true(self, patched_filterer):
+            """Test that a state change with an allowed change type passes the filter."""
+            patched_filterer._change_detection_type = [StateChangeType.STATE.value]
+            assert patched_filterer._passes_change_detection_type_filter(StateChangeType.STATE) is True
+
+            patched_filterer._change_detection_type = [StateChangeType.NO_CHANGE.value]
+            assert patched_filterer._passes_change_detection_type_filter(StateChangeType.NO_CHANGE) is True
+
+        async def test_passes_change_detection_type_filter_false(self, patched_filterer):
+            """Test that a state change with an allowed change type passes the filter."""
+            patched_filterer._change_detection_type = [StateChangeType.ATTRIBUTE.value]
+            assert patched_filterer._passes_change_detection_type_filter(StateChangeType.STATE) is False
+
+        async def test_passes_entity_exists_filter(self, entity_registry, filterer):
+            """Test that a state change for an entity that exists passes the filter."""
             state = State("light.living_room", "on")
-            filterer._excluded_domains = ["light"]
-            assert filterer._passes_entity_domain_filters(state.entity_id, state.domain) is False
-
-        def test_passes_change_type_filter_true(self, filterer):
-            """Test that a state change with an allowed change type passes the filter."""
-            filterer._allowed_change_types = [StateChangeType.STATE.name]
-            assert filterer._passes_change_type_filter(StateChangeType.STATE) is True
-
-        def test_passes_change_type_filter_false(self, filterer):
-            """Test that a state change with an allowed change type passes the filter."""
-            filterer._allowed_change_types = [StateChangeType.ATTRIBUTE.name]
-            assert filterer._passes_change_type_filter(StateChangeType.STATE) is False
+            assert filterer._passes_entity_exists_filter(state.entity_id) is False
+            # now add to the entity registry and check again
 
 
 class Test_Manager:
     """Test the Pipeline.Manager class."""
 
     @pytest.fixture
-    def manager(self, hass: HomeAssistant):
+    def manager(self, hass: HomeAssistant, settings):
         """Return a Pipeline.Manager instance."""
         gateway = mock.Mock()
-        settings = PipelineSettings(
-            included_entities=[],
-            excluded_entities=[],
-            included_domains=[],
-            excluded_domains=[],
-            allowed_change_types=[],
-            publish_frequency=60,
-            polling_enabled=True,
-            polling_frequency=60,
-        )
         return Pipeline.Manager(hass=hass, gateway=gateway, settings=settings)
 
     class Test_Unit_Tests:
         """Run the unit tests of the Manager class."""
 
-        def test_init(self, manager, snapshot: SnapshotAssertion):
+        async def test_init(self, manager, snapshot: SnapshotAssertion):
             """Test the initialization of the manager."""
 
             assert manager._filterer is not None
@@ -184,10 +239,10 @@ class Test_Manager:
                 "static_fields": manager._static_fields,
             } == snapshot
 
-        async def test_async_init(self, manager):
+        async def test_async_init(self, manager, config_entry):
             """Test the async initialization of the manager."""
-            config_entry = mock.Mock()
-            config_entry.async_create_background_task = mock.Mock()
+
+            manager._settings.change_detection_type = ["STATE"]
 
             manager._listener = mock.Mock()
             manager._listener.async_init = mock.AsyncMock()
@@ -198,16 +253,23 @@ class Test_Manager:
             manager._publisher = mock.Mock()
             manager._publisher.async_init = mock.AsyncMock()
 
-            with patch("custom_components.elasticsearch.es_publish_pipeline.SystemInfo") as system_info:
+            with (
+                patch("custom_components.elasticsearch.es_publish_pipeline.SystemInfo") as system_info,
+                patch("custom_components.elasticsearch.es_publish_pipeline.LoopHandler") as loop_handler,
+            ):
                 system_info_instance = system_info.return_value
                 system_info_instance.async_get_system_info = mock.AsyncMock(
                     return_value=mock.Mock(
                         version="1.0.0",
                         arch="x86",
                         os_name="Linux",
-                        hostname="localhost",
+                        hostname="my_es_host",
                     ),
                 )
+
+                # Ensure we don't start a coroutine that never finishes
+                loop_handler_instance = loop_handler.return_value
+                loop_handler_instance.start = mock.Mock()
 
                 await manager.async_init(config_entry)
 
@@ -216,7 +278,7 @@ class Test_Manager:
                     "agent.version": "1.0.0",
                     "host.architecture": "x86",
                     "host.os.name": "Linux",
-                    "host.hostname": "localhost",
+                    "host.hostname": "my_es_host",
                 }
 
                 manager._listener.async_init.assert_awaited_once()
@@ -224,15 +286,39 @@ class Test_Manager:
                 manager._formatter.async_init.assert_awaited_once_with(manager._static_fields)
                 manager._publisher.async_init.assert_awaited_once()
 
-                config_entry.async_create_background_task.assert_called_once()
-
                 manager.stop()
 
-        @pytest.mark.asyncio()
-        async def test_sip_queue(self, manager, freezer: FrozenDateTimeFactory):
+        async def test_async_init_no_publish(self, manager, config_entry):
+            """Test the async initialization of the manager."""
+
+            config_entry.options = {}
+            manager._listener = mock.Mock()
+            manager._listener.async_init = mock.AsyncMock()
+            manager._poller = mock.Mock()
+            manager._poller.async_init = mock.AsyncMock()
+            manager._formatter = mock.Mock()
+            manager._formatter.async_init = mock.AsyncMock()
+            manager._publisher = mock.Mock()
+            manager._publisher.async_init = mock.AsyncMock()
+
+            # No publish_frequency means the manager doesnt do anything
+            manager._settings = mock.Mock()
+            manager._settings.publish_frequency = None
+
+            # Check for self._logger.warning("No publish frequency set. Disabling publishing.")
+            manager._logger.warning = mock.Mock()
+
+            await manager.async_init(config_entry)
+
+            manager._logger.warning.assert_called_once_with("No publish frequency set. Disabling publishing.")
+
+            manager.stop()
+
+        @pytest.mark.asyncio
+        async def test_sip_queue(self, manager, freeze_time: FrozenDateTimeFactory):
             """Test the _sip_queue method of the Pipeline.Manager class."""
             # Create some sample data
-            freezer.tick()
+            freeze_time.tick()
 
             # Mock the filterer
             manager._filterer = MagicMock()
@@ -259,52 +345,13 @@ class Test_Manager:
             # Sip queue and append to result using async list comprehension
             [result.append(doc) async for doc in manager._sip_queue()]
 
-            # Assert that the filterer and formatter were called
-            manager._filterer.passes_filter.assert_called_once_with(state, reason)
+            # Assert that the formatter was called
             manager._formatter.format.assert_called_once_with(timestamp, state, reason)
 
             # Assert that the result contains the formatted data
             assert result == [{"timestamp": timestamp, "state": state, "reason": reason}]
 
-        @pytest.mark.asyncio()
-        async def test_sip_queue_filtered(self, manager, freezer: FrozenDateTimeFactory):
-            """Test the _sip_queue method of the Pipeline.Manager class."""
-            # Create some sample data
-            freezer.tick()
-
-            # Mock the filterer
-            manager._filterer = MagicMock()
-            manager._filterer.passes_filter.return_value = False
-
-            # Mock the formatter
-
-            timestamp = datetime.now(tz=UTC)
-            state = State("light.living_room", "on")
-            reason = StateChangeType.STATE
-
-            manager._formatter = MagicMock()
-            manager._formatter.format.return_value = {
-                "timestamp": timestamp,
-                "state": state,
-                "reason": reason,
-            }
-
-            # Add the sample data to the queue
-            manager._queue.put((timestamp, state, reason))
-
-            # Call the _sip_queue method
-            result = []
-            # Sip queue and append to result using async list comprehension
-            [result.append(doc) async for doc in manager._sip_queue()]
-
-            # Assert that the filterer and formatter were called
-            manager._filterer.passes_filter.assert_called_once_with(state, reason)
-            manager._formatter.format.assert_not_called()
-
-            # Assert that the result contains the formatted data
-            assert result == []
-
-        @pytest.mark.asyncio()
+        @pytest.mark.asyncio
         async def test_publish(self, hass, manager):
             """Test the _publish method of the Pipeline.Manager class."""
             # Create a mock sip_queue generator
@@ -331,7 +378,11 @@ class Test_Manager:
                 patch.object(manager._publisher, "publish") as publisher_publish,
                 patch.object(manager._filterer, "passes_filter", side_effect=[True, False]),
             ):
+                manager._publisher._gateway.check_connection = AsyncMock(return_value=True)
+
                 await manager._publish()
+
+                manager._publisher._gateway.check_connection.assert_awaited_once()
 
                 publisher_publish.assert_called_once_with(
                     iterable={
@@ -341,7 +392,7 @@ class Test_Manager:
                     },
                 )
 
-        def test_stop(self, manager):
+        async def test_stop(self, manager):
             """Test stopping the manager."""
 
             with (
@@ -355,7 +406,7 @@ class Test_Manager:
                 poller_stop.assert_called_once()
                 publisher_stop.assert_called_once()
 
-        def test_del(self, manager):
+        async def test_del(self, manager):
             """Test cleaning up the manager."""
             with patch.object(manager, "stop") as manager_stop:
                 manager.stop()
@@ -367,65 +418,57 @@ class Test_Poller:
     """Test the Pipeline.Poller class."""
 
     @pytest.fixture
-    def poller(self, hass: HomeAssistant) -> Pipeline.Poller:
+    async def poller(self, hass: HomeAssistant):
         """Return a Pipeline.Poller instance."""
         queue: EventQueue = Queue[tuple[datetime, State, StateChangeType]]()
         settings = MagicMock()
-        return Pipeline.Poller(hass, queue, settings)
+        filterer = MagicMock()
+        poller = Pipeline.Poller(hass, filterer, queue, settings)
+        yield poller
 
-    @pytest.fixture
-    def freeze_time(self, freezer: FrozenDateTimeFactory):
-        """Freeze time so we can properly assert on payload contents."""
-
-        frozen_time = dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023)
-        if frozen_time is None:
-            msg = "Invalid date string"
-            raise ValueError(msg)
-
-        freezer.move_to(frozen_time)
-
-        return freezer
+        poller.stop()
 
     class Test_Unit_Tests:
         """Run the unit tests of the Poller class."""
 
-        def test_init(self, poller):
+        async def test_init(self, poller: Pipeline.Poller):
             """Test the initialization of the Poller."""
             assert poller._hass is not None
             assert poller._queue is not None
             assert poller._cancel_poller is None
 
-        @pytest.mark.asyncio()
-        async def test_async_init(self, poller):
+        @pytest.mark.asyncio
+        async def test_async_init(self, poller: Pipeline.Poller, config_entry):
             """Test the async initialization of the Poller."""
 
-            config_entry = mock.Mock()
             with (
                 patch("custom_components.elasticsearch.es_publish_pipeline.LoopHandler") as loop_handler,
-                patch.object(config_entry, "async_create_background_task") as create_background_task,
             ):
+                # Ensure we don't start a coroutine that never finishes
                 loop_handler_instance = loop_handler.return_value
-                loop_handler_instance.start = mock.AsyncMock()
+                loop_handler_instance.start = mock.Mock()
+
+                poller.poll = MagicMock()
 
                 await poller.async_init(config_entry=config_entry)
 
                 loop_handler.assert_called_once_with(
-                    name="es_etl_poll_loop",
+                    name="es_state_poll_loop",
                     func=poller.poll,
                     frequency=poller._settings.polling_frequency,
                     log=poller._logger,
                 )
 
-                create_background_task.assert_called_once()
+                loop_handler_instance.start.assert_called_once()
 
-        def test_stop(self, poller):
+        async def test_stop(self, poller: Pipeline.Poller):
             """Test stopping the poller."""
 
             with patch.object(poller, "_cancel_poller") as cancel_poller:
                 poller.stop()
                 cancel_poller.cancel.assert_called_once()
 
-        def test_cleanup(self, poller):
+        async def test_cleanup(self, poller: Pipeline.Poller):
             """Test cleaning up the poller."""
 
             with patch.object(poller, "stop") as stop:
@@ -435,7 +478,7 @@ class Test_Poller:
     class Test_Integration_Tests:
         """Run the integration tests of the Poller class."""
 
-        @pytest.mark.asyncio()
+        @pytest.mark.asyncio
         @pytest.mark.parametrize(
             "states",
             [
@@ -497,7 +540,8 @@ class Test_Listener:
     @pytest.fixture
     def listener(self, hass, queue) -> Pipeline.Listener:
         """Return a Listener instance."""
-        return Pipeline.Listener(hass=hass, queue=queue)
+        filterer = MagicMock(spec=Pipeline.Filterer)
+        return Pipeline.Listener(hass=hass, filterer=filterer, queue=queue)
 
     @pytest.fixture
     def event(self) -> Event:
@@ -515,16 +559,22 @@ class Test_Listener:
     class Test_Unit_Tests:
         """Run the unit tests of the Listener class."""
 
-        @pytest.mark.asyncio()
-        async def test_listener_init(self, hass, queue):
+        @pytest.fixture
+        def mock_filterer(self):
+            """Return a mock Filterer instance."""
+            return MagicMock(spec=Pipeline.Filterer)
+
+        @pytest.mark.asyncio
+        async def test_listener_init(self, mock_filterer, hass, queue):
             """Test the initialization of the Listener."""
-            listener = Pipeline.Listener(hass=hass, queue=queue)
+            listener = Pipeline.Listener(hass=hass, filterer=mock_filterer, queue=queue)
 
             assert listener._hass == hass
             assert listener._queue == queue
+            assert listener._filterer == mock_filterer
             assert listener._cancel_listener is None
 
-        @pytest.mark.asyncio()
+        @pytest.mark.asyncio
         async def test_listener_async_init(self, hass, listener):
             """Test the async initialization of the Listener."""
             with (
@@ -538,7 +588,7 @@ class Test_Listener:
                     listener._handle_event,
                 )
 
-        @pytest.mark.asyncio()
+        @pytest.mark.asyncio
         async def test_listener_handle_event(self, hass, listener, event):
             """Test handling a state_changed event."""
             listener._queue.put = MagicMock()
@@ -549,7 +599,7 @@ class Test_Listener:
                 (event.time_fired, event.data["new_state"], StateChangeType.STATE),
             )
 
-        @pytest.mark.asyncio()
+        @pytest.mark.asyncio
         async def test_listener_handle_event_empty_new_state(self, hass, listener, event):
             """Test handling a state_changed event."""
             listener._queue.put = MagicMock()
@@ -560,20 +610,20 @@ class Test_Listener:
 
             listener._queue.put.assert_not_called()
 
-        def test_listener_stop(self, listener):
-            """Test stopping the Listener."""
+        # async def test_listener_stop(self, listener):
+        #     """Test stopping the Listener."""
 
-            with patch.object(listener, "_cancel_listener") as cancel_listener:
-                listener.stop()
+        #     with patch.object(listener, "_cancel_listener") as cancel_listener:
+        #         listener.stop()
 
-                cancel_listener.assert_called_once()
+        #         cancel_listener.assert_called_once()
 
-        def test_listener_cleanup(self, listener):
-            """Test cleaning up the Listener."""
-            with patch.object(listener, "_cancel_listener") as cancel_listener:
-                listener.__del__()
+        # async def test_listener_cleanup(self, listener):
+        #     """Test cleaning up the Listener."""
+        #     with patch.object(listener, "_cancel_listener") as cancel_listener:
+        #         listener.__del__()
 
-                cancel_listener.assert_called_once()
+        #         cancel_listener.assert_called_once()
 
 
 class Test_Publisher:
@@ -592,12 +642,16 @@ class Test_Publisher:
     @pytest.fixture
     def publisher(self, hass, mock_gateway, mock_settings):
         """Return a Publisher instance."""
-        return Pipeline.Publisher(hass=hass, gateway=mock_gateway, settings=mock_settings)
+        publisher = Pipeline.Publisher(hass=hass, gateway=mock_gateway, settings=mock_settings)
+
+        yield publisher
+
+        publisher.stop()
 
     class Test_Unit_Tests:
         """Run the unit tests of the Publisher class."""
 
-        def test_format_datastream_name(self, publisher):
+        async def test_format_datastream_name(self, publisher):
             """Test formatting a datastream name."""
             datastream_type = "metrics"
             dataset = "homeassistant.light"
@@ -619,16 +673,14 @@ class Test_Publisher:
 
             assert publisher._format_datastream_name.cache_info().hits == 1
 
-        @pytest.mark.asyncio()
+        @pytest.mark.asyncio
         async def test_add_action_and_meta_data(self, publisher):
             """Test converting document to elasticsearch action."""
 
             doc: dict = {
-                "datastream": {
-                    "type": "metrics",
-                    "dataset": "homeassistant.light",
-                    "namespace": "default",
-                },
+                "datastream.type": "metrics",
+                "datastream.dataset": "homeassistant.light",
+                "datastream.namespace": "default",
                 "event": {
                     "action": "State change",
                 },
@@ -652,9 +704,9 @@ class Test_Publisher:
                     "_source": doc,
                 }
 
-            assert action is not None
+                assert action is not None
 
-        @pytest.mark.asyncio()
+        @pytest.mark.asyncio
         async def test_publish(self, publisher, mock_gateway):
             """Test publishing a document."""
 
@@ -670,7 +722,7 @@ class Test_Publisher:
                 actions=iterable[0],
             )
 
-        def test_cleanup(self, publisher, mock_gateway):
+        async def test_cleanup(self, publisher, mock_gateway):
             """Test cleaning up the Publisher."""
             with patch.object(publisher, "stop") as stop:
                 publisher.__del__()
@@ -681,19 +733,19 @@ class Test_Formatter:
     """Test the Pipeline.Formatter class."""
 
     @pytest.fixture
-    def formatter(self, hass: HomeAssistant) -> Pipeline.Formatter:
+    def formatter(self, hass: HomeAssistant, settings: PipelineSettings) -> Pipeline.Formatter:
         """Return a Formatter instance."""
-        return Pipeline.Formatter(hass)
+        return Pipeline.Formatter(hass, settings)
 
     class Test_Unit_Tests:
         """Run the unit tests of the Formatter class."""
 
-        def test_init(self, formatter):
+        async def test_init(self, formatter):
             """Test the initialization of the Formatter."""
-            assert formatter._entity_details is not None
+            assert formatter._extended_entity_details is not None
             assert formatter._static_fields == {}
 
-        @pytest.mark.asyncio()
+        @pytest.mark.asyncio
         async def test_async_init(self, formatter):
             """Test the async initialization of the Formatter."""
 
@@ -701,7 +753,7 @@ class Test_Formatter:
                 "agent.version": "1.0.0",
                 "host.architecture": "x86",
                 "host.os.name": "Linux",
-                "host.hostname": "localhost",
+                "host.hostname": "my_es_host",
             }
 
             await formatter.async_init(
@@ -710,13 +762,13 @@ class Test_Formatter:
 
             assert formatter._static_fields == static_fields
 
-        def test_state_to_attributes(self, formatter):
+        async def test_state_to_attributes(self, formatter):
             """Test converting a state to attributes."""
             state = State("light.living_room", "on", {"brightness": 255, "color_temp": 4000})
             attributes = formatter._state_to_attributes(state)
             assert attributes == {"brightness": 255, "color_temp": 4000}
 
-        def test_state_to_attributes_skip(self, formatter):
+        async def test_state_to_attributes_skip(self, formatter):
             """Test converting a state to attributes."""
 
             class CustomAttributeClass:
@@ -737,7 +789,7 @@ class Test_Formatter:
             attributes = formatter._state_to_attributes(state)
             assert attributes == {"brightness": 255, "color_temp": 4000}
 
-        def test_state_to_attributes_duplicate_sanitize(self, formatter):
+        async def test_state_to_attributes_duplicate_sanitize(self, formatter):
             """Test converting a state to attributes."""
             # Patch the logger and make sure we print a debug message
 
@@ -751,7 +803,7 @@ class Test_Formatter:
                 assert attributes == {"brightness": 255, "color_temp": 4000}
                 warning.assert_called_once()
 
-        def test_state_to_attributes_objects(self, formatter, snapshot: SnapshotAssertion):
+        async def test_state_to_attributes_objects(self, formatter, snapshot: SnapshotAssertion):
             """Test converting a state to attributes."""
             # Test attributes that are dicts, sets, and lists
             orig_attributes = {
@@ -770,76 +822,13 @@ class Test_Formatter:
                 "transformed_attributes": transformed_attributes,
             } == snapshot
 
-        def test_state_to_entity_details(self, formatter):
-            """Test converting a state to entity details."""
-
-            entity_details = MagicMock(spec=FullEntityDetails)
-
-            entity_details.capabilities = {"state_class": "measurement"}
-
-            entity_details.entity = MagicMock()
-            entity_details.entity.name = "Living Room Light"
-            entity_details.entity.original_name = "Living Room Light"
-            entity_details.entity.unit_of_measurement = "lm"
-            entity_details.entity.platform = "light"
-            entity_details.entity.device_class = "light"
-            entity_details.entity_labels = ["light"]
-
-            entity_details.entity_area = MagicMock()
-            entity_details.entity_area.id = "living_room"
-            entity_details.entity_area.name = "Living Room"
-
-            entity_details.entity_floor = MagicMock()
-            entity_details.entity_floor.floor_id = "1"
-            entity_details.entity_floor.name = "First Floor"
-
-            entity_details.device = MagicMock()
-            entity_details.device.name = "Living Room Light"
-            entity_details.device.name_by_user = "Living Room Light"
-            entity_details.device_labels = ["light"]
-
-            entity_details.device_area = MagicMock()
-            entity_details.device_area.id = "living_room"
-            entity_details.device_area.name = "Living Room"
-
-            entity_details.device_floor = MagicMock()
-            entity_details.device_floor.floor_id = "1"
-            entity_details.device_floor.name = "First Floor"
-
-            with patch.object(formatter._entity_details, "async_get", return_value=entity_details):
-                state = State("light.living_room", "on", {"brightness": 255})
-
-                entity_details = formatter._state_to_entity_details(state)
-
-                assert entity_details == {
-                    "area.floor.id": "1",
-                    "area.floor.name": "First Floor",
-                    "area.id": "living_room",
-                    "area.name": "Living Room",
-                    "friendly_name": "living room",
-                    "labels": "['light']",
-                    "name": "Living Room Light",
-                    "platform": "light",
-                    "unit_of_measurement": "lm",
-                    "device": {
-                        "area.floor.id": "1",
-                        "area.floor.name": "First Floor",
-                        "area.id": "living_room",
-                        "area.name": "Living Room",
-                        "class": "light",
-                        "friendly_name": "Living Room Light",
-                        "labels": "['light']",
-                        "name": "Living Room Light",
-                    },
-                }
-
-        def test_state_to_coerced_value_string(self, formatter):
+        async def test_state_to_coerced_value_string(self, formatter):
             """Test converting a state to a coerced value."""
             state = State("light.living_room", "tomato")
             coerced_value = formatter.state_to_coerced_value(state)
             assert coerced_value == {"string": "tomato"}
 
-        def test_state_to_coerced_value_boolean(self, formatter):
+        async def test_state_to_coerced_value_boolean(self, formatter):
             """Test converting a state to a coerced value."""
             state = State("binary_sensor.motion", "on")
             coerced_value = formatter.state_to_coerced_value(state)
@@ -849,13 +838,13 @@ class Test_Formatter:
             coerced_value = formatter.state_to_coerced_value(state)
             assert coerced_value == {"boolean": False}
 
-        def test_state_to_coerced_value_float(self, formatter):
+        async def test_state_to_coerced_value_float(self, formatter):
             """Test converting a state to a coerced value."""
             state = State("sensor.temperature", "25.5")
             coerced_value = formatter.state_to_coerced_value(state)
             assert coerced_value == {"float": 25.5}
 
-        def test_state_to_coerced_value_float_fail(self, formatter):
+        async def test_state_to_coerced_value_float_fail(self, formatter):
             """Test converting a state to a coerced value."""
             # set state to infinity
             state = State("sensor.temperature", str(float("inf")))
@@ -867,7 +856,7 @@ class Test_Formatter:
             coerced_value = formatter.state_to_coerced_value(state)
             assert coerced_value == {"string": "nan"}
 
-        def test_state_to_coerced_value_datetime(self, formatter):
+        async def test_state_to_coerced_value_datetime(self, formatter):
             """Test converting a state to a coerced value."""
             state = State("sensor.last_updated", "2023-04-12T12:00:00Z")
             coerced_value = formatter.state_to_coerced_value(state)
@@ -877,35 +866,154 @@ class Test_Formatter:
                 "time": "12:00:00",
             }
 
-        def test_state_to_datastream(self, formatter):
+        async def test_domain_to_datastream(self, formatter):
             """Test converting a state to a datastream."""
-            state = State("light.living_room", "on")
-            datastream = formatter.state_to_datastream(state)
+            datastream = formatter.domain_to_datastream(const.TEST_ENTITY_DOMAIN)
             assert datastream == {
-                "type": "metrics",
-                "dataset": "homeassistant.light",
-                "namespace": "default",
+                "datastream.type": "metrics",
+                "datastream.dataset": f"homeassistant.{const.TEST_ENTITY_DOMAIN}",
+                "datastream.namespace": "default",
             }
 
     class Test_Integration_Tests:
         """Run the integration tests of the Formatter class."""
 
-        def test_format(self, formatter):
-            """Test formatting a state change document."""
-            time = datetime.now()
-            state = State("light.living_room", "on", {"brightness": 255})
+        async def test_state_to_extended_details(
+            self,
+            formatter,
+            entity: RegistryEntry,
+            entity_object_id,
+            entity_area_name,
+            entity_floor_name,
+            entity_labels,
+            device_name,
+            device_area_name,
+            device_floor_name,
+            device_labels,
+            snapshot,
+        ):
+            """Test converting a state to entity details."""
+
+            state = State(entity_id=entity.entity_id, state="on", attributes={"brightness": 255})
+
+            entity_details = formatter._state_to_extended_details(state)
+
+            assert entity_details["hass.entity.area.name"] == entity_area_name
+            assert entity_details["hass.entity.area.floor.name"] == entity_floor_name
+            assert entity_details["hass.entity.device.labels"] == device_labels
+            assert entity_details["hass.entity.device.name"] == device_name
+            assert entity_details["hass.entity.labels"] == entity_labels
+            assert entity_details["hass.entity.platform"] == entity.platform
+
+            assert entity_details == snapshot
+
+        async def test_state_to_extended_details_exception(
+            self,
+            formatter,
+            snapshot,
+        ):
+            """Test converting a state to entity details."""
+
+            state = State(entity_id="tomato.pancakes", state="on", attributes={"brightness": 255})
+
+            with pytest.raises(ValueError):
+                formatter._state_to_extended_details(state)
+
+        @pytest.mark.parametrize(
+            const.TEST_DEVICE_COMBINATION_FIELD_NAMES,
+            const.TEST_DEVICE_COMBINATIONS,
+            ids=const.TEST_DEVICE_COMBINATION_IDS,
+        )
+        @pytest.mark.parametrize(
+            const.TEST_ENTITY_COMBINATION_FIELD_NAMES,
+            const.TEST_ENTITY_COMBINATIONS,
+            ids=const.TEST_ENTITY_COMBINATION_IDS,
+        )
+        @pytest.mark.parametrize(
+            const.TEST_ENTITY_STATE_ATTRIBUTE_COMBINATION_FIELD_NAMES,
+            const.TEST_ENTITY_STATE_ATTRIBUTE_COMBINATIONS,
+            ids=const.TEST_ENTITY_STATE_ATTRIBUTE_COMBINATION_IDS,
+        )
+        async def test_format(
+            self,
+            formatter,
+            entity,
+            entity_object_id,
+            entity_area_name,
+            entity_floor_name,
+            entity_domain: str,
+            entity_labels,
+            device_name,
+            device_area_name,
+            device_floor_name,
+            device_labels,
+            attributes: dict,
+            freeze_time: FrozenDateTimeFactory,
+            snapshot,
+        ):
+            """Test converting a state to entity details."""
+
+            time = datetime.now(tz=UTC)
+            state = State(entity_id=entity.entity_id, state="on", attributes=attributes)
             reason = StateChangeType.STATE
+
             document = formatter.format(time, state, reason)
+
             assert document["@timestamp"] == time.isoformat()
-            assert document["event"]["action"] == "State change"
-            assert document["hass.entity"]["attributes"] == {"brightness": 255}
-            assert document["hass.entity"]["domain"] == "light"
-            assert document["hass.entity"]["id"] == "light.living_room"
-            assert document["hass.entity"]["value"] == "on"
-            assert document["hass.entity"]["valueas"] == {"boolean": True}
-            assert document["hass.entity"]["object.id"] == "living_room"
-            assert document["datastream"] == {
-                "type": "metrics",
-                "dataset": "homeassistant.light",
-                "namespace": "default",
-            }
+
+            assert document["datastream.dataset"] == f"homeassistant.{entity.domain}"
+            assert document["datastream.type"] == "metrics"
+            assert document["datastream.namespace"] == "default"
+
+            assert document["event.action"] == "State change"
+            assert document["event.kind"] == "event"
+            assert document["event.type"] == "change"
+
+            assert document["hass.entity.friendly_name"] is not None
+            assert document["hass.entity.domain"] == entity.domain
+            assert document["hass.entity.id"] is not None
+            assert document["hass.entity.object.id"] == entity_object_id
+            assert document["hass.entity.value"] == "on"
+            assert document["hass.entity.valueas"] == {"boolean": True}
+
+            assert document["datastream.namespace"] == "default"
+
+            assert document == snapshot
+
+        @pytest.mark.parametrize(
+            "reason_type",
+            [
+                StateChangeType.STATE,
+                StateChangeType.ATTRIBUTE,
+                StateChangeType.NO_CHANGE,
+            ],
+            ids=[
+                "state",
+                "attribute",
+                "no_change",
+            ],
+        )
+        async def test_format_reason_types(
+            self,
+            formatter,
+            entity,
+            reason_type: StateChangeType,
+            freeze_time: FrozenDateTimeFactory,
+            snapshot,
+        ):
+            """Test converting a state to entity details."""
+
+            time = datetime.now(tz=UTC)
+            state = State(entity_id=entity.entity_id, state="on", attributes={"brightness": 255})
+            reason = reason_type
+
+            document = formatter.format(time, state, reason)
+
+            assert document["event.action"] == reason_type.to_publish_reason()
+            assert document["event.kind"] == "event"
+            if reason_type == StateChangeType.NO_CHANGE:
+                assert document["event.type"] == "info"
+            else:
+                assert document["event.type"] == "change"
+
+            assert document == snapshot

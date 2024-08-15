@@ -1,10 +1,21 @@
 """Test Constants."""
 
+from datetime import datetime
+
+from custom_components.elasticsearch.const import (
+    CONF_CHANGE_DETECTION_ENABLED,
+    CONF_CHANGE_DETECTION_TYPE,
+    CONF_EXCLUDE_TARGETS,
+    CONF_INCLUDE_TARGETS,
+    CONF_POLLING_FREQUENCY,
+    CONF_PUBLISH_FREQUENCY,
+    CONF_TAGS,
+    CONF_TARGETS_TO_EXCLUDE,
+    CONF_TARGETS_TO_INCLUDE,
+    StateChangeType,
+)
+from homeassistant.components.counter import DOMAIN as COUNTER_DOMAIN
 from homeassistant.const import (
-    CONF_ALIAS,
-    CONF_DOMAINS,
-    CONF_ENTITIES,
-    CONF_EXCLUDE,
     CONF_PASSWORD,
     CONF_TIMEOUT,
     CONF_URL,
@@ -12,41 +23,200 @@ from homeassistant.const import (
     CONF_VERIFY_SSL,
 )
 
-from custom_components.elasticsearch.const import (
-    CONF_HEALTH_SENSOR_ENABLED,
-    CONF_ILM_ENABLED,
-    CONF_ILM_POLICY_NAME,
-    CONF_INDEX_FORMAT,
-    CONF_ONLY_PUBLISH_CHANGED,
-    CONF_PUBLISH_ENABLED,
-    CONF_PUBLISH_FREQUENCY,
-)
+TEST_DEVICE_AREA_NAME = "device area"
+TEST_DEVICE_FLOOR_NAME = "device floor"
+TEST_DEVICE_LABELS = ["device label 1", "device label 2", "device label 3"]
 
-MOCK_MINIMAL_LEGACY_CONFIG = {
-    CONF_URL: "http://my-es:9200",
-}
+TEST_DEVICE_NAME = "device name"
 
-MOCK_COMPLEX_LEGACY_CONFIG = {
-    CONF_URL: "https://my-complex-es:9200",
-    CONF_USERNAME: "username",
-    CONF_PASSWORD: "changeme",
-    CONF_TIMEOUT: 60,
-    CONF_PUBLISH_ENABLED: True,
-    CONF_PUBLISH_FREQUENCY: 1,
-    CONF_ILM_ENABLED: True,
-    CONF_ILM_POLICY_NAME: "custom-policy-name",
-    CONF_INDEX_FORMAT: "custom-index-format",
-    CONF_HEALTH_SENSOR_ENABLED: True,
+TEST_ENTITY_DOMAIN = COUNTER_DOMAIN
+TEST_ENTITY_AREA_ID = "entity_area"
+TEST_ENTITY_AREA_NAME = "entity area"
+TEST_ENTITY_FLOOR_NAME = "entity floor"
+TEST_ENTITY_LABELS = ["entity label 1", "entity label 2", "entity label 3"]
+TEST_ENTITY_PLATFORM = "entity platform"
+TEST_ENTITY_DEVICE_CLASS = "entity device class"
+
+TEST_ENTITY_STATE = "entity state"
+TEST_ENTITY_STATE_FLOAT = "123.456"
+TEST_ENTITY_STATE_INT = "123"
+TEST_ENTITY_STATE_STRING = "abc123"
+TEST_ENTITY_STATE_NONE = None
+TEST_ENTITY_STATE_DATETIME = "2024-04-12T00:00:00+00:00"
+TEST_ENTITY_STATE_DATE = "2024-04-12"
+TEST_ENTITY_STATE_TIME = "00:00:00"
+TEST_ENTITY_STATE_BOOLEAN = "True"
+TEST_ENTITY_STATE_BOOLEAN_ON = "on"
+
+TEST_ENTITY_STATE_ATTRIBUTES_INCLUDE = [
+    {
+        "string": "abc123",
+        "int": 123,
+        "float": 123.456,
+        "list": [1, 2, 3, 4],
+        "set": {5, 5},
+        "none": None,
+        "Collision Test": "first value",
+        "collision_test": "second value",
+        "*_Non ECS-Compliant    Attribute.ñame! 😀": True,
+        "datetime": datetime(year=2024, month=4, day=12),
+        "bool": True,
+    }
+]
+
+TEST_ENTITY_STATE_ATTRIBUTES_EXCLUDE = [
+    {
+        "": "Key is empty, and should be excluded",
+        "naughty": object(),
+        datetime(year=2024, month=4, day=12): "Key is a datetime, and should be excluded",
+        123: "Key is a number, and should be excluded",
+        True: "Key is a bool, and should be excluded",
+    }
+]
+
+TEST_ENTITY_STATE_ATTRIBUTES_ALL = [
+    {
+        **TEST_ENTITY_STATE_ATTRIBUTES_INCLUDE[0],
+        **TEST_ENTITY_STATE_ATTRIBUTES_EXCLUDE[0],
+    }
+]
+
+TEST_ENTITY_STATE_ATTRIBUTE_COMBINATION_FIELD_NAMES = ["attributes"]
+
+TEST_ENTITY_STATE_ATTRIBUTE_COMBINATIONS = [
+    TEST_ENTITY_STATE_ATTRIBUTES_INCLUDE,
+    TEST_ENTITY_STATE_ATTRIBUTES_EXCLUDE,
+    TEST_ENTITY_STATE_ATTRIBUTES_ALL,
+]
+
+TEST_ENTITY_STATE_ATTRIBUTE_COMBINATION_IDS = [
+    "With compliant attributes",
+    "With non-compliant attributes",
+    "With compliant and non-compliant attributes",
+]
+
+TEST_ENTITY_OBJECT_ID_0 = "entity_object_id"
+TEST_ENTITY_OBJECT_ID_1 = "entity_object_id_1"
+TEST_ENTITY_OBJECT_ID_2 = "entity_object_id_2"
+TEST_ENTITY_OBJECT_ID_3 = "entity_object_id_3"
+TEST_ENTITY_OBJECT_ID_4 = "entity_object_id_4"
+TEST_ENTITY_OBJECT_ID_5 = "entity_object_id_5"
+
+
+TEST_CONFIG_ENTRY_DATA_URL = "http://mock_es_integration:9200"
+TEST_CONFIG_ENTRY_DATA_USERNAME = "hass_writer"
+TEST_CONFIG_ENTRY_DATA_PASSWORD = "changeme"
+TEST_CONFIG_ENTRY_DATA_TIMEOUT = 30
+TEST_CONFIG_ENTRY_DATA_VERIFY_SSL = False
+
+TEST_CONFIG_ENTRY_BASE_DATA = {
+    CONF_URL: TEST_CONFIG_ENTRY_DATA_URL,
+    CONF_TIMEOUT: 30,
     CONF_VERIFY_SSL: False,
-    CONF_ONLY_PUBLISH_CHANGED: True,
-    CONF_ALIAS: "my-alias",
-    CONF_EXCLUDE: {
-        CONF_ENTITIES: ["switch.my_switch"],
-        CONF_DOMAINS: ["sensor", "weather"],
-    },
+    CONF_USERNAME: "hass_writer",
+    CONF_PASSWORD: "changeme",
 }
 
-MOCK_ELASTICSEARCH_URL = "https://my-complex-es:9200"
+TEST_CONFIG_ENTRY_BASE_OPTIONS = {
+    CONF_CHANGE_DETECTION_ENABLED: False,
+    CONF_CHANGE_DETECTION_TYPE: [],
+    CONF_TAGS: [],
+    CONF_POLLING_FREQUENCY: 0,
+    CONF_PUBLISH_FREQUENCY: 0,
+    CONF_INCLUDE_TARGETS: False,
+    CONF_EXCLUDE_TARGETS: False,
+    CONF_TARGETS_TO_INCLUDE: {},
+    CONF_TARGETS_TO_EXCLUDE: {},
+}
+
+
+TEST_CONFIG_ENTRY_DEFAULT_OPTIONS = {
+    CONF_CHANGE_DETECTION_ENABLED: True,
+    CONF_CHANGE_DETECTION_TYPE: [StateChangeType.STATE.value, StateChangeType.ATTRIBUTE.value],
+    CONF_TAGS: [],
+    CONF_POLLING_FREQUENCY: 60,
+    CONF_PUBLISH_FREQUENCY: 60,
+    CONF_INCLUDE_TARGETS: False,
+    CONF_EXCLUDE_TARGETS: False,
+    CONF_TARGETS_TO_INCLUDE: {},
+    CONF_TARGETS_TO_EXCLUDE: {},
+}
+
+TEST_DEVICE_COMBINATION_FIELD_NAMES = (
+    "device_name",
+    "device_area_name",
+    "device_floor_name",
+    "device_labels",
+)
+TEST_DEVICE_COMBINATIONS = [
+    (TEST_DEVICE_NAME, TEST_DEVICE_AREA_NAME, TEST_DEVICE_FLOOR_NAME, TEST_DEVICE_LABELS),
+    (TEST_DEVICE_NAME, TEST_DEVICE_AREA_NAME, None, TEST_DEVICE_LABELS),
+    (TEST_DEVICE_NAME, None, None, TEST_DEVICE_LABELS),
+    (TEST_DEVICE_NAME, None, None, None),
+    (None, None, None, None),
+]
+TEST_DEVICE_COMBINATION_IDS = [
+    "With device",
+    "With device no floor",
+    "With device no area and floor",
+    "With device no area, floor, or labels",
+    "With no device",
+]
+
+TEST_ENTITY_COMBINATION_FIELD_NAMES = (
+    "entity_object_id",
+    "entity_area_name",
+    "entity_floor_name",
+    "entity_labels",
+)
+TEST_ENTITY_COMBINATIONS = [
+    (TEST_ENTITY_OBJECT_ID_0, TEST_ENTITY_AREA_NAME, TEST_ENTITY_FLOOR_NAME, TEST_ENTITY_LABELS),
+    (TEST_ENTITY_OBJECT_ID_0, TEST_ENTITY_AREA_NAME, None, TEST_ENTITY_LABELS),
+    (TEST_ENTITY_OBJECT_ID_0, None, None, TEST_ENTITY_LABELS),
+    (TEST_ENTITY_OBJECT_ID_0, None, None, None),
+]
+
+TEST_ENTITY_COMBINATION_IDS = [
+    "With entity",
+    "With entity no floor",
+    "With entity no area and floor",
+    "With entity no area, floor, or labels",
+]
+
+TEST_ENTITY_STATE_COMBINATIONS = [
+    {
+        "state": TEST_ENTITY_STATE,
+        "attributes": {
+            "string": "abc123",
+            "int": 123,
+            "float": 123.456,
+        },
+    }
+]
+
+# "dict": {
+#                 "string": "abc123",
+#                 "int": 123,
+#                 "float": 123.456,
+#             },
+#             "string": "abc123",
+#             "int": 123,
+#             "float": 123.456,
+#             "list": [1, 2, 3, 4],
+#             "set": {5, 5},
+#             "none": None,
+#             "Collision Test": "first value",
+#             "collision_test": "second value",
+#             "*_Non ECS-Compliant    Attribute.ñame! 😀": True,
+#             # Keyless entry should be excluded from output
+#             "": "Key is empty, and should be excluded",
+#             # Custom classes should be excluded from output
+#             "naughty": object(),
+#             # Entries with non-string keys should be excluded from output
+#             datetime(year=2024,month=4,day=12): "Key is a datetime, and should be excluded",
+#             "Key is a datetime, and should be excluded": datetime(year=2024,month=4,day=12),
+#             123: "Key is a number, and should be excluded",
+#             True: "Key is a bool, and should be excluded",
 
 MOCK_NOON_APRIL_12TH_2023 = "2023-04-12T12:00:00+00:00"
 
@@ -177,6 +347,23 @@ CLUSTER_INFO_8DOT11_RESPONSE_BODY = {
         "minimum_index_compatibility_version": "7.0.0",
     },
     "tagline": "You Know, for Search",
+}
+
+CLUSTER_INFO_8DOT14_RESPONSE_BODY = {
+    "name": "640dcce4be79",
+    "cluster_name": "docker-cluster",
+    "cluster_uuid": "R-PPqCZYQTCMvkpGcyL4mA",
+    "version": {
+        "number": "8.14.0",
+        "build_flavor": "default",
+        "build_type": "docker",
+        "build_hash": "d9ec3fa628c7b0ba3d25692e277ba26814820b20",
+        "build_date": "2023-11-04T10:04:57.184859352Z",
+        "build_snapshot": False,
+        "lucene_version": "9.8.0",
+        "minimum_wire_compatibility_version": "7.17.0",
+        "minimum_index_compatibility_version": "7.0.0",
+    },
 }
 
 CLUSTER_INFO_8DOT8_RESPONSE_BODY = {

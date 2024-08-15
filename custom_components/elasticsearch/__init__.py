@@ -1,114 +1,115 @@
 """Support for sending event data to an Elasticsearch cluster."""
 
-from elasticsearch.config_flow import ElasticFlowHandler
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
+from __future__ import annotations
 
+from logging import Logger
+from typing import TYPE_CHECKING
+
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady, IntegrationError
+
+from custom_components.elasticsearch.config_flow import ElasticFlowHandler
 from custom_components.elasticsearch.errors import (
     AuthenticationRequired,
-    InsufficientPrivileges,
+    CannotConnect,
+    ESIntegrationException,
     UnsupportedVersion,
 )
-from custom_components.elasticsearch.logger import LOGGER, have_child
-
-from .const import (
-    CONF_HEALTH_SENSOR_ENABLED,
-    CONF_INDEX_MODE,
-    CONF_ONLY_PUBLISH_CHANGED,
-    CONF_PUBLISH_MODE,
-    DOMAIN,
-    INDEX_MODE_LEGACY,
-    PUBLISH_MODE_ALL,
-    PUBLISH_MODE_ANY_CHANGES,
+from custom_components.elasticsearch.logger import (
+    LOGGER,
+    async_log_enter_exit_debug,
+    async_log_enter_exit_info,
+    have_child,
+    log_enter_exit_debug,
 )
+
 from .es_integration import ElasticIntegration
 
+if TYPE_CHECKING:
+    from homeassistant.core import HomeAssistant
 
-async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:  # pylint: disable=unused-argument
-    """Migrate old entry."""
-
-    latest_version = ElasticFlowHandler.VERSION
-
-    if config_entry.version == latest_version:
-        return True
-
-    migrated_data, migrated_options, migrated_version = migrate_data_and_options_to_version(
-        config_entry,
-        latest_version,
-    )
-
-    config_entry.version = migrated_version
-
-    return hass.config_entries.async_update_entry(config_entry, data=migrated_data, options=migrated_options)
+type ElasticIntegrationConfigEntry = ConfigEntry[ElasticIntegration]
 
 
-async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+@async_log_enter_exit_info
+async def async_setup_entry(hass: HomeAssistant, config_entry: ElasticIntegrationConfigEntry) -> bool:
     """Set up integration via config flow."""
 
-    LOGGER.debug("Setting up integration")
-    init = await _async_init_integration(hass, config_entry)
-    config_entry.add_update_listener(async_config_entry_updated)
-    return init
+    # Create an specific logger for this config entry
+    _logger: Logger = have_child(name=config_entry.title)
 
-
-async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
-    """Teardown integration."""
-    existing_instance = hass.data.get(DOMAIN)
-    if isinstance(existing_instance, ElasticIntegration):
-        LOGGER.debug("Shutting down previous integration")
-        await existing_instance.async_shutdown()
-        hass.data[DOMAIN] = None
-    return True
-
-
-async def async_config_entry_updated(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
-    """Respond to config changes."""
-    LOGGER.debug("Configuration change detected")
-    await _async_init_integration(hass, config_entry)
-
-
-async def _async_init_integration(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
-    """Initialize integration."""
-    await async_unload_entry(hass=hass, config_entry=config_entry)
-
-    _logger = have_child(name=config_entry.title)
     _logger.info("Initializing integration for %s", config_entry.title)
 
     try:
         integration = ElasticIntegration(hass=hass, config_entry=config_entry, log=_logger)
         await integration.async_init()
-    except UnsupportedVersion as err:
-        msg = "Unsupported Elasticsearch version detected"
-        _logger.exception(msg)
-        raise ConfigEntryNotReady(msg) from err
+    except (UnsupportedVersion, CannotConnect) as err:
+        raise ConfigEntryNotReady(err) from err
     except AuthenticationRequired as err:
-        msg = "Missing or invalid credentials"
+        raise ConfigEntryAuthFailed(err) from err
+    except ESIntegrationException as err:
+        raise ConfigEntryNotReady(err) from err
+    except Exception as err:
+        msg = "Unknown error occurred"
         _logger.exception(msg)
-        raise ConfigEntryAuthFailed(msg) from err
-    except InsufficientPrivileges as err:
-        msg = "Account does not have sufficient privileges"
-        _logger.exception(msg)
-        raise ConfigEntryAuthFailed from err
-    except ConnectionError as err:
-        msg = "Error connecting to Elasticsearch"
-        _logger.exception(msg)
-        raise ConfigEntryNotReady(msg) from err
-    except Exception as err:  # pylint disable=broad-exception-caught
-        msg = "Exception during component initialization"
-        _logger.exception(msg)
-        raise ConfigEntryNotReady(msg) from err
+        raise IntegrationError(err) from err
 
-    if hass.data.get(DOMAIN) is None:
-        hass.data[DOMAIN] = {}
+    config_entry.runtime_data = integration
+    return True
 
-    hass.data[DOMAIN][config_entry.entry_id] = integration
+
+@async_log_enter_exit_info
+async def async_unload_entry(hass: HomeAssistant, config_entry: ElasticIntegrationConfigEntry) -> bool:
+    """Teardown integration."""
+
+    if (
+        hasattr(config_entry, "runtime_data")
+        and config_entry.runtime_data is not None
+        and isinstance(config_entry.runtime_data, ElasticIntegration)
+    ):
+        integration = config_entry.runtime_data
+
+        await integration.async_shutdown()
+    else:
+        LOGGER.warning(
+            "Called to unload config entry %s, but it doesn't appear to be loaded", config_entry.title
+        )
 
     return True
 
 
+@async_log_enter_exit_debug
+async def async_migrate_entry(hass: HomeAssistant, config_entry: ElasticIntegrationConfigEntry) -> bool:
+    """Handle migration of config entry."""
+    if config_entry.version == ElasticFlowHandler.VERSION:
+        return True
+
+    try:
+        migrated_data, migrated_options, migrated_version = migrate_data_and_options_to_version(
+            config_entry,
+            ElasticFlowHandler.VERSION,
+        )
+    except ValueError:
+        LOGGER.exception(
+            "Migration failed attempting to migrate from version %s to version %s. Ended on %s.",
+            config_entry.version,
+            ElasticFlowHandler.VERSION,
+        )
+        return False
+
+    hass.config_entries.async_update_entry(
+        config_entry,
+        data=migrated_data,
+        options=migrated_options,
+        version=migrated_version,
+    )
+
+    return True
+
+
+@log_enter_exit_debug
 def migrate_data_and_options_to_version(
-    config_entry: ConfigEntry,
+    config_entry: ElasticIntegrationConfigEntry,
     desired_version: int,
 ) -> tuple[dict, dict, int]:
     """Migrate a config entry from its current version to a desired version."""
@@ -150,16 +151,16 @@ def migrate_to_version_2(data: dict, options: dict) -> tuple[dict, dict]:
 
 def migrate_to_version_3(data: dict, options: dict) -> tuple[dict, dict]:
     """Migrate config to version 3."""
-    if CONF_HEALTH_SENSOR_ENABLED in data:
-        del data[CONF_HEALTH_SENSOR_ENABLED]
+    if "health_sensor_enabled" in data:
+        del data["health_sensor_enabled"]
 
     return data, options
 
 
 def migrate_to_version_4(data: dict, options: dict) -> tuple[dict, dict]:
     """Migrate config to version 4."""
-    if CONF_INDEX_MODE not in data:
-        data[CONF_INDEX_MODE] = INDEX_MODE_LEGACY
+    if "index_mode" not in data:
+        data["index_mode"] = "index"
 
     conf_ilm_max_size = "ilm_max_size"
     if conf_ilm_max_size in data:
@@ -216,21 +217,80 @@ def migrate_to_version_5(data: dict, options: dict) -> tuple[dict, dict]:
 def migrate_to_version_6(data: dict, options: dict) -> tuple[dict, dict]:
     """Migrate config to version 6."""
 
-    options["polling_enabled"] = True
-    options["polling_frequency"] = 60
-
     if data.get("index_mode") is not None:
         del data["index_mode"]
 
+    # Change publish mode to change_detection_type
     if options.get("publish_mode") is not None:
         if options["publish_mode"] == "All":
-            options["allowed_change_types"] = ["STATE", "ATTRIBUTE", "POLLING"]
+            options["polling_frequency"] = options["publish_frequency"]
+            options["change_detection_type"] = ["STATE", "ATTRIBUTE"]
+
         if options["publish_mode"] == "Any changes":
-            options["allowed_change_types"] = ["STATE", "ATTRIBUTE"]
+            options["polling_frequency"] = 0
+            options["change_detection_type"] = ["STATE", "ATTRIBUTE"]
+
         if options["publish_mode"] == "State changes":
-            options["allowed_change_types"] = ["STATE"]
+            options["polling_frequency"] = 0
+            options["change_detection_type"] = ["STATE"]
+
         del options["publish_mode"]
+
     else:
-        options["allowed_change_types"] = ["STATE", "ATTRIBUTE", "POLLING"]
+        options["polling_frequency"] = 0
+        options["change_detection_type"] = ["STATE", "ATTRIBUTE"]
+
+    # add dedicated settings for polling
+    options_to_remove = [
+        "ilm_enabled",
+        "ilm_policy_name",
+        "publish_mode",
+        "publish_enabled",
+        "index_format",
+        "index_mode",
+        "alias",
+    ]
+
+    for key in options_to_remove:
+        if key in options:
+            del options[key]
+
+    return data, options
+
+
+def migrate_to_version_7(data: dict, options: dict) -> tuple[dict, dict]:
+    """Migrate config to version 7."""
+
+    # if tags does not exist, set it to an empty array
+    if "tags" not in options:
+        options["tags"] = []
+
+    options["targets_to_include"] = {}
+    options["targets_to_exclude"] = {}
+    options["exclude_targets"] = False
+    options["include_targets"] = False
+
+    if "included_entities" in options and len(options["included_entities"]) != 0:
+        options["include_targets"] = True
+        options["targets_to_include"]["entity_id"] = options["included_entities"]
+
+    if "excluded_entities" in options and len(options["excluded_entities"]) != 0:
+        options["exclude_targets"] = True
+        options["targets_to_exclude"]["entity_id"] = options["excluded_entities"]
+
+    keys_to_remove = [
+        "excluded_domains",
+        "excluded_entities",
+        "included_domains",
+        "included_entities",
+    ]
+
+    # Lowercase values in array options["change_detection_type"]
+    if "change_detection_type" in options:
+        options["change_detection_type"] = [x.lower() for x in options["change_detection_type"]]
+
+    for key in keys_to_remove:
+        if key in options:
+            del options[key]
 
     return data, options

@@ -1,64 +1,53 @@
 {
-    "issues": {
-        "datastream_migration": {
-            "title": "Legacy Index Format Detected, manual migration required",
-            "description": "Datastreams are now the default destination for Homeassistant data. Your integration is configured to use the legacy index format. To migrate to the new datastream format, simply delete and recreate the Elasticsearch integration. To learn more, please click 'Learn More'."
-        },
-        "yaml_migration": {
-            "title": "YAML-based configuration detected, manual migration required",
-            "description": "Your integration is configured via YAML. The integration no longer supports configuring via YAML. You will only be able to configure the integration via the UI and we recommend removing any configurations from `configuration.yaml`. To learn more, please click 'Learn More'."
-        }
-    },
     "config": {
         "abort": {
-            "reauth_successful": "Re-authentication was successful",
-            "single_instance_allowed": "Already configured. Only a single configuration possible.",
-            "configured_via_yaml": "Configuration imported from configuration.yaml. Remove entry from configuration.yaml, restart, and re-add this integration to proceed."
+            "reauth_successful": "Re-authentication was successful"
         },
         "error": {
-            "cannot_connect": "Failed to connect",
+            "cannot_connect": "Failed to connect to host on port. Is it reachable?",
             "invalid_basic_auth": "Invalid username or password.",
             "invalid_api_key": "Invalid API Key.",
             "insufficient_privileges": "Insufficient privileges for specified user.",
             "missing_credentials": "This cluster requires authentication. Please provide a username and password.",
-            "untrusted_connection": "Elasticsearch's server certificate could not be verified. Either disable TLS verification, or specify a custom CA path below.",
+            "untrusted_certificate": "Elasticsearch's server certificate could not be verified. Either disable TLS verification, or specify a custom CA path below.",
             "unsupported_version": "Unsupported version of Elasticsearch detected. The minimum supported version is 7.11.0."
         },
         "step": {
             "user": {
-                "title": "Choose authentication type"
-            },
-            "no_auth": {
-                "title": "Connect without authenticating",
+                "title": "Elasticsearch Cluster Information",
+                "description": "Please provide the URL to access your elasticsearch cluster in the format http(s)://my_elasticsearch_server:port (https://my_elasticsearch:9200).",
                 "data": {
-                    "url": "URL",
+                    "url": "URL to access the Elasticsearch Cluster"
+                }
+            },
+            "certificate_issues": {
+                "title": "Untrusted Certificate with SSL/TLS",
+                "description": "Elasticsearch's server certificate could not be verified. Either disable TLS verification, or specify a custom CA path below.",
+                "data": {
                     "verify_ssl": "Verify TLS certificate (recommended)",
+                    "ssl_verify_hostname": "Verify hostname matches server certificate",
                     "ssl_ca_path": "Fully qualified path to custom certificate authority"
+                }
+            },
+            "authentication_issues": {
+                "title": "Select an Authentication Method",
+                "description": "Choose an authentication method to connect to your Elasticsearch cluster.",
+                "data": {
+                    "basic_auth": "Authenticate via username/password",
+                    "api_key": "Authenticate via API Key"
                 }
             },
             "basic_auth": {
                 "title": "Authenticate via username/password",
                 "data": {
-                    "url": "URL",
                     "username": "Username",
-                    "password": "Password",
-                    "verify_ssl": "Verify TLS certificate (recommended)",
-                    "ssl_ca_path": "Fully qualified path to custom certificate authority"
+                    "password": "Password"
                 }
             },
             "api_key": {
                 "title": "Authenticate via API Key",
                 "data": {
-                    "url": "URL",
-                    "api_key": "API Key",
-                    "verify_ssl": "Verify TLS certificate (recommended)",
-                    "ssl_ca_path": "Fully qualified path to custom certificate authority"
-                }
-            },
-            "index_mode": {
-                "title": "Choose what type of Index to publish data to",
-                "data": {
-                    "index_mode": "Choose what type of Index to publish data to"
+                    "api_key": "API Key"
                 }
             },
             "reauth_confirm": {
@@ -72,40 +61,41 @@
         }
     },
     "options": {
-        "abort": {
-            "configured_via_yaml": "Configuration imported from configuration.yaml. Remove entry from configuration.yaml, restart, and re-add this integration to proceed."
-        },
         "step": {
-            "publish_options": {
-                "title": "Elastic",
-                "description": "Configure publish options",
+            "options": {
+                "title": "Elastic Integration Settings",
+                "description": "Configure the polling and publishing settings for the Elastic integration.",
                 "data": {
-                    "publish_enabled": "Publish events to Elasticsearch",
-                    "publish_frequency": "How frequently events are published, in seconds",
-                    "publish_mode": "Choose which entity states to publish",
-                    "index_mode": "Choose what type of Index to publish data to",
+                    "publish_frequency": "Send events to Elasticsearch at this interval",
+                    "polling_frequency": "Gather all entity states at this interval",
+                    "change_detection_enabled": "Detect and publish changes to entities",
+                    "change_detection_type": "Choose what types of entity changes to listen for and publish",
+                    "tags": "Tags to apply to all published events",
                     "excluded_domains": "Domains to exclude from publishing. Defaults to none.",
                     "excluded_entities": "Entities to exclude from publishing. Defaults to none.",
                     "included_domains": "Domains to publish. Defaults to all domains.",
                     "included_entities": "Entities to publish. Defaults to all entities.",
-                    "index_format": "The index name prefix to publish events to",
-                    "alias": "The index alias used for writing events to Elasticsearch"
+                    "include_targets": "Toggle to only publish the set of targets below",
+                    "exclude_targets": "Toggle to exclude publishing the set of targets below"
+                },
+                "data_description": {
+                    "publish_frequency": "Set to zero to disable publishing.",
+                    "polling_frequency": "Set to zero to only publish entity changes."
                 }
-            },
-            "ilm_options": {
-                "title": "Elastic",
-                "description": "Configure ILM options",
-                "data": {
-                    "ilm_enabled": "Enable ILM",
-                    "ilm_policy_name": "ILM policy name"
-                }
-            },
-            "health_options": {
-                "title": "Cluster health monitoring",
-                "description": "Configure health monitoring",
-                "data": {
-                    "health_sensor_enabled": "Enable health sensor"
-                }
+            }
+        }
+    },
+    "selector": {
+        "authentication_issues": {
+            "options": {
+                "api_key": "Authenticate using an API Key",
+                "basic_auth": "Authenticate using Username/Password"
+            }
+        },
+        "change_detection_type": {
+            "options": {
+                "state": "Track entities with state changes",
+                "attribute": "Track entities with attribute changes"
             }
         }
     }

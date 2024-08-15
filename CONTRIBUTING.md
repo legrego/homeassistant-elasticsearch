@@ -60,7 +60,9 @@ poetry install
 ```
 
 ### Running tests
-Use `./scripts/test` to invoke the test runner. You must be within the virtual environment where project dependencies are installed:
+Use `./scripts/test` to invoke the test runner.
+
+You must be within the virtual environment where project dependencies are installed:
 
 ```sh
 poetry run ./scripts/test
@@ -74,8 +76,17 @@ poetry shell
 ./scripts/test
 ```
 
+### Updating snapshots
+If you've made a change to code that impacts a snapshot, your test will fail and the snapshot needs to be updated. To update snapshots run /bin/bash ./scripts/update_snapshots
+
+Or in vscode you can run one of the two update snapshot tasks by opening the command pallete with cmd + p (or ctrl + p), and type `task Update` to see the tasks related to updating snapshots.
+
 ### Linting
-Use `./scripts/lint` to invoke the project linter. You must be within the virtual environment where project dependencies are installed:
+In the devcontainer, linting and formatting runs on save and linting errors are showed as PROBLEMS in vscode.
+
+To invoke a full lint/format, in vscode open the command pallete with cmd + p (or ctrl + p), and type `task Lint`.
+
+Alternatively use `./scripts/lint` to invoke the project linter. You must be within the virtual environment where project dependencies are installed:
 
 ```sh
 poetry run ./scripts/lint
