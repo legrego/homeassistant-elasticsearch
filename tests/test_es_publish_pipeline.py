@@ -902,6 +902,7 @@ class Test_Formatter:
             assert entity_details["hass.entity.area.floor.name"] == entity_floor_name
             assert entity_details["hass.entity.device.labels"] == device_labels
             assert entity_details["hass.entity.device.name"] == device_name
+            assert entity_details["hass.entity.device.class"] == entity.original_device_class
             assert entity_details["hass.entity.labels"] == entity_labels
             assert entity_details["hass.entity.platform"] == entity.platform
 
