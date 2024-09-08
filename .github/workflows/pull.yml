@@ -28,7 +28,7 @@ jobs:
           python-version: "3.12"
       - run: python3 -m pip install poetry~=1.8
       - run: poetry install
-      - run: poetry run ./scripts/lint
+      - run: poetry run ./scripts/lint --no-fix
 
   tests:
     runs-on: "ubuntu-latest"
