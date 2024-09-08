@@ -234,10 +234,10 @@ class Test_Manager:
             assert manager._poller is not None
             assert manager._publisher is not None
 
-            assert {
+            assert snapshot == {
                 "settings": manager._settings.to_dict(),
                 "static_fields": manager._static_fields,
-            } == snapshot
+            }
 
         async def test_async_init(self, manager, config_entry):
             """Test the async initialization of the manager."""
@@ -817,10 +817,10 @@ class Test_Formatter:
             state = State("light.living_room", "on", orig_attributes)
             transformed_attributes = formatter._state_to_attributes(state)
 
-            assert {
+            assert snapshot == {
                 "orig_attributes": orig_attributes,
                 "transformed_attributes": transformed_attributes,
-            } == snapshot
+            }
 
         async def test_state_to_coerced_value_string(self, formatter):
             """Test converting a state to a coerced value."""
