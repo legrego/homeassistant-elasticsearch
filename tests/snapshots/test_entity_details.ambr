@@ -34,6 +34,7 @@
         'device label 3',
       ]),
       'device.name': 'device name',
+      'device_class': 'entity device class',
       'labels': list([
         'entity label 1',
         'entity label 2',
@@ -70,6 +71,7 @@
       'device.labels': list([
       ]),
       'device.name': 'device name',
+      'device_class': 'entity device class',
       'labels': list([
         'entity label 1',
         'entity label 2',
@@ -109,6 +111,7 @@
         'device label 3',
       ]),
       'device.name': 'device name',
+      'device_class': 'entity device class',
       'labels': list([
         'entity label 1',
         'entity label 2',
@@ -154,6 +157,7 @@
         'device label 3',
       ]),
       'device.name': 'device name',
+      'device_class': 'entity device class',
       'floor.floor_id': 'device_floor',
       'floor.name': 'device floor',
       'labels': list([
@@ -192,6 +196,7 @@
       'device.labels': list([
       ]),
       'device.name': 'ES Integration',
+      'device_class': 'entity device class',
       'labels': list([
         'entity label 1',
         'entity label 2',
@@ -227,6 +232,7 @@
         'device label 3',
       ]),
       'device.name': 'device name',
+      'device_class': 'entity device class',
       'labels': list([
       ]),
       'name': None,
@@ -256,6 +262,7 @@
       'device.labels': list([
       ]),
       'device.name': 'device name',
+      'device_class': 'entity device class',
       'labels': list([
       ]),
       'name': None,
@@ -288,6 +295,7 @@
         'device label 3',
       ]),
       'device.name': 'device name',
+      'device_class': 'entity device class',
       'labels': list([
       ]),
       'name': None,
@@ -326,6 +334,7 @@
         'device label 3',
       ]),
       'device.name': 'device name',
+      'device_class': 'entity device class',
       'floor.floor_id': 'device_floor',
       'floor.name': 'device floor',
       'labels': list([
@@ -357,6 +366,7 @@
       'device.labels': list([
       ]),
       'device.name': 'ES Integration',
+      'device_class': 'entity device class',
       'labels': list([
       ]),
       'name': None,
@@ -387,6 +397,7 @@
         'device label 3',
       ]),
       'device.name': 'device name',
+      'device_class': 'entity device class',
       'labels': list([
         'entity label 1',
         'entity label 2',
@@ -425,6 +436,7 @@
       'device.labels': list([
       ]),
       'device.name': 'device name',
+      'device_class': 'entity device class',
       'labels': list([
         'entity label 1',
         'entity label 2',
@@ -464,6 +476,7 @@
         'device label 3',
       ]),
       'device.name': 'device name',
+      'device_class': 'entity device class',
       'labels': list([
         'entity label 1',
         'entity label 2',
@@ -509,6 +522,7 @@
         'device label 3',
       ]),
       'device.name': 'device name',
+      'device_class': 'entity device class',
       'labels': list([
         'entity label 1',
         'entity label 2',
@@ -547,6 +561,7 @@
       'device.labels': list([
       ]),
       'device.name': 'ES Integration',
+      'device_class': 'entity device class',
       'labels': list([
         'entity label 1',
         'entity label 2',
@@ -584,6 +599,7 @@
         'device label 3',
       ]),
       'device.name': 'device name',
+      'device_class': 'entity device class',
       'floor.floor_id': 'entity_floor',
       'floor.name': 'entity floor',
       'labels': list([
@@ -624,6 +640,7 @@
       'device.labels': list([
       ]),
       'device.name': 'device name',
+      'device_class': 'entity device class',
       'floor.floor_id': 'entity_floor',
       'floor.name': 'entity floor',
       'labels': list([
@@ -665,6 +682,7 @@
         'device label 3',
       ]),
       'device.name': 'device name',
+      'device_class': 'entity device class',
       'floor.floor_id': 'entity_floor',
       'floor.name': 'entity floor',
       'labels': list([
@@ -712,6 +730,7 @@
         'device label 3',
       ]),
       'device.name': 'device name',
+      'device_class': 'entity device class',
       'floor.floor_id': 'entity_floor',
       'floor.name': 'entity floor',
       'labels': list([
@@ -752,6 +771,7 @@
       'device.labels': list([
       ]),
       'device.name': 'ES Integration',
+      'device_class': 'entity device class',
       'floor.floor_id': 'entity_floor',
       'floor.name': 'entity floor',
       'labels': list([
@@ -806,6 +826,7 @@
       'device label 3',
     ]),
     'device.name': 'device name',
+    'device_class': 'entity device class',
     'floor.floor_id': 'entity_floor',
     'floor.name': 'entity floor',
     'labels': list([
