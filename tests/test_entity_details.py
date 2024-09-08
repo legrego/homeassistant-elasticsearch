@@ -285,7 +285,7 @@ class Test_ExtendedRegistryEntry:
             assert as_dict["device"]["labels"] is not None
             assert as_dict["device"]["labels"] == device_labels
 
-        assert {
+        assert snapshot == {
             "source_entity": {
                 "entity_id": entity_object_id,
                 "entity_area_name": entity_area_name,
@@ -299,7 +299,7 @@ class Test_ExtendedRegistryEntry:
                 "device_floor_name": device_floor_name,
                 "device_labels": device_labels,
             },
-        } == snapshot
+        }
 
 
 class Test_ExtendedDeviceEntry:
