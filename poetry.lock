@@ -1030,13 +1030,13 @@ requests = ["requests (>=2.4.0,<3.0.0)"]
 
 [[package]]
 name = "elasticsearch8"
-version = "8.14.0"
+version = "8.15.0"
 description = "Python client for Elasticsearch"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 files = [
-    {file = "elasticsearch8-8.14.0-py3-none-any.whl", hash = "sha256:a5a7dccf09c57e006adf11adc86241e77f0d349b8dc6e51b2b64c01052af1078"},
-    {file = "elasticsearch8-8.14.0.tar.gz", hash = "sha256:2628894a3756028707bd0f510864d4243d39868484db72d8c6fccc9442c951f3"},
+    {file = "elasticsearch8-8.15.0-py3-none-any.whl", hash = "sha256:61764bb1db47976baf4eb13ae11db493fef79db54d2cb0c0a914519e38f02e99"},
+    {file = "elasticsearch8-8.15.0.tar.gz", hash = "sha256:6827e7436926e5f9075627e3d0b6f9fa31b7151c779dbad40354a25b5e33118d"},
 ]
 
 [package.dependencies]
@@ -1044,7 +1044,10 @@ elastic-transport = ">=8.13,<9"
 
 [package.extras]
 async = ["aiohttp (>=3,<4)"]
+dev = ["aiohttp", "black", "build", "coverage", "isort", "jinja2", "mapbox-vector-tile", "nox", "numpy", "orjson", "pandas", "pyarrow", "pytest", "pytest-asyncio", "pytest-cov", "python-dateutil", "pyyaml (>=5.4)", "requests (>=2,<3)", "simsimd", "twine", "unasync"]
+docs = ["sphinx", "sphinx-autodoc-typehints", "sphinx-rtd-theme"]
 orjson = ["orjson (>=3)"]
+pyarrow = ["pyarrow (>=1)"]
 requests = ["requests (>=2.4.0,!=2.32.2,<3.0.0)"]
 vectorstore-mmr = ["numpy (>=1)", "simsimd (>=3)"]
 
@@ -3956,4 +3959,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.12,<3.13"
-content-hash = "cf79dd37d4a9ad4035cda7db2474374891d810ad97bbe3f5ff324d7b3c9faca6"
+content-hash = "808f62a614571a33827cf0089c63866793663a2c0a4d82b4d62030f315234791"
