@@ -9,7 +9,7 @@ packages = [{ include = "elasticsearch", from = "custom_components" }]
 
 [tool.poetry.dependencies]
 python = ">=3.12,<3.13"
-elasticsearch8 = "~=8.14.0"
+elasticsearch8 = "~=8.15.1"
 elasticsearch7 = "~=7.11.0"
 
 [tool.poetry.group.dev.dependencies]
