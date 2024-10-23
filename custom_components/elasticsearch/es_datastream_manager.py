@@ -4,6 +4,8 @@ import json
 from logging import Logger
 from pathlib import Path
 
+from homeassistant.core import HomeAssistant
+
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 
 from .const import (
@@ -21,11 +23,14 @@ class DatastreamManager:
     def __init__(
         self,
         gateway: ElasticsearchGateway,
+        hass: HomeAssistant,
         log: Logger = BASE_LOGGER,
     ) -> None:
         """Initialize index management."""
 
         self._logger = log
+
+        self._hass = hass
 
         self._gateway: ElasticsearchGateway = gateway
 
@@ -53,7 +58,8 @@ class DatastreamManager:
 
         matching_template = matching_templates.get("index_templates", [{}])[0]
 
-        new_template = await self._get_index_template_from_disk()
+        result = await self._hass.async_add_executor_job(self._get_index_template_from_disk)
+        new_template = await result
 
         imported_version = matching_template["index_template"].get("version", 0)
         new_version = new_template.get("version", 0)
@@ -97,7 +103,6 @@ class DatastreamManager:
             self._logger.info("Rolling over datastream [%s]", datastream["name"])
             await self._gateway.rollover_datastream(datastream=datastream["name"])
 
-    @async_log_enter_exit_debug
     async def _get_index_template_from_disk(self) -> dict:
         """Retrieve the index template from disk."""
         with (Path(__file__).parent / "datastreams" / "index_template.json").open(

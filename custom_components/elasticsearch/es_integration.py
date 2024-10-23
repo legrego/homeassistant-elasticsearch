@@ -70,7 +70,7 @@ class ElasticIntegration:
         self._pipeline_manager = Pipeline.Manager(log=self._logger, **manager_parameters)
 
         # Initialize our Datastream manager
-        self._datastream_manager = DatastreamManager(log=self._logger, gateway=self._gateway)
+        self._datastream_manager = DatastreamManager(log=self._logger, gateway=self._gateway, hass=self._hass)
 
     @async_log_enter_exit_debug
     async def async_init(self) -> None:

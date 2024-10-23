@@ -5,12 +5,13 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from custom_components.elasticsearch.es_datastream_manager import DatastreamManager
+from homeassistant.core import HomeAssistant
 
 
 @pytest.fixture
-async def datastream_manager(initialized_gateway):
+async def datastream_manager(hass: HomeAssistant, initialized_gateway):
     """Return an DatastreamManager instance."""
-    return DatastreamManager(initialized_gateway)
+    return DatastreamManager(initialized_gateway, hass)
 
 
 class Test_DatastreamManager_Sync:
