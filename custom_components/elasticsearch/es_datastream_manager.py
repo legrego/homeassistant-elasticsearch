@@ -4,8 +4,7 @@ import json
 from logging import Logger
 from pathlib import Path
 
-from homeassistant.core import HomeAssistant
-
+from custom_components.elasticsearch.datastreams.index_template import index_template_definition
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 
 from .const import (
@@ -23,14 +22,11 @@ class DatastreamManager:
     def __init__(
         self,
         gateway: ElasticsearchGateway,
-        hass: HomeAssistant,
         log: Logger = BASE_LOGGER,
     ) -> None:
         """Initialize index management."""
 
         self._logger = log
-
-        self._hass = hass
 
         self._gateway: ElasticsearchGateway = gateway
 
@@ -58,11 +54,8 @@ class DatastreamManager:
 
         matching_template = matching_templates.get("index_templates", [{}])[0]
 
-        result = await self._hass.async_add_executor_job(self._get_index_template_from_disk)
-        new_template = await result
-
         imported_version = matching_template["index_template"].get("version", 0)
-        new_version = new_template.get("version", 0)
+        new_version = index_template_definition.get("version", 0)
 
         if imported_version != new_version:
             self._logger.info(
@@ -78,17 +71,12 @@ class DatastreamManager:
     async def _create_index_template(self) -> None:
         """Initialize any required datastream templates."""
 
-        with (Path(__file__).parent / "datastreams" / "index_template.json").open(
-            encoding="utf-8",
-        ) as json_file:
-            index_template = json.load(json_file)
-
         action = "Creating" if (await self._needs_index_template()) else "Updating"
         self._logger.info("%s index template for Home Assistant datastreams", action)
 
         await self._gateway.put_index_template(
             name=DATASTREAM_METRICS_INDEX_TEMPLATE_NAME,
-            body=index_template,
+            body=index_template_definition,
         )
 
         if action == "Updating":

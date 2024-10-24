@@ -68,7 +68,6 @@ class Gateway8Settings(GatewaySettings):
             # Adjust SSL Context settings
             settings["ssl_context"].check_hostname = False
             settings["ssl_context"].verify_mode = ssl.CERT_REQUIRED
-            settings["ssl_context"].load_default_certs()
 
             if self.ca_certs:
                 # this isnt working
