@@ -1,8 +1,6 @@
 """Index management facilities."""
 
-import json
 from logging import Logger
-from pathlib import Path
 
 from custom_components.elasticsearch.datastreams.index_template import index_template_definition
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
@@ -90,10 +88,3 @@ class DatastreamManager:
         for datastream in datastreams.get("data_streams", []):
             self._logger.info("Rolling over datastream [%s]", datastream["name"])
             await self._gateway.rollover_datastream(datastream=datastream["name"])
-
-    async def _get_index_template_from_disk(self) -> dict:
-        """Retrieve the index template from disk."""
-        with (Path(__file__).parent / "datastreams" / "index_template.json").open(
-            encoding="utf-8",
-        ) as json_file:
-            return json.load(json_file)
