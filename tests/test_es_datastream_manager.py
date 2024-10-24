@@ -118,11 +118,6 @@ class Test_DatastreamManager_Async:
             },
         )
 
-        # Mock the _get_index_template_from_disk method
-        datastream_manager._get_index_template_from_disk = AsyncMock(
-            return_value={"version": 2},
-        )
-
         result = await datastream_manager._needs_index_template_update()
 
         assert result
@@ -139,11 +134,6 @@ class Test_DatastreamManager_Async:
                     }
                 ]
             },
-        )
-
-        # Mock the _get_index_template_from_disk method
-        datastream_manager._get_index_template_from_disk = AsyncMock(
-            return_value={"version": 2},
         )
 
         result = await datastream_manager._needs_index_template_update()
