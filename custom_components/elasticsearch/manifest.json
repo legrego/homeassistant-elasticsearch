@@ -5,7 +5,8 @@
     "@legrego"
   ],
   "config_flow": true,
-  "dependencies": [
+  "dependencies": [],
+  "after_dependencies": [
     "hassio"
   ],
   "documentation": "https://github.com/legrego/homeassistant-elasticsearch",
