@@ -5,7 +5,9 @@
     "@legrego"
   ],
   "config_flow": true,
-  "dependencies": [],
+  "dependencies": [
+    "hassio"
+  ],
   "documentation": "https://github.com/legrego/homeassistant-elasticsearch",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/legrego/homeassistant-elasticsearch/issues",
