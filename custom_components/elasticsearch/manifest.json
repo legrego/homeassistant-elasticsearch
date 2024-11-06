@@ -1,14 +1,14 @@
 {
   "domain": "elasticsearch",
   "name": "Elasticsearch",
+  "after_dependencies": [
+    "hassio"
+  ],
   "codeowners": [
     "@legrego"
   ],
   "config_flow": true,
   "dependencies": [],
-  "after_dependencies": [
-    "hassio"
-  ],
   "documentation": "https://github.com/legrego/homeassistant-elasticsearch",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/legrego/homeassistant-elasticsearch/issues",
