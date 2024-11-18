@@ -19,12 +19,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
@@ -69,12 +91,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'device name',
@@ -116,12 +160,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.area.id': 'device_area',
     'hass.entity.device.area.name': 'device area',
@@ -172,12 +238,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.area.floor.id': 'device_floor',
     'hass.entity.device.area.floor.name': 'device floor',
@@ -226,12 +314,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'ES Integration',
@@ -271,12 +381,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
@@ -316,12 +448,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'device name',
@@ -358,12 +512,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.area.id': 'device_area',
     'hass.entity.device.area.name': 'device area',
@@ -409,12 +585,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.area.floor.id': 'device_floor',
     'hass.entity.device.area.floor.name': 'device floor',
@@ -458,12 +656,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'ES Integration',
@@ -500,12 +720,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
@@ -552,12 +794,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'device name',
@@ -599,12 +863,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.area.id': 'device_area',
     'hass.entity.device.area.name': 'device area',
@@ -653,12 +939,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.area.floor.id': 'device_floor',
     'hass.entity.device.area.floor.name': 'device floor',
@@ -709,12 +1017,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'ES Integration',
@@ -758,12 +1088,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
@@ -812,12 +1164,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'device name',
@@ -861,12 +1235,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.area.id': 'device_area',
     'hass.entity.device.area.name': 'device area',
@@ -917,12 +1313,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.area.floor.id': 'device_floor',
     'hass.entity.device.area.floor.name': 'device floor',
@@ -975,12 +1393,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'ES Integration',
@@ -1020,12 +1460,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
@@ -1070,12 +1532,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'device name',
@@ -1117,12 +1601,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.area.id': 'device_area',
     'hass.entity.device.area.name': 'device area',
@@ -1173,12 +1679,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.area.floor.id': 'device_floor',
     'hass.entity.device.area.floor.name': 'device floor',
@@ -1227,12 +1755,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'ES Integration',
@@ -1272,12 +1822,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
@@ -1317,12 +1889,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'device name',
@@ -1359,12 +1953,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.area.id': 'device_area',
     'hass.entity.device.area.name': 'device area',
@@ -1410,12 +2026,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.area.floor.id': 'device_floor',
     'hass.entity.device.area.floor.name': 'device floor',
@@ -1459,12 +2097,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'ES Integration',
@@ -1501,12 +2161,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
@@ -1553,12 +2235,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'device name',
@@ -1600,12 +2304,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.area.id': 'device_area',
     'hass.entity.device.area.name': 'device area',
@@ -1654,12 +2380,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.area.floor.id': 'device_floor',
     'hass.entity.device.area.floor.name': 'device floor',
@@ -1710,12 +2458,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'ES Integration',
@@ -1759,12 +2529,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
@@ -1813,12 +2605,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'device name',
@@ -1862,12 +2676,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.area.id': 'device_area',
     'hass.entity.device.area.name': 'device area',
@@ -1918,12 +2754,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.area.floor.id': 'device_floor',
     'hass.entity.device.area.floor.name': 'device floor',
@@ -1976,12 +2834,34 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'ES Integration',
@@ -2820,8 +3700,14 @@
     }),
     'transformed_attributes': dict({
       'brightness': 255,
-      'child': '{"name": "Alice"}',
-      'children': '[{"name": "Alice"}]',
+      'child': dict({
+        'name': 'Alice',
+      }),
+      'children': list([
+        dict({
+          'name': 'Alice',
+        }),
+      ]),
       'color_temp': 4000,
       'colors': list([
         'red',

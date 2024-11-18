@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import re
 import unicodedata
 from collections.abc import AsyncGenerator
@@ -49,6 +48,7 @@ from custom_components.elasticsearch.const import (
 from custom_components.elasticsearch.const import (
     CONST_ENTITY_DETAILS_TO_ES_DOCUMENT_KEYS as KEYS_TO_KEEP,
 )
+from custom_components.elasticsearch.encoder import Encoder
 from custom_components.elasticsearch.entity_details import (
     ExtendedEntityDetails,
     ExtendedRegistryEntry,
@@ -562,6 +562,8 @@ class Pipeline:
 
             self._extended_entity_details = ExtendedEntityDetails(hass, self._logger)
 
+            self._encoder = Encoder()
+
         @log_enter_exit_debug
         async def async_init(self, static_fields: dict[str, Any]) -> None:
             """Initialize the formatter."""
@@ -646,20 +648,7 @@ class Pipeline:
                         state.entity_id,
                     )
 
-                new_value = value
-
-                if isinstance(value, dict):
-                    new_value = json.dumps(value)
-                elif isinstance(value, set):
-                    new_value = list(value)
-                elif (
-                    isinstance(value, list | tuple)
-                    and len(value) > 0
-                    and isinstance(value[0], tuple | dict | set | list)
-                ):
-                    new_value = json.dumps(value)
-
-                attributes[new_key] = new_value
+                attributes[new_key] = self._encoder.default(value)
 
             return attributes
 
