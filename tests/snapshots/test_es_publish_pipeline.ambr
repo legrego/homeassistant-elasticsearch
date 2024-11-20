@@ -11,6 +11,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -83,6 +155,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -152,6 +296,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -230,6 +446,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -306,6 +594,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -373,6 +733,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -440,6 +872,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -504,6 +1008,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -577,6 +1153,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -648,6 +1296,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -712,6 +1432,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -786,6 +1578,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -855,6 +1719,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -931,6 +1867,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -1009,6 +2017,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -1080,6 +2160,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -1156,6 +2308,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -1227,6 +2451,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -1305,6 +2601,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -1385,6 +2753,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -1452,6 +2892,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -1524,6 +3036,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -1593,6 +3177,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -1671,6 +3327,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -1747,6 +3475,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -1814,6 +3614,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -1881,6 +3753,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -1945,6 +3889,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -2018,6 +4034,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -2089,6 +4177,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -2153,6 +4313,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -2227,6 +4459,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -2296,6 +4600,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -2372,6 +4748,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -2450,6 +4898,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -2521,6 +5041,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -2597,6 +5189,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -2668,6 +5332,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -2746,6 +5482,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -2826,6 +5634,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
