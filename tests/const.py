@@ -94,6 +94,7 @@ TEST_ENTITY_STATE_ATTRIBUTES_EXCLUDE = [
         datetime(year=2024, month=4, day=12): "Key is a datetime, and should be excluded",
         123: "Key is a number, and should be excluded",
         True: "Key is a bool, and should be excluded",
+        "attribute is a function, and should be excluded": lambda x: x,
     }
 ]
 
