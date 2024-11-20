@@ -16,7 +16,7 @@ from elasticsearch8.helpers import BulkIndexError, async_streaming_bulk
 from homeassistant.util.ssl import client_context
 
 from custom_components.elasticsearch.const import ES_CHECK_PERMISSIONS_DATASTREAM
-from custom_components.elasticsearch.encoder import Encoder
+from custom_components.elasticsearch.encoder import Serializer
 from custom_components.elasticsearch.errors import (
     AuthenticationRequired,
     CannotConnect,
@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
     from logging import Logger
 
+
 @dataclass
 class Gateway8Settings(GatewaySettings):
     """Elasticsearch Gateway settings object."""
@@ -45,7 +46,7 @@ class Gateway8Settings(GatewaySettings):
 
         settings = {
             "hosts": [self.url],
-            "serializer": Encoder(),
+            "serializer": Serializer(),
             "request_timeout": self.request_timeout,
             "ssl_context": client_context() if self.url.startswith("https") else None,
         }
