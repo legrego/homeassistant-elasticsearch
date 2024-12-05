@@ -55,6 +55,29 @@ TEST_ENTITY_STATE_ATTRIBUTES_INCLUDE = [
         "float": 123.456,
         "list": [1, 2, 3, 4],
         "set": {5, 5},
+        "tuple": (6, 6),
+        "list_of_tuples": [(7, 7), (8, 8)],
+        "list_of_sets": [{9, 9}, {10, 10}],
+        "complex_dict": {
+            "string": "abc123",
+            "int": 123,
+            "float": 123.456,
+            "list": [1, 2, 3, 4],
+            "set": {5, 5},
+            "tuple": (6, 6),
+            "list_of_tuples": [(7, 7), (8, 8)],
+            "list_of_sets": [{9, 9}, {10, 10}],
+            "another_dict": {
+                "string": "abc123",
+                "int": 123,
+                "float": 123.456,
+                "list": [1, 2, 3, 4],
+                "set": {5, 5},
+                "tuple": (6, 6),
+                "list_of_tuples": [(7, 7), (8, 8)],
+                "list_of_sets": [{9, 9}, {10, 10}],
+            },
+        },
         "none": None,
         "Collision Test": "first value",
         "collision_test": "second value",
@@ -71,6 +94,7 @@ TEST_ENTITY_STATE_ATTRIBUTES_EXCLUDE = [
         datetime(year=2024, month=4, day=12): "Key is a datetime, and should be excluded",
         123: "Key is a number, and should be excluded",
         True: "Key is a bool, and should be excluded",
+        "attribute is a function, and should be excluded": lambda x: x,
     }
 ]
 

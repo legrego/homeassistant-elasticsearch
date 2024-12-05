@@ -13,10 +13,10 @@ from aiohttp import client_exceptions
 from elastic_transport import ObjectApiResponse
 from elasticsearch8._async.client import AsyncElasticsearch
 from elasticsearch8.helpers import BulkIndexError, async_streaming_bulk
-from elasticsearch8.serializer import JSONSerializer
 from homeassistant.util.ssl import client_context
 
 from custom_components.elasticsearch.const import ES_CHECK_PERMISSIONS_DATASTREAM
+from custom_components.elasticsearch.encoder import Serializer
 from custom_components.elasticsearch.errors import (
     AuthenticationRequired,
     CannotConnect,
@@ -37,19 +37,6 @@ if TYPE_CHECKING:
     from logging import Logger
 
 
-class Encoder(JSONSerializer):
-    """JSONSerializer which serializes sets to lists."""
-
-    def default(self, data: Any) -> Any:
-        """Entry point."""
-        if isinstance(data, set):
-            output = list(data)
-            output.sort()
-            return output
-
-        return JSONSerializer.default(self, data)
-
-
 @dataclass
 class Gateway8Settings(GatewaySettings):
     """Elasticsearch Gateway settings object."""
@@ -59,7 +46,7 @@ class Gateway8Settings(GatewaySettings):
 
         settings = {
             "hosts": [self.url],
-            "serializer": Encoder(),
+            "serializer": Serializer(),
             "request_timeout": self.request_timeout,
             "ssl_context": client_context() if self.url.startswith("https") else None,
         }
