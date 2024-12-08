@@ -14,7 +14,7 @@ Publish Home Assistant events to your [Elasticsearch](https://elastic.co) cluste
 
 ## Compatibility
 
-- Elasticsearch 8.0+, 7.11+ (Self or [Cloud](https://www.elastic.co/cloud) hosted).
+- Elasticsearch 8.0+, 7.17+ (Self or [Cloud](https://www.elastic.co/cloud) hosted).
 - [Elastic Common Schema version 1.0.0](https://github.com/elastic/ecs/releases/tag/v1.0.0)
 - [Home Assistant Community Store](https://github.com/custom-components/hacs)
 - Home Assistant >= 2024.1
