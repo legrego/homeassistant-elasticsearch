@@ -71,7 +71,7 @@ class ElasticsearchGateway(ABC):
             raise UnsupportedVersion(msg)
 
         # Check minimum privileges
-        if not await self._has_required_privileges():
+        if await self.has_security() and not await self._has_required_privileges():
             raise InsufficientPrivileges
 
     @property
@@ -148,6 +148,10 @@ class ElasticsearchGateway(ABC):
     @abstractmethod
     async def ping(self) -> bool:
         """Pings the connected elasticsearch cluster."""
+
+    @abstractmethod
+    async def has_security(self) -> bool:
+        """Check if the cluster has security enabled."""
 
     @abstractmethod
     async def has_privileges(self, privileges) -> dict:

@@ -53,6 +53,7 @@ class Test_Initialization:
         """Test the async_init method."""
 
         gateway.info = AsyncMock(return_value=CLUSTER_INFO_8DOT14_RESPONSE_BODY)
+        gateway.has_security = AsyncMock(return_value=True)
         gateway._has_required_privileges = AsyncMock(return_value=True)
 
         assert await gateway.async_init() is None
@@ -66,6 +67,7 @@ class Test_Public_Functions:
 
         temp = gateway.ping
         gateway.ping = AsyncMock(return_value=True)
+        gateway.has_security = AsyncMock(return_value=True)
         gateway._has_required_privileges = AsyncMock(return_value=True)
 
         es_aioclient_mock.get(
@@ -87,6 +89,7 @@ class Test_Public_Functions:
         """Test the ping method."""
         temp = gateway.ping
         gateway.ping = AsyncMock(return_value=True)
+        gateway.has_security = AsyncMock(return_value=True)
         gateway._has_required_privileges = AsyncMock(return_value=True)
 
         es_aioclient_mock.get(
@@ -103,6 +106,12 @@ class Test_Public_Functions:
     ) -> None:
         """Test the has_privileges method."""
 
+        es_aioclient_mock.get(
+            url=f"{TEST_CONFIG_ENTRY_DATA_URL}/_xpack/usage",
+            json={
+                "security": {"available": True, "enabled": True},
+            },
+        )
         es_aioclient_mock.post(
             f"{TEST_CONFIG_ENTRY_DATA_URL}/_security/user/_has_privileges",
             status=200,
@@ -194,7 +203,12 @@ class Test_Integration_Tests:
             json=CLUSTER_INFO_8DOT14_RESPONSE_BODY,
             headers={"x-elastic-product": "Elasticsearch"},
         )
-
+        es_aioclient_mock.get(
+            url=f"{TEST_CONFIG_ENTRY_DATA_URL}/_xpack/usage",
+            json={
+                "security": {"available": True, "enabled": True},
+            },
+        )
         es_aioclient_mock.post(
             f"{TEST_CONFIG_ENTRY_DATA_URL}/_security/user/_has_privileges",
             status=200,
@@ -238,6 +252,12 @@ class Test_Integration_Tests:
             headers={"x-elastic-product": "Elasticsearch"},
         )
 
+        es_aioclient_mock.get(
+            url=f"{TEST_CONFIG_ENTRY_DATA_URL}/_xpack/usage",
+            json={
+                "security": {"available": True, "enabled": True},
+            },
+        )
         es_aioclient_mock.post(
             f"{TEST_CONFIG_ENTRY_DATA_URL}/_security/user/_has_privileges",
             status=200,
@@ -260,6 +280,12 @@ class Test_Integration_Tests:
             headers={"x-elastic-product": "Elasticsearch"},
         )
 
+        es_aioclient_mock.get(
+            url=f"{TEST_CONFIG_ENTRY_DATA_URL}/_xpack/usage",
+            json={
+                "security": {"available": True, "enabled": True},
+            },
+        )
         es_aioclient_mock.post(
             f"{TEST_CONFIG_ENTRY_DATA_URL}/_security/user/_has_privileges",
             status=200,
@@ -297,6 +323,12 @@ class Test_Integration_Tests:
             headers={"x-elastic-product": "Elasticsearch"},
         )
 
+        es_aioclient_mock.get(
+            url=f"{TEST_CONFIG_ENTRY_DATA_URL}/_xpack/usage",
+            json={
+                "security": {"available": True, "enabled": True},
+            },
+        )
         es_aioclient_mock.post(
             f"{TEST_CONFIG_ENTRY_DATA_URL}/_security/user/_has_privileges",
             status=200,
@@ -355,6 +387,7 @@ class Test_Exception_Conversion:
         """Test the error converter."""
         temp = gateway.info
         gateway.info = AsyncMock(return_value=CLUSTER_INFO_8DOT14_RESPONSE_BODY)
+        gateway.has_security = AsyncMock(return_value=True)
         gateway._has_required_privileges = AsyncMock(return_value=True)
         await gateway.async_init()
         gateway.info = temp
@@ -422,6 +455,7 @@ class Test_Exception_Conversion:
         """Test the error converter."""
         temp = gateway.info
         gateway.info = AsyncMock(return_value=CLUSTER_INFO_8DOT14_RESPONSE_BODY)
+        gateway.has_security = AsyncMock(return_value=True)
         gateway._has_required_privileges = AsyncMock(return_value=True)
         await gateway.async_init()
         gateway.info = temp
