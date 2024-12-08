@@ -6,6 +6,7 @@ You will need the following details to configure the Elasticsearch integration:
 
 1. The URL of your Elasticsearch instance
 2. Credentials to access the Elasticsearch instance (if required)
+3. The SSL certificate authority (CA) file, if you are using a custom CA not trusted by the host system
 
 ### Credentials
 
@@ -89,9 +90,10 @@ This component is configured interactively via Home Assistant's integration conf
 
 1. Verify you have restarted Home Assistant after installing the component.
 2. From the [`Integrations` configuration menu](https://my.home-assistant.io/redirect/integrations/), add a new `Elasticsearch` integration.
-3. Select the appropriate authentication method
-4. Provide connection information and credentials (if using) to begin setup.
-5. Once the integration is setup, you may tweak all settings via the `Configure` button on the [integrations page](https://my.home-assistant.io/redirect/integration/?domain=elasticsearch){:target="_blank"}.
+3. Provide the URL of your elasticsearch server in the format `https://<host>:<port>`. For example, `https://localhost:9200`.
+4. If your Elasticsearch instance is untrusted, you will be prompted to provide the path to the CA file or disable certificate verification.
+5. If your Elasticsearch instance is secured, you will be prompted to provide either a username and password or an API Key.
+5. Once the integration is setup, you may tweak all configuration options via the `Configure` button on the [integrations page](https://my.home-assistant.io/redirect/integration/?domain=elasticsearch){:target="_blank"}.
 
 ## Configuration options
 
@@ -99,42 +101,29 @@ Select `Configure` from the integration's homepage to configure the following se
 
 [![Open your Home Assistant instance and show the Elasticsearch integration.](https://my.home-assistant.io/badges/integration.svg)](https://my.home-assistant.io/redirect/integration/?domain=elasticsearch){:target="_blank"}
 
-### Publish events to Elasticsearch
-Indicates if events should be published to Elasticsearch. If disabled, no events will be published to Elasticsearch. The default is `enabled`.
-
-### Publish frequency
+### Send events to Elasticsearch at this interval
 The frequency at which events are published to Elasticsearch, in seconds. The default is `60`.
 
-### Publish mode
-There are three modes to publish data to Elasticsearch:
+### Gather all entity states at this interval
+The frequency at which all entity states are gathered, in seconds. The default is `60`.
 
-- `All` - Publish configured entities to Elasticsearch, including those which did not undergo a state or attribute change.
-- `State changes` - Publish configured entities to Elasticsearch only when their state changes.
-- `Any changes` - Publish configured entities to Elasticsearch when their state or attributes change.
+### Choose what types of entity changes to listen for and publish
+There are two types of entity changes that can be published to Elasticsearch:
+- `Track entities with state changes` - Publish entities when their state changes
+- `Track entities with attribute changes` - Publish entities when their attributes change
 
-| Publish Mode | State Change | Attribute Change | No Change |
-| ---- | ---- | ---- | ---- |
-| All | ✅  Publishes | ✅ Publishes | ✅ Publishes |
-| Any Changes | ✅  Publishes | ✅  Publishes | 🚫 Does not publish |
-| State Changes | ✅  Publishes | 🚫 Does not publish | 🚫 Does not publish |
+Enabling both options will publish entities when either their state or attributes change.
 
-### Entity selection
-You can choose to include/exclude specific entities and/or entire domains. This allows you to publish only the entities you are interested in to Elasticsearch.
-By default, all entities and domains are included.
-You can combine inclusion and exclusion filters to fine-tune the entities you want to publish.
+### Tags to apply to all published events
+Tags are values that can be used to filter events in Elasticsearch. You can use this to add tags to all published events.
 
-The following flowchart describes the logic used to determine if an entity is published:
+### Toggle to only publish the set of targets below
 
-```mermaid
-graph LR
-    A[Entity] --> B{Is entity excluded?}
-    B -->|Yes| Z{Do not publish}
-    B -->|No| C{Is entity or domain included?}
-    C -->|Yes| Y{Publish}
-    C -->|No| D{Is domain excluded?}
-    D -->|Yes| Z
-    D -->|No| Y
-```
+Pick area, device, entity, or labels and only publish events from one of these targets. If you select multiple targets, events that match any of the targets will be published. If you select no targets, all events will be published.
+
+### Toggle to exclude publishing the set of targets below
+
+Pick area, device, entity, or labels and exclude events from one of these targets. If you select multiple targets, events that match any of the targets will be excluded. If you also configure `Toggle to only publish the set of targets below`, the exclusion will be applied after the inclusion.
 
 ## Advanced configuration
 

@@ -11,6 +11,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -19,13 +91,36 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -60,6 +155,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -68,13 +235,36 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'device name',
     'hass.entity.domain': 'counter',
     'hass.entity.friendly_name': 'entity object id',
@@ -106,6 +296,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -114,15 +376,38 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.area.id': 'device_area',
     'hass.entity.device.area.name': 'device area',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -161,6 +446,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -169,17 +526,40 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.area.floor.id': 'device_floor',
     'hass.entity.device.area.floor.name': 'device floor',
     'hass.entity.device.area.id': 'device_area',
     'hass.entity.device.area.name': 'device area',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -214,6 +594,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -222,13 +674,36 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'ES Integration',
     'hass.entity.domain': 'counter',
     'hass.entity.friendly_name': 'entity object id',
@@ -258,6 +733,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -266,13 +813,36 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -302,6 +872,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -310,13 +952,36 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'device name',
     'hass.entity.domain': 'counter',
     'hass.entity.friendly_name': 'entity object id',
@@ -343,6 +1008,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -351,15 +1088,38 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.area.id': 'device_area',
     'hass.entity.device.area.name': 'device area',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -393,6 +1153,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -401,17 +1233,40 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.area.floor.id': 'device_floor',
     'hass.entity.device.area.floor.name': 'device floor',
     'hass.entity.device.area.id': 'device_area',
     'hass.entity.device.area.name': 'device area',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -441,6 +1296,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -449,13 +1376,36 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'ES Integration',
     'hass.entity.domain': 'counter',
     'hass.entity.friendly_name': 'entity object id',
@@ -482,6 +1432,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -490,13 +1512,36 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -533,6 +1578,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -541,13 +1658,36 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'device name',
     'hass.entity.domain': 'counter',
     'hass.entity.friendly_name': 'entity object id',
@@ -579,6 +1719,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -587,15 +1799,38 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.area.id': 'device_area',
     'hass.entity.device.area.name': 'device area',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -632,6 +1867,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -640,17 +1947,40 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.area.floor.id': 'device_floor',
     'hass.entity.device.area.floor.name': 'device floor',
     'hass.entity.device.area.id': 'device_area',
     'hass.entity.device.area.name': 'device area',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -687,6 +2017,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -695,13 +2097,36 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'ES Integration',
     'hass.entity.domain': 'counter',
     'hass.entity.friendly_name': 'entity object id',
@@ -735,6 +2160,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -743,13 +2240,36 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -788,6 +2308,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -796,13 +2388,36 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'device name',
     'hass.entity.domain': 'counter',
     'hass.entity.friendly_name': 'entity object id',
@@ -836,6 +2451,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -844,15 +2531,38 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.area.id': 'device_area',
     'hass.entity.device.area.name': 'device area',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -891,6 +2601,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -899,17 +2681,40 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.area.floor.id': 'device_floor',
     'hass.entity.device.area.floor.name': 'device floor',
     'hass.entity.device.area.id': 'device_area',
     'hass.entity.device.area.name': 'device area',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -948,6 +2753,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -956,13 +2833,36 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'ES Integration',
     'hass.entity.domain': 'counter',
     'hass.entity.friendly_name': 'entity object id',
@@ -992,6 +2892,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -1000,13 +2972,36 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -1041,6 +3036,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -1049,13 +3116,36 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'device name',
     'hass.entity.domain': 'counter',
     'hass.entity.friendly_name': 'entity object id',
@@ -1087,6 +3177,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -1095,15 +3257,38 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.area.id': 'device_area',
     'hass.entity.device.area.name': 'device area',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -1142,6 +3327,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -1150,17 +3407,40 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.area.floor.id': 'device_floor',
     'hass.entity.device.area.floor.name': 'device floor',
     'hass.entity.device.area.id': 'device_area',
     'hass.entity.device.area.name': 'device area',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -1195,6 +3475,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -1203,13 +3555,36 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'ES Integration',
     'hass.entity.domain': 'counter',
     'hass.entity.friendly_name': 'entity object id',
@@ -1239,6 +3614,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -1247,13 +3694,36 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -1283,6 +3753,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -1291,13 +3833,36 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'device name',
     'hass.entity.domain': 'counter',
     'hass.entity.friendly_name': 'entity object id',
@@ -1324,6 +3889,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -1332,15 +3969,38 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.area.id': 'device_area',
     'hass.entity.device.area.name': 'device area',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -1374,6 +4034,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -1382,17 +4114,40 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.area.floor.id': 'device_floor',
     'hass.entity.device.area.floor.name': 'device floor',
     'hass.entity.device.area.id': 'device_area',
     'hass.entity.device.area.name': 'device area',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -1422,6 +4177,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -1430,13 +4257,36 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'ES Integration',
     'hass.entity.domain': 'counter',
     'hass.entity.friendly_name': 'entity object id',
@@ -1463,6 +4313,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -1471,13 +4393,36 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -1514,6 +4459,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -1522,13 +4539,36 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'device name',
     'hass.entity.domain': 'counter',
     'hass.entity.friendly_name': 'entity object id',
@@ -1560,6 +4600,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -1568,15 +4680,38 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.area.id': 'device_area',
     'hass.entity.device.area.name': 'device area',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -1613,6 +4748,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -1621,17 +4828,40 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.area.floor.id': 'device_floor',
     'hass.entity.device.area.floor.name': 'device floor',
     'hass.entity.device.area.id': 'device_area',
     'hass.entity.device.area.name': 'device area',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -1668,6 +4898,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -1676,13 +4978,36 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'ES Integration',
     'hass.entity.domain': 'counter',
     'hass.entity.friendly_name': 'entity object id',
@@ -1716,6 +5041,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -1724,13 +5121,36 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -1769,6 +5189,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -1777,13 +5269,36 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'device name',
     'hass.entity.domain': 'counter',
     'hass.entity.friendly_name': 'entity object id',
@@ -1817,6 +5332,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -1825,15 +5412,38 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.area.id': 'device_area',
     'hass.entity.device.area.name': 'device area',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -1872,6 +5482,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -1880,17 +5562,40 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
     'hass.entity.device.area.floor.id': 'device_floor',
     'hass.entity.device.area.floor.name': 'device floor',
     'hass.entity.device.area.id': 'device_area',
     'hass.entity.device.area.name': 'device area',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -1929,6 +5634,78 @@
     'hass.entity.attributes': dict({
       'bool': True,
       'collision_test': 'second value',
+      'complex_dict': dict({
+        'another_dict': dict({
+          'float': 123.456,
+          'int': 123,
+          'list': list([
+            1,
+            2,
+            3,
+            4,
+          ]),
+          'list_of_sets': list([
+            list([
+              9,
+            ]),
+            list([
+              10,
+            ]),
+          ]),
+          'list_of_tuples': list([
+            tuple(
+              7,
+              7,
+            ),
+            tuple(
+              8,
+              8,
+            ),
+          ]),
+          'set': list([
+            5,
+          ]),
+          'string': 'abc123',
+          'tuple': tuple(
+            6,
+            6,
+          ),
+        }),
+        'float': 123.456,
+        'int': 123,
+        'list': list([
+          1,
+          2,
+          3,
+          4,
+        ]),
+        'list_of_sets': list([
+          list([
+            9,
+          ]),
+          list([
+            10,
+          ]),
+        ]),
+        'list_of_tuples': list([
+          tuple(
+            7,
+            7,
+          ),
+          tuple(
+            8,
+            8,
+          ),
+        ]),
+        'set': list([
+          5,
+        ]),
+        'string': 'abc123',
+        'tuple': tuple(
+          6,
+          6,
+        ),
+      }),
       'float': 123.456,
       'int': 123,
       'list': list([
@@ -1937,13 +5714,36 @@
         3,
         4,
       ]),
+      'list_of_sets': list([
+        list([
+          9,
+        ]),
+        list([
+          10,
+        ]),
+      ]),
+      'list_of_tuples': list([
+        tuple(
+          7,
+          7,
+        ),
+        tuple(
+          8,
+          8,
+        ),
+      ]),
       'non_ecs_compliant_attribute_name': True,
       'none': None,
       'set': list([
         5,
       ]),
       'string': 'abc123',
+      'tuple': tuple(
+        6,
+        6,
+      ),
     }),
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'ES Integration',
     'hass.entity.domain': 'counter',
     'hass.entity.friendly_name': 'entity object id',
@@ -1970,6 +5770,7 @@
     'event.action': 'State change',
     'event.kind': 'event',
     'event.type': 'change',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -2001,6 +5802,7 @@
     'event.action': 'State change',
     'event.kind': 'event',
     'event.type': 'change',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'device name',
     'hass.entity.domain': 'counter',
     'hass.entity.friendly_name': 'entity object id',
@@ -2031,6 +5833,7 @@
     'hass.entity.area.name': 'device area',
     'hass.entity.device.area.id': 'device_area',
     'hass.entity.device.area.name': 'device area',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -2070,6 +5873,7 @@
     'hass.entity.device.area.floor.name': 'device floor',
     'hass.entity.device.area.id': 'device_area',
     'hass.entity.device.area.name': 'device area',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -2101,6 +5905,7 @@
     'event.action': 'State change',
     'event.kind': 'event',
     'event.type': 'change',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'ES Integration',
     'hass.entity.domain': 'counter',
     'hass.entity.friendly_name': 'entity object id',
@@ -2127,6 +5932,7 @@
     'event.action': 'State change',
     'event.kind': 'event',
     'event.type': 'change',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -2153,6 +5959,7 @@
     'event.action': 'State change',
     'event.kind': 'event',
     'event.type': 'change',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'device name',
     'hass.entity.domain': 'counter',
     'hass.entity.friendly_name': 'entity object id',
@@ -2178,6 +5985,7 @@
     'hass.entity.area.name': 'device area',
     'hass.entity.device.area.id': 'device_area',
     'hass.entity.device.area.name': 'device area',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -2212,6 +6020,7 @@
     'hass.entity.device.area.floor.name': 'device floor',
     'hass.entity.device.area.id': 'device_area',
     'hass.entity.device.area.name': 'device area',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -2238,6 +6047,7 @@
     'event.action': 'State change',
     'event.kind': 'event',
     'event.type': 'change',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'ES Integration',
     'hass.entity.domain': 'counter',
     'hass.entity.friendly_name': 'entity object id',
@@ -2261,6 +6071,7 @@
     'event.type': 'change',
     'hass.entity.area.id': 'entity_area',
     'hass.entity.area.name': 'entity area',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -2294,6 +6105,7 @@
     'event.type': 'change',
     'hass.entity.area.id': 'entity_area',
     'hass.entity.area.name': 'entity area',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'device name',
     'hass.entity.domain': 'counter',
     'hass.entity.friendly_name': 'entity object id',
@@ -2324,6 +6136,7 @@
     'hass.entity.area.name': 'entity area',
     'hass.entity.device.area.id': 'device_area',
     'hass.entity.device.area.name': 'device area',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -2361,6 +6174,7 @@
     'hass.entity.device.area.floor.name': 'device floor',
     'hass.entity.device.area.id': 'device_area',
     'hass.entity.device.area.name': 'device area',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -2394,6 +6208,7 @@
     'event.type': 'change',
     'hass.entity.area.id': 'entity_area',
     'hass.entity.area.name': 'entity area',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'ES Integration',
     'hass.entity.domain': 'counter',
     'hass.entity.friendly_name': 'entity object id',
@@ -2424,6 +6239,7 @@
     'hass.entity.area.floor.name': 'entity floor',
     'hass.entity.area.id': 'entity_area',
     'hass.entity.area.name': 'entity area',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -2459,6 +6275,7 @@
     'hass.entity.area.floor.name': 'entity floor',
     'hass.entity.area.id': 'entity_area',
     'hass.entity.area.name': 'entity area',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'device name',
     'hass.entity.domain': 'counter',
     'hass.entity.friendly_name': 'entity object id',
@@ -2491,6 +6308,7 @@
     'hass.entity.area.name': 'entity area',
     'hass.entity.device.area.id': 'device_area',
     'hass.entity.device.area.name': 'device area',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -2530,6 +6348,7 @@
     'hass.entity.device.area.floor.name': 'device floor',
     'hass.entity.device.area.id': 'device_area',
     'hass.entity.device.area.name': 'device area',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -2565,6 +6384,7 @@
     'hass.entity.area.floor.name': 'entity floor',
     'hass.entity.area.id': 'entity_area',
     'hass.entity.area.name': 'entity area',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.name': 'ES Integration',
     'hass.entity.domain': 'counter',
     'hass.entity.friendly_name': 'entity object id',
@@ -2602,6 +6422,7 @@
     'hass.entity.device.area.floor.name': 'device floor',
     'hass.entity.device.area.id': 'device_area',
     'hass.entity.device.area.name': 'device area',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -2644,6 +6465,7 @@
     'hass.entity.device.area.floor.name': 'device floor',
     'hass.entity.device.area.id': 'device_area',
     'hass.entity.device.area.name': 'device area',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -2686,6 +6508,7 @@
     'hass.entity.device.area.floor.name': 'device floor',
     'hass.entity.device.area.id': 'device_area',
     'hass.entity.device.area.name': 'device area',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -2718,6 +6541,7 @@
     'hass.entity.device.area.floor.name': 'device floor',
     'hass.entity.device.area.id': 'device_area',
     'hass.entity.device.area.name': 'device area',
+    'hass.entity.device.class': 'entity device class',
     'hass.entity.device.labels': list([
       'device label 1',
       'device label 2',
@@ -2756,8 +6580,14 @@
     }),
     'transformed_attributes': dict({
       'brightness': 255,
-      'child': '{"name": "Alice"}',
-      'children': '[{"name": "Alice"}]',
+      'child': dict({
+        'name': 'Alice',
+      }),
+      'children': list([
+        dict({
+          'name': 'Alice',
+        }),
+      ]),
       'color_temp': 4000,
       'colors': list([
         'red',

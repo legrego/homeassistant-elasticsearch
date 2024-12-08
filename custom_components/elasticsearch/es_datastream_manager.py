@@ -1,9 +1,8 @@
 """Index management facilities."""
 
-import json
 from logging import Logger
-from pathlib import Path
 
+from custom_components.elasticsearch.datastreams.index_template import index_template_definition
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 
 from .const import (
@@ -53,10 +52,8 @@ class DatastreamManager:
 
         matching_template = matching_templates.get("index_templates", [{}])[0]
 
-        new_template = await self._get_index_template_from_disk()
-
         imported_version = matching_template["index_template"].get("version", 0)
-        new_version = new_template.get("version", 0)
+        new_version = index_template_definition.get("version", 0)
 
         if imported_version != new_version:
             self._logger.info(
@@ -72,17 +69,12 @@ class DatastreamManager:
     async def _create_index_template(self) -> None:
         """Initialize any required datastream templates."""
 
-        with (Path(__file__).parent / "datastreams" / "index_template.json").open(
-            encoding="utf-8",
-        ) as json_file:
-            index_template = json.load(json_file)
-
         action = "Creating" if (await self._needs_index_template()) else "Updating"
         self._logger.info("%s index template for Home Assistant datastreams", action)
 
         await self._gateway.put_index_template(
             name=DATASTREAM_METRICS_INDEX_TEMPLATE_NAME,
-            body=index_template,
+            body=index_template_definition,
         )
 
         if action == "Updating":
@@ -96,11 +88,3 @@ class DatastreamManager:
         for datastream in datastreams.get("data_streams", []):
             self._logger.info("Rolling over datastream [%s]", datastream["name"])
             await self._gateway.rollover_datastream(datastream=datastream["name"])
-
-    @async_log_enter_exit_debug
-    async def _get_index_template_from_disk(self) -> dict:
-        """Retrieve the index template from disk."""
-        with (Path(__file__).parent / "datastreams" / "index_template.json").open(
-            encoding="utf-8",
-        ) as json_file:
-            return json.load(json_file)

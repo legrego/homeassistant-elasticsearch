@@ -29,13 +29,3 @@ ssl.SSLError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed (_ssl.c
 This generally means that the certificate is not trusted by the home-assistant runtime. Please ensure your certificates are setup correctly. To skip certificate verification, see setup instructions [here](https://github.com/legrego/homeassistant-elasticsearch/pull/36)
 
 More info: https://github.com/legrego/homeassistant-elasticsearch/issues/33
-
-### `index_format` and `index_alias` not working
-
-If you make any changes to the `index_format` or `index_alias` configuration settings, it's necessary to delete the `active-hass-index-v2` index template before starting home-assistant:
-
-```
-DELETE _template/active-hass-index-v2
-```
-
-More info: https://github.com/legrego/homeassistant-elasticsearch/issues/48

@@ -46,7 +46,7 @@ CONST_ENTITY_DETAILS_TO_ES_DOCUMENT: MappingProxyType[str, str] = MappingProxyTy
         "unit_of_measurement": "unit_of_measurement",
         "state.class": "state_class",
         # Device Attributes
-        "device.class": "device.class",
+        "device.class": "device_class",
         # "device.id": "device.id",
         "device.labels": "device.labels",
         "device.name": "device.name",

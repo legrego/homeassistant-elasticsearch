@@ -147,14 +147,14 @@ class Test_Config_Migration:
 
         assert end_version == after_version
 
-        assert {
+        assert snapshot == {
             "before_data": dict(mock_entry.data),
             "before_options": dict(mock_entry.options),
             "before_version": mock_entry.version,
             "after_data": dict(migrated_data),
             "after_options": dict(migrated_options),
             "after_version": end_version,
-        } == snapshot
+        }
 
         return True
 
@@ -955,10 +955,10 @@ class Test_Common_e2e:
 
             assert config_entry.state is ConfigEntryState.LOADED
 
-            assert {
+            assert snapshot == {
                 "data": config_entry.data,
                 "options": config_entry.options,
-            } == snapshot
+            }
 
             # Queue an entity state change
             hass.states.async_set(entity.entity_id, "value")
