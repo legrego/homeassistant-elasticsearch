@@ -107,6 +107,7 @@ async def initialized_gateway(gateway: Elasticsearch8Gateway):
     """Return an initialized ElasticsearchGateway."""
     gateway.ping = AsyncMock(return_value=True)
     gateway.info = AsyncMock(return_value=const.CLUSTER_INFO_8DOT14_RESPONSE_BODY)
+    gateway.has_security = AsyncMock(return_value=True)
     gateway._has_required_privileges = AsyncMock(return_value=True)
 
     await gateway.async_init()

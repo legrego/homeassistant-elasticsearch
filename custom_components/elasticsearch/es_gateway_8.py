@@ -190,6 +190,19 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
             return True
 
     @async_log_enter_exit_debug
+    async def has_security(self) -> bool:
+        """Check if the cluster has security enabled."""
+        with self._error_converter(msg="Error checking for security features"):
+            response = await self.client.xpack.usage()
+
+        xpack_features = self._convert_response(response)
+
+        if "security" in xpack_features:
+            return xpack_features["security"].get("enabled", False)
+
+        return False
+
+    @async_log_enter_exit_debug
     async def has_privileges(self, privileges) -> dict:
         """Check if the user has the required privileges."""
         with self._error_converter(msg="Error checking user privileges"):

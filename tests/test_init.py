@@ -806,6 +806,13 @@ class Test_Common_e2e:
             headers={"x-elastic-product": "Elasticsearch"},
         )
 
+        es_aioclient_mock.get(
+            url=f"{const.TEST_CONFIG_ENTRY_DATA_URL}/_xpack/usage",
+            json={
+                "security": {"available": True, "enabled": True},
+            },
+        )
+
         # Mock the user has the required privileges
         es_aioclient_mock.post(
             const.TEST_CONFIG_ENTRY_DATA_URL + "/_security/user/_has_privileges",
@@ -905,6 +912,13 @@ class Test_Common_e2e:
                 f"{const.TEST_CONFIG_ENTRY_DATA_URL}/",
                 json=const.CLUSTER_INFO_8DOT14_RESPONSE_BODY,
                 headers={"x-elastic-product": "Elasticsearch"},
+            )
+
+            es_aioclient_mock.get(
+                url=f"{const.TEST_CONFIG_ENTRY_DATA_URL}/_xpack/usage",
+                json={
+                    "security": {"available": True, "enabled": True},
+                },
             )
 
             # Mock the user has the required privileges

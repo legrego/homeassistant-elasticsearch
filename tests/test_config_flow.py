@@ -280,21 +280,25 @@ class Test_Integration_Tests:
     """Integration Tests for Config Flow."""
 
     @pytest.mark.parametrize(
-        "user_input",
+        ("user_input", "security_enabled"),
         [
-            {CONF_URL: TEST_CONFIG_ENTRY_DATA_URL},
-            {CONF_URL: TEST_CONFIG_ENTRY_DATA_URL, CONF_API_KEY: "1234"},
-            {CONF_URL: TEST_CONFIG_ENTRY_DATA_URL, CONF_USERNAME: "user", CONF_PASSWORD: "password"},
+            ({CONF_URL: TEST_CONFIG_ENTRY_DATA_URL}, False),
+            ({CONF_URL: TEST_CONFIG_ENTRY_DATA_URL}, True),
+            ({CONF_URL: TEST_CONFIG_ENTRY_DATA_URL, CONF_API_KEY: "1234"}, True),
+            ({CONF_URL: TEST_CONFIG_ENTRY_DATA_URL, CONF_USERNAME: "user", CONF_PASSWORD: "password"}, True),
         ],
-        ids=["no_auth", "api_key", "basic_auth"],
+        ids=["no_auth_security_off", "no_auth", "api_key", "basic_auth"],
     )
-    async def test_user_done(self, hass, user_input, elastic_flow, es_aioclient_mock):
+    async def test_user_done(self, hass, user_input, security_enabled, elastic_flow, es_aioclient_mock):
         """Test user initiated step."""
 
         es_aioclient_mock.get(
             TEST_CONFIG_ENTRY_DATA_URL,
             json=CLUSTER_INFO_8DOT14_RESPONSE_BODY,
             headers={"x-elastic-product": "Elasticsearch"},
+        )
+        es_aioclient_mock.get(
+            TEST_CONFIG_ENTRY_DATA_URL + "/_xpack/usage", json={"security": {"enabled": security_enabled}}
         )
         es_aioclient_mock.post(
             TEST_CONFIG_ENTRY_DATA_URL + "/_security/user/_has_privileges", json={"has_all_requested": True}
@@ -351,6 +355,9 @@ class Test_Integration_Tests:
             json=CLUSTER_INFO_8DOT14_RESPONSE_BODY,
             headers={"x-elastic-product": "Elasticsearch"},
         )
+        es_aioclient_mock.get(
+            TEST_CONFIG_ENTRY_DATA_URL + "/_xpack/usage", json={"security": {"enabled": True}}
+        )
         es_aioclient_mock.post(
             TEST_CONFIG_ENTRY_DATA_URL + "/_security/user/_has_privileges", json={"has_all_requested": False}
         )
@@ -383,6 +390,9 @@ class Test_Integration_Tests:
             TEST_CONFIG_ENTRY_DATA_URL,
             json=CLUSTER_INFO_8DOT14_RESPONSE_BODY,
             headers={"x-elastic-product": "Elasticsearch"},
+        )
+        es_aioclient_mock.get(
+            TEST_CONFIG_ENTRY_DATA_URL + "/_xpack/usage", json={"security": {"enabled": True}}
         )
         es_aioclient_mock.post(
             TEST_CONFIG_ENTRY_DATA_URL + "/_security/user/_has_privileges", json={"has_all_requested": True}
@@ -427,6 +437,9 @@ class Test_Integration_Tests:
             ),
             headers={"x-elastic-product": "Elasticsearch"},
         )
+        es_aioclient_mock.get(
+            TEST_CONFIG_ENTRY_DATA_URL + "/_xpack/usage", json={"security": {"enabled": True}}
+        )
         es_aioclient_mock.post(
             TEST_CONFIG_ENTRY_DATA_URL + "/_security/user/_has_privileges",
             json={"has_all_requested": True},
@@ -446,6 +459,9 @@ class Test_Integration_Tests:
             TEST_CONFIG_ENTRY_DATA_URL,
             json=CLUSTER_INFO_8DOT14_RESPONSE_BODY,
             headers={"x-elastic-product": "Elasticsearch"},
+        )
+        es_aioclient_mock.get(
+            TEST_CONFIG_ENTRY_DATA_URL + "/_xpack/usage", json={"security": {"enabled": True}}
         )
         es_aioclient_mock.post(
             TEST_CONFIG_ENTRY_DATA_URL + "/_security/user/_has_privileges", json={"has_all_requested": True}
