@@ -23,7 +23,7 @@ class ElasticsearchVersion:
 
     def is_supported_version(self):
         """Determine if this version of ES is supported by this component."""
-        return self.major == 8 or (self.major == 7 and self.minor >= 11)
+        return self.major == 8 or (self.major == 7 and self.minor >= 17)
 
     def meets_minimum_version(self, major, minor):
         """Determine if this version of ES meets the minimum version requirements."""
