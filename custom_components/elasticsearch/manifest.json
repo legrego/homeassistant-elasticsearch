@@ -1,11 +1,11 @@
 {
   "domain": "elasticsearch",
   "name": "Elasticsearch",
-  "codeowners": [
-    "@legrego"
-  ],
   "after_dependencies": [
     "hassio"
+  ],
+  "codeowners": [
+    "@legrego"
   ],
   "config_flow": true,
   "dependencies": [],
