@@ -145,7 +145,9 @@ async def test_no_auth_flow_with_tls_error(
             self._certificate_error = Exception("AHHHH")
             return
 
-    es_aioclient_mock.get(es_url, exc=MockSSLError)
+    es_aioclient_mock.get(
+        es_url, headers={"x-elastic-product": "Elasticsearch"}, exc=MockSSLError
+    )
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], user_input={"url": es_url}
@@ -174,7 +176,9 @@ async def test_flow_fails_es_unavailable(
 
     es_url = "http://unavailable-host:9200"
 
-    es_aioclient_mock.get(es_url, exc=aiohttp.ClientError)
+    es_aioclient_mock.get(
+        es_url, headers={"x-elastic-product": "Elasticsearch"}, exc=aiohttp.ClientError
+    )
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], user_input={"url": es_url}
@@ -203,7 +207,9 @@ async def test_flow_fails_unauthorized(
 
     es_url = "http://needs-auth:9200"
 
-    es_aioclient_mock.get(es_url, status=401)
+    es_aioclient_mock.get(
+        es_url, headers={"x-elastic-product": "Elasticsearch"}, status=401
+    )
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], user_input={"url": es_url}
@@ -286,7 +292,9 @@ async def test_basic_auth_flow_unauthorized(
 
     es_url = "http://basic-auth-flow:9200"
 
-    es_aioclient_mock.get(es_url, status=401)
+    es_aioclient_mock.get(
+        es_url, headers={"x-elastic-product": "Elasticsearch"}, status=401
+    )
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
@@ -653,7 +661,9 @@ async def test_api_key_flow_fails_unauthorized(
 
     es_url = "http://api_key-unauthorized-flow:9200"
 
-    es_aioclient_mock.get(es_url, status=401)
+    es_aioclient_mock.get(
+        es_url, headers={"x-elastic-product": "Elasticsearch"}, status=401
+    )
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],

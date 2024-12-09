@@ -1,4 +1,5 @@
 """Errors for the Elastic component."""
+
 from homeassistant.exceptions import HomeAssistantError
 
 
@@ -42,13 +43,17 @@ def convert_es_error(msg, err):
         AuthorizationException,
         ElasticsearchException,
         SSLError,
+        UnsupportedProductError,
     )
     from elasticsearch7 import (
         ConnectionError as ESConnectionError,
     )
 
+    if isinstance(err, UnsupportedProductError):
+        return UnsupportedVersion(msg, err)
+
     if isinstance(err, SSLError):
-          return UntrustedCertificate(msg, err)
+        return UntrustedCertificate(msg, err)
 
     if isinstance(err, ESConnectionError):
         if isinstance(
@@ -61,10 +66,10 @@ def convert_es_error(msg, err):
         return CannotConnect(msg, err)
 
     if isinstance(err, AuthenticationException):
-         return AuthenticationRequired(msg, err)
+        return AuthenticationRequired(msg, err)
 
     if isinstance(err, AuthorizationException):
-         return InsufficientPrivileges(msg, err)
+        return InsufficientPrivileges(msg, err)
 
     if isinstance(err, ElasticsearchException):
         return ElasticException(msg, err)
