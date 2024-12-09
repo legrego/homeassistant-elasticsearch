@@ -22,6 +22,7 @@ from unittest import mock
 from unittest.mock import patch
 
 import pytest
+from aiohttp import TCPConnector
 from homeassistant.core import HomeAssistant, State
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
@@ -41,9 +42,20 @@ def mock_es_aiohttp_client():
 
         return session
 
-    with mock.patch(
-        "elasticsearch7._async.http_aiohttp.aiohttp.ClientSession",
-        side_effect=create_session,
+    # clean-up closed causes a task unfinished error for tests, so we disable it
+
+    def create_tcpconnector(*args, **kwargs):
+        return TCPConnector(force_close=True, enable_cleanup_closed=False)
+
+    with (
+        mock.patch(
+            "elasticsearch7._async.http_aiohttp.aiohttp.ClientSession",
+            side_effect=create_session,
+        ),
+        mock.patch(
+            "elasticsearch7._async.http_aiohttp.aiohttp.TCPConnector",
+            side_effect=create_tcpconnector,
+        ),
     ):
         yield mocker
 
@@ -53,6 +65,8 @@ def es_aioclient_mock():
     """Fixture to mock aioclient calls."""
     with mock_es_aiohttp_client() as mock_session:
         yield mock_session
+
+    del mock_session
 
 
 # This fixture enables loading custom integrations in all tests.
