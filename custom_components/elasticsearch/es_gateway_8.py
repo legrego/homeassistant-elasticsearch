@@ -50,8 +50,6 @@ class Gateway8Settings(GatewaySettings):
             "request_timeout": self.request_timeout,
         }
 
-        context = client_context()
-
         if self.url.startswith("https"):
             context: ssl.SSLContext = client_context()
 
