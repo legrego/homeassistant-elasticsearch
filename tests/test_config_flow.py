@@ -219,9 +219,9 @@ class Test_Public_Methods:
                 InsufficientPrivileges,
                 "basic_auth",
                 FlowResultType.FORM,
-                {"basic_auth": "insufficient_privileges"},
+                {"base": "insufficient_privileges"},
             ),
-            (AuthenticationRequired, "basic_auth", FlowResultType.FORM, {"basic_auth": "invalid_basic_auth"}),
+            (AuthenticationRequired, "basic_auth", FlowResultType.FORM, {"base": "invalid_basic_auth"}),
         ],
     )
     async def test_step_basic_auth(
@@ -249,8 +249,8 @@ class Test_Public_Methods:
     @pytest.mark.parametrize(
         ("exception", "step_id", "result_type", "error"),
         [
-            (InsufficientPrivileges, "api_key", FlowResultType.FORM, {"api_key": "insufficient_privileges"}),
-            (AuthenticationRequired, "api_key", FlowResultType.FORM, {"api_key": "invalid_api_key"}),
+            (InsufficientPrivileges, "api_key", FlowResultType.FORM, {"base": "insufficient_privileges"}),
+            (AuthenticationRequired, "api_key", FlowResultType.FORM, {"base": "invalid_api_key"}),
         ],
     )
     async def test_step_api_key(
@@ -534,8 +534,8 @@ class Test_Integration_Tests:
     @pytest.mark.parametrize(
         ("status_code", "error"),
         [
-            (401, {"basic_auth": "invalid_basic_auth"}),
-            (403, {"basic_auth": "insufficient_privileges"}),
+            (401, {"base": "invalid_basic_auth"}),
+            (403, {"base": "insufficient_privileges"}),
         ],
         ids=["401 = invalid_basic_auth", "403 = insufficient_privileges"],
     )
@@ -587,8 +587,8 @@ class Test_Integration_Tests:
     @pytest.mark.parametrize(
         ("status_code", "error"),
         [
-            (401, {"api_key": "invalid_api_key"}),
-            (403, {"api_key": "insufficient_privileges"}),
+            (401, {"base": "invalid_api_key"}),
+            (403, {"base": "insufficient_privileges"}),
         ],
         ids=["401 = invalid basic auth", "403 = insufficient_privileges"],
     )
