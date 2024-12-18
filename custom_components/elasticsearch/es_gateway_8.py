@@ -54,10 +54,11 @@ class Gateway8Settings(GatewaySettings):
             context: ssl.SSLContext = client_context()
 
             if not self.verify_certs:
+                context.check_hostname = False
                 context.verify_mode = ssl.CERT_NONE
             else:
-                context.verify_mode = ssl.CERT_REQUIRED
                 context.check_hostname = self.verify_hostname
+                context.verify_mode = ssl.CERT_REQUIRED
 
                 if self.ca_certs:
                     context.load_verify_locations(cafile=self.ca_certs)
