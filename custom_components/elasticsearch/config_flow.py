@@ -241,14 +241,10 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                 )
             except InsufficientPrivileges:
                 BASE_LOGGER.debug("Insufficient Privileges", exc_info=True)
-                return await self.async_step_basic_auth(
-                    errors={TRANSLATION_KEY_BASIC_AUTH: "insufficient_privileges"}
-                )
+                return await self.async_step_basic_auth(errors={"base": "insufficient_privileges"})
             except AuthenticationRequired:
                 BASE_LOGGER.debug("Invalid basic authentication", exc_info=True)
-                return await self.async_step_basic_auth(
-                    errors={TRANSLATION_KEY_BASIC_AUTH: "invalid_basic_auth"}
-                )
+                return await self.async_step_basic_auth(errors={"base": "invalid_basic_auth"})
 
             # We are authenticated, update settings and complete flow
             self._prospective_config.update(user_input)
@@ -293,12 +289,10 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                 )
             except InsufficientPrivileges:
                 BASE_LOGGER.debug("Insufficient Privileges", exc_info=True)
-                return await self.async_step_api_key(
-                    errors={TRANSLATION_KEY_API_KEY: "insufficient_privileges"}
-                )
+                return await self.async_step_api_key(errors={"base": "insufficient_privileges"})
             except AuthenticationRequired:
                 BASE_LOGGER.debug("Invalid API Key", exc_info=True)
-                return await self.async_step_api_key(errors={TRANSLATION_KEY_API_KEY: "invalid_api_key"})
+                return await self.async_step_api_key(errors={"base": "invalid_api_key"})
 
             # We are authenticated, update settings and complete flow
             self._prospective_config.update(user_input)
