@@ -186,14 +186,15 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
     async def has_security(self) -> bool:
         """Check if the cluster has security enabled."""
 
-        # Check if the cluster is serverless, security is always enabled in serverless
-        info: dict = await self.info()
+        with self._error_converter(msg="Error checking whether platform is serverless"):
+            # Check if the cluster is serverless, security is always enabled in serverless
+            info: dict = await self.info()
 
         if self._is_serverless(info):
             return True
 
-        # If we are not serverless, check if security is enabled using xpack APIs
         with self._error_converter(msg="Error checking for security features"):
+            # If we are not serverless, check if security is enabled using xpack APIs
             response = await self.client.xpack.usage()
 
         xpack_features = self._convert_response(response)
