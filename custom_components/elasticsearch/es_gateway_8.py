@@ -48,29 +48,22 @@ class Gateway8Settings(GatewaySettings):
             "hosts": [self.url],
             "serializer": Serializer(),
             "request_timeout": self.request_timeout,
-            "ssl_context": client_context() if self.url.startswith("https") else None,
         }
 
-        if self.verify_certs and not self.verify_hostname and settings.get("ssl_context"):
-            # Adjust SSL Context settings
-            settings["ssl_context"].check_hostname = False
-            settings["ssl_context"].verify_mode = ssl.CERT_REQUIRED
+        if self.url.startswith("https"):
+            context: ssl.SSLContext = client_context()
 
-            if self.ca_certs:
-                # this isnt working
-                settings["ssl_context"].load_verify_locations(cafile=self.ca_certs)
-            # load self.ca_certs too
+            if not self.verify_certs:
+                context.check_hostname = False
+                context.verify_mode = ssl.CERT_NONE
+            else:
+                context.check_hostname = self.verify_hostname
+                context.verify_mode = ssl.CERT_REQUIRED
 
-        elif self.verify_certs:
-            settings.update(
-                {
-                    "verify_certs": self.verify_certs,
-                    "ssl_show_warn": self.verify_certs,
-                    "ca_certs": self.ca_certs,
-                }
-            )
-        elif not self.verify_certs:
-            settings["verify_certs"] = False
+                if self.ca_certs:
+                    context.load_verify_locations(cafile=self.ca_certs)
+
+            settings["ssl_context"] = context
 
         if self.username:
             settings["basic_auth"] = (self.username, self.password)
@@ -188,6 +181,28 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
             self._previous_ping = True
 
             return True
+
+    @async_log_enter_exit_debug
+    async def has_security(self) -> bool:
+        """Check if the cluster has security enabled."""
+
+        with self._error_converter(msg="Error checking whether platform is serverless"):
+            # Check if the cluster is serverless, security is always enabled in serverless
+            info: dict = await self.info()
+
+        if self._is_serverless(info):
+            return True
+
+        with self._error_converter(msg="Error checking for security features"):
+            # If we are not serverless, check if security is enabled using xpack APIs
+            response = await self.client.xpack.usage()
+
+        xpack_features = self._convert_response(response)
+
+        if "security" in xpack_features:
+            return xpack_features["security"].get("enabled", False)
+
+        return False
 
     @async_log_enter_exit_debug
     async def has_privileges(self, privileges) -> dict:

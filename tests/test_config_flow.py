@@ -219,9 +219,9 @@ class Test_Public_Methods:
                 InsufficientPrivileges,
                 "basic_auth",
                 FlowResultType.FORM,
-                {"basic_auth": "insufficient_privileges"},
+                {"base": "insufficient_privileges"},
             ),
-            (AuthenticationRequired, "basic_auth", FlowResultType.FORM, {"basic_auth": "invalid_basic_auth"}),
+            (AuthenticationRequired, "basic_auth", FlowResultType.FORM, {"base": "invalid_basic_auth"}),
         ],
     )
     async def test_step_basic_auth(
@@ -249,8 +249,8 @@ class Test_Public_Methods:
     @pytest.mark.parametrize(
         ("exception", "step_id", "result_type", "error"),
         [
-            (InsufficientPrivileges, "api_key", FlowResultType.FORM, {"api_key": "insufficient_privileges"}),
-            (AuthenticationRequired, "api_key", FlowResultType.FORM, {"api_key": "invalid_api_key"}),
+            (InsufficientPrivileges, "api_key", FlowResultType.FORM, {"base": "insufficient_privileges"}),
+            (AuthenticationRequired, "api_key", FlowResultType.FORM, {"base": "invalid_api_key"}),
         ],
     )
     async def test_step_api_key(
@@ -280,21 +280,25 @@ class Test_Integration_Tests:
     """Integration Tests for Config Flow."""
 
     @pytest.mark.parametrize(
-        "user_input",
+        ("user_input", "security_enabled"),
         [
-            {CONF_URL: TEST_CONFIG_ENTRY_DATA_URL},
-            {CONF_URL: TEST_CONFIG_ENTRY_DATA_URL, CONF_API_KEY: "1234"},
-            {CONF_URL: TEST_CONFIG_ENTRY_DATA_URL, CONF_USERNAME: "user", CONF_PASSWORD: "password"},
+            ({CONF_URL: TEST_CONFIG_ENTRY_DATA_URL}, False),
+            ({CONF_URL: TEST_CONFIG_ENTRY_DATA_URL}, True),
+            ({CONF_URL: TEST_CONFIG_ENTRY_DATA_URL, CONF_API_KEY: "1234"}, True),
+            ({CONF_URL: TEST_CONFIG_ENTRY_DATA_URL, CONF_USERNAME: "user", CONF_PASSWORD: "password"}, True),
         ],
-        ids=["no_auth", "api_key", "basic_auth"],
+        ids=["no_auth_security_off", "no_auth", "api_key", "basic_auth"],
     )
-    async def test_user_done(self, hass, user_input, elastic_flow, es_aioclient_mock):
+    async def test_user_done(self, hass, user_input, security_enabled, elastic_flow, es_aioclient_mock):
         """Test user initiated step."""
 
         es_aioclient_mock.get(
             TEST_CONFIG_ENTRY_DATA_URL,
             json=CLUSTER_INFO_8DOT14_RESPONSE_BODY,
             headers={"x-elastic-product": "Elasticsearch"},
+        )
+        es_aioclient_mock.get(
+            TEST_CONFIG_ENTRY_DATA_URL + "/_xpack/usage", json={"security": {"enabled": security_enabled}}
         )
         es_aioclient_mock.post(
             TEST_CONFIG_ENTRY_DATA_URL + "/_security/user/_has_privileges", json={"has_all_requested": True}
@@ -351,6 +355,9 @@ class Test_Integration_Tests:
             json=CLUSTER_INFO_8DOT14_RESPONSE_BODY,
             headers={"x-elastic-product": "Elasticsearch"},
         )
+        es_aioclient_mock.get(
+            TEST_CONFIG_ENTRY_DATA_URL + "/_xpack/usage", json={"security": {"enabled": True}}
+        )
         es_aioclient_mock.post(
             TEST_CONFIG_ENTRY_DATA_URL + "/_security/user/_has_privileges", json={"has_all_requested": False}
         )
@@ -383,6 +390,9 @@ class Test_Integration_Tests:
             TEST_CONFIG_ENTRY_DATA_URL,
             json=CLUSTER_INFO_8DOT14_RESPONSE_BODY,
             headers={"x-elastic-product": "Elasticsearch"},
+        )
+        es_aioclient_mock.get(
+            TEST_CONFIG_ENTRY_DATA_URL + "/_xpack/usage", json={"security": {"enabled": True}}
         )
         es_aioclient_mock.post(
             TEST_CONFIG_ENTRY_DATA_URL + "/_security/user/_has_privileges", json={"has_all_requested": True}
@@ -427,6 +437,9 @@ class Test_Integration_Tests:
             ),
             headers={"x-elastic-product": "Elasticsearch"},
         )
+        es_aioclient_mock.get(
+            TEST_CONFIG_ENTRY_DATA_URL + "/_xpack/usage", json={"security": {"enabled": True}}
+        )
         es_aioclient_mock.post(
             TEST_CONFIG_ENTRY_DATA_URL + "/_security/user/_has_privileges",
             json={"has_all_requested": True},
@@ -446,6 +459,9 @@ class Test_Integration_Tests:
             TEST_CONFIG_ENTRY_DATA_URL,
             json=CLUSTER_INFO_8DOT14_RESPONSE_BODY,
             headers={"x-elastic-product": "Elasticsearch"},
+        )
+        es_aioclient_mock.get(
+            TEST_CONFIG_ENTRY_DATA_URL + "/_xpack/usage", json={"security": {"enabled": True}}
         )
         es_aioclient_mock.post(
             TEST_CONFIG_ENTRY_DATA_URL + "/_security/user/_has_privileges", json={"has_all_requested": True}
@@ -518,8 +534,8 @@ class Test_Integration_Tests:
     @pytest.mark.parametrize(
         ("status_code", "error"),
         [
-            (401, {"basic_auth": "invalid_basic_auth"}),
-            (403, {"basic_auth": "insufficient_privileges"}),
+            (401, {"base": "invalid_basic_auth"}),
+            (403, {"base": "insufficient_privileges"}),
         ],
         ids=["401 = invalid_basic_auth", "403 = insufficient_privileges"],
     )
@@ -571,8 +587,8 @@ class Test_Integration_Tests:
     @pytest.mark.parametrize(
         ("status_code", "error"),
         [
-            (401, {"api_key": "invalid_api_key"}),
-            (403, {"api_key": "insufficient_privileges"}),
+            (401, {"base": "invalid_api_key"}),
+            (403, {"base": "insufficient_privileges"}),
         ],
         ids=["401 = invalid basic auth", "403 = insufficient_privileges"],
     )
