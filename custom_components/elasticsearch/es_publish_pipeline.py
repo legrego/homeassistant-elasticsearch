@@ -685,11 +685,11 @@ class Pipeline:
         def domain_to_datastream(domain: str) -> dict:
             """Convert the state into a datastream."""
             return {
-                "datastream.type": DATASTREAM_TYPE,
-                "datastream.dataset": DATASTREAM_DATASET_PREFIX
+                "data_stream.type": DATASTREAM_TYPE,
+                "data_stream.dataset": DATASTREAM_DATASET_PREFIX
                 + "."
                 + Pipeline.Formatter.sanitize_domain(domain),
-                "datastream.namespace": DATASTREAM_NAMESPACE,
+                "data_stream.namespace": DATASTREAM_NAMESPACE,
             }
 
         def filter_attribute(self, entity_id, key, value) -> bool:
@@ -842,9 +842,9 @@ class Pipeline:
                 yield {
                     "_op_type": "create",
                     "_index": self._format_datastream_name(
-                        datastream_type=document["datastream.type"],
-                        datastream_dataset=document["datastream.dataset"],
-                        datastream_namespace=document["datastream.namespace"],
+                        datastream_type=document["data_stream.type"],
+                        datastream_dataset=document["data_stream.dataset"],
+                        datastream_namespace=document["data_stream.namespace"],
                     ),
                     "_source": document,
                 }

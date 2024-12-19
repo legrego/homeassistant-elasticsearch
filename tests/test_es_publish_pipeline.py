@@ -678,9 +678,9 @@ class Test_Publisher:
             """Test converting document to elasticsearch action."""
 
             doc: dict = {
-                "datastream.type": "metrics",
-                "datastream.dataset": "homeassistant.light",
-                "datastream.namespace": "default",
+                "data_stream.type": "metrics",
+                "data_stream.dataset": "homeassistant.light",
+                "data_stream.namespace": "default",
                 "event": {
                     "action": "State change",
                 },
@@ -870,9 +870,9 @@ class Test_Formatter:
             """Test converting a state to a datastream."""
             datastream = formatter.domain_to_datastream(const.TEST_ENTITY_DOMAIN)
             assert datastream == {
-                "datastream.type": "metrics",
-                "datastream.dataset": f"homeassistant.{const.TEST_ENTITY_DOMAIN}",
-                "datastream.namespace": "default",
+                "data_stream.type": "metrics",
+                "data_stream.dataset": f"homeassistant.{const.TEST_ENTITY_DOMAIN}",
+                "data_stream.namespace": "default",
             }
 
     class Test_Integration_Tests:
@@ -962,9 +962,9 @@ class Test_Formatter:
 
             assert document["@timestamp"] == time.isoformat()
 
-            assert document["datastream.dataset"] == f"homeassistant.{entity.domain}"
-            assert document["datastream.type"] == "metrics"
-            assert document["datastream.namespace"] == "default"
+            assert document["data_stream.dataset"] == f"homeassistant.{entity.domain}"
+            assert document["data_stream.type"] == "metrics"
+            assert document["data_stream.namespace"] == "default"
 
             assert document["event.action"] == "State change"
             assert document["event.kind"] == "event"
@@ -977,7 +977,7 @@ class Test_Formatter:
             assert document["hass.entity.value"] == "on"
             assert document["hass.entity.valueas"] == {"boolean": True}
 
-            assert document["datastream.namespace"] == "default"
+            assert document["data_stream.namespace"] == "default"
 
             assert document == snapshot
 
