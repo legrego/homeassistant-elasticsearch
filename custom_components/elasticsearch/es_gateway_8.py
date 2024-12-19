@@ -48,29 +48,22 @@ class Gateway8Settings(GatewaySettings):
             "hosts": [self.url],
             "serializer": Serializer(),
             "request_timeout": self.request_timeout,
-            "ssl_context": client_context() if self.url.startswith("https") else None,
         }
 
-        if self.verify_certs and not self.verify_hostname and settings.get("ssl_context"):
-            # Adjust SSL Context settings
-            settings["ssl_context"].check_hostname = False
-            settings["ssl_context"].verify_mode = ssl.CERT_REQUIRED
+        if self.url.startswith("https"):
+            context: ssl.SSLContext = client_context()
 
-            if self.ca_certs:
-                # this isnt working
-                settings["ssl_context"].load_verify_locations(cafile=self.ca_certs)
-            # load self.ca_certs too
+            if not self.verify_certs:
+                context.check_hostname = False
+                context.verify_mode = ssl.CERT_NONE
+            else:
+                context.check_hostname = self.verify_hostname
+                context.verify_mode = ssl.CERT_REQUIRED
 
-        elif self.verify_certs:
-            settings.update(
-                {
-                    "verify_certs": self.verify_certs,
-                    "ssl_show_warn": self.verify_certs,
-                    "ca_certs": self.ca_certs,
-                }
-            )
-        elif not self.verify_certs:
-            settings["verify_certs"] = False
+                if self.ca_certs:
+                    context.load_verify_locations(cafile=self.ca_certs)
+
+            settings["ssl_context"] = context
 
         if self.username:
             settings["basic_auth"] = (self.username, self.password)
