@@ -252,12 +252,8 @@ class Test_Integration_Tests:
             headers={"x-elastic-product": "Elasticsearch"},
         )
 
-        es_aioclient_mock.get(
-            url=f"{TEST_CONFIG_ENTRY_DATA_URL}/_xpack/usage",
-            json={
-                "security": {"available": True, "enabled": True},
-            },
-        )
+        es_aioclient_mock.get(url=f"{TEST_CONFIG_ENTRY_DATA_URL}/_xpack/usage", status=401)
+
         es_aioclient_mock.post(
             f"{TEST_CONFIG_ENTRY_DATA_URL}/_security/user/_has_privileges",
             status=200,
