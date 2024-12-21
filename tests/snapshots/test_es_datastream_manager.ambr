@@ -1,5 +1,5 @@
 # serializer version: 1
-# name: Test_DatastreamManager_Async.test_create_index_template[es8]
+# name: Test_Integration_Tests.test_create_index_template[es8]
   dict({
     'body': dict({
       'composed_of': 'metrics-homeassistant@custom',
@@ -319,7 +319,7 @@
     'name': 'metrics-homeassistant',
   })
 # ---
-# name: Test_DatastreamManager_Async.test_create_index_template_update[es8]
+# name: Test_Integration_Tests.test_create_index_template_update[es8]
   dict({
     'body': dict({
       'composed_of': 'metrics-homeassistant@custom',
