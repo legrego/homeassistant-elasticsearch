@@ -11,7 +11,7 @@ updates:
       interval: "weekly"
     ignore:
       - dependency-name: "homeassistant"
-      - dependency-name: "elasticsearch7"
+      - dependency-name: "elasticsearch8"
 
   - package-ecosystem: "devcontainers"
     directory: "/.devcontainer"
