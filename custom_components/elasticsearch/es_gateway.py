@@ -191,10 +191,6 @@ class ElasticsearchGateway(ABC):
     def _is_serverless(self, cluster_info: dict) -> bool:
         """Check if the Elasticsearch instance is serverless."""
 
-        # Build flavor is missing in 7.x versions
-        if "build_flavor" not in cluster_info["version"]:
-            return False
-
         return cluster_info["version"]["build_flavor"] == "serverless"
 
     def _meets_minimum_version(self, cluster_info: dict, minimum_version: tuple[int, int]) -> bool:
