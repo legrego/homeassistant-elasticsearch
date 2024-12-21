@@ -22,7 +22,7 @@ class Test_DatastreamManager_Sync:
 
 
 @pytest.mark.asyncio
-class Test_DatastreamManager_Async:
+class Test_Integration_Tests:
     """Test the DatastreamManager class async methods."""
 
     async def test_async_init(self, datastream_manager):
@@ -36,7 +36,7 @@ class Test_DatastreamManager_Async:
             await datastream_manager.async_init()
 
     async def test_needs_index_template(self, datastream_manager):
-        """Test the _needs_index_template method."""
+        """Test the logic for whether ES cluster needs index templates to be installed."""
 
         # Mock the get_index_template method to return a matching template
         datastream_manager._gateway.get_index_template = AsyncMock(
@@ -49,7 +49,8 @@ class Test_DatastreamManager_Async:
 
     @pytest.mark.asyncio
     async def test_create_index_template(self, datastream_manager, snapshot):
-        """Test the _create_index_template method."""
+        """Test installation of index templates when they are missing."""
+
         # Mock the _needs_index_template method to return False
         with patch.object(datastream_manager, "_needs_index_template", return_value=True):
             # Mock the put_index_template method
@@ -64,7 +65,7 @@ class Test_DatastreamManager_Async:
             assert call_args == snapshot
 
     async def test_create_index_template_update(self, datastream_manager, snapshot):
-        """Test the _create_index_template method causes a rollover on update."""
+        """Test updating index templates when they are out-of-date and ensure it causes a data stream rollover."""
         with (
             patch.object(datastream_manager, "_needs_index_template", return_value=False),
             patch.object(datastream_manager, "_needs_index_template_update", return_value=True),
@@ -123,62 +124,25 @@ class Test_DatastreamManager_Async:
             datastream="metrics-homeassistant.counter-default"
         )
 
-    async def test_needs_index_template_update(self, datastream_manager, snapshot):
-        """Test the _needs_index_template_update method."""
+    @pytest.mark.parametrize(
+        ("installed_version", "needs_update"),
+        [(1, True), (2, False)],
+        ids=["Out of date", "Up to date"],
+    )
+    async def test_needs_index_template_update(
+        self, datastream_manager: DatastreamManager, installed_version, needs_update
+    ):
+        """Test the logic for determining if we need to update the index template."""
         # Mock the get_index_template method to return a matching template
         datastream_manager._gateway.get_index_template = AsyncMock(
             return_value={
                 "index_templates": [
                     {
                         "name": "datastream_metrics",
-                        "index_template": {"version": 1},
+                        "index_template": {"version": installed_version},
                     }
                 ]
             },
         )
 
-        result = await datastream_manager._needs_index_template_update()
-
-        assert result
-
-    async def test_needs_index_template_no_update(self, datastream_manager, snapshot):
-        """Test the _needs_index_template_update method."""
-        # Mock the get_index_template method to return a matching template
-        datastream_manager._gateway.get_index_template = AsyncMock(
-            return_value={
-                "index_templates": [
-                    {
-                        "name": "datastream_metrics",
-                        "index_template": {"version": 2},
-                    }
-                ]
-            },
-        )
-
-        result = await datastream_manager._needs_index_template_update()
-
-        assert not result
-
-    # @async_log_enter_exit_debug
-    # async def _needs_index_template_update(self) -> bool:
-    #     matching_templates = await self._gateway.get_index_template(
-    #         name=DATASTREAM_METRICS_INDEX_TEMPLATE_NAME,
-    #         ignore=[404],
-    #     )
-
-    #     matching_template = matching_templates.get("index_templates", [{}])[0]
-
-    #     new_template = await self._get_index_template_from_disk()
-
-    #     imported_version = matching_template["index_template"].get("version", 0)
-    #     new_version = new_template.get("version", 0)
-
-    #     if imported_version != new_version:
-    #         self._logger.info(
-    #             "Update required from [%s} to [%s] for Home Assistant datastream index template",
-    #             imported_version,
-    #             new_version,
-    #         )
-    #         return True
-
-    #     return False
+        assert await datastream_manager._needs_index_template_update() == needs_update

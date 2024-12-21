@@ -193,75 +193,78 @@ class Test_Public_Functions:
 class Test_Integration_Tests:
     """Integration tests for the Elasticsearch Gateway."""
 
-    async def test_check_connection_first_time_success(self, gateway: ElasticsearchGateway) -> None:
-        """Test check_connection method when connecting for the first time successfully."""
-        gateway.ping = AsyncMock(return_value=True)
-        gateway._logger.info = MagicMock()
-        gateway._logger.error = MagicMock()
+    class Test_Connection_Test:
+        """Test Connection state transitions"""
 
-        result = await gateway.check_connection()
+        async def test_check_connection_first_time_success(self, gateway: ElasticsearchGateway) -> None:
+            """Test check_connection method when connecting for the first time successfully."""
+            gateway.ping = AsyncMock(return_value=True)
+            gateway._logger.info = MagicMock()
+            gateway._logger.error = MagicMock()
 
-        assert result is True
-        gateway._logger.info.assert_called_once_with("Connection to Elasticsearch is established.")
-        gateway._logger.error.assert_not_called()
+            result = await gateway.check_connection()
 
-    async def test_check_connection_first_time_failure(self, gateway: ElasticsearchGateway) -> None:
-        """Test check_connection method when connecting for the first time fails."""
-        gateway.ping = AsyncMock(return_value=False)
-        gateway._logger.info = MagicMock()
-        gateway._logger.error = MagicMock()
+            assert result is True
+            gateway._logger.info.assert_called_once_with("Connection to Elasticsearch is established.")
+            gateway._logger.error.assert_not_called()
 
-        result = await gateway.check_connection()
+        async def test_check_connection_first_time_failure(self, gateway: ElasticsearchGateway) -> None:
+            """Test check_connection method when connecting for the first time fails."""
+            gateway.ping = AsyncMock(return_value=False)
+            gateway._logger.info = MagicMock()
+            gateway._logger.error = MagicMock()
 
-        assert result is False
-        gateway._logger.error.assert_called_once_with("Failed to establish connection to Elasticsearch.")
-        gateway._logger.info.assert_not_called()
+            result = await gateway.check_connection()
 
-    async def test_check_connection_maintained(self, gateway: ElasticsearchGateway) -> None:
-        """Test check_connection method when connection is maintained."""
-        gateway._previous_ping = True
-        gateway.ping = AsyncMock(return_value=True)
-        gateway._logger.debug = MagicMock()
+            assert result is False
+            gateway._logger.error.assert_called_once_with("Failed to establish connection to Elasticsearch.")
+            gateway._logger.info.assert_not_called()
 
-        result = await gateway.check_connection()
+        async def test_check_connection_maintained(self, gateway: ElasticsearchGateway) -> None:
+            """Test check_connection method when connection is maintained."""
+            gateway._previous_ping = True
+            gateway.ping = AsyncMock(return_value=True)
+            gateway._logger.debug = MagicMock()
 
-        assert result is True
-        gateway._logger.debug.assert_called_once_with("Connection to Elasticsearch is still available.")
+            result = await gateway.check_connection()
 
-    async def test_check_connection_lost(self, gateway: ElasticsearchGateway) -> None:
-        """Test check_connection method when connection is lost."""
-        gateway._previous_ping = True
-        gateway.ping = AsyncMock(return_value=False)
-        gateway._logger.error = MagicMock()
-        gateway._logger.debug = MagicMock()
+            assert result is True
+            gateway._logger.debug.assert_called_once_with("Connection to Elasticsearch is still available.")
 
-        result = await gateway.check_connection()
+        async def test_check_connection_lost(self, gateway: ElasticsearchGateway) -> None:
+            """Test check_connection method when connection is lost."""
+            gateway._previous_ping = True
+            gateway.ping = AsyncMock(return_value=False)
+            gateway._logger.error = MagicMock()
+            gateway._logger.debug = MagicMock()
 
-        assert result is False
-        gateway._logger.error.assert_called_once_with("Connection to Elasticsearch has been lost.")
-        gateway._logger.debug.assert_not_called()
+            result = await gateway.check_connection()
 
-    async def test_check_connection_down(self, gateway: ElasticsearchGateway) -> None:
-        """Test check_connection method when connection is still down."""
-        gateway._previous_ping = False
-        gateway.ping = AsyncMock(return_value=False)
-        gateway._logger.debug = MagicMock()
+            assert result is False
+            gateway._logger.error.assert_called_once_with("Connection to Elasticsearch has been lost.")
+            gateway._logger.debug.assert_not_called()
 
-        result = await gateway.check_connection()
+        async def test_check_connection_down(self, gateway: ElasticsearchGateway) -> None:
+            """Test check_connection method when connection is still down."""
+            gateway._previous_ping = False
+            gateway.ping = AsyncMock(return_value=False)
+            gateway._logger.debug = MagicMock()
 
-        assert result is False
-        gateway._logger.debug.assert_called_once_with("Connection to Elasticsearch is still down.")
+            result = await gateway.check_connection()
 
-    async def test_check_connection_reestablished(self, gateway: ElasticsearchGateway) -> None:
-        """Test check_connection method when connection is reestablished."""
-        gateway._previous_ping = False
-        gateway.ping = AsyncMock(return_value=True)
-        gateway._logger.info = MagicMock()
+            assert result is False
+            gateway._logger.debug.assert_called_once_with("Connection to Elasticsearch is still down.")
 
-        result = await gateway.check_connection()
+        async def test_check_connection_reestablished(self, gateway: ElasticsearchGateway) -> None:
+            """Test check_connection method when connection is reestablished."""
+            gateway._previous_ping = False
+            gateway.ping = AsyncMock(return_value=True)
+            gateway._logger.info = MagicMock()
 
-        assert result is True
-        gateway._logger.info.assert_called_once_with("Connection to Elasticsearch has been reestablished.")
+            result = await gateway.check_connection()
+
+            assert result is True
+            gateway._logger.info.assert_called_once_with("Connection to Elasticsearch has been reestablished.")
 
     async def test_async_init_mock_elasticsearch(
         self, gateway: ElasticsearchGateway, es_aioclient_mock: AiohttpClientMocker
