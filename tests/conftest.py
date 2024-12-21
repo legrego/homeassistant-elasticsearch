@@ -19,6 +19,7 @@
 from __future__ import annotations
 
 from asyncio import get_running_loop
+from collections.abc import Generator
 from contextlib import contextmanager, suppress
 from typing import TYPE_CHECKING
 from unittest import mock
@@ -26,7 +27,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 # import custom_components.elasticsearch  # noqa: F401
 import pytest
-from aiohttp import ClientSession, TCPConnector
+from aiohttp import ClientSession, TCPConnector, client_exceptions
 from custom_components.elasticsearch.config_flow import ElasticFlowHandler
 from custom_components.elasticsearch.es_gateway_8 import Elasticsearch8Gateway, Gateway8Settings
 from homeassistant.const import (
@@ -155,12 +156,137 @@ def mock_es_aiohttp_client():
     ):
         yield mocker
 
+@pytest.fixture
+def es_mock_builder() -> Generator[es_mocker, Any, None]:
+    with mock_es_aiohttp_client() as mock_session:
+        yield es_mocker(mock_session)
 
 @pytest.fixture
 def es_aioclient_mock():
     """Fixture to mock aioclient calls."""
     with mock_es_aiohttp_client() as mock_session:
         yield mock_session
+
+class es_mocker:
+    """Mock builder for Elasticsearch integration tests."""
+
+    mocker: AiohttpClientMocker
+
+    def __init__(self, mocker):
+        self.mocker = mocker
+
+    def with_server_timeout(self):
+        """Mock Elasticsearch being unreachable."""
+        self.mocker.get(f"{const.TEST_CONFIG_ENTRY_DATA_URL}", exc=client_exceptions.ServerTimeoutError())
+        return self
+
+    def as_elasticsearch_8_0(self, with_security: bool = True) -> es_mocker:
+        """Mock Elasticsearch 8.0."""
+        self.mocker.get(
+            const.TEST_CONFIG_ENTRY_DATA_URL,
+            status=200,
+            json=const.CLUSTER_INFO_8DOT0_RESPONSE_BODY,
+            headers={"x-elastic-product": "Elasticsearch"},
+        )
+
+        if with_security:
+            self._with_security_enabled()
+        else:
+            self._with_security_disabled()
+
+        return self
+
+    def as_elasticsearch_8_17(self, with_security: bool = True):
+        """Mock Elasticsearch 8.17."""
+        self.mocker.get(
+            const.TEST_CONFIG_ENTRY_DATA_URL,
+            status=200,
+            json=const.CLUSTER_INFO_8DOT14_RESPONSE_BODY,
+            headers={"x-elastic-product": "Elasticsearch"},
+        )
+
+        if with_security:
+            self._with_security_enabled()
+        else:
+            self._with_security_disabled()
+
+        return self
+
+    def as_elasticsearch_8_14(self, with_security: bool = True):
+        """Mock Elasticsearch 8.14."""
+        self.mocker.get(
+            const.TEST_CONFIG_ENTRY_DATA_URL,
+            status=200,
+            json=const.CLUSTER_INFO_8DOT14_RESPONSE_BODY,
+            headers={"x-elastic-product": "Elasticsearch"},
+        )
+
+        if with_security:
+            self._with_security_enabled()
+        else:
+            self._with_security_disabled()
+
+        return self
+
+    def as_elasticsearch_serverless(self):
+        """Mock Elasticsearch Serverless."""
+        self.mocker.get(
+            const.TEST_CONFIG_ENTRY_DATA_URL,
+            status=200,
+            json=const.CLUSTER_INFO_SERVERLESS_RESPONSE_BODY,
+            headers={"x-elastic-product": "Elasticsearch"},
+        )
+
+        self.mocker.get(url=f"{const.TEST_CONFIG_ENTRY_DATA_URL}/_xpack/usage", status=401)
+
+        return self
+
+    def with_incorrect_permissions(self):
+        """Mock the user being properly authenticated."""
+        self.mocker.post(
+            f"{const.TEST_CONFIG_ENTRY_DATA_URL}/_security/user/_has_privileges",
+            status=200,
+            json={
+                "has_all_requested": False,
+            },
+        )
+
+        return self
+
+    def with_correct_permissions(self):
+        """Mock the user being properly authenticated."""
+
+        self.mocker.post(
+            f"{const.TEST_CONFIG_ENTRY_DATA_URL}/_security/user/_has_privileges",
+            status=200,
+            json={
+                "has_all_requested": True,
+            },
+        )
+
+        return self
+
+    def _with_security_disabled(self):
+        """Mock Elasticsearch 8.14."""
+        self.mocker.get(
+            url=f"{const.TEST_CONFIG_ENTRY_DATA_URL}/_xpack/usage",
+            json={
+                "security": {"available": True, "enabled": False},
+            },
+        )
+
+        return self
+
+    def _with_security_enabled(self):
+        """Mock Elasticsearch 8.14."""
+        self.mocker.get(
+            url=f"{const.TEST_CONFIG_ENTRY_DATA_URL}/_xpack/usage",
+            json={
+                "security": {"available": True, "enabled": True},
+            },
+        )
+
+        return self
 
 
 # This fixture enables loading custom integrations in all tests.

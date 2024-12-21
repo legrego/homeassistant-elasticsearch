@@ -373,6 +373,22 @@ CLUSTER_INFO_8DOT11_RESPONSE_BODY = {
     "tagline": "You Know, for Search",
 }
 
+CLUSTER_INFO_8DOT17_RESPONSE_BODY = {
+    "name": "640dcce4be79",
+    "cluster_name": "docker-cluster",
+    "cluster_uuid": "R-PPqCZYQTCMvkpGcyL4mA",
+    "version": {
+        "number": "8.17.0",
+        "build_flavor": "default",
+        "build_type": "docker",
+        "build_hash": "d9ec3fa628c7b0ba3d25692e277ba26814820b20",
+        "build_date": "2023-11-04T10:04:57.184859352Z",
+        "build_snapshot": False,
+        "lucene_version": "9.8.0",
+        "minimum_wire_compatibility_version": "7.17.0",
+        "minimum_index_compatibility_version": "7.0.0",
+    },
+}
 CLUSTER_INFO_8DOT14_RESPONSE_BODY = {
     "name": "640dcce4be79",
     "cluster_name": "docker-cluster",
