@@ -35,7 +35,7 @@ from custom_components.elasticsearch.es_publish_pipeline import Pipeline, Pipeli
 from custom_components.elasticsearch.logger import LOGGER as BASE_LOGGER
 from custom_components.elasticsearch.logger import async_log_enter_exit_debug, log_enter_exit_debug
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from logging import Logger
     from typing import Any
 

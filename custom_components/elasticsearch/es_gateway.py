@@ -12,7 +12,7 @@ from custom_components.elasticsearch.const import ES_CHECK_PERMISSIONS_DATASTREA
 from .logger import LOGGER as BASE_LOGGER
 from .logger import log_enter_exit_debug
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import AsyncGenerator
     from logging import Logger
     from typing import Any

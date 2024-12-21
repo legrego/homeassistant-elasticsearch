@@ -32,7 +32,7 @@ from custom_components.elasticsearch.es_gateway import ElasticsearchGateway, Gat
 from .logger import LOGGER as BASE_LOGGER
 from .logger import async_log_enter_exit_debug
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import AsyncGenerator
     from logging import Logger
 
