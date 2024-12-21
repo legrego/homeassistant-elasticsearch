@@ -141,10 +141,6 @@ def mock_es_aiohttp_client():
 
     with (
         mock.patch(
-            "elasticsearch7._async.http_aiohttp.aiohttp.ClientSession",
-            side_effect=create_session,
-        ),
-        mock.patch(
             "elastic_transport._node._http_aiohttp.aiohttp.ClientSession",
             side_effect=create_session,
         ),

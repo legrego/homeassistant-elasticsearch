@@ -17,7 +17,6 @@ if TYPE_CHECKING:
     from logging import Logger
     from typing import Any
 
-    from elasticsearch7._async.client import AsyncElasticsearch as AsyncElasticsearch7
     from elasticsearch8._async.client import AsyncElasticsearch as AsyncElasticsearch8
 
 
@@ -37,7 +36,7 @@ class GatewaySettings(ABC):
     minimum_privileges: MappingProxyType[str, Any] | None = None
 
     @abstractmethod
-    def to_client(self) -> AsyncElasticsearch7 | AsyncElasticsearch8:
+    def to_client(self) -> AsyncElasticsearch8:
         """Return an Elasticsearch client."""
 
 
@@ -76,7 +75,7 @@ class ElasticsearchGateway(ABC):
 
     @property
     @abstractmethod
-    def client(self) -> AsyncElasticsearch7 | AsyncElasticsearch8:
+    def client(self) -> AsyncElasticsearch8:
         """Return the underlying ES Client."""
 
     @property
