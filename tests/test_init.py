@@ -250,6 +250,7 @@ class Test_Config_Migration:
                 "datastream_name_prefix": "homeassistant",
                 "datastream_namespace": "default",
                 "datastream_type": "metrics",
+                "api_key": "",
             },
             after_options={
                 "publish_mode": "Any changes",
@@ -337,6 +338,41 @@ class Test_Config_Migration:
                 "publish_frequency": 60,
                 "polling_frequency": 0,
                 "change_detection_type": ["STATE"],
+            },
+            after_data={
+                "url": "http://migration-test:9200",
+            },
+            after_version=6,
+            snapshot=snapshot,
+        )
+
+        # Polling Off, State Changes only
+        assert self._test_config_data_options_migration_to_version(
+            before_version=5,
+            before_options={
+                "publish_mode": None,
+                "excluded_domains": [],
+                "excluded_entities": [],
+                "included_domains": [],
+                "included_entities": [],
+                "publish_enabled": True,
+                "publish_frequency": 60,
+                "ilm_enabled": True,
+                "ilm_policy_name": "test policy",
+                "index_format": "test format",
+                "index_mode": "index",
+            },
+            before_data={
+                "url": "http://migration-test:9200",
+            },
+            after_options={
+                "excluded_domains": [],
+                "excluded_entities": [],
+                "included_domains": [],
+                "included_entities": [],
+                "publish_frequency": 60,
+                "polling_frequency": 0,
+                "change_detection_type": ["STATE", "ATTRIBUTE"],
             },
             after_data={
                 "url": "http://migration-test:9200",
