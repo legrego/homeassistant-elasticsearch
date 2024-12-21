@@ -15,7 +15,7 @@ def convert_set_to_list(data: Any) -> Any:
         return output
 
     if isinstance(data, dict):
-        return {key: convert_set_to_list(value) for key, value in data.items()}
+        return json.dumps({key: convert_set_to_list(value) for key, value in data.items()})
 
     if isinstance(data, list):
         return [convert_set_to_list(item) for item in data]
