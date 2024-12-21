@@ -63,6 +63,25 @@ class Test_DatastreamManager_Async:
 
             assert call_args == snapshot
 
+    async def test_create_index_template_update(self, datastream_manager, snapshot):
+        """Test the _create_index_template method causes a rollover on update."""
+        with (
+            patch.object(datastream_manager, "_needs_index_template", return_value=False),
+            patch.object(datastream_manager, "_needs_index_template_update", return_value=True),
+        ):
+            # Mock the put_index_template method
+            datastream_manager._gateway.put_index_template = AsyncMock()
+            datastream_manager._rollover_ha_datastreams = AsyncMock()
+
+            await datastream_manager._create_index_template()
+
+            datastream_manager._gateway.put_index_template.assert_called_once()
+            datastream_manager._rollover_ha_datastreams.assert_called_once()
+
+            call_args = datastream_manager._gateway.put_index_template.call_args.kwargs
+
+            assert call_args == snapshot
+
     async def test_datastream_rollover(self, datastream_manager):
         """Test the datastream_rollover method."""
         # Mock the rollover_index method
