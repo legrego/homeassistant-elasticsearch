@@ -1,6 +1,5 @@
 """Retrieve entity details."""
 
-from dataclasses import asdict
 from logging import Logger
 
 from homeassistant.core import HomeAssistant
@@ -80,10 +79,16 @@ class ExtendedDeviceEntry:
         as_dict["labels"] = self.labels
 
         if self.area is not None:
-            as_dict["area"] = asdict(self.area)
+            as_dict["area"] = {
+                "id": self.area.id,
+                "name": self.area.name,
+            }
 
         if self.floor is not None:
-            as_dict["floor"] = asdict(self.floor)
+            as_dict["floor"] = {
+                "floor_id": self.floor.floor_id,
+                "name": self.floor.name,
+            }
 
         if flatten:
             return flatten_dict(as_dict, keep_keys=keep_keys)
@@ -172,10 +177,10 @@ class ExtendedRegistryEntry:
         as_dict["labels"] = self.labels
 
         if self.area is not None:
-            as_dict["area"] = asdict(self.area)
+            as_dict["area"] = {"id": self.area.id, "name": self.area.name}
 
         if self.floor is not None:
-            as_dict["floor"] = asdict(self.floor)
+            as_dict["floor"] = {"floor_id": self.floor.floor_id, "name": self.floor.name}
 
         if self.device is not None:
             as_dict["device"] = self.device.to_dict()
