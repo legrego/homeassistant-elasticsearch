@@ -49,11 +49,13 @@ class Test_Integration_Tests:
             assert result.hostname == "test-hostname"
 
     async def test_async_get_system_info_exc(self, hass: HomeAssistant):
-        """Verify system information is retrieved correctly."""
+        """Verify exceptions thrown while getting system information are wrapped."""
         sys_info = SystemInfo(hass)
 
+        sys_info.async_get_system_info = AsyncMock(side_effect=ValueError("Test Error"))
+
         with pytest.raises(ValueError):
-            sys_info.async_get_system_info = AsyncMock(side_effect=ValueError("Test Error"))
+            await sys_info.async_get_system_info()
 
     async def test_get_host_info(self, hass: HomeAssistant):
         """Verify host information is returns an error on non-HASSio systems."""
