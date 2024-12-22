@@ -156,10 +156,13 @@ def mock_es_aiohttp_client():
     ):
         yield mocker
 
+
 @pytest.fixture
 def es_mock_builder() -> Generator[es_mocker, Any, None]:
+    """Fixture to return a builder for mocking Elasticsearch calls."""
     with mock_es_aiohttp_client() as mock_session:
         yield es_mocker(mock_session)
+
 
 @pytest.fixture
 def es_aioclient_mock():
@@ -167,12 +170,14 @@ def es_aioclient_mock():
     with mock_es_aiohttp_client() as mock_session:
         yield mock_session
 
+
 class es_mocker:
     """Mock builder for Elasticsearch integration tests."""
 
     mocker: AiohttpClientMocker
 
     def __init__(self, mocker):
+        """Initialize the mock builder."""
         self.mocker = mocker
 
     def with_server_timeout(self):

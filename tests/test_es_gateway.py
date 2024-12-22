@@ -246,7 +246,6 @@ class Test_Integration_Tests:
     ) -> None:
         """Test the async_init method with unauthorized user."""
 
-
         es_aioclient_mock.get(
             f"{TEST_CONFIG_ENTRY_DATA_URL}",
             status=200,
