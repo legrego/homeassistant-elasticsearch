@@ -46,6 +46,11 @@ class ExtendedDeviceEntry:
             raise ValueError(msg)
 
     @property
+    def name(self) -> str | None:
+        """Return the Hass friendly name of the device."""
+        return self._device.name_by_user or self._device.name
+
+    @property
     def device(self) -> DeviceEntry:
         """Return the Hass DeviceEntry object."""
         return self._device
@@ -75,6 +80,8 @@ class ExtendedDeviceEntry:
         """Convert to dict."""
 
         as_dict = self._device.dict_repr
+
+        as_dict["name"] = self.name
 
         as_dict["labels"] = self.labels
 
