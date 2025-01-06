@@ -17,7 +17,6 @@ if TYPE_CHECKING:  # pragma: no cover
     from logging import Logger
     from typing import Any
 
-    from elasticsearch7._async.client import AsyncElasticsearch as AsyncElasticsearch7
     from elasticsearch8._async.client import AsyncElasticsearch as AsyncElasticsearch8
 
 
@@ -37,7 +36,7 @@ class GatewaySettings(ABC):
     minimum_privileges: MappingProxyType[str, Any] | None = None
 
     @abstractmethod
-    def to_client(self) -> AsyncElasticsearch7 | AsyncElasticsearch8:
+    def to_client(self) -> AsyncElasticsearch8:
         """Return an Elasticsearch client."""
 
 
@@ -76,7 +75,7 @@ class ElasticsearchGateway(ABC):
 
     @property
     @abstractmethod
-    def client(self) -> AsyncElasticsearch7 | AsyncElasticsearch8:
+    def client(self) -> AsyncElasticsearch8:
         """Return the underlying ES Client."""
 
     @property
@@ -191,10 +190,6 @@ class ElasticsearchGateway(ABC):
 
     def _is_serverless(self, cluster_info: dict) -> bool:
         """Check if the Elasticsearch instance is serverless."""
-
-        # Build flavor is missing in 7.x versions
-        if "build_flavor" not in cluster_info["version"]:
-            return False
 
         return cluster_info["version"]["build_flavor"] == "serverless"
 

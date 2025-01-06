@@ -389,6 +389,13 @@ class Pipeline:
             if any(label in self._excluded_labels for label in entity.labels):
                 return False
 
+            # Check the device for labels
+            if entity.device_id is not None:
+                device = self._device_registry.async_get(entity.device_id)
+                if device is not None:
+                    if any(label in self._excluded_labels for label in device.labels):
+                        return False
+
             return True
 
         def _passes_include_targets(self, entity_id: str) -> bool:
@@ -409,6 +416,13 @@ class Pipeline:
 
             if any(label in self._included_labels for label in entity.labels):
                 return True
+
+            # Check the device for labels
+            if entity.device_id is not None:
+                device = self._device_registry.async_get(entity.device_id)
+                if device is not None:
+                    if any(label in self._included_labels for label in device.labels):
+                        return True
 
             return False
 

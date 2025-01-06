@@ -1,6 +1,5 @@
 """Retrieve entity details."""
 
-from dataclasses import asdict
 from logging import Logger
 
 from homeassistant.core import HomeAssistant
@@ -47,6 +46,11 @@ class ExtendedDeviceEntry:
             raise ValueError(msg)
 
     @property
+    def name(self) -> str | None:
+        """Return the Hass friendly name of the device."""
+        return self._device.name_by_user or self._device.name
+
+    @property
     def device(self) -> DeviceEntry:
         """Return the Hass DeviceEntry object."""
         return self._device
@@ -77,13 +81,21 @@ class ExtendedDeviceEntry:
 
         as_dict = self._device.dict_repr
 
+        as_dict["name"] = self.name
+
         as_dict["labels"] = self.labels
 
         if self.area is not None:
-            as_dict["area"] = asdict(self.area)
+            as_dict["area"] = {
+                "id": self.area.id,
+                "name": self.area.name,
+            }
 
         if self.floor is not None:
-            as_dict["floor"] = asdict(self.floor)
+            as_dict["floor"] = {
+                "floor_id": self.floor.floor_id,
+                "name": self.floor.name,
+            }
 
         if flatten:
             return flatten_dict(as_dict, keep_keys=keep_keys)
@@ -172,10 +184,10 @@ class ExtendedRegistryEntry:
         as_dict["labels"] = self.labels
 
         if self.area is not None:
-            as_dict["area"] = asdict(self.area)
+            as_dict["area"] = {"id": self.area.id, "name": self.area.name}
 
         if self.floor is not None:
-            as_dict["floor"] = asdict(self.floor)
+            as_dict["floor"] = {"floor_id": self.floor.floor_id, "name": self.floor.name}
 
         if self.device is not None:
             as_dict["device"] = self.device.to_dict()
