@@ -121,6 +121,8 @@ class Test_Filterer:
 
             patched_filterer._exclude_targets = True
 
+            assert patched_filterer._passes_exclude_targets("made up entity id") is False
+
             assert patched_filterer._passes_exclude_targets(entity.entity_id) is True
 
             patched_filterer._excluded_entities = [entity.entity_id]
@@ -160,6 +162,8 @@ class Test_Filterer:
             """Test that a state change with an included target passes the filter."""
 
             patched_filterer._include_targets = True
+
+            assert patched_filterer._passes_include_targets("made up entity id") is False
 
             assert patched_filterer._passes_include_targets(entity.entity_id) is False
 
@@ -243,6 +247,7 @@ class Test_Manager:
             """Test the async initialization of the manager."""
 
             manager._settings.change_detection_type = ["STATE"]
+            manager._settings.tags = ["tag1", "tag2"]
 
             manager._listener = mock.Mock()
             manager._listener.async_init = mock.AsyncMock()
@@ -279,6 +284,7 @@ class Test_Manager:
                     "host.architecture": "x86",
                     "host.os.name": "Linux",
                     "host.hostname": "my_es_host",
+                    "tags": ["tag1", "tag2"],
                 }
 
                 manager._listener.async_init.assert_awaited_once()
@@ -290,6 +296,8 @@ class Test_Manager:
 
         async def test_async_init_no_publish(self, manager, config_entry):
             """Test the async initialization of the manager."""
+
+            manager._settings.change_detection_type = ["STATE"]
 
             config_entry.options = {}
             manager._listener = mock.Mock()
@@ -311,6 +319,33 @@ class Test_Manager:
             await manager.async_init(config_entry)
 
             manager._logger.warning.assert_called_once_with("No publish frequency set. Disabling publishing.")
+
+            manager.stop()
+
+        async def test_async_init_no_polling(self, manager, config_entry):
+            """Test the async initialization of the manager."""
+
+            config_entry.options = {}
+            manager._listener = mock.Mock()
+            manager._listener.async_init = mock.AsyncMock()
+            manager._poller = mock.Mock()
+            manager._poller.async_init = mock.AsyncMock()
+            manager._formatter = mock.Mock()
+            manager._formatter.async_init = mock.AsyncMock()
+            manager._publisher = mock.Mock()
+            manager._publisher.async_init = mock.AsyncMock()
+
+            # No publish_frequency means the manager doesnt do anything
+            manager._settings = mock.Mock()
+            manager._settings.change_detection_type = ["STATE"]
+            manager._settings.polling_frequency = None
+
+            # Check for self._logger.warning("No polling frequency set. Disabling polling.")
+            manager._logger.debug = mock.Mock()
+
+            await manager.async_init(config_entry)
+
+            manager._logger.debug.assert_called_once_with("No polling frequency set. Disabling polling.")
 
             manager.stop()
 
@@ -737,6 +772,7 @@ class Test_Formatter:
         """Return a Formatter instance."""
         return Pipeline.Formatter(hass, settings)
 
+
     class Test_Unit_Tests:
         """Run the unit tests of the Formatter class."""
 
@@ -745,7 +781,6 @@ class Test_Formatter:
             assert formatter._extended_entity_details is not None
             assert formatter._static_fields == {}
 
-        @pytest.mark.asyncio
         async def test_async_init(self, formatter):
             """Test the async initialization of the Formatter."""
 

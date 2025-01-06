@@ -63,8 +63,8 @@ from custom_components.elasticsearch.logger import log_enter_exit_debug
 from custom_components.elasticsearch.loop import LoopHandler
 from custom_components.elasticsearch.system_info import SystemInfo, SystemInfoResult
 
-if TYPE_CHECKING:
-    from asyncio import Task  # pragma: no cover
+if TYPE_CHECKING:  # pragma: no cover
+    from asyncio import Task
 
     from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 
