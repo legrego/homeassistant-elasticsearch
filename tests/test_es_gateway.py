@@ -194,7 +194,7 @@ class Test_Integration_Tests:
     """Integration tests for the Elasticsearch Gateway."""
 
     class Test_Connection_Test:
-        """Test Connection state transitions"""
+        """Test Connection state transitions."""
 
         async def test_check_connection_first_time_success(self, gateway: ElasticsearchGateway) -> None:
             """Test check_connection method when connecting for the first time successfully."""
@@ -264,7 +264,9 @@ class Test_Integration_Tests:
             result = await gateway.check_connection()
 
             assert result is True
-            gateway._logger.info.assert_called_once_with("Connection to Elasticsearch has been reestablished.")
+            gateway._logger.info.assert_called_once_with(
+                "Connection to Elasticsearch has been reestablished."
+            )
 
     async def test_async_init_mock_elasticsearch(
         self, gateway: ElasticsearchGateway, es_aioclient_mock: AiohttpClientMocker

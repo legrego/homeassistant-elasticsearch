@@ -79,14 +79,14 @@ async def mock_platform(hass: HomeAssistant):
 
 
 @pytest.fixture
-def config_flow(mock_platform, flow):
+def _config_flow(mock_platform, flow):
     """Set up the Elastic Integration config flow."""
     with new_mock_config_flow(ELASTIC_DOMAIN, flow):
         yield
 
 
 @pytest.fixture
-async def mock_integration(hass: HomeAssistant, config_flow, mock_module: MockModule) -> Integration:
+async def mock_integration(hass: HomeAssistant, _config_flow, mock_module: MockModule) -> Integration:
     """Mock an integration which has the same root methods but does not have a config_flow.
 
     Use this to simplify mocking of the root methods of __init__.py.
@@ -512,7 +512,7 @@ class Test_Public_Methods:
     """Test the public methods of the Elasticsearch integration initialization."""
 
     @pytest.fixture
-    def block_async_init(self):
+    def _block_async_init(self):
         """Block async init."""
         with mock.patch(
             f"{MODULE}.es_integration.ElasticIntegration.async_init",
@@ -521,7 +521,7 @@ class Test_Public_Methods:
             yield
 
     @pytest.fixture
-    def block_init_async_init(self):
+    def _block_init_async_init(self):
         """Block async init."""
         with (
             mock.patch(
@@ -536,7 +536,7 @@ class Test_Public_Methods:
             yield
 
     @pytest.fixture
-    def block_shutdown(self):
+    def _block_shutdown(self):
         """Block async shutdown."""
         with mock.patch(
             f"{MODULE}.es_integration.ElasticIntegration.async_shutdown",
@@ -592,8 +592,8 @@ class Test_Public_Methods:
         hass: HomeAssistant,
         integration_setup: Callable[[], Awaitable[bool]],
         config_entry: ConfigEntry,
-        block_init_async_init,
-        block_shutdown,
+        _block_init_async_init,
+        _block_shutdown,
     ) -> None:
         """Test setting up the integration."""
         assert config_entry.state is ConfigEntryState.NOT_LOADED
@@ -615,8 +615,8 @@ class Test_Public_Methods:
         hass: HomeAssistant,
         integration_setup: Callable[[], Awaitable[bool]],
         config_entry: ConfigEntry,
-        block_init_async_init,
-        block_shutdown,
+        _block_init_async_init,
+        _block_shutdown,
     ) -> None:
         """Test setting up the integration."""
         assert config_entry.state is ConfigEntryState.NOT_LOADED
@@ -794,7 +794,7 @@ class Test_Common_e2e:
         return const.TEST_CONFIG_ENTRY_DEFAULT_OPTIONS
 
     @pytest.fixture(autouse=True)
-    def fix_system_info(self):
+    def _fix_system_info(self):
         """Return a mock system info."""
         with mock.patch("custom_components.elasticsearch.es_publish_pipeline.SystemInfo") as system_info:
             system_info_instance = system_info.return_value
@@ -1367,7 +1367,7 @@ class Test_Common_e2e:
         """Test Pipeline Settings."""
 
         @pytest.fixture
-        def block_async_init(self):
+        def _block_async_init(self):
             """Block async init."""
             with mock.patch(
                 f"{MODULE}.es_integration.ElasticIntegration.async_init",
@@ -1409,7 +1409,7 @@ class Test_Common_e2e:
         async def test_config_entry_to_pipeline_settings(
             self,
             hass: HomeAssistant,
-            block_async_init,
+            _block_async_init,
             integration_setup,
             es_aioclient_mock: AiohttpClientMocker,
             options,

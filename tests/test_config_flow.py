@@ -60,7 +60,7 @@ async def mock_platform(hass: HomeAssistant):
 
 
 @pytest.fixture(autouse=True)
-def config_flow(mock_platform, elastic_flow):
+def _config_flow(mock_platform, elastic_flow):
     """Set up the Elastic Integration config flow."""
     with new_mock_config_flow(ELASTIC_DOMAIN, elastic_flow):
         yield

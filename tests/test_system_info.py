@@ -47,7 +47,6 @@ class Test_Integration_Tests:
             assert result.arch == "x86_64"
             assert result.hostname == "test-hostname"
 
-
     async def test_get_host_info(self, hass: HomeAssistant):
         """Verify host information is returns an error on non-HASSio systems."""
         sys_info = SystemInfo(hass)

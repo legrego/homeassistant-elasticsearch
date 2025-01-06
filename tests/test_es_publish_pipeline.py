@@ -772,7 +772,6 @@ class Test_Formatter:
         """Return a Formatter instance."""
         return Pipeline.Formatter(hass, settings)
 
-
     class Test_Unit_Tests:
         """Run the unit tests of the Formatter class."""
 
