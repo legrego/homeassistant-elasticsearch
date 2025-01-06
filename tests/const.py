@@ -218,30 +218,6 @@ TEST_ENTITY_STATE_COMBINATIONS = [
     }
 ]
 
-# "dict": {
-#                 "string": "abc123",
-#                 "int": 123,
-#                 "float": 123.456,
-#             },
-#             "string": "abc123",
-#             "int": 123,
-#             "float": 123.456,
-#             "list": [1, 2, 3, 4],
-#             "set": {5, 5},
-#             "none": None,
-#             "Collision Test": "first value",
-#             "collision_test": "second value",
-#             "*_Non ECS-Compliant    Attribute.ñame! 😀": True,
-#             # Keyless entry should be excluded from output
-#             "": "Key is empty, and should be excluded",
-#             # Custom classes should be excluded from output
-#             "naughty": object(),
-#             # Entries with non-string keys should be excluded from output
-#             datetime(year=2024,month=4,day=12): "Key is a datetime, and should be excluded",
-#             "Key is a datetime, and should be excluded": datetime(year=2024,month=4,day=12),
-#             123: "Key is a number, and should be excluded",
-#             True: "Key is a bool, and should be excluded",
-
 MOCK_NOON_APRIL_12TH_2023 = "2023-04-12T12:00:00+00:00"
 
 MOCK_LOCATION_SERVER = {
@@ -296,43 +272,6 @@ CLUSTER_INFO_8DOT0_RESPONSE_BODY = {
         "lucene_version": "9.0.0",
         "minimum_wire_compatibility_version": "7.17.0",
         "minimum_index_compatibility_version": "7.0.0",
-    },
-    "tagline": "You Know, for Search",
-}
-
-
-CLUSTER_INFO_7DOT11_RESPONSE_BODY = {
-    "name": "a6680a08c202",
-    "cluster_name": "docker-cluster",
-    "cluster_uuid": "AlICUdW5Tl2ZxNAA1Mk3fg",
-    "version": {
-        "number": "7.11.0",
-        "build_flavor": "default",
-        "build_type": "docker",
-        "build_hash": "8ced7813d6f16d2ef30792e2fcde3e755795ee04",
-        "build_date": "2021-02-08T22:44:01.320463Z",
-        "build_snapshot": False,
-        "lucene_version": "8.7.0",
-        "minimum_wire_compatibility_version": "6.8.0",
-        "minimum_index_compatibility_version": "6.0.0-beta1",
-    },
-    "tagline": "You Know, for Search",
-}
-
-CLUSTER_INFO_7DOT17_RESPONSE_BODY = {
-    "name": "a8bbdc6f0067",
-    "cluster_name": "docker-cluster",
-    "cluster_uuid": "H2qsoRzORwWNxSlhoUpbig",
-    "version": {
-        "number": "7.17.0",
-        "build_flavor": "default",
-        "build_type": "docker",
-        "build_hash": "bee86328705acaa9a6daede7140defd4d9ec56bd",
-        "build_date": "2022-01-28T08:36:04.875279988Z",
-        "build_snapshot": False,
-        "lucene_version": "8.11.1",
-        "minimum_wire_compatibility_version": "6.8.0",
-        "minimum_index_compatibility_version": "6.0.0-beta1",
     },
     "tagline": "You Know, for Search",
 }
@@ -404,73 +343,4 @@ CLUSTER_INFO_8DOT14_RESPONSE_BODY = {
         "minimum_wire_compatibility_version": "7.17.0",
         "minimum_index_compatibility_version": "7.0.0",
     },
-}
-
-CLUSTER_INFO_8DOT8_RESPONSE_BODY = {
-    "name": "775d9437a77088",
-    "cluster_name": "home-assistant-cluster",
-    "cluster_uuid": "xtsjNokTQGClXbRibWjxyg",
-    "version": {
-        "number": "8.8.0",
-        "build_type": "docker",
-        "build_hash": "00000000",
-        "build_date": "2023-10-31",
-        "build_snapshot": False,
-        "lucene_version": "9.7.0",
-        "minimum_wire_compatibility_version": "8.11.0",
-        "minimum_index_compatibility_version": "8.11.0",
-    },
-    "tagline": "You Know, for Search",
-}
-
-CLUSTER_INFO_UNSUPPORTED_RESPONSE_BODY = {
-    "name": "775d9437a770",
-    "cluster_name": "home-assistant-cluster",
-    "cluster_uuid": "hz1_5bImTh-45ERkrHS7vg",
-    "version": {
-        "number": "7.10.0",
-        "build_type": "deb",
-        "build_hash": "1c34507e66d7db1211f66f3513706fdf548736aa",
-        "build_date": "2020-12-05T01:00:33.671820Z",
-        "build_snapshot": False,
-        "lucene_version": "8.7.0",
-        "minimum_wire_compatibility_version": "6.8.0",
-        "minimum_index_compatibility_version": "6.0.0-beta1",
-    },
-    "tagline": "You Know, for Search",
-}
-
-CLUSTER_INFO_RESPONSE_BODY = {
-    "name": "775d9437a770",
-    "cluster_name": "home-assistant-cluster",
-    "cluster_uuid": "hz1_5bImTh-45ERkrHS7vg",
-    "version": {
-        "number": "7.11.0",
-        "build_type": "deb",
-        "build_hash": "1c34507e66d7db1211f66f3513706fdf548736aa",
-        "build_date": "2020-12-05T01:00:33.671820Z",
-        "build_snapshot": False,
-        "lucene_version": "8.7.0",
-        "minimum_wire_compatibility_version": "6.8.0",
-        "minimum_index_compatibility_version": "6.0.0-beta1",
-    },
-    "tagline": "You Know, for Search",
-}
-
-CLUSTER_HEALTH_RESPONSE_BODY = {
-    "cluster_name": "home-assistant-cluster",
-    "status": "green",
-    "timed_out": False,
-    "number_of_nodes": 1,
-    "number_of_data_nodes": 1,
-    "active_primary_shards": 0,
-    "active_shards": 0,
-    "relocating_shards": 0,
-    "initializing_shards": 0,
-    "unassigned_shards": 0,
-    "delayed_unassigned_shards": 0,
-    "number_of_pending_tasks": 0,
-    "number_of_in_flight_fetch": 0,
-    "task_max_waiting_in_queue_millis": 0,
-    "active_shards_percent_as_number": 100.0,
 }
