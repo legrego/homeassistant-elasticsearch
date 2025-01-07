@@ -22,10 +22,10 @@ from custom_components.elasticsearch.es_gateway import (
 )
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
+from tests.conftest import es_mocker
 from tests.const import (
     CLUSTER_INFO_8DOT0_RESPONSE_BODY,
     CLUSTER_INFO_8DOT14_RESPONSE_BODY,
-    CLUSTER_INFO_SERVERLESS_RESPONSE_BODY,
     TEST_CONFIG_ENTRY_DATA_URL,
 )
 
@@ -269,28 +269,11 @@ class Test_Integration_Tests:
             )
 
     async def test_async_init_mock_elasticsearch(
-        self, gateway: ElasticsearchGateway, es_aioclient_mock: AiohttpClientMocker
+        self, gateway: ElasticsearchGateway, es_mock_builder: es_mocker
     ) -> None:
         """Test the async_init method."""
 
-        es_aioclient_mock.get(
-            url=f"{TEST_CONFIG_ENTRY_DATA_URL}",
-            json=CLUSTER_INFO_8DOT14_RESPONSE_BODY,
-            headers={"x-elastic-product": "Elasticsearch"},
-        )
-        es_aioclient_mock.get(
-            url=f"{TEST_CONFIG_ENTRY_DATA_URL}/_xpack/usage",
-            json={
-                "security": {"available": True, "enabled": True},
-            },
-        )
-        es_aioclient_mock.post(
-            f"{TEST_CONFIG_ENTRY_DATA_URL}/_security/user/_has_privileges",
-            status=200,
-            json={
-                "has_all_requested": True,
-            },
-        )
+        es_mock_builder.as_elasticsearch_8_17().with_correct_permissions()
 
         assert await gateway.async_init() is None
 
@@ -316,54 +299,20 @@ class Test_Integration_Tests:
             await gateway.async_init()
 
     async def test_async_init_mock_elasticsearch_serverless(
-        self, gateway: ElasticsearchGateway, es_aioclient_mock: AiohttpClientMocker
+        self, gateway: ElasticsearchGateway, es_mock_builder: es_mocker
     ) -> None:
         """Test the async_init method with unauthorized user."""
 
-        es_aioclient_mock.get(
-            f"{TEST_CONFIG_ENTRY_DATA_URL}",
-            status=200,
-            json=CLUSTER_INFO_SERVERLESS_RESPONSE_BODY,
-            headers={"x-elastic-product": "Elasticsearch"},
-        )
-
-        es_aioclient_mock.get(url=f"{TEST_CONFIG_ENTRY_DATA_URL}/_xpack/usage", status=401)
-
-        es_aioclient_mock.post(
-            f"{TEST_CONFIG_ENTRY_DATA_URL}/_security/user/_has_privileges",
-            status=200,
-            json={
-                "has_all_requested": True,
-            },
-        )
+        es_mock_builder.as_elasticsearch_serverless().with_correct_permissions()
 
         assert await gateway.async_init() is None
 
     async def test_async_init_mock_elasticsearch_minimum_supported(
-        self, gateway: ElasticsearchGateway, es_aioclient_mock: AiohttpClientMocker
+        self, gateway: ElasticsearchGateway, es_mock_builder: es_mocker
     ) -> None:
         """Test the async_init method with unauthorized user."""
 
-        es_aioclient_mock.get(
-            f"{TEST_CONFIG_ENTRY_DATA_URL}",
-            status=200,
-            json=CLUSTER_INFO_8DOT14_RESPONSE_BODY,
-            headers={"x-elastic-product": "Elasticsearch"},
-        )
-
-        es_aioclient_mock.get(
-            url=f"{TEST_CONFIG_ENTRY_DATA_URL}/_xpack/usage",
-            json={
-                "security": {"available": True, "enabled": True},
-            },
-        )
-        es_aioclient_mock.post(
-            f"{TEST_CONFIG_ENTRY_DATA_URL}/_security/user/_has_privileges",
-            status=200,
-            json={
-                "has_all_requested": True,
-            },
-        )
+        es_mock_builder.as_elasticsearch_8_14().with_correct_permissions()
 
         assert await gateway.async_init() is None
 
