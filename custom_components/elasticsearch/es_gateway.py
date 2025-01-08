@@ -11,11 +11,11 @@ from custom_components.elasticsearch.const import ES_CHECK_PERMISSIONS_DATASTREA
 
 from .logger import LOGGER as BASE_LOGGER
 from .logger import log_enter_exit_debug
+from typing import Any
 
 if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import AsyncGenerator
     from logging import Logger
-    from typing import Any
 
     from elasticsearch8._async.client import AsyncElasticsearch as AsyncElasticsearch8
 
@@ -33,7 +33,7 @@ class GatewaySettings(ABC):
     request_timeout: int = 30
     verify_hostname: bool = True
     minimum_version: tuple[int, int] | None = None
-    minimum_privileges: MappingProxyType[str, Any] | None = None
+    minimum_privileges: MappingProxyType[str, Any] | None = MappingProxyType[str, Any]({})
 
     @abstractmethod
     def to_client(self) -> AsyncElasticsearch8:
@@ -82,11 +82,6 @@ class ElasticsearchGateway(ABC):
     @abstractmethod
     def settings(self) -> GatewaySettings:
         """Return the settings."""
-
-    @property
-    def url(self) -> str:
-        """Return the Home Assistant instance."""
-        return self.settings.url
 
     @classmethod
     @abstractmethod
@@ -165,7 +160,7 @@ class ElasticsearchGateway(ABC):
         """Update an index template."""
 
     @abstractmethod
-    async def get_datastreams(self, datastream: str) -> dict:
+    async def get_datastream(self, datastream: str) -> dict:
         """Retrieve datastreams."""
 
     @abstractmethod

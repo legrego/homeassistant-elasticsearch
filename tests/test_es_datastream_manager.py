@@ -91,7 +91,7 @@ class Test_Integration_Tests:
 
         datastream_manager._gateway.rollover_datastream = AsyncMock()
 
-        datastream_manager._gateway.get_datastreams = AsyncMock(
+        datastream_manager._gateway.get_datastream = AsyncMock(
             return_value={
                 "data_streams": [
                     {
@@ -116,7 +116,7 @@ class Test_Integration_Tests:
 
         await datastream_manager._rollover_ha_datastreams()
 
-        datastream_manager._gateway.get_datastreams.assert_called_once()
+        datastream_manager._gateway.get_datastream.assert_called_once()
 
         assert datastream_manager._gateway.rollover_datastream.call_count == 2
 

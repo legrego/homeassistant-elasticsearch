@@ -4,7 +4,7 @@
     'data': mappingproxy({
       'password': 'changeme',
       'timeout': 30,
-      'url': 'http://mock_es_integration:9200',
+      'url': 'https://mock_es_integration:9200',
       'username': 'hass_writer',
       'verify_ssl': False,
     }),

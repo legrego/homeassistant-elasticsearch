@@ -77,6 +77,9 @@ class Gateway8Settings(GatewaySettings):
 class Elasticsearch8Gateway(ElasticsearchGateway):
     """Encapsulates Elasticsearch operations."""
 
+    _settings: Gateway8Settings
+    _client: AsyncElasticsearch
+
     def __init__(
         self,
         gateway_settings: Gateway8Settings,
@@ -89,12 +92,11 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
             log=log,
         )
 
-        self._client: AsyncElasticsearch | None = None
-        self._settings: Gateway8Settings = gateway_settings
+        self._settings = gateway_settings
+        self._client = self._settings.to_client()
 
     async def async_init(self) -> None:
         """Initialize the Elasticsearch Gateway."""
-        self._client = self._settings.to_client()
 
         await super().async_init()
 
@@ -137,16 +139,12 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
     @property
     def client(self) -> AsyncElasticsearch:
         """Return the underlying ES Client."""
-        if self._client is None:
-            raise CannotConnect("Elasticsearch client not initialized.")
 
         return self._client
 
     @property
     def settings(self) -> Gateway8Settings:
         """Return the settings."""
-        if not self._settings:
-            raise CannotConnect("Elasticsearch settings not initialized.")
 
         return self._settings
 
@@ -232,7 +230,7 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
         return self._convert_response(response)
 
     @async_log_enter_exit_debug
-    async def get_datastreams(self, datastream: str) -> dict:
+    async def get_datastream(self, datastream: str) -> dict:
         """Retrieve datastreams."""
         with self._error_converter(msg="Error retrieving datastreams"):
             response = await self.client.indices.get_data_stream(name=datastream)

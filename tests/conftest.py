@@ -82,7 +82,7 @@ def gateway_config() -> dict:
     params=[
         {
             "gateway_class": Elasticsearch8Gateway,
-            "gatewaysettings": Gateway8Settings,
+            "gateway_settings": Gateway8Settings,
         },
     ],
     ids=["es8"],
@@ -91,7 +91,7 @@ async def gateway(request, gateway_config):
     """Mock ElasticsearchGateway instance."""
 
     gateway_class = request.param["gateway_class"]
-    gateway_settings_class = request.param["gatewaysettings"]
+    gateway_settings_class = request.param["gateway_settings"]
 
     settings = gateway_settings_class(**gateway_config)
 
@@ -171,81 +171,81 @@ class es_mocker:
     """Mock builder for Elasticsearch integration tests."""
 
     mocker: AiohttpClientMocker
+    base_url: str = const.TEST_CONFIG_ENTRY_DATA_URL
 
     def __init__(self, mocker):
         """Initialize the mock builder."""
         self.mocker = mocker
+
+    def reset(self):
+        """Reset the mock builder."""
+        self.mocker.clear_requests()
+
+        return self
 
     def with_server_timeout(self):
         """Mock Elasticsearch being unreachable."""
         self.mocker.get(f"{const.TEST_CONFIG_ENTRY_DATA_URL}", exc=client_exceptions.ServerTimeoutError())
         return self
 
-    def as_elasticsearch_8_0(self, with_security: bool = True) -> es_mocker:
-        """Mock Elasticsearch 8.0."""
+    def _as_elasticsearch_stateful(
+        self, version_response: dict[str, Any], with_security: bool = True
+    ) -> es_mocker:
+        """Mock Elasticsearch version."""
+
+        self.base_url = (
+            const.TEST_CONFIG_ENTRY_DATA_URL if with_security else const.TEST_CONFIG_ENTRY_DATA_URL_INSECURE
+        )
+
         self.mocker.get(
-            const.TEST_CONFIG_ENTRY_DATA_URL,
+            f"{self.base_url}",
             status=200,
-            json=const.CLUSTER_INFO_8DOT0_RESPONSE_BODY,
+            json=version_response,
             headers={"x-elastic-product": "Elasticsearch"},
         )
 
-        if with_security:
-            self._with_security_enabled()
-        else:
-            self._with_security_disabled()
+        self.mocker.get(
+            url=f"{self.base_url}/_xpack/usage",
+            json={
+                "security": {"available": True, "enabled": with_security},
+            },
+        )
 
         return self
+
+    def as_elasticsearch_8_0(self, with_security: bool = True) -> es_mocker:
+        """Mock Elasticsearch 8.0."""
+        return self._as_elasticsearch_stateful(const.CLUSTER_INFO_8DOT0_RESPONSE_BODY, with_security)
 
     def as_elasticsearch_8_17(self, with_security: bool = True):
         """Mock Elasticsearch 8.17."""
-        self.mocker.get(
-            const.TEST_CONFIG_ENTRY_DATA_URL,
-            status=200,
-            json=const.CLUSTER_INFO_8DOT14_RESPONSE_BODY,
-            headers={"x-elastic-product": "Elasticsearch"},
-        )
-
-        if with_security:
-            self._with_security_enabled()
-        else:
-            self._with_security_disabled()
-
-        return self
+        return self._as_elasticsearch_stateful(const.CLUSTER_INFO_8DOT17_RESPONSE_BODY, with_security)
 
     def as_elasticsearch_8_14(self, with_security: bool = True):
         """Mock Elasticsearch 8.14."""
+
+        return self._as_elasticsearch_stateful(const.CLUSTER_INFO_8DOT14_RESPONSE_BODY, with_security)
+
+    def as_elasticsearch_serverless(self) -> es_mocker:
+        """Mock Elasticsearch version."""
+
+        self.base_url = const.TEST_CONFIG_ENTRY_DATA_URL
+
         self.mocker.get(
-            const.TEST_CONFIG_ENTRY_DATA_URL,
-            status=200,
-            json=const.CLUSTER_INFO_8DOT14_RESPONSE_BODY,
-            headers={"x-elastic-product": "Elasticsearch"},
-        )
-
-        if with_security:
-            self._with_security_enabled()
-        else:
-            self._with_security_disabled()
-
-        return self
-
-    def as_elasticsearch_serverless(self):
-        """Mock Elasticsearch Serverless."""
-        self.mocker.get(
-            const.TEST_CONFIG_ENTRY_DATA_URL,
+            f"{self.base_url}",
             status=200,
             json=const.CLUSTER_INFO_SERVERLESS_RESPONSE_BODY,
             headers={"x-elastic-product": "Elasticsearch"},
         )
 
-        self.mocker.get(url=f"{const.TEST_CONFIG_ENTRY_DATA_URL}/_xpack/usage", status=401)
+        self.mocker.get(url=f"{self.base_url}/_xpack/usage", status=401)
 
         return self
 
     def with_incorrect_permissions(self):
         """Mock the user being properly authenticated."""
         self.mocker.post(
-            f"{const.TEST_CONFIG_ENTRY_DATA_URL}/_security/user/_has_privileges",
+            f"{self.base_url}/_security/user/_has_privileges",
             status=200,
             json={
                 "has_all_requested": False,
@@ -258,7 +258,7 @@ class es_mocker:
         """Mock the user being properly authenticated."""
 
         self.mocker.post(
-            f"{const.TEST_CONFIG_ENTRY_DATA_URL}/_security/user/_has_privileges",
+            f"{self.base_url}/_security/user/_has_privileges",
             status=200,
             json={
                 "has_all_requested": True,
@@ -267,24 +267,22 @@ class es_mocker:
 
         return self
 
-    def _with_security_disabled(self):
-        """Mock Elasticsearch 8.14."""
-        self.mocker.get(
-            url=f"{const.TEST_CONFIG_ENTRY_DATA_URL}/_xpack/usage",
-            json={
-                "security": {"available": True, "enabled": False},
-            },
-        )
+    def with_untrusted_certificate(self):
+        """Mock the user being properly authenticated."""
 
-        return self
+        class MockTLSError(client_exceptions.ClientConnectorCertificateError):
+            """Mocks an TLS error caused by an untrusted certificate.
 
-    def _with_security_enabled(self):
-        """Mock Elasticsearch 8.14."""
+            This is imperfect, but gets the job done for now.
+            """
+
+            def __init__(self) -> None:
+                self._conn_key = MagicMock()
+                self._certificate_error = Exception("AHHHH")
+
         self.mocker.get(
-            url=f"{const.TEST_CONFIG_ENTRY_DATA_URL}/_xpack/usage",
-            json={
-                "security": {"available": True, "enabled": True},
-            },
+            f"{self.base_url}",
+            exc=MockTLSError,
         )
 
         return self

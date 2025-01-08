@@ -83,7 +83,7 @@ class DatastreamManager:
     @async_log_enter_exit_debug
     async def _rollover_ha_datastreams(self):
         """Rollover Home Assistant datastreams."""
-        datastreams = await self._gateway.get_datastreams(datastream="metrics-homeassistant.*")
+        datastreams = await self._gateway.get_datastream(datastream="metrics-homeassistant.*")
 
         for datastream in datastreams.get("data_streams", []):
             self._logger.info("Rolling over datastream [%s]", datastream["name"])

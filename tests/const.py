@@ -127,7 +127,8 @@ TEST_ENTITY_OBJECT_ID_4 = "entity_object_id_4"
 TEST_ENTITY_OBJECT_ID_5 = "entity_object_id_5"
 
 
-TEST_CONFIG_ENTRY_DATA_URL = "http://mock_es_integration:9200"
+TEST_CONFIG_ENTRY_DATA_URL = "https://mock_es_integration:9200"
+TEST_CONFIG_ENTRY_DATA_URL_INSECURE = "http://mock_es_integration:9200"
 TEST_CONFIG_ENTRY_DATA_USERNAME = "hass_writer"
 TEST_CONFIG_ENTRY_DATA_PASSWORD = "changeme"
 TEST_CONFIG_ENTRY_DATA_TIMEOUT = 30
