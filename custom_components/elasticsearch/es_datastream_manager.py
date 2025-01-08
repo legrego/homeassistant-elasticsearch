@@ -31,11 +31,14 @@ class DatastreamManager:
     @async_log_enter_exit_debug
     async def async_init(self) -> None:
         """Perform init for index management."""
-        if await self._needs_index_template() or await self._needs_index_template_update():
-            await self._create_index_template()
+        if await self._needs_index_template():
+            await self._install_index_template()
+        elif await self._needs_index_template_update():
+            await self._update_index_template()
 
     @async_log_enter_exit_debug
     async def _needs_index_template(self) -> bool:
+        """Check if the ES cluster needs the index template installed."""
         matching_templates = await self._gateway.get_index_template(
             name=DATASTREAM_METRICS_INDEX_TEMPLATE_NAME,
             ignore=[404],
@@ -45,6 +48,7 @@ class DatastreamManager:
 
     @async_log_enter_exit_debug
     async def _needs_index_template_update(self) -> bool:
+        """Check if the ES cluster needs the index template updated."""
         matching_templates = await self._gateway.get_index_template(
             name=DATASTREAM_METRICS_INDEX_TEMPLATE_NAME,
             ignore=[404],
@@ -66,23 +70,23 @@ class DatastreamManager:
         return False
 
     @async_log_enter_exit_debug
-    async def _create_index_template(self) -> None:
+    async def _install_index_template(self) -> None:
         """Initialize any required datastream templates."""
-
-        action = "Creating" if (await self._needs_index_template()) else "Updating"
-        self._logger.info("%s index template for Home Assistant datastreams", action)
+        self._logger.info("Installing index template for Home Assistant datastreams")
 
         await self._gateway.put_index_template(
             name=DATASTREAM_METRICS_INDEX_TEMPLATE_NAME,
             body=index_template_definition,
         )
 
-        if action == "Updating":
-            await self._rollover_ha_datastreams()
-
     @async_log_enter_exit_debug
-    async def _rollover_ha_datastreams(self):
-        """Rollover Home Assistant datastreams."""
+    async def _update_index_template(self) -> None:
+        """Initialize any required datastream templates."""
+        self._logger.info("Updating Index template and rolling over Homeassistant datastreams")
+
+        await self._install_index_template()
+
+        # Rollover all Home Assistant datastreams to ensure we don't get mapping conflicts
         datastreams = await self._gateway.get_datastream(datastream="metrics-homeassistant.*")
 
         for datastream in datastreams.get("data_streams", []):
