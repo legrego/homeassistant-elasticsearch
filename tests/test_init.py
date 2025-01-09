@@ -494,6 +494,40 @@ class Test_Config_Migration:
             snapshot=snapshot,
         )
 
+        assert self._test_config_data_options_migration_to_version(
+            before_version=1,
+            before_options={},
+            before_data={
+                "url": "http://migration-test:9200",
+                "ilm_max_size": "10gb",
+                "ilm_delete_after": "30d",
+                "health_sensor_enabled": True,
+                "only_publish_changed": False,
+                "publish_enabled": True,
+                "publish_frequency": 60,
+                "excluded_domains": [],
+                "excluded_entities": [],
+                "included_domains": [],
+                "included_entities": [],
+                "publish_mode": "Any changes",
+            },
+            after_options={
+                "include_targets": False,
+                "exclude_targets": False,
+                "targets_to_include": {},
+                "targets_to_exclude": {},
+                "publish_frequency": 60,
+                "tags": [],
+                "polling_frequency": 60,
+                "change_detection_type": ["state", "attribute"],
+            },
+            after_data={
+                "url": "http://migration-test:9200",
+            },
+            after_version=7,
+            snapshot=snapshot,
+        )
+
 
 class Test_Setup:
     """Test the Elasticsearch integration setup."""
