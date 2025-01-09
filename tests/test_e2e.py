@@ -40,6 +40,7 @@ def _fix_system_info():
 
         yield
 
+
 def strip_headers_from_mock_calls(mock_calls):
     """Strip headers from mock calls."""
     # mock calls are a 4 item tuple, return a 3 item tuple
