@@ -25,11 +25,13 @@ from typing import TYPE_CHECKING
 from unittest import mock
 from unittest.mock import AsyncMock, MagicMock, patch
 
-# import custom_components.elasticsearch  # noqa: F401
 import pytest
 from aiohttp import ClientSession, TCPConnector, client_exceptions
 from custom_components.elasticsearch.config_flow import ElasticFlowHandler
+from custom_components.elasticsearch.const import DATASTREAM_METRICS_INDEX_TEMPLATE_NAME
 from custom_components.elasticsearch.es_gateway_8 import Elasticsearch8Gateway, Gateway8Settings
+
+# import custom_components.elasticsearch  # noqa: F401
 from homeassistant.const import (
     CONF_PASSWORD,
     CONF_URL,
@@ -52,7 +54,7 @@ from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClien
 from tests import const
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Awaitable, Callable, Generator
     from typing import Any
 
     from homeassistant.helpers.area_registry import AreaEntry, AreaRegistry
@@ -122,6 +124,24 @@ async def initialized_gateway(gateway: Elasticsearch8Gateway):
     await gateway.stop()
 
 
+@pytest.fixture
+async def integration_setup(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+) -> Callable[[], Awaitable[bool]]:
+    """Fixture to set up the integration."""
+    config_entry.add_to_hass(hass)
+
+    async def run() -> bool:
+        result = await hass.config_entries.async_setup(config_entry.entry_id)
+
+        await hass.async_block_till_done()
+
+        return result
+
+    return run
+
+
 @contextmanager
 def mock_es_aiohttp_client():
     """Context manager to mock aiohttp client."""
@@ -180,6 +200,27 @@ class es_mocker:
     def reset(self):
         """Reset the mock builder."""
         self.mocker.clear_requests()
+
+        return self
+
+    def get_calls(self):
+        """Return the calls."""
+        # each mock_call is a tuple of method, url, body, and headers
+
+        return self.mocker.mock_calls
+
+    def clear(self):
+        """Clear the requests."""
+        self.mocker.mock_calls.clear()
+
+        return self
+
+    def with_server_error(self, status, exc=None):
+        """Mock Elasticsearch being unreachable."""
+        if exc is None:
+            self.mocker.get(f"{const.TEST_CONFIG_ENTRY_DATA_URL}", status=status)
+        else:
+            self.mocker.get(f"{const.TEST_CONFIG_ENTRY_DATA_URL}", exc=exc)
 
         return self
 
@@ -287,6 +328,86 @@ class es_mocker:
 
         return self
 
+    def with_index_template(self, version=2):
+        """Mock the user being properly authenticated."""
+
+        # Mock index template setup
+        self.mocker.get(
+            f"{self.base_url}/_index_template/{DATASTREAM_METRICS_INDEX_TEMPLATE_NAME}",
+            status=200,
+            headers={"x-elastic-product": "Elasticsearch"},
+            json={
+                "index_templates": [{"name": "datastream_metrics", "index_template": {"version": version}}]
+            },
+        )
+
+        return self
+
+    def without_index_template(self):
+        """Mock the user being properly authenticated."""
+
+        # Mock index template setup
+        self.mocker.get(
+            f"{self.base_url}/_index_template/{DATASTREAM_METRICS_INDEX_TEMPLATE_NAME}",
+            status=200,
+            headers={"x-elastic-product": "Elasticsearch"},
+            json={},
+        )
+
+        self.mocker.put(
+            f"{self.base_url}/_index_template/{DATASTREAM_METRICS_INDEX_TEMPLATE_NAME}",
+            status=200,
+            headers={"x-elastic-product": "Elasticsearch"},
+            json={},
+        )
+        return self
+
+    def with_datastreams(self):
+        """Mock the user being properly authenticated."""
+
+        self.mocker.get(
+            f"{self.base_url}/_data_stream/metrics-homeassistant.*",
+            status=200,
+            headers={"x-elastic-product": "Elasticsearch"},
+            json={
+                "data_streams": [
+                    {
+                        "name": "metrics-homeassistant.sensor-default",
+                    },
+                    {
+                        "name": "metrics-homeassistant.counter-default",
+                    },
+                ]
+            },
+        )
+
+        self.mocker.put(
+            f"{self.base_url}/_data_stream/metrics-homeassistant.counter-default/_rollover",
+            status=200,
+            headers={"x-elastic-product": "Elasticsearch"},
+            json={},
+        )
+        self.mocker.put(
+            f"{self.base_url}/_data_stream/metrics-homeassistant.sensor-default/_rollover",
+            status=200,
+            headers={"x-elastic-product": "Elasticsearch"},
+            json={},
+        )
+
+        return self
+
+    def respond_to_bulk(self, status=200):
+        """Mock the user being properly authenticated."""
+
+        self.mocker.put(
+            f"{self.base_url}/_bulk",
+            status=status,
+            headers={"x-elastic-product": "Elasticsearch"},
+            json={"errors": status == 200, "items": [], "took": 7},
+        )
+
+        return self
+
 
 # This fixture enables loading custom integrations in all tests.
 # Remove to enable selective use of this fixture
@@ -316,6 +437,12 @@ async def data() -> dict:
 
 
 @pytest.fixture
+async def version() -> int:
+    """Return a mock options dict."""
+    return ElasticFlowHandler.VERSION
+
+
+@pytest.fixture
 async def options() -> dict:
     """Return a mock options dict."""
     return const.TEST_CONFIG_ENTRY_BASE_OPTIONS
@@ -333,7 +460,7 @@ async def config_entry(
     data: dict,
     options: dict,
     add_to_hass: bool,
-    version: int = ElasticFlowHandler.VERSION,
+    version: int,
 ):
     """Create a mock config entry and add it to hass."""
 
