@@ -201,6 +201,7 @@ async def add_to_hass() -> bool:
     """Return whether to add the config entry to hass."""
     return True
 
+
 @pytest.fixture(autouse=True)
 async def fix_location(hass: HomeAssistant):
     """Return whether to fix the location."""
