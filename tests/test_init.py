@@ -94,7 +94,6 @@ async def mock_integration(hass: HomeAssistant, _config_flow, mock_module: MockM
     return new_mock_integration(hass, mock_module, False)
 
 
-
 class Test_Config_Migration:
     """Test the Elasticsearch integration configuration migrations."""
 
@@ -837,7 +836,6 @@ class Test_Common_e2e:
         freezer.move_to(frozen_time)
 
         return freezer
-
 
     class Test_Pipeline_Settings:
         """Test Pipeline Settings."""
