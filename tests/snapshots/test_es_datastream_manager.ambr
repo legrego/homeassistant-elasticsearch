@@ -43,22 +43,6 @@
             }),
             'agent': dict({
               'properties': dict({
-                'ephemeral_id': dict({
-                  'ignore_above': 1024,
-                  'type': 'keyword',
-                }),
-                'id': dict({
-                  'ignore_above': 1024,
-                  'type': 'keyword',
-                }),
-                'name': dict({
-                  'ignore_above': 1024,
-                  'type': 'keyword',
-                }),
-                'type': dict({
-                  'ignore_above': 1024,
-                  'type': 'keyword',
-                }),
                 'version': dict({
                   'ignore_above': 1024,
                   'type': 'keyword',
@@ -178,19 +162,14 @@
                     'friendly_name': dict({
                       'type': 'keyword',
                     }),
-                    'geo': dict({
-                      'properties': dict({
-                        'location': dict({
-                          'type': 'geo_point',
-                        }),
-                      }),
-                      'type': 'object',
-                    }),
                     'id': dict({
                       'type': 'keyword',
                     }),
                     'labels': dict({
                       'type': 'keyword',
+                    }),
+                    'location': dict({
+                      'type': 'geo_point',
                     }),
                     'name': dict({
                       'type': 'keyword',
@@ -273,16 +252,12 @@
                   'ignore_above': 1024,
                   'type': 'keyword',
                 }),
-                'geo': dict({
-                  'properties': dict({
-                    'location': dict({
-                      'type': 'geo_point',
-                    }),
-                  }),
-                }),
                 'hostname': dict({
                   'ignore_above': 1024,
                   'type': 'keyword',
+                }),
+                'location': dict({
+                  'type': 'geo_point',
                 }),
                 'name': dict({
                   'ignore_above': 1024,
@@ -314,7 +289,7 @@
           }),
         }),
       }),
-      'version': 2,
+      'version': 3,
     }),
     'name': 'metrics-homeassistant',
   })

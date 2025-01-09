@@ -198,6 +198,14 @@ async def add_to_hass() -> bool:
     return True
 
 
+@pytest.fixture(autouse=True)
+async def fix_location(hass: HomeAssistant):
+    """Return whether to fix the location."""
+
+    hass.config.latitude = 1.0
+    hass.config.longitude = -1.0
+
+
 @pytest.fixture
 async def config_entry(
     hass: HomeAssistant,

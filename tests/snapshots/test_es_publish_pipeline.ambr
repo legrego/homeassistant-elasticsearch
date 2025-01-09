@@ -3714,6 +3714,10 @@
       'entity label 2',
       'entity label 3',
     ]),
+    'hass.entity.location': dict({
+      'lat': 1.0,
+      'lon': 1.0,
+    }),
     'hass.entity.platform': 'entity platform',
   })
 # ---

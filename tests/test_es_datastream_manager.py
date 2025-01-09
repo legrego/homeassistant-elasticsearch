@@ -4,12 +4,14 @@
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from custom_components.elasticsearch.datastreams.index_template import index_template_definition
 from custom_components.elasticsearch.es_datastream_manager import DatastreamManager
 
 
 @pytest.fixture
 async def datastream_manager(initialized_gateway):
     """Return an DatastreamManager instance."""
+
     return DatastreamManager(initialized_gateway)
 
 
@@ -27,7 +29,7 @@ class Test_DatastreamManager_Async:
 
     async def test_async_init(self, datastream_manager):
         """Test the async_init method."""
-        # Mock the _create_index_template method
+
         with (
             patch.object(datastream_manager, "_create_index_template", AsyncMock()),
             patch.object(datastream_manager, "_needs_index_template", return_value=False),
@@ -38,7 +40,6 @@ class Test_DatastreamManager_Async:
     async def test_needs_index_template(self, datastream_manager):
         """Test the _needs_index_template method."""
 
-        # Mock the get_index_template method to return a matching template
         datastream_manager._gateway.get_index_template = AsyncMock(
             return_value={"index_templates": []},
         )
@@ -50,9 +51,8 @@ class Test_DatastreamManager_Async:
     @pytest.mark.asyncio
     async def test_create_index_template(self, datastream_manager, snapshot):
         """Test the _create_index_template method."""
-        # Mock the _needs_index_template method to return False
+
         with patch.object(datastream_manager, "_needs_index_template", return_value=True):
-            # Mock the put_index_template method
             datastream_manager._gateway.put_index_template = AsyncMock()
 
             await datastream_manager._create_index_template()
@@ -65,9 +65,6 @@ class Test_DatastreamManager_Async:
 
     async def test_datastream_rollover(self, datastream_manager):
         """Test the datastream_rollover method."""
-        # Mock the rollover_index method
-
-        # GET /_data_stream/my-data-stream
 
         datastream_manager._gateway.rollover_datastream = AsyncMock()
 
@@ -106,7 +103,7 @@ class Test_DatastreamManager_Async:
 
     async def test_needs_index_template_update(self, datastream_manager, snapshot):
         """Test the _needs_index_template_update method."""
-        # Mock the get_index_template method to return a matching template
+
         datastream_manager._gateway.get_index_template = AsyncMock(
             return_value={
                 "index_templates": [
@@ -124,13 +121,13 @@ class Test_DatastreamManager_Async:
 
     async def test_needs_index_template_no_update(self, datastream_manager, snapshot):
         """Test the _needs_index_template_update method."""
-        # Mock the get_index_template method to return a matching template
+
         datastream_manager._gateway.get_index_template = AsyncMock(
             return_value={
                 "index_templates": [
                     {
                         "name": "datastream_metrics",
-                        "index_template": {"version": 2},
+                        "index_template": {"version": index_template_definition["version"]},
                     }
                 ]
             },
@@ -139,27 +136,3 @@ class Test_DatastreamManager_Async:
         result = await datastream_manager._needs_index_template_update()
 
         assert not result
-
-    # @async_log_enter_exit_debug
-    # async def _needs_index_template_update(self) -> bool:
-    #     matching_templates = await self._gateway.get_index_template(
-    #         name=DATASTREAM_METRICS_INDEX_TEMPLATE_NAME,
-    #         ignore=[404],
-    #     )
-
-    #     matching_template = matching_templates.get("index_templates", [{}])[0]
-
-    #     new_template = await self._get_index_template_from_disk()
-
-    #     imported_version = matching_template["index_template"].get("version", 0)
-    #     new_version = new_template.get("version", 0)
-
-    #     if imported_version != new_version:
-    #         self._logger.info(
-    #             "Update required from [%s} to [%s] for Home Assistant datastream index template",
-    #             imported_version,
-    #             new_version,
-    #         )
-    #         return True
-
-    #     return False
