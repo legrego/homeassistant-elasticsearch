@@ -40,6 +40,12 @@ def _fix_system_info():
 
         yield
 
+def strip_headers_from_mock_calls(mock_calls):
+    """Strip headers from mock calls."""
+    # mock calls are a 4 item tuple, return a 3 item tuple
+
+    return [(call[0], call[1], call[2]) for call in mock_calls]
+
 
 @pytest.fixture(autouse=True)
 def freeze_time(freezer: FrozenDateTimeFactory):
@@ -90,7 +96,7 @@ class Test_Common_e2e:
             assert config_entry.state is ConfigEntryState.LOADED
 
             assert es_mock_builder.mocker.call_count == 9
-            assert es_mock_builder.mocker.mock_calls == snapshot
+            assert strip_headers_from_mock_calls(es_mock_builder.mocker.mock_calls) == snapshot
 
         @pytest.mark.parametrize("status_code", [403, 404, 500])
         async def test_setup_to_publish_error(
@@ -118,7 +124,7 @@ class Test_Common_e2e:
             assert config_entry.state is ConfigEntryState.LOADED
 
             assert es_mock_builder.mocker.call_count == 9
-            assert es_mock_builder.mocker.mock_calls == snapshot
+            assert strip_headers_from_mock_calls(es_mock_builder.mocker.mock_calls) == snapshot
 
         async def test_setup_authentication_failure(
             self, hass: HomeAssistant, integration_setup, es_mock_builder, config_entry
@@ -278,7 +284,7 @@ class Test_Common_e2e:
             assert snapshot == {
                 "data": config_entry.data,
                 "options": config_entry.options,
-                "mock_calls": es_mock_builder.mocker.mock_calls,
+                "mock_calls": strip_headers_from_mock_calls(es_mock_builder.mocker.mock_calls),
             }
 
     # async def test_setup_to_publish_ping_500_error(
