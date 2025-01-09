@@ -122,17 +122,13 @@ index_template_definition: dict[str, Any] = {
                 },
                 "agent": {
                     "properties": {
-                        "ephemeral_id": {"ignore_above": 1024, "type": "keyword"},
-                        "id": {"ignore_above": 1024, "type": "keyword"},
-                        "name": {"ignore_above": 1024, "type": "keyword"},
-                        "type": {"ignore_above": 1024, "type": "keyword"},
                         "version": {"ignore_above": 1024, "type": "keyword"},
                     }
                 },
                 "host": {
                     "properties": {
                         "architecture": {"ignore_above": 1024, "type": "keyword"},
-                        "geo": {"properties": {"location": {"type": "geo_point"}}},
+                        "location": {"type": "geo_point"},
                         "hostname": {"ignore_above": 1024, "type": "keyword"},
                         "name": {"ignore_above": 1024, "type": "keyword"},
                         "os": {"properties": {"name": {"ignore_above": 1024, "type": "keyword"}}},

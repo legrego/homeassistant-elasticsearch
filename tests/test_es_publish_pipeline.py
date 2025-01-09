@@ -279,6 +279,10 @@ class Test_Manager:
                     "host.architecture": "x86",
                     "host.os.name": "Linux",
                     "host.hostname": "my_es_host",
+                    "host.location": {
+                        "lat": 1.0,
+                        "lon": -1.0,
+                    },
                 }
 
                 manager._listener.async_init.assert_awaited_once()
