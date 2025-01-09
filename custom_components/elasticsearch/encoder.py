@@ -15,7 +15,7 @@ def convert_set_to_list(data: Any) -> Any:
         return output
 
     if isinstance(data, dict):
-        return {key: convert_set_to_list(value) for key, value in data.items()}
+        return json.dumps({key: convert_set_to_list(value) for key, value in data.items()})
 
     if isinstance(data, list):
         return [convert_set_to_list(item) for item in data]
@@ -39,7 +39,7 @@ class Serializer(JSONSerializer):
     def default(self, data: Any) -> Any:
         """Entry point."""
 
-        return JSONSerializer.default(self, convert_set_to_list(data))
+        return super().default(convert_set_to_list(data))
 
 
 class Encoder(json.JSONEncoder):
@@ -48,4 +48,4 @@ class Encoder(json.JSONEncoder):
     def default(self, o: Any) -> Any:
         """Entry point."""
 
-        return json.JSONEncoder.default(self, convert_set_to_list(o))
+        return super().default(convert_set_to_list(o))

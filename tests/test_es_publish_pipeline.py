@@ -139,7 +139,27 @@ class Test_Filterer:
 
             patched_filterer._excluded_entities = []
             patched_filterer._excluded_areas = []
+            patched_filterer._excluded_labels = list(entity.labels)[0]
+            patched_filterer._excluded_devices = []
+
+            assert patched_filterer._passes_exclude_targets(entity.entity_id) is False
+
+            patched_filterer._excluded_entities = []
+            patched_filterer._excluded_areas = []
+            patched_filterer._excluded_labels = list(device.labels)[0]
+            patched_filterer._excluded_devices = []
+
+            assert patched_filterer._passes_exclude_targets(entity.entity_id) is False
+            patched_filterer._excluded_entities = []
+            patched_filterer._excluded_areas = []
             patched_filterer._excluded_labels = entity.labels
+            patched_filterer._excluded_devices = []
+
+            assert patched_filterer._passes_exclude_targets(entity.entity_id) is False
+
+            patched_filterer._excluded_entities = []
+            patched_filterer._excluded_areas = []
+            patched_filterer._excluded_labels = device.labels
             patched_filterer._excluded_devices = []
 
             assert patched_filterer._passes_exclude_targets(entity.entity_id) is False
@@ -179,7 +199,28 @@ class Test_Filterer:
 
             patched_filterer._included_entities = []
             patched_filterer._included_areas = []
+            patched_filterer._included_labels = list(entity.labels)[0]
+            patched_filterer._included_devices = []
+
+            assert patched_filterer._passes_include_targets(entity.entity_id) is True
+
+            patched_filterer._included_entities = []
+            patched_filterer._included_areas = []
+            patched_filterer._included_labels = list(device.labels)[0]
+            patched_filterer._included_devices = []
+
+            assert patched_filterer._passes_include_targets(entity.entity_id) is True
+
+            patched_filterer._included_entities = []
+            patched_filterer._included_areas = []
             patched_filterer._included_labels = entity.labels
+            patched_filterer._included_devices = []
+
+            assert patched_filterer._passes_include_targets(entity.entity_id) is True
+
+            patched_filterer._included_entities = []
+            patched_filterer._included_areas = []
+            patched_filterer._included_labels = device.labels
             patched_filterer._included_devices = []
 
             assert patched_filterer._passes_include_targets(entity.entity_id) is True
