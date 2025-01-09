@@ -187,17 +187,14 @@ class Pipeline:
                 settings=self._settings,
             )
 
-            self._filterer: Pipeline.Filterer = Pipeline.Filterer(
-                hass=self._hass,
-                log=self._logger,
-                settings=settings,
-            )
             self._formatter: Pipeline.Formatter = Pipeline.Formatter(
                 hass=self._hass, settings=self._settings, log=self._logger
             )
+
             self._publisher: Pipeline.Publisher = Pipeline.Publisher(
                 hass=self._hass,
                 settings=self._settings,
+                manager=self,
                 gateway=gateway,
                 log=self._logger,
             )
@@ -238,22 +235,11 @@ class Pipeline:
             await self._formatter.async_init(self._static_fields)
             await self._publisher.async_init(config_entry=config_entry)
 
-            filter_format_publish = LoopHandler(
-                name="es_filter_format_publish_loop",
-                func=self._publish,
-                frequency=self._settings.publish_frequency,
-                log=self._logger,
-            )
-
-            self._cancel_publisher = config_entry.async_create_background_task(
-                self._hass,
-                async_create_catching_coro(filter_format_publish.start()),
-                "es_filter_format_publish_task",
-            )
-
             self._config_entry = config_entry
 
-        async def _sip_queue(self) -> AsyncGenerator[dict[str, Any], Any]:
+        async def sip_queue(self) -> AsyncGenerator[dict[str, Any], Any]:
+            """Sip an event off of the queue."""
+
             while not self._queue.empty():
                 timestamp, state, reason = self._queue.get()
 
@@ -265,37 +251,10 @@ class Pipeline:
                         state.entity_id,
                     )
 
-        async def _publish(self) -> None:
-            """Publish the documents to Elasticsearch."""
-            try:
-                if not await self._gateway.check_connection():
-                    self._logger.debug("Skipping publishing as connection is not available.")
-                    return
-
-                await self._publisher.publish(iterable=self._sip_queue())
-
-            except AuthenticationRequired:
-                msg = "Authentication issue in publishing loop. Reloading integration."
-                self._logger.error(msg)
-                self._logger.debug(msg, exc_info=True)
-
-                if self._config_entry:
-                    self._hass.config_entries.async_schedule_reload(self._config_entry.entry_id)
-
-            except IndexingError:
-                msg = "Indexing error in publishing loop."
-                self._logger.debug(msg, exc_info=True)
-                self._logger.error(msg)
-
-            except ESIntegrationConnectionException:
-                msg = "Connection error in publishing loop. Reloading integration."
-                self._logger.debug(msg, exc_info=True)
-                self._logger.error(msg)
-
-            except Exception:  # noqa: BLE001
-                msg = "Unknown error while publishing documents."
-                self._logger.debug(msg, exc_info=True)
-                self._logger.error(msg)
+        @property
+        def queue(self) -> EventQueue:
+            """Return the queue."""
+            return self._queue
 
         @log_enter_exit_debug
         def stop(self) -> None:
@@ -537,6 +496,8 @@ class Pipeline:
                 async_create_catching_coro(state_poll_loop.start()),
                 "es_state_poll_task",
             )
+
+            await state_poll_loop.wait_for_first_run()
 
         async def poll(self) -> None:
             """Poll for state changes and queue them for send."""
@@ -825,17 +786,36 @@ class Pipeline:
             hass: HomeAssistant,
             gateway: ElasticsearchGateway,
             settings: PipelineSettings,
+            manager: Pipeline.Manager,
             log: Logger = BASE_LOGGER,
         ) -> None:
             """Initialize the publisher."""
             self._logger = log
             self._gateway = gateway
+            self._manager = manager
             self._settings = settings
             self._hass = hass
+            self._queue: EventQueue = manager.queue
 
         @log_enter_exit_debug
         async def async_init(self, config_entry: ConfigEntry) -> None:
             """Initialize the publisher."""
+            self._config_entry = config_entry
+
+            filter_format_publish = LoopHandler(
+                name="es_filter_format_publish_loop",
+                func=self.publish,
+                frequency=self._settings.publish_frequency,
+                log=self._logger,
+            )
+
+            self._cancel_publisher = config_entry.async_create_background_task(
+                self._hass,
+                async_create_catching_coro(filter_format_publish.start()),
+                "es_filter_format_publish_task",
+            )
+
+            await filter_format_publish.wait_for_first_run()
 
         @staticmethod
         @lru_cache(maxsize=128)
@@ -863,12 +843,47 @@ class Pipeline:
                     "_source": document,
                 }
 
-        async def publish(self, iterable: AsyncGenerator[dict[str, Any], Any]) -> None:
+        async def publish(self) -> None:
             """Publish the document to Elasticsearch."""
 
-            actions = self._add_action_and_meta_data(iterable)
+            try:
+                if not await self._gateway.check_connection():
+                    self._logger.debug("Skipping publishing as connection is not available.")
+                    return
 
-            await self._gateway.bulk(actions=actions)
+                actions = self._add_action_and_meta_data(iterable=self._manager.sip_queue())
+
+                await self._gateway.bulk(actions=actions)
+
+            except AuthenticationRequired:
+                msg = "Authentication issue in publishing loop."
+
+                if self._config_entry and self._config_entry.state == "loaded":
+                    msg += " Reloading integration."
+                    self._hass.config_entries.async_schedule_reload(self._config_entry.entry_id)
+
+                self._logger.error(msg)
+                self._logger.debug(msg, exc_info=True)
+
+            except IndexingError:
+                msg = "Indexing error in publishing loop."
+                self._logger.debug(msg, exc_info=True)
+                self._logger.error(msg)
+
+            except ESIntegrationConnectionException:
+                msg = "Connection error in publishing loop."
+
+                if self._config_entry and self._config_entry.state == "loaded":
+                    msg += " Reloading integration."
+                    self._hass.config_entries.async_schedule_reload(self._config_entry.entry_id)
+
+                self._logger.debug(msg, exc_info=True)
+                self._logger.error(msg)
+
+            except Exception:  # noqa: BLE001
+                msg = "Unknown error while publishing documents."
+                self._logger.debug(msg, exc_info=True)
+                self._logger.error(msg)
 
         @log_enter_exit_debug
         def stop(self) -> None:
