@@ -1,0 +1,25 @@
+# serializer version: 1
+# name: Test_Init.Test_ElasticsearchStateful.test_es8_async_init_with_tls_custom_ca
+  dict({
+    'issuer': tuple(
+      tuple(
+        tuple(
+          'commonName',
+          'Elasticsearch security auto-configuration HTTP CA',
+        ),
+      ),
+    ),
+    'notAfter': 'Dec 18 17:55:54 2027 GMT',
+    'notBefore': 'Dec 18 17:55:54 2024 GMT',
+    'serialNumber': '25813FA4F725F5566FCF014C0B8B0973E710DF90',
+    'subject': tuple(
+      tuple(
+        tuple(
+          'commonName',
+          'Elasticsearch security auto-configuration HTTP CA',
+        ),
+      ),
+    ),
+    'version': 3,
+  })
+# ---
