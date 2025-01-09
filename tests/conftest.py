@@ -21,6 +21,7 @@ from __future__ import annotations
 from asyncio import get_running_loop
 from collections.abc import Generator
 from contextlib import contextmanager, suppress
+from http import HTTPStatus
 from typing import TYPE_CHECKING
 from unittest import mock
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -49,7 +50,10 @@ from pytest_homeassistant_custom_component.plugins import (  # noqa: F401
     snapshot,
     verify_cleanup,
 )
-from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
+from pytest_homeassistant_custom_component.test_util.aiohttp import (
+    AiohttpClientMocker,
+    AiohttpClientMockResponse,
+)
 
 from tests import const
 
@@ -229,8 +233,36 @@ class es_mocker:
         self.mocker.get(f"{const.TEST_CONFIG_ENTRY_DATA_URL}", exc=client_exceptions.ServerTimeoutError())
         return self
 
+    def _add_fail_after(
+        self, success: AiohttpClientMockResponse, failure: AiohttpClientMockResponse, fail_after
+    ):
+        if fail_after is None:
+            self.mocker.request(
+                url=success.url,
+                method=success.method,
+                status=success.status,
+                content=success.response,
+                headers=success.headers,
+                exc=success.exc,
+            )
+            return self
+
+        call_count = 0
+
+        async def side_effect(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count >= fail_after:
+                return failure
+
+            return success
+
+        self.mocker.request(success.method, f"{success.url}", side_effect=side_effect)
+
+        return self
+
     def _as_elasticsearch_stateful(
-        self, version_response: dict[str, Any], with_security: bool = True
+        self, version_response: dict[str, Any], with_security: bool = True, fail_after=None
     ) -> es_mocker:
         """Mock Elasticsearch version."""
 
@@ -238,11 +270,19 @@ class es_mocker:
             const.TEST_CONFIG_ENTRY_DATA_URL if with_security else const.TEST_CONFIG_ENTRY_DATA_URL_INSECURE
         )
 
-        self.mocker.get(
-            f"{self.base_url}",
-            status=200,
-            json=version_response,
-            headers={"x-elastic-product": "Elasticsearch"},
+        self._add_fail_after(
+            success=AiohttpClientMockResponse(
+                method="GET",
+                url=self.base_url,
+                headers={"x-elastic-product": "Elasticsearch"},
+                json=version_response,
+            ),
+            failure=AiohttpClientMockResponse(
+                method="GET",
+                url=self.base_url,
+                status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            ),
+            fail_after=fail_after,
         )
 
         self.mocker.get(
@@ -258,9 +298,11 @@ class es_mocker:
         """Mock Elasticsearch 8.0."""
         return self._as_elasticsearch_stateful(const.CLUSTER_INFO_8DOT0_RESPONSE_BODY, with_security)
 
-    def as_elasticsearch_8_17(self, with_security: bool = True):
+    def as_elasticsearch_8_17(self, with_security: bool = True, fail_after=None) -> es_mocker:
         """Mock Elasticsearch 8.17."""
-        return self._as_elasticsearch_stateful(const.CLUSTER_INFO_8DOT17_RESPONSE_BODY, with_security)
+        return self._as_elasticsearch_stateful(
+            const.CLUSTER_INFO_8DOT17_RESPONSE_BODY, with_security, fail_after=fail_after
+        )
 
     def as_elasticsearch_8_14(self, with_security: bool = True):
         """Mock Elasticsearch 8.14."""
@@ -396,14 +438,22 @@ class es_mocker:
 
         return self
 
-    def respond_to_bulk(self, status=200):
+    def respond_to_bulk(self, status=200, fail_after=None):
         """Mock the user being properly authenticated."""
 
-        self.mocker.put(
-            f"{self.base_url}/_bulk",
-            status=status,
-            headers={"x-elastic-product": "Elasticsearch"},
-            json={"errors": status == 200, "items": [], "took": 7},
+        self._add_fail_after(
+            success=AiohttpClientMockResponse(
+                method="PUT",
+                url=f"{self.base_url}/_bulk",
+                headers={"x-elastic-product": "Elasticsearch"},
+                json={"errors": status == 200, "items": [], "took": 7},
+            ),
+            failure=AiohttpClientMockResponse(
+                method="PUT",
+                url=f"{self.base_url}/_bulk",
+                status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            ),
+            fail_after=fail_after,
         )
 
         return self

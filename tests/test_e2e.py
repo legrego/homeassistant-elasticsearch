@@ -71,7 +71,7 @@ class Test_Common_e2e:
         @pytest.fixture
         async def options(self) -> dict:
             """Return a mock options dict."""
-            return const.TEST_CONFIG_ENTRY_DEFAULT_OPTIONS
+            return const.TEST_CONFIG_ENTRY_FAST_PUBLISH_OPTIONS
 
         async def test_setup_to_publish(
             self,
@@ -97,6 +97,39 @@ class Test_Common_e2e:
             assert config_entry.state is ConfigEntryState.LOADED
 
             assert es_mock_builder.mocker.call_count == 9
+            assert strip_headers_from_mock_calls(es_mock_builder.mocker.mock_calls) == snapshot
+
+        async def test_setup_to_publish_ping_error(
+            self,
+            hass: HomeAssistant,
+            integration_setup,
+            config_entry,
+            entity,
+            device,
+            es_mock_builder,
+            snapshot: SnapshotAssertion,
+        ):
+            """Test the full integration setup and execution."""
+
+            # create an async side effect function that returns
+
+            es_mock_builder.as_elasticsearch_8_17(
+                fail_after=5
+            ).with_correct_permissions().without_index_template().respond_to_bulk(status=200)
+
+            # Queue an entity state change
+            hass.states.async_set(entity.entity_id, "value")
+
+            # Load the Config Entry
+            assert await integration_setup() is True
+            assert config_entry.state is ConfigEntryState.LOADED
+
+            assert es_mock_builder.mocker.call_count == 9
+
+            await config_entry.runtime_data._pipeline_manager._publisher.publish()
+
+            assert es_mock_builder.mocker.call_count == 10
+
             assert strip_headers_from_mock_calls(es_mock_builder.mocker.mock_calls) == snapshot
 
         @pytest.mark.parametrize("status_code", [403, 404, 500])
