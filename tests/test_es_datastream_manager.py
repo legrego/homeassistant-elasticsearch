@@ -5,13 +5,13 @@ from unittest.mock import AsyncMock
 
 import pytest
 from custom_components.elasticsearch.es_datastream_manager import DatastreamManager
-from elasticsearch.es_gateway_8 import Elasticsearch8Gateway
+from elasticsearch.es_gateway import ElasticsearchGateway
 
 
 @pytest.fixture
-async def mock_gateway():
+async def mock_gateway() -> AsyncMock:
     """Return an ElasticsearchGateway instance."""
-    gateway = AsyncMock(Elasticsearch8Gateway)
+    gateway = AsyncMock(ElasticsearchGateway)
 
     gateway.get_index_template = AsyncMock()
     gateway.put_index_template = AsyncMock()

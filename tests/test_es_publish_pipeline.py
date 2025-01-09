@@ -82,6 +82,20 @@ class Test_Filterer:
     class Test_Integration_Tests:
         """Run the integration tests of the Filterer class."""
 
+        async def test_fails_filter_with_missing_entity(self, filterer):
+            """Test that a state change with an allowed change type and included entity passes the filter."""
+            state = State("light.living_room", "on")
+            filterer._change_detection_type = [StateChangeType.STATE.value]
+            assert filterer.passes_filter(state, StateChangeType.STATE) is False
+
+        async def test_fails_filter_with_included_entity(self, patched_filterer):
+            """Test that a state change with an allowed change type and included entity passes the filter."""
+            state = State("light.living_room", "on")
+            patched_filterer._change_detection_type = [StateChangeType.STATE.value]
+            patched_filterer._include_targets = True
+            patched_filterer._included_entities = ["light.not_living_room"]
+            assert patched_filterer.passes_filter(state, StateChangeType.STATE) is False
+
         async def test_passes_filter_with_allowed_change_type_and_included_entity(self, patched_filterer):
             """Test that a state change with an allowed change type and included entity passes the filter."""
             state = State("light.living_room", "on")
@@ -806,6 +820,21 @@ class Test_Publisher:
             mock_gateway.bulk.assert_called_once_with(
                 actions=iterable[0],
             )
+
+        @pytest.mark.asyncio
+        async def test_publish_no_connection(self, publisher, mock_gateway):
+            """Test publishing a document."""
+
+            publisher._gateway.check_connection = MagicMock(return_value=False)
+            publisher._add_action_and_meta_data = MagicMock()
+
+            # Call the publish method
+            await publisher.publish()
+
+            # Assert that the bulk method of the gateway was called with the correct arguments
+            publisher._gateway.check_connection.assert_called_once()
+            publisher._add_action_and_meta_data.assert_not_called()
+            mock_gateway.bulk.assert_not_called()
 
         async def test_cleanup(self, publisher, mock_gateway):
             """Test cleaning up the Publisher."""
