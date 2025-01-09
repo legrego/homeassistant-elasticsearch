@@ -178,19 +178,14 @@
                     'friendly_name': dict({
                       'type': 'keyword',
                     }),
-                    'geo': dict({
-                      'properties': dict({
-                        'location': dict({
-                          'type': 'geo_point',
-                        }),
-                      }),
-                      'type': 'object',
-                    }),
                     'id': dict({
                       'type': 'keyword',
                     }),
                     'labels': dict({
                       'type': 'keyword',
+                    }),
+                    'location': dict({
+                      'type': 'geo_point',
                     }),
                     'name': dict({
                       'type': 'keyword',
@@ -314,7 +309,7 @@
           }),
         }),
       }),
-      'version': 2,
+      'version': 3,
     }),
     'name': 'metrics-homeassistant',
   })

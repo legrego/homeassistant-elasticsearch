@@ -609,7 +609,7 @@ class Pipeline:
             if "latitude" in state.attributes and "longitude" in state.attributes:
                 entry_dict.update(
                     {
-                        "hass.entity.geo": {
+                        "location": {
                             "lat": state.attributes["latitude"],
                             "lon": state.attributes["longitude"],
                         }

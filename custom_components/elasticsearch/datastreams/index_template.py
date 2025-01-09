@@ -44,7 +44,7 @@ index_template_definition: dict[str, Any] = {
                                     "type": "object",
                                     "properties": {"id": {"type": "keyword", "time_series_dimension": True}},
                                 },
-                                "geo": {"type": "object", "properties": {"location": {"type": "geo_point"}}},
+                                "location": {"type": "geo_point"},
                                 "value": {
                                     "type": "text",
                                     "fields": {"keyword": {"ignore_above": 1024, "type": "keyword"}},
@@ -152,5 +152,5 @@ index_template_definition: dict[str, Any] = {
     "ignore_missing_component_templates": "metrics-homeassistant@custom",
     "priority": 500,
     "data_stream": {},
-    "version": 2,
+    "version": 3,
 }

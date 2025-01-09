@@ -894,7 +894,15 @@ class Test_Formatter:
         ):
             """Test converting a state to entity details."""
 
-            state = State(entity_id=entity.entity_id, state="on", attributes={"brightness": 255})
+            state = State(
+                entity_id=entity.entity_id,
+                state="on",
+                attributes={
+                    "brightness": 255,
+                    "latitude": 1.0,
+                    "longitude": 1.0,
+                },
+            )
 
             entity_details = formatter._state_to_extended_details(state)
 
@@ -905,6 +913,9 @@ class Test_Formatter:
             assert entity_details["hass.entity.device.class"] == entity.original_device_class
             assert entity_details["hass.entity.labels"] == entity_labels
             assert entity_details["hass.entity.platform"] == entity.platform
+
+            assert entity_details["hass.entity.location"]["lat"] == 1.0
+            assert entity_details["hass.entity.location"]["lon"] == 1.0
 
             assert entity_details == snapshot
 
