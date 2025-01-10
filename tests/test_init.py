@@ -32,7 +32,6 @@ from pytest_homeassistant_custom_component.common import mock_integration as new
 from pytest_homeassistant_custom_component.common import (
     mock_platform as new_mock_platform,
 )
-from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 from syrupy.assertion import SnapshotAssertion
 
 from tests import const
@@ -880,42 +879,12 @@ class Test_Common_e2e:
                 },
             }
 
-        async def test_config_entry_to_pipeline_settings(
-            self,
-            hass: HomeAssistant,
-            _block_async_init,
-            integration_setup,
-            es_aioclient_mock: AiohttpClientMocker,
-            options,
-            config_entry,
-            snapshot: SnapshotAssertion,
-        ):
+        # We want to test config entry to pipeline settings without initializing the integration
+        async def test_config_entry_to_pipeline_settings(self, hass, options, config_entry, snapshot):
             """Test the full integration setup and execution."""
+            integration = ElasticIntegration(hass, config_entry)
 
-            # Mock cluster checks
-            es_aioclient_mock.get(
-                f"{const.TEST_CONFIG_ENTRY_DATA_URL}/",
-                json=const.CLUSTER_INFO_8DOT14_RESPONSE_BODY,
-                headers={"x-elastic-product": "Elasticsearch"},
-            )
-
-            # Mock the user has the required privileges
-            es_aioclient_mock.post(
-                const.TEST_CONFIG_ENTRY_DATA_URL + "/_security/user/_has_privileges",
-                json={"has_all_requested": True},
-            )
-
-            # Load the Config Entry
-            assert await integration_setup() is True
-
-            assert config_entry.state is ConfigEntryState.LOADED
-
-            # Ensure the pipeline settings are correct
-            updated_config_entry = hass.config_entries.async_get_entry(config_entry.entry_id)
-
-            if updated_config_entry is None:
-                raise ValueError("Config Entry not found")
-
-            pipeline_settings = updated_config_entry.runtime_data._pipeline_manager._settings
-
-            assert pipeline_settings == snapshot
+            assert {
+                "gateway": integration._gateway.settings.to_dict(),
+                "pipeline": integration._pipeline_manager._settings,
+            } == snapshot

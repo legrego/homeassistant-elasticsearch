@@ -39,6 +39,21 @@ class GatewaySettings(ABC):
     def to_client(self) -> AsyncElasticsearch8:
         """Return an Elasticsearch client."""
 
+    def to_dict(self) -> dict:
+        """Return a dictionary representation of the settings."""
+        return {
+            "url": self.url,
+            "username": self.username,
+            "password": self.password,
+            "api_key": self.api_key,
+            "verify_certs": self.verify_certs,
+            "ca_certs": self.ca_certs,
+            "request_timeout": self.request_timeout,
+            "verify_hostname": self.verify_hostname,
+            "minimum_version": self.minimum_version,
+            "minimum_privileges": self.minimum_privileges.copy(),
+        }
+
 
 class ElasticsearchGateway(ABC):
     """Encapsulates Elasticsearch operations."""

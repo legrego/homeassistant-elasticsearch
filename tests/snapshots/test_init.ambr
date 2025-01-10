@@ -1,45 +1,77 @@
 # serializer version: 1
 # name: Test_Common_e2e.Test_Pipeline_Settings.test_config_entry_to_pipeline_settings
-  PipelineSettings(
-    change_detection_type=list([
-      'STATE',
-      'ATTRIBUTE',
-    ]),
-    debug_filter=False,
-    exclude_targets=True,
-    excluded_areas=list([
-      'exclude_bedroom',
-    ]),
-    excluded_devices=list([
-      'exclude_cd454a1722a83415862249840b60b981',
-    ]),
-    excluded_entities=list([
-      'sensor.exclude_100b_baker_st_2g',
-      'sensor.exclude_u6_enterprise_entryway_memory_utilization',
-    ]),
-    excluded_labels=list([
-      'exclude_test_label',
-    ]),
-    include_targets=True,
-    included_areas=list([
-      'include_bedroom',
-    ]),
-    included_devices=list([
-      'include_cd454a1722a83415862249840b60b981',
-    ]),
-    included_entities=list([
-      'sensor.include_100b_baker_st_2g',
-      'sensor.include_u6_enterprise_entryway_memory_utilization',
-    ]),
-    included_labels=list([
-      'include_test_label',
-    ]),
-    polling_frequency=60,
-    publish_frequency=60,
-    tags=list([
-      'tags',
-    ]),
-  )
+  dict({
+    'gateway': dict({
+      'api_key': None,
+      'ca_certs': None,
+      'minimum_privileges': dict({
+        'cluster': list([
+          'manage_index_templates',
+          'monitor',
+        ]),
+        'index': list([
+          dict({
+            'names': list([
+              'metrics-homeassistant.*',
+            ]),
+            'privileges': list([
+              'manage',
+              'index',
+              'create_index',
+              'create',
+            ]),
+          }),
+        ]),
+      }),
+      'minimum_version': None,
+      'password': 'changeme',
+      'request_timeout': 30,
+      'url': 'https://mock_es_integration:9200',
+      'username': 'hass_writer',
+      'verify_certs': False,
+      'verify_hostname': False,
+    }),
+    'pipeline': PipelineSettings(
+      change_detection_type=list([
+        'STATE',
+        'ATTRIBUTE',
+      ]),
+      debug_filter=False,
+      exclude_targets=True,
+      excluded_areas=list([
+        'exclude_bedroom',
+      ]),
+      excluded_devices=list([
+        'exclude_cd454a1722a83415862249840b60b981',
+      ]),
+      excluded_entities=list([
+        'sensor.exclude_100b_baker_st_2g',
+        'sensor.exclude_u6_enterprise_entryway_memory_utilization',
+      ]),
+      excluded_labels=list([
+        'exclude_test_label',
+      ]),
+      include_targets=True,
+      included_areas=list([
+        'include_bedroom',
+      ]),
+      included_devices=list([
+        'include_cd454a1722a83415862249840b60b981',
+      ]),
+      included_entities=list([
+        'sensor.include_100b_baker_st_2g',
+        'sensor.include_u6_enterprise_entryway_memory_utilization',
+      ]),
+      included_labels=list([
+        'include_test_label',
+      ]),
+      polling_frequency=60,
+      publish_frequency=60,
+      tags=list([
+        'tags',
+      ]),
+    ),
+  })
 # ---
 # name: Test_Config_Migration.test_config_migration_v1tov2
   dict({
