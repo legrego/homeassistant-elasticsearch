@@ -44,7 +44,7 @@ index_template_definition: dict[str, Any] = {
                                     "type": "object",
                                     "properties": {"id": {"type": "keyword", "time_series_dimension": True}},
                                 },
-                                "geo": {"type": "object", "properties": {"location": {"type": "geo_point"}}},
+                                "location": {"type": "geo_point"},
                                 "value": {
                                     "type": "text",
                                     "fields": {"keyword": {"ignore_above": 1024, "type": "keyword"}},
@@ -122,17 +122,13 @@ index_template_definition: dict[str, Any] = {
                 },
                 "agent": {
                     "properties": {
-                        "ephemeral_id": {"ignore_above": 1024, "type": "keyword"},
-                        "id": {"ignore_above": 1024, "type": "keyword"},
-                        "name": {"ignore_above": 1024, "type": "keyword"},
-                        "type": {"ignore_above": 1024, "type": "keyword"},
                         "version": {"ignore_above": 1024, "type": "keyword"},
                     }
                 },
                 "host": {
                     "properties": {
                         "architecture": {"ignore_above": 1024, "type": "keyword"},
-                        "geo": {"properties": {"location": {"type": "geo_point"}}},
+                        "location": {"type": "geo_point"},
                         "hostname": {"ignore_above": 1024, "type": "keyword"},
                         "name": {"ignore_above": 1024, "type": "keyword"},
                         "os": {"properties": {"name": {"ignore_above": 1024, "type": "keyword"}}},
@@ -152,5 +148,5 @@ index_template_definition: dict[str, Any] = {
     "ignore_missing_component_templates": "metrics-homeassistant@custom",
     "priority": 500,
     "data_stream": {},
-    "version": 2,
+    "version": 3,
 }

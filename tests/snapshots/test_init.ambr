@@ -1,4 +1,35 @@
 # serializer version: 1
+# name: Test_Common_e2e.Test_Config_Migration.test_setup_v1_to_publish
+  dict({
+    'data': mappingproxy({
+      'password': 'changeme',
+      'timeout': 30,
+      'url': 'http://mock_es_integration:9200',
+      'username': 'hass_writer',
+      'verify_ssl': False,
+    }),
+    'options': mappingproxy({
+      'change_detection_enabled': True,
+      'change_detection_type': list([
+        'state',
+        'attribute',
+      ]),
+      'exclude_targets': False,
+      'include_targets': False,
+      'polling_frequency': 60,
+      'publish_frequency': 60,
+      'tags': list([
+      ]),
+      'targets_to_exclude': dict({
+      }),
+      'targets_to_include': dict({
+      }),
+    }),
+  })
+# ---
+# name: Test_Common_e2e.Test_Config_Migration.test_setup_v1_to_publish.1
+  b'{"create":{"_index":"metrics-homeassistant.counter-default"}}\n{"@timestamp":"2023-04-12T12:00:00+00:00","event.action":"State change","event.kind":"event","event.type":"change","hass.entity.domain":"counter","hass.entity.id":"counter.entity_object_id","hass.entity.value":"value","hass.entity.valueas":{"string":"value"},"hass.entity.object.id":"entity_object_id","data_stream.type":"metrics","data_stream.dataset":"homeassistant.counter","data_stream.namespace":"default","hass.entity.area.floor.id":"entity_floor","hass.entity.area.floor.name":"entity floor","hass.entity.area.id":"entity_area","hass.entity.area.name":"entity area","hass.entity.labels":["entity label 1","entity label 2","entity label 3"],"hass.entity.friendly_name":"entity object id","hass.entity.platform":"entity platform","hass.entity.device.class":"entity device class","hass.entity.device.labels":["device label 1","device label 2","device label 3"],"hass.entity.device.name":"device name","hass.entity.device.area.floor.id":"device_floor","hass.entity.device.area.floor.name":"device floor","hass.entity.device.area.id":"device_area","hass.entity.device.area.name":"device area","agent.version":"1.0.0","host.architecture":"x86","host.os.name":"Linux","host.hostname":"my_es_host","host.location":{"lat":1.0,"lon":-1.0}}\n'
+# ---
 # name: Test_Common_e2e.Test_Pipeline_Settings.test_config_entry_to_pipeline_settings
   PipelineSettings(
     change_detection_type=list([

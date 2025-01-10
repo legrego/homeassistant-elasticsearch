@@ -162,7 +162,7 @@ class Pipeline:
 
             self._settings: PipelineSettings = settings
 
-            self._static_fields: dict[str, str | float | list[str]] = {}
+            self._static_fields: dict[str, str | float | list[str] | dict[str, float]] = {}
 
             self._queue: EventQueue = Queue[tuple[datetime, State, StateChangeType]]()
 
@@ -219,6 +219,12 @@ class Pipeline:
                     self._static_fields["host.os.name"] = result.os_name
                 if result.hostname:
                     self._static_fields["host.hostname"] = result.hostname
+
+            if self._hass.config.latitude is not None and self._hass.config.longitude is not None:
+                self._static_fields["host.location"] = {
+                    "lat": self._hass.config.latitude,
+                    "lon": self._hass.config.longitude,
+                }
 
             if self._settings.tags != []:
                 self._static_fields[CONF_TAGS] = self._settings.tags
@@ -584,7 +590,7 @@ class Pipeline:
             if "latitude" in state.attributes and "longitude" in state.attributes:
                 entry_dict.update(
                     {
-                        "hass.entity.geo": {
+                        "location": {
                             "lat": state.attributes["latitude"],
                             "lon": state.attributes["longitude"],
                         }

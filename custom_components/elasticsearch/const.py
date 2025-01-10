@@ -41,6 +41,7 @@ CONST_ENTITY_DETAILS_TO_ES_DOCUMENT: MappingProxyType[str, str] = MappingProxyTy
         "labels": "labels",
         "name": "name",
         "id": "object_id",
+        "location": "location",
         "friendly_name": "friendly_name",
         "platform": "platform",
         "unit_of_measurement": "unit_of_measurement",
