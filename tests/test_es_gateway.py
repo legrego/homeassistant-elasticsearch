@@ -6,16 +6,14 @@ import ssl
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
+import elastic_transport
 import elasticsearch8
 import pytest
 from aiohttp import client_exceptions
 from custom_components.elasticsearch.errors import (
     AuthenticationRequired,
     CannotConnect,
-    ClientError,
     InsufficientPrivileges,
-    ServerError,
-    SSLError,
     UnsupportedVersion,
     UntrustedCertificate,
 )
@@ -23,14 +21,34 @@ from custom_components.elasticsearch.es_gateway import (
     ElasticsearchGateway,
 )
 from custom_components.elasticsearch.es_gateway_8 import Elasticsearch8Gateway, Gateway8Settings
-from elastic_transport import BaseNode
+from elastic_transport import BaseNode, ObjectApiResponse
+from elasticsearch8._async.client import AsyncElasticsearch
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
+from syrupy.assertion import SnapshotAssertion
 
 from tests import const
 from tests.const import (
+    CLUSTER_INFO_8DOT0_RESPONSE_BODY,
     CLUSTER_INFO_8DOT14_RESPONSE_BODY,
     TEST_CONFIG_ENTRY_DATA_URL,
 )
+
+
+def mock_es_exception(exception, message="None"):
+    """Return an AsyncMock that mocks an Elasticsearch API response."""
+
+    # if it's a TransportError, we provide message
+    if issubclass(exception, elasticsearch8.TransportError):
+        return AsyncMock(side_effect=exception(message=message))
+
+    # if it's an APIerror we provide meta, body, message
+    if issubclass(exception, elasticsearch8.ApiError):
+        return AsyncMock(side_effect=exception(meta=MagicMock, body=None, message=message))
+
+
+def mock_es_response(body):
+    """Return an AsyncMock that mocks an Elasticsearch API response."""
+    return AsyncMock(return_value=ObjectApiResponse(meta={}, body=body))
 
 
 @pytest.fixture
@@ -41,6 +59,12 @@ async def cannot_connect_error(gateway: ElasticsearchGateway):
         message="There was a transport error",
         errors=(),
     )
+
+
+@pytest.fixture
+async def mock_elasticsearch_client():
+    """Return a mock Elasticsearch client."""
+    return MagicMock(AsyncElasticsearch)
 
 
 class Test_Init:
@@ -60,6 +84,23 @@ class Test_Init:
         )
 
     @pytest.fixture
+    async def gateway_mock_client(self, gateway_settings, mock_elasticsearch_client):
+        """Return a mock Elasticsearch client."""
+        gateway_settings.to_client = MagicMock(return_value=mock_elasticsearch_client)
+
+        gateway = Elasticsearch8Gateway(gateway_settings=gateway_settings)
+
+        gateway._client.info = mock_es_response(CLUSTER_INFO_8DOT14_RESPONSE_BODY)
+
+        gateway._client.security = MagicMock()
+        gateway._client.security.has_privileges = mock_es_response({"has_all_requested": True})
+
+        gateway._client.xpack = MagicMock()
+        gateway._client.xpack.usage = mock_es_response({"security": {"available": True, "enabled": True}})
+
+        return gateway
+
+    @pytest.fixture
     async def gateway(self, gateway_settings):
         """Return an Elasticsearch8Gateway instance."""
         gateway = Elasticsearch8Gateway(gateway_settings=gateway_settings)
@@ -68,70 +109,10 @@ class Test_Init:
 
         await gateway.stop()
 
-    class Test_ElasticsearchServerless:
-        """Initialization tests for the Elasticsearch8 Gateway connecting to serverless."""
-
-        async def test_esserverless_async_init_basic_auth(self, gateway_settings, es_mock_builder) -> None:
-            """Test initializing a gateway to serverless with basic authentication."""
-            gateway = Elasticsearch8Gateway(gateway_settings=gateway_settings)
-
-            es_mock_builder.as_elasticsearch_serverless().with_correct_permissions()
-
-            assert await gateway.async_init() is None
-            assert gateway.settings == gateway_settings
-            assert gateway._client is not None
-            assert gateway._client._headers["Authorization"].startswith("Basic")
-
-            await gateway.stop()
-
-        async def test_esserverless_async_init_api_key_auth(self, gateway_settings, es_mock_builder) -> None:
-            """Test initializing a gateway to serverless with api key authentication."""
-
-            # API Key Authentication
-            gateway = Elasticsearch8Gateway(
-                gateway_settings=Gateway8Settings(
-                    url=const.TEST_CONFIG_ENTRY_DATA_URL,
-                    api_key="api",
-                )
-            )
-
-            es_mock_builder.reset().as_elasticsearch_serverless().with_correct_permissions()
-
-            assert await gateway.async_init() is None
-            assert gateway._client is not None
-            assert gateway._client._headers["Authorization"].startswith("ApiKey")
-
-            await gateway.stop()
-
-        async def test_esserverless_async_init_with_tls(self, gateway_settings, es_mock_builder) -> None:
-            """Test initializing a gateway to serverless with TLS."""
-            gateway = Elasticsearch8Gateway(
-                gateway_settings=Gateway8Settings(
-                    url=const.TEST_CONFIG_ENTRY_DATA_URL,
-                    api_key="api",
-                    verify_certs=True,
-                    verify_hostname=True,
-                )
-            )
-
-            es_mock_builder.as_elasticsearch_serverless().with_correct_permissions()
-
-            assert await gateway.async_init() is None
-
-            assert gateway._client is not None
-            node: BaseNode = gateway._client._transport.node_pool.get()
-            assert node is not None
-            assert hasattr(node, "_ssl_context")
-            if hasattr(node, "_ssl_context"):
-                assert node._ssl_context.check_hostname is True
-                assert node._ssl_context.verify_mode == ssl.CERT_REQUIRED
-
-            await gateway.stop()
-
-    class Test_ElasticsearchStateful:
+    class Test_Initialization:
         """Initialization tests for the Elasticsearch8 Gateway."""
 
-        async def test_es8_async_init_basic_auth(self, es_mock_builder) -> None:
+        async def test_init_basic_auth(self) -> None:
             """Test initializing a gateway with basic authentication."""
             gateway = Elasticsearch8Gateway(
                 gateway_settings=Gateway8Settings(
@@ -139,15 +120,9 @@ class Test_Init:
                 )
             )
 
-            es_mock_builder.as_elasticsearch_8_17(with_security=True).with_correct_permissions()
-
-            assert await gateway.async_init() is None
-            assert gateway._client is not None
             assert gateway._client._headers["Authorization"].startswith("Basic")
 
-            await gateway.stop()
-
-        async def test_es8_async_init_api_key_auth(self, es_mock_builder) -> None:
+        async def test_init_api_key_auth(self) -> None:
             """Test initializing a gateway with API Key authentication."""
 
             # API Key Authentication
@@ -158,15 +133,9 @@ class Test_Init:
                 )
             )
 
-            es_mock_builder.reset().as_elasticsearch_8_17(with_security=True).with_correct_permissions()
-
-            assert await gateway.async_init() is None
-            assert gateway._client is not None
             assert gateway._client._headers["Authorization"].startswith("ApiKey")
 
-            await gateway.stop()
-
-        async def test_es8_async_init_no_auth(self, es_mock_builder) -> None:
+        async def test_init_no_auth(self) -> None:
             """Test initializing a gateway with no authentication."""
             gateway = Elasticsearch8Gateway(
                 gateway_settings=Gateway8Settings(
@@ -174,43 +143,46 @@ class Test_Init:
                 )
             )
 
-            es_mock_builder.reset().as_elasticsearch_8_17(with_security=False)
-
-            assert await gateway.async_init() is None
-            assert gateway._client is not None
             assert gateway._client._headers.get("Authorization", None) is None
 
-            await gateway.stop()
-
-        async def test_es8_async_init_with_tls(self, es_mock_builder) -> None:
-            """Test initializing a gateway with TLS."""
+        @pytest.mark.parametrize(
+            ("verify_certs", "verify_hostname", "expected_verify_mode", "expected_verify_hostname"),
+            [
+                (True, True, ssl.CERT_REQUIRED, True),
+                (True, False, ssl.CERT_REQUIRED, False),
+                (False, True, ssl.CERT_NONE, False),
+                (False, False, ssl.CERT_NONE, False),
+            ],
+            ids=[
+                "Verify Certs and Verify Hostname",
+                "Verify Certs and Don't Verify Hostname",
+                "No Certs and Ignore Verify Hostname",
+                "No Certs and Don't Verify Hostname",
+            ],
+        )
+        async def test_init_tls(
+            self, verify_certs, verify_hostname, expected_verify_mode, expected_verify_hostname
+        ) -> None:
+            """Test initializing a gateway with various TLS settings."""
 
             gateway = Elasticsearch8Gateway(
                 gateway_settings=Gateway8Settings(
                     url=const.TEST_CONFIG_ENTRY_DATA_URL,
-                    verify_certs=True,
-                    verify_hostname=True,
+                    verify_certs=verify_certs,
+                    verify_hostname=verify_hostname,
                 )
             )
 
-            es_mock_builder.as_elasticsearch_8_17(with_security=True).with_correct_permissions()
-
-            assert await gateway.async_init() is None
-
-            assert gateway._client is not None
             node: BaseNode = gateway._client._transport.node_pool.get()
             ssl_context = node._ssl_context  # type: ignore[reportAttributeAccessIssue]
 
-            assert ssl_context.check_hostname is True
-            assert ssl_context.verify_mode == ssl.CERT_REQUIRED
+            assert ssl_context.check_hostname == expected_verify_hostname
+            assert ssl_context.verify_mode == expected_verify_mode
 
-            await gateway.stop()
-
-        async def test_es8_async_init_with_tls_custom_ca(self, es_mock_builder, snapshot) -> None:
-            """Test initializing a gateway with TLS and custom ca."""
+        async def test_init_tls_custom_ca(self, snapshot: SnapshotAssertion) -> None:
+            """Test initializing a gateway with TLS and custom ca cert."""
 
             # cert is located in "certs/http_ca.crt" relative to this file, get the absolute path
-
             current_directory = os.path.dirname(os.path.abspath(__file__))
 
             gateway = Elasticsearch8Gateway(
@@ -222,107 +194,60 @@ class Test_Init:
                 )
             )
 
-            es_mock_builder.as_elasticsearch_8_17(with_security=True).with_correct_permissions()
-
-            assert await gateway.async_init() is None
-
-            assert gateway._client is not None
             node: BaseNode = gateway._client._transport.node_pool.get()
             ssl_context = node._ssl_context  # type: ignore[reportAttributeAccessIssue]
 
-            assert ssl_context.check_hostname is True
-            assert ssl_context.verify_mode == ssl.CERT_REQUIRED
-
-            ca_certs = ssl_context.get_ca_certs()
-
-            added_cert: dict | None = None
-
-            for cert in ca_certs:
+            for cert in ssl_context.get_ca_certs():
                 if cert["serialNumber"] == "25813FA4F725F5566FCF014C0B8B0973E710DF90":
-                    added_cert = cert
-                    break
+                    assert cert == snapshot
 
-            assert added_cert is not None
-            assert added_cert == snapshot
+            assert snapshot.num_executions == 1
 
-            await gateway.stop()
+        async def test_async_init(self, gateway_mock_client) -> None:
+            """Test the async initialization with proper permissions on a supported version."""
 
-        async def test_es8_async_init_with_tls_no_hostname(self, es_mock_builder) -> None:
-            """Test initializing a gateway with TLS and no hostname checking."""
-            gateway = Elasticsearch8Gateway(
-                gateway_settings=Gateway8Settings(
-                    url=const.TEST_CONFIG_ENTRY_DATA_URL,
-                    verify_certs=True,
-                    verify_hostname=False,
-                )
-            )
+            assert await gateway_mock_client.async_init() is None
 
-            es_mock_builder.reset().as_elasticsearch_8_17(with_security=True).with_correct_permissions()
+        async def test_async_init_unsupported_version(self, gateway_mock_client) -> None:
+            """Test the async_init method when the target cluster is running an unsupported version."""
 
-            assert await gateway.async_init() is None
+            gateway_mock_client._client.info = mock_es_response(CLUSTER_INFO_8DOT0_RESPONSE_BODY)
 
-            assert gateway._client is not None
-            node: BaseNode = gateway._client._transport.node_pool.get()
-            ssl_context = node._ssl_context  # type: ignore[reportAttributeAccessIssue]
+            with pytest.raises(UnsupportedVersion):
+                assert await gateway_mock_client.async_init() is None
 
-            assert ssl_context.check_hostname is False
-            assert ssl_context.verify_mode == ssl.CERT_REQUIRED
+        async def test_async_init_unauthenticated(self, gateway_mock_client) -> None:
+            """Test the async_init method with an unauthenticated session."""
 
-            await gateway.stop()
+            gateway_mock_client._client.info = mock_es_exception(elasticsearch8.AuthenticationException)
 
-        async def test_es8_async_init_without_tls(self, es_mock_builder, snapshot) -> None:
-            """Test initializing a gateway without TLS."""
-            gateway = Elasticsearch8Gateway(
-                gateway_settings=Gateway8Settings(
-                    url=const.TEST_CONFIG_ENTRY_DATA_URL,
-                    verify_certs=False,
-                    verify_hostname=False,
-                )
-            )
+            with pytest.raises(AuthenticationRequired):
+                await gateway_mock_client.async_init()
 
-            es_mock_builder.reset().as_elasticsearch_8_17(with_security=True).with_correct_permissions()
+        @pytest.mark.asyncio
+        async def test_async_init_ssl_error(self, gateway_mock_client):
+            """Test async_init when there is a TLS Certificate issue."""
 
-            assert await gateway.async_init() is None
+            gateway_mock_client._client.info = mock_es_exception(elastic_transport.TlsError)
 
-            assert gateway._client is not None
-            node: BaseNode = gateway._client._transport.node_pool.get()
-            ssl_context = node._ssl_context  # type: ignore[reportAttributeAccessIssue]
+            with pytest.raises(UntrustedCertificate):
+                await gateway_mock_client.async_init()
 
-            assert ssl_context.check_hostname is False
-            assert ssl_context.verify_mode == ssl.CERT_NONE
+        async def test_async_init_unauthorized(self, gateway_mock_client) -> None:
+            """Test the async_init method unauthorized."""
 
-            await gateway.stop()
+            gateway_mock_client._client.info = mock_es_exception(elasticsearch8.AuthorizationException)
 
-            # Without TLS but with Hostname Checking should not enable hostname checking but also should not error
-            gateway = Elasticsearch8Gateway(
-                gateway_settings=Gateway8Settings(
-                    url=const.TEST_CONFIG_ENTRY_DATA_URL,
-                    verify_certs=False,
-                    verify_hostname=True,
-                )
-            )
+            with pytest.raises(InsufficientPrivileges):
+                assert await gateway_mock_client.async_init() is None
 
-            es_mock_builder.reset().as_elasticsearch_8_17(with_security=True).with_correct_permissions()
+        async def test_async_init_unreachable(self, gateway_mock_client) -> None:
+            """Test the async_init method with unreachable Elasticsearch."""
 
-            assert await gateway.async_init() is None
+            gateway_mock_client._client.info = mock_es_exception(elasticsearch8.ConnectionTimeout)
 
-            assert gateway._client is not None
-            node: BaseNode = gateway._client._transport.node_pool.get()
-            ssl_context = node._ssl_context  # type: ignore[reportAttributeAccessIssue]
-
-            assert ssl_context.check_hostname is False
-            assert ssl_context.verify_mode == ssl.CERT_NONE
-
-            await gateway.stop()
-
-        async def test_es8_async_init_minimum_supported(
-            self, gateway: ElasticsearchGateway, es_mock_builder
-        ) -> None:
-            """Test the async_init method with unauthorized user."""
-
-            es_mock_builder.as_elasticsearch_8_14().with_correct_permissions()
-
-            assert await gateway.async_init() is None
+            with pytest.raises(CannotConnect):
+                assert await gateway_mock_client.async_init() is None
 
     class Test_Failures:
         """Test failure scenarios during initialization."""
@@ -331,24 +256,16 @@ class Test_Init:
         async def test_async_init_ssl_error(self, gateway, es_mock_builder):
             """Test async_init when there are insufficient privileges."""
 
-            es_mock_builder.with_untrusted_certificate()
+            es_mock_builder.with_selfsigned_certificate()
 
             with pytest.raises(UntrustedCertificate):
                 await gateway.async_init()
 
-        async def test_async_init_unsupported(self, gateway: ElasticsearchGateway, es_mock_builder) -> None:
-            """Test the async_init method with unauthorized user."""
-
-            es_mock_builder.as_elasticsearch_8_0().with_correct_permissions()
-
-            with pytest.raises(UnsupportedVersion):
-                assert await gateway.async_init() is None
-
         async def test_async_init_unauthorized(self, gateway: ElasticsearchGateway, es_mock_builder) -> None:
             """Test the async_init method with unauthorized user."""
 
-            es_mock_builder.as_elasticsearch_8_17().with_incorrect_permissions()
-
+            # es_mock_builder.as_elasticsearch_8_17().with_incorrect_permissions()
+            es_mock_builder.with_server_error(status=403)
             with pytest.raises(InsufficientPrivileges):
                 assert await gateway.async_init() is None
 
@@ -623,19 +540,19 @@ class Test_Exception_Conversion:
     @pytest.mark.parametrize(
         ("aiohttp_exception", "expected_exception"),
         [
-            (client_exceptions.ServerConnectionError(), ServerError),
+            (client_exceptions.ServerConnectionError(), CannotConnect),
             # child exceptions of ServerConnectionError
             (
                 client_exceptions.ServerFingerprintMismatch(expected=b"", got=b"", host="host", port=0),
-                SSLError,
+                CannotConnect,
             ),
-            (client_exceptions.ServerDisconnectedError(), ServerError),
-            (client_exceptions.ServerTimeoutError(), ServerError),
+            (client_exceptions.ServerDisconnectedError(), CannotConnect),
+            (client_exceptions.ServerTimeoutError(), CannotConnect),
             # (client_exceptions.ClientError(), ClientError),
             # child exceptions of ClientError
             # (client_exceptions.ClientResponseError(), ClientError),
-            (client_exceptions.ClientPayloadError(), ClientError),
-            (client_exceptions.ClientConnectionError(), ClientError),
+            (client_exceptions.ClientPayloadError(), CannotConnect),
+            (client_exceptions.ClientConnectionError(), CannotConnect),
             # child exceptions of ClientConnectionError
             # (
             #     client_exceptions.ClientSSLError(connection_key=MagicMock(), os_error=Exception("AHHHHH")),
@@ -643,25 +560,18 @@ class Test_Exception_Conversion:
             # ),
             # child exceptions of ClientSSLError
             # (client_exceptions.ClientConnectorSSLError(), SSLError),
-            (
-                client_exceptions.ClientConnectorCertificateError(
-                    connection_key=MagicMock(), certificate_error=Exception("AHHHHH")
-                ),
-                UntrustedCertificate,
-            ),
         ],
         ids=[
-            "ServerConnectionError to ServerError",
-            "ServerFingerprintMismatch to SSLError",
-            "ServerDisconnectedError to ServerError",
-            "ServerTimeoutError to ServerError",
+            "ServerConnectionError to CannotConnect",
+            "ServerFingerprintMismatch to CannotConnect",
+            "ServerDisconnectedError to CannotConnect",
+            "ServerTimeoutError to CannotConnect",
             # "ClientError to ClientError",
             # "ClientResponseError to ClientError",
-            "ClientPayloadError to ClientError",
-            "ClientConnectionError to ClientError",
+            "ClientPayloadError to CannotConnect",
+            "ClientConnectionError to CannotConnect",
             # "ClientSSLError to SSLConnectionError",
             # "ClientConnectorSSLError to CannotConnect",
-            "ClientConnectorCertificateError to UntrustedCertificate",
         ],
     )
     async def test_simple_web_exceptions(
