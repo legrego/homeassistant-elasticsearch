@@ -26,6 +26,15 @@ class LoopHandler:
         self._log: Logger = log
         self._next_run_time: float = time.monotonic()
 
+    def get_run_count(self) -> int:
+        """Return the number of times the loop has run."""
+        return self._run_count
+
+    async def wait_for_first_run(self) -> None:
+        """Wait for the first run of the loop."""
+        while self._run_count == 0:
+            await asyncio.sleep(0.1)
+
     def _time_to_run(self) -> bool:
         """Determine if now is a good time to poll for state changes."""
         return self._next_run_time <= time.monotonic()

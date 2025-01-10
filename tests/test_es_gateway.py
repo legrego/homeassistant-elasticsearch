@@ -1,33 +1,84 @@
 """Tests for the Elasticsearch Gateway."""
 # noqa: F401 # pylint: disable=redefined-outer-name
 
+import os
+import ssl
+from ssl import SSLCertVerificationError
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
+import elastic_transport
 import elasticsearch8
+import elasticsearch8.helpers
 import pytest
 from aiohttp import client_exceptions
+from custom_components.elasticsearch.const import ES_CHECK_PERMISSIONS_DATASTREAM
+from custom_components.elasticsearch.datastreams.index_template import index_template_definition
 from custom_components.elasticsearch.errors import (
     AuthenticationRequired,
     CannotConnect,
-    ClientError,
     InsufficientPrivileges,
     ServerError,
-    SSLError,
     UnsupportedVersion,
     UntrustedCertificate,
 )
 from custom_components.elasticsearch.es_gateway import (
     ElasticsearchGateway,
 )
-from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
+from custom_components.elasticsearch.es_gateway_8 import Elasticsearch8Gateway, Gateway8Settings
+from elastic_transport import ApiResponseMeta, BaseNode, ObjectApiResponse
+from elasticsearch8._async.client import AsyncElasticsearch
+from syrupy.assertion import SnapshotAssertion
 
+from tests import const
 from tests.const import (
     CLUSTER_INFO_8DOT0_RESPONSE_BODY,
     CLUSTER_INFO_8DOT14_RESPONSE_BODY,
     CLUSTER_INFO_SERVERLESS_RESPONSE_BODY,
-    TEST_CONFIG_ENTRY_DATA_URL,
 )
+
+
+def self_signed_tls_error():
+    """Return a self-signed certificate error."""
+    connection_key = MagicMock()
+    connection_key.host = "mock_es_integration"
+    connection_key.port = 9200
+    connection_key.is_ssl = True
+
+    certificate_error = SSLCertVerificationError()
+    certificate_error.verify_code = 19
+    certificate_error.verify_message = "'self-signed certificate in certificate chain'"
+    certificate_error.library = "SSL"
+    certificate_error.reason = "CERTIFICATE_VERIFY_FAILED"
+    certificate_error.strerror = "[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signed certificate in certificate chain (_ssl.c:1000)"
+    certificate_error.errno = 1
+
+    return client_exceptions.ClientConnectorCertificateError(
+        connection_key=connection_key, certificate_error=certificate_error
+    )
+
+def mock_api_response_meta(status_code=200):
+    """Return a mock API response meta."""
+    return ApiResponseMeta(
+        status=status_code, headers=MagicMock(), http_version="1.1", duration=0.0, node=MagicMock()
+    )
+
+
+def mock_es_exception(exception, message="None"):
+    """Return an AsyncMock that mocks an Elasticsearch API response."""
+
+    # if it's a TransportError, we provide message
+    if issubclass(exception, elasticsearch8.TransportError):
+        return AsyncMock(side_effect=exception(message=message))
+
+    # if it's an APIerror we provide meta, body, message
+    if issubclass(exception, elasticsearch8.ApiError):
+        return AsyncMock(side_effect=exception(meta=MagicMock, body=None, message=message))
+
+
+def mock_es_response(body):
+    """Return an AsyncMock that mocks an Elasticsearch API response."""
+    return AsyncMock(return_value=ObjectApiResponse(meta={}, body=body))
 
 
 @pytest.fixture
@@ -40,318 +91,600 @@ async def cannot_connect_error(gateway: ElasticsearchGateway):
     )
 
 
-class Test_Initialization:
+@pytest.fixture
+def gateway_settings() -> Gateway8Settings:
+    """Return a Gateway8Settings instance."""
+    return Gateway8Settings(
+        url=const.TEST_CONFIG_ENTRY_DATA_URL,
+        username="username",
+        password="password",
+        verify_certs=True,
+        ca_certs=None,
+        request_timeout=30,
+        minimum_version=None,
+    )
+
+
+@pytest.fixture
+async def mock_elasticsearch_client() -> MagicMock:
+    """Return a mock Elasticsearch client."""
+    return MagicMock(AsyncElasticsearch)
+
+
+@pytest.fixture
+async def gateway_mock_shared(gateway_settings, mock_elasticsearch_client) -> Elasticsearch8Gateway:
+    """Return a mock Elasticsearch client."""
+    gateway_settings.to_client = MagicMock(return_value=mock_elasticsearch_client)
+
+    gateway = Elasticsearch8Gateway(gateway_settings=gateway_settings)
+
+    gateway._client.options = MagicMock(return_value=gateway._client)
+
+    gateway._client.security = MagicMock()
+    gateway._client.security.has_privileges = mock_es_response({"has_all_requested": True})
+
+    gateway._client.indices = MagicMock()
+    gateway._client.indices.get_index_template = mock_es_response(
+        {
+            "index_templates": [
+                {
+                    "name": "datastream_metrics",
+                    "index_template": {"version": index_template_definition.get("version", 0)},
+                }
+            ]
+        }
+    )
+    gateway._client.indices.put_index_template = mock_es_response({})
+    gateway._client.indices.get_data_stream = mock_es_response(
+        {
+            "data_streams": [
+                {
+                    "name": "metrics-homeassistant.sensor-default",
+                },
+                {
+                    "name": "metrics-homeassistant.counter-default",
+                },
+            ]
+        }
+    )
+    gateway._client.indices.rollover = mock_es_response(
+        {
+            "acknowledged": True,
+            "shards_acknowledged": True,
+            "old_index": ".ds-metrics-homeassistant.domain-default-2024.12.19-000001",
+            "new_index": ".ds-metrics-homeassistant.domain-default-2025.01.10-000002",
+            "rolled_over": True,
+            "dry_run": False,
+            "lazy": False,
+            "conditions": {},
+        }
+    )
+
+    return gateway
+
+
+@pytest.fixture
+async def gateway_mock_stateful(gateway_mock_shared: Elasticsearch8Gateway) -> Elasticsearch8Gateway:
+    """Return a mock Elasticsearch client."""
+
+    gateway_mock_shared._client.info = mock_es_response(CLUSTER_INFO_8DOT14_RESPONSE_BODY)
+    gateway_mock_shared._client.xpack = MagicMock()
+    gateway_mock_shared._client.xpack.usage = mock_es_response(
+        {"security": {"available": True, "enabled": True}}
+    )
+    return gateway_mock_shared
+
+
+@pytest.fixture
+async def gateway_mock_serverless(gateway_mock_shared: Elasticsearch8Gateway) -> Elasticsearch8Gateway:
+    """Return a mock Elasticsearch client."""
+
+    gateway_mock_shared._client.info = mock_es_response(CLUSTER_INFO_SERVERLESS_RESPONSE_BODY)
+    gateway_mock_shared._client.xpack = MagicMock()
+
+    gateway_mock_shared._client.xpack.usage = mock_es_exception(
+        elasticsearch8.ApiError, message="api_not_available_exception"
+    )
+
+    return gateway_mock_shared
+
+
+class Test_Init:
     """Initialization tests for the Elasticsearch Gateway."""
 
-    def test_init(self, gateway) -> None:
-        """Test the __init__ method."""
+    @pytest.fixture
+    async def gateway(self, gateway_settings):
+        """Return an Elasticsearch8Gateway instance."""
+        gateway = Elasticsearch8Gateway(gateway_settings=gateway_settings)
 
-        assert gateway._settings is not None
-        assert gateway._client is None
+        yield gateway
 
-    async def test_async_init(self, gateway: ElasticsearchGateway) -> None:
-        """Test the async_init method."""
+        await gateway.stop()
 
-        gateway.info = AsyncMock(return_value=CLUSTER_INFO_8DOT14_RESPONSE_BODY)
-        gateway.has_security = AsyncMock(return_value=True)
-        gateway._has_required_privileges = AsyncMock(return_value=True)
+    class Test_Initialization:
+        """Initialization tests for the Elasticsearch8 Gateway."""
 
-        assert await gateway.async_init() is None
+        async def test_init_basic_auth(self) -> None:
+            """Test initializing a gateway with basic authentication."""
+            gateway = Elasticsearch8Gateway(
+                gateway_settings=Gateway8Settings(
+                    url=const.TEST_CONFIG_ENTRY_DATA_URL, username="username", password="password"
+                )
+            )
+
+            assert gateway._client._headers["Authorization"].startswith("Basic")
+
+        async def test_init_api_key_auth(self) -> None:
+            """Test initializing a gateway with API Key authentication."""
+
+            # API Key Authentication
+            gateway = Elasticsearch8Gateway(
+                gateway_settings=Gateway8Settings(
+                    url=const.TEST_CONFIG_ENTRY_DATA_URL,
+                    api_key="api",
+                )
+            )
+
+            assert gateway._client._headers["Authorization"].startswith("ApiKey")
+
+        async def test_init_no_auth(self) -> None:
+            """Test initializing a gateway with no authentication."""
+            gateway = Elasticsearch8Gateway(
+                gateway_settings=Gateway8Settings(
+                    url=const.TEST_CONFIG_ENTRY_DATA_URL_INSECURE,
+                )
+            )
+
+            assert gateway._client._headers.get("Authorization", None) is None
+
+        @pytest.mark.parametrize(
+            ("verify_certs", "verify_hostname", "expected_verify_mode", "expected_verify_hostname"),
+            [
+                (True, True, ssl.CERT_REQUIRED, True),
+                (True, False, ssl.CERT_REQUIRED, False),
+                (False, True, ssl.CERT_NONE, False),
+                (False, False, ssl.CERT_NONE, False),
+            ],
+            ids=[
+                "Verify Certs and Verify Hostname",
+                "Verify Certs and Don't Verify Hostname",
+                "No Certs and Ignore Verify Hostname",
+                "No Certs and Don't Verify Hostname",
+            ],
+        )
+        async def test_init_tls(
+            self, verify_certs, verify_hostname, expected_verify_mode, expected_verify_hostname
+        ) -> None:
+            """Test initializing a gateway with various TLS settings."""
+
+            gateway = Elasticsearch8Gateway(
+                gateway_settings=Gateway8Settings(
+                    url=const.TEST_CONFIG_ENTRY_DATA_URL,
+                    verify_certs=verify_certs,
+                    verify_hostname=verify_hostname,
+                )
+            )
+
+            node: BaseNode = gateway._client._transport.node_pool.get()
+            ssl_context = node._ssl_context  # type: ignore[reportAttributeAccessIssue]
+
+            assert ssl_context.check_hostname == expected_verify_hostname
+            assert ssl_context.verify_mode == expected_verify_mode
+
+        async def test_init_tls_custom_ca(self, snapshot: SnapshotAssertion) -> None:
+            """Test initializing a gateway with TLS and custom ca cert."""
+
+            # cert is located in "certs/http_ca.crt" relative to this file, get the absolute path
+            current_directory = os.path.dirname(os.path.abspath(__file__))
+
+            gateway = Elasticsearch8Gateway(
+                gateway_settings=Gateway8Settings(
+                    url=const.TEST_CONFIG_ENTRY_DATA_URL,
+                    verify_certs=True,
+                    verify_hostname=True,
+                    ca_certs=f"{current_directory}/certs/http_ca.crt",
+                )
+            )
+
+            node: BaseNode = gateway._client._transport.node_pool.get()
+            ssl_context = node._ssl_context  # type: ignore[reportAttributeAccessIssue]
+
+            for cert in ssl_context.get_ca_certs():
+                if cert["serialNumber"] == "25813FA4F725F5566FCF014C0B8B0973E710DF90":
+                    assert cert == snapshot
+
+            assert snapshot.num_executions == 1
+
+        async def test_async_init(self, gateway_mock_stateful) -> None:
+            """Test the async initialization with proper permissions on a supported version."""
+
+            assert await gateway_mock_stateful.async_init() is None
+
+        async def test_async_init_unsupported_version(self, gateway_mock_stateful) -> None:
+            """Test the async_init method when the target cluster is running an unsupported version."""
+
+            gateway_mock_stateful._client.info = mock_es_response(CLUSTER_INFO_8DOT0_RESPONSE_BODY)
+
+            with pytest.raises(UnsupportedVersion):
+                assert await gateway_mock_stateful.async_init() is None
+
+        async def test_async_init_unauthenticated(self, gateway_mock_stateful) -> None:
+            """Test the async_init method with an unauthenticated session."""
+
+            gateway_mock_stateful._client.info = mock_es_exception(elasticsearch8.AuthenticationException)
+
+            with pytest.raises(AuthenticationRequired):
+                await gateway_mock_stateful.async_init()
+
+        @pytest.mark.asyncio
+        async def test_async_init_ssl_error(self, gateway_mock_stateful):
+            """Test async_init when there is a TLS Certificate issue."""
+
+            gateway_mock_stateful._client.info = mock_es_exception(elastic_transport.TlsError)
+
+            with pytest.raises(UntrustedCertificate):
+                await gateway_mock_stateful.async_init()
+
+        async def test_async_init_unauthorized(self, gateway_mock_stateful) -> None:
+            """Test the async_init method unauthorized."""
+
+            gateway_mock_stateful._client.info = mock_es_exception(elasticsearch8.AuthorizationException)
+
+            with pytest.raises(InsufficientPrivileges):
+                assert await gateway_mock_stateful.async_init() is None
+
+        async def test_async_init_unreachable(self, gateway_mock_stateful) -> None:
+            """Test the async_init method with unreachable Elasticsearch."""
+
+            gateway_mock_stateful._client.info = mock_es_exception(elasticsearch8.ConnectionTimeout)
+
+            with pytest.raises(CannotConnect):
+                assert await gateway_mock_stateful.async_init() is None
 
 
 class Test_Public_Functions:
     """Public function tests for the Elasticsearch Gateway."""
 
-    async def test_ping(self, gateway: ElasticsearchGateway, es_aioclient_mock: AiohttpClientMocker) -> None:
+    async def test_ping(self, gateway_mock_stateful) -> None:
         """Test the ping method."""
+        assert await gateway_mock_stateful.ping() is True
 
-        temp = gateway.ping
-        gateway.ping = AsyncMock(return_value=True)
-        gateway.has_security = AsyncMock(return_value=True)
-        gateway._has_required_privileges = AsyncMock(return_value=True)
-
-        es_aioclient_mock.get(
-            f"{TEST_CONFIG_ENTRY_DATA_URL}",
-            status=200,
-            json=CLUSTER_INFO_8DOT14_RESPONSE_BODY,
-            headers={"x-elastic-product": "Elasticsearch"},
-        )
-
-        gateway.ping = temp
-
-        await gateway.async_init()
-
-        assert await gateway.ping() is True
-
-    async def test_ping_fail(
-        self, gateway: ElasticsearchGateway, es_aioclient_mock: AiohttpClientMocker
-    ) -> None:
+    async def test_ping_fail(self, gateway_mock_stateful) -> None:
         """Test the ping method."""
-        temp = gateway.ping
-        gateway.ping = AsyncMock(return_value=True)
-        gateway.has_security = AsyncMock(return_value=True)
-        gateway._has_required_privileges = AsyncMock(return_value=True)
+        gateway_mock_stateful._client.info = mock_es_exception(elasticsearch8.AuthenticationException)
+        with pytest.raises(AuthenticationRequired):
+            await gateway_mock_stateful.ping()
 
-        es_aioclient_mock.get(
-            f"{TEST_CONFIG_ENTRY_DATA_URL}/",
-            exc=Exception,
+        gateway_mock_stateful._client.info = mock_es_exception(elasticsearch8.AuthorizationException)
+        with pytest.raises(AuthenticationRequired):
+            await gateway_mock_stateful.ping()
+
+        gateway_mock_stateful._client.info = mock_es_exception(elasticsearch8.ConnectionTimeout)
+        assert await gateway_mock_stateful.ping() is False
+
+    async def test_has_security_stateful_success(self, gateway_mock_stateful):
+        """Test the has_security method."""
+
+        assert await gateway_mock_stateful.has_security() is True
+
+        gateway_mock_stateful._client.info.assert_called_once()
+        gateway_mock_stateful._client.xpack.usage.assert_called_once()
+
+    async def test_has_security_stateful_missing(self, gateway_mock_stateful) -> None:
+        """Test the has_security method."""
+
+        gateway_mock_stateful._client.xpack.usage = mock_es_response(
+            {"other_feature": {"available": False, "enabled": False}}
         )
 
-        gateway.ping = temp
+        assert await gateway_mock_stateful.has_security() is False
 
-        assert await gateway.ping() is False
+        gateway_mock_stateful._client.info.assert_called_once()
+        gateway_mock_stateful._client.xpack.usage.assert_called_once()
 
-    async def test_has_privileges(
-        self, initialized_gateway: ElasticsearchGateway, es_aioclient_mock: AiohttpClientMocker
-    ) -> None:
-        """Test the has_privileges method."""
+    async def test_has_security_stateful_failure(self, gateway_mock_stateful) -> None:
+        """Test the has_security method."""
 
-        es_aioclient_mock.get(
-            url=f"{TEST_CONFIG_ENTRY_DATA_URL}/_xpack/usage",
-            json={
-                "security": {"available": True, "enabled": True},
-            },
-        )
-        es_aioclient_mock.post(
-            f"{TEST_CONFIG_ENTRY_DATA_URL}/_security/user/_has_privileges",
-            status=200,
-            json={
-                "has_all_requested": True,
-            },
+        gateway_mock_stateful._client.xpack.usage = mock_es_response(
+            {"security": {"available": False, "enabled": False}}
         )
 
-        assert await initialized_gateway.has_privileges({}) == {
-            "has_all_requested": True,
+        assert await gateway_mock_stateful.has_security() is False
+
+        gateway_mock_stateful._client.info.assert_called_once()
+        gateway_mock_stateful._client.xpack.usage.assert_called_once()
+
+    async def test_has_security_serverless(self, gateway_mock_serverless):
+        """Test the has_security method."""
+
+        assert await gateway_mock_serverless.has_security() is True
+
+        gateway_mock_serverless._client.info.assert_called_once()
+        gateway_mock_serverless._client.xpack.usage.assert_not_called()
+
+    async def test_get_datastream(self, gateway_mock_stateful):
+        """Test the get_datastream method."""
+
+        await gateway_mock_stateful.get_datastream("metrics-homeassistant.*")
+
+        gateway_mock_stateful._client.indices.get_data_stream.assert_called_once_with(
+            name="metrics-homeassistant.*"
+        )
+
+    async def test_rollover_datastream(self, gateway_mock_stateful):
+        """Test the get_datastream method."""
+
+        await gateway_mock_stateful.rollover_datastream("metrics-homeassistant.sensor-default")
+
+        gateway_mock_stateful._client.indices.rollover.assert_called_once_with(
+            alias="metrics-homeassistant.sensor-default"
+        )
+
+    async def test_has_privileges(self, gateway_mock_stateful):
+        """Test the has_privileges method when the underlying client returns that we do have privileges."""
+        privileges = ES_CHECK_PERMISSIONS_DATASTREAM
+
+        assert await gateway_mock_stateful.has_privileges(privileges) is True
+
+        gateway_mock_stateful._client.security.has_privileges.assert_called_once_with(**privileges)
+
+    async def test_has_privileges_false(self, gateway_mock_stateful):
+        """Test the has_privileges method when the underlying client returns that we do not have privileges."""
+        privileges = ES_CHECK_PERMISSIONS_DATASTREAM
+
+        gateway_mock_stateful._client.security.has_privileges = mock_es_response({"has_all_requested": False})
+
+        assert await gateway_mock_stateful.has_privileges(privileges) is False
+
+        gateway_mock_stateful._client.security.has_privileges.assert_called_once_with(**privileges)
+
+    async def test_get_index_template(self, gateway_mock_stateful):
+        """Test the get_index_template method."""
+
+        await gateway_mock_stateful.get_index_template("datastream_metrics")
+
+        gateway_mock_stateful._client.indices.get_index_template.assert_called_once_with(
+            name="datastream_metrics"
+        )
+
+    async def test_get_index_template_ignore_404(self, gateway_mock_stateful):
+        """Test the get_index_template method when the template is missing."""
+
+        gateway_mock_stateful._client.indices.get_index_template = mock_es_response({"index_templates": []})
+
+        assert await gateway_mock_stateful.get_index_template("datastream_metrics", ignore=[404]) == {
+            "index_templates": []
         }
 
-    async def test_get_index_template(
-        self,
-        initialized_gateway: ElasticsearchGateway,
-        es_aioclient_mock: AiohttpClientMocker,
-        verify_cleanup,
-    ) -> None:
-        """Test the get_index_template method."""
+        gateway_mock_stateful._client.indices.get_index_template.assert_called_with(name="datastream_metrics")
+        gateway_mock_stateful._client.options.assert_called_with(ignore_status=[404])
 
-        es_aioclient_mock.get(
-            f"{TEST_CONFIG_ENTRY_DATA_URL}/_index_template/test_template",
-            status=200,
-            headers={"x-elastic-product": "Elasticsearch"},
-            json={},
-        )
-
-        assert await initialized_gateway.get_index_template("test_template") == {}
-
-    async def test_get_index_template_fail(
-        self, initialized_gateway: ElasticsearchGateway, es_aioclient_mock: AiohttpClientMocker
-    ) -> None:
-        """Test the get_index_template method."""
-
-        es_aioclient_mock.get(
-            f"{TEST_CONFIG_ENTRY_DATA_URL}/_index_template/test_template",
-            status=404,
-            json={},
-        )
-
-        assert await initialized_gateway.get_index_template("test_template", ignore=[404]) == {}
-
-    async def test_get_index_template_exception(
-        self,
-        initialized_gateway: ElasticsearchGateway,
-        es_aioclient_mock: AiohttpClientMocker,
-        cannot_connect_error,
-    ) -> None:
-        """Test the get_index_template method."""
-        es_aioclient_mock.get(
-            f"{TEST_CONFIG_ENTRY_DATA_URL}/_index_template/test_template",
-            exc=cannot_connect_error,
-        )
-
-        # type of cannot_connect_error
-        with pytest.raises(CannotConnect):
-            await initialized_gateway.get_index_template("test_template")
-
-    async def test_put_index_template(
-        self, initialized_gateway: ElasticsearchGateway, es_aioclient_mock: AiohttpClientMocker
-    ) -> None:
+    async def test_put_index_template(self, gateway_mock_stateful):
         """Test the put_index_template method."""
 
-        es_aioclient_mock.put(
-            f"{TEST_CONFIG_ENTRY_DATA_URL}/_index_template/test_template",
-            status=200,
-            json={},
+        await gateway_mock_stateful.put_index_template("datastream_metrics", index_template_definition)
+
+        gateway_mock_stateful._client.indices.put_index_template.assert_called_once_with(
+            name="datastream_metrics", **index_template_definition
         )
 
-        assert await initialized_gateway.put_index_template("test_template", {}) == {}
 
-        method, url, data, headers = es_aioclient_mock.mock_calls[0]
+class Test_Connection_Test:
+    """Test Connection state transitions."""
 
-        assert method == "PUT"
-        assert str(url) == f"{TEST_CONFIG_ENTRY_DATA_URL}/_index_template/test_template"
-        assert data == b"{}"
+    async def test_check_connection_first_time_success(self, gateway: ElasticsearchGateway) -> None:
+        """Test check_connection method when connecting for the first time successfully."""
+        gateway.ping = AsyncMock(return_value=True)
+        gateway._logger.info = MagicMock()
+        gateway._logger.error = MagicMock()
 
+        result = await gateway.check_connection()
 
-class Test_Integration_Tests:
-    """Integration tests for the Elasticsearch Gateway."""
+        assert result is True
+        gateway._logger.info.assert_called_once_with("Connection to Elasticsearch is established.")
+        gateway._logger.error.assert_not_called()
 
-    async def test_async_init_mock_elasticsearch(
-        self, gateway: ElasticsearchGateway, es_aioclient_mock: AiohttpClientMocker
-    ) -> None:
-        """Test the async_init method."""
+    async def test_check_connection_first_time_failure(self, gateway: ElasticsearchGateway) -> None:
+        """Test check_connection method when connecting for the first time fails."""
+        gateway.ping = AsyncMock(return_value=False)
+        gateway._logger.info = MagicMock()
+        gateway._logger.error = MagicMock()
 
-        es_aioclient_mock.get(
-            url=f"{TEST_CONFIG_ENTRY_DATA_URL}",
-            json=CLUSTER_INFO_8DOT14_RESPONSE_BODY,
-            headers={"x-elastic-product": "Elasticsearch"},
-        )
-        es_aioclient_mock.get(
-            url=f"{TEST_CONFIG_ENTRY_DATA_URL}/_xpack/usage",
-            json={
-                "security": {"available": True, "enabled": True},
-            },
-        )
-        es_aioclient_mock.post(
-            f"{TEST_CONFIG_ENTRY_DATA_URL}/_security/user/_has_privileges",
-            status=200,
-            json={
-                "has_all_requested": True,
-            },
-        )
+        result = await gateway.check_connection()
 
-        assert await gateway.async_init() is None
+        assert result is False
+        gateway._logger.error.assert_called_once_with("Failed to establish connection to Elasticsearch.")
+        gateway._logger.info.assert_not_called()
 
-    @pytest.mark.asyncio
-    async def test_async_init_mock_elasticsearch_ssl_error(
-        self, gateway, es_aioclient_mock: AiohttpClientMocker
-    ):
-        """Test async_init when there are insufficient privileges."""
+    async def test_check_connection_maintained(self, gateway: ElasticsearchGateway) -> None:
+        """Test check_connection method when connection is maintained."""
+        gateway._previous_ping = True
+        gateway.ping = AsyncMock(return_value=True)
+        gateway._logger.debug = MagicMock()
 
-        class MockTLSError(client_exceptions.ClientConnectorCertificateError):
-            """Mocks an TLS error caused by an untrusted certificate.
+        result = await gateway.check_connection()
 
-            This is imperfect, but gets the job done for now.
-            """
+        assert result is True
+        gateway._logger.debug.assert_called_once_with("Connection to Elasticsearch is still available.")
 
-            def __init__(self) -> None:
-                self._conn_key = MagicMock()
-                self._certificate_error = Exception("AHHHH")
+    async def test_check_connection_lost(self, gateway: ElasticsearchGateway) -> None:
+        """Test check_connection method when connection is lost."""
+        gateway._previous_ping = True
+        gateway.ping = AsyncMock(return_value=False)
+        gateway._logger.error = MagicMock()
+        gateway._logger.debug = MagicMock()
 
-        es_aioclient_mock.get(f"{TEST_CONFIG_ENTRY_DATA_URL}", exc=MockTLSError)
+        result = await gateway.check_connection()
 
-        with pytest.raises(UntrustedCertificate):
-            await gateway.async_init()
+        assert result is False
+        gateway._logger.error.assert_called_once_with("Connection to Elasticsearch has been lost.")
+        gateway._logger.debug.assert_not_called()
 
-    async def test_async_init_mock_elasticsearch_serverless(
-        self, gateway: ElasticsearchGateway, es_aioclient_mock: AiohttpClientMocker
-    ) -> None:
-        """Test the async_init method with unauthorized user."""
+    async def test_check_connection_down(self, gateway: ElasticsearchGateway) -> None:
+        """Test check_connection method when connection is still down."""
+        gateway._previous_ping = False
+        gateway.ping = AsyncMock(return_value=False)
+        gateway._logger.debug = MagicMock()
 
-        es_aioclient_mock.get(
-            f"{TEST_CONFIG_ENTRY_DATA_URL}",
-            status=200,
-            json=CLUSTER_INFO_SERVERLESS_RESPONSE_BODY,
-            headers={"x-elastic-product": "Elasticsearch"},
-        )
+        result = await gateway.check_connection()
 
-        es_aioclient_mock.get(url=f"{TEST_CONFIG_ENTRY_DATA_URL}/_xpack/usage", status=401)
+        assert result is False
+        gateway._logger.debug.assert_called_once_with("Connection to Elasticsearch is still down.")
 
-        es_aioclient_mock.post(
-            f"{TEST_CONFIG_ENTRY_DATA_URL}/_security/user/_has_privileges",
-            status=200,
-            json={
-                "has_all_requested": True,
-            },
-        )
+    async def test_check_connection_reestablished(self, gateway: ElasticsearchGateway) -> None:
+        """Test check_connection method when connection is reestablished."""
+        gateway._previous_ping = False
+        gateway.ping = AsyncMock(return_value=True)
+        gateway._logger.info = MagicMock()
 
-        assert await gateway.async_init() is None
+        result = await gateway.check_connection()
 
-    async def test_async_init_mock_elasticsearch_minimum_supported(
-        self, gateway: ElasticsearchGateway, es_aioclient_mock: AiohttpClientMocker
-    ) -> None:
-        """Test the async_init method with unauthorized user."""
-
-        es_aioclient_mock.get(
-            f"{TEST_CONFIG_ENTRY_DATA_URL}",
-            status=200,
-            json=CLUSTER_INFO_8DOT14_RESPONSE_BODY,
-            headers={"x-elastic-product": "Elasticsearch"},
-        )
-
-        es_aioclient_mock.get(
-            url=f"{TEST_CONFIG_ENTRY_DATA_URL}/_xpack/usage",
-            json={
-                "security": {"available": True, "enabled": True},
-            },
-        )
-        es_aioclient_mock.post(
-            f"{TEST_CONFIG_ENTRY_DATA_URL}/_security/user/_has_privileges",
-            status=200,
-            json={
-                "has_all_requested": True,
-            },
-        )
-
-        assert await gateway.async_init() is None
-
-    async def test_async_init_mock_elasticsearch_unsupported(
-        self, gateway: ElasticsearchGateway, es_aioclient_mock: AiohttpClientMocker
-    ) -> None:
-        """Test the async_init method with unauthorized user."""
-
-        es_aioclient_mock.get(
-            f"{TEST_CONFIG_ENTRY_DATA_URL}",
-            status=200,
-            json=CLUSTER_INFO_8DOT0_RESPONSE_BODY,
-            headers={"x-elastic-product": "Elasticsearch"},
-        )
-
-        with pytest.raises(UnsupportedVersion):
-            assert await gateway.async_init() is None
-
-    async def test_async_init_mock_elasticsearch_unauthorized(
-        self, gateway: ElasticsearchGateway, es_aioclient_mock: AiohttpClientMocker
-    ) -> None:
-        """Test the async_init method with unauthorized user."""
-
-        es_aioclient_mock.get(
-            f"{TEST_CONFIG_ENTRY_DATA_URL}",
-            status=200,
-            json=CLUSTER_INFO_8DOT14_RESPONSE_BODY,
-            headers={"x-elastic-product": "Elasticsearch"},
-        )
-
-        es_aioclient_mock.get(
-            url=f"{TEST_CONFIG_ENTRY_DATA_URL}/_xpack/usage",
-            json={
-                "security": {"available": True, "enabled": True},
-            },
-        )
-        es_aioclient_mock.post(
-            f"{TEST_CONFIG_ENTRY_DATA_URL}/_security/user/_has_privileges",
-            status=200,
-            json={
-                "has_all_requested": False,
-            },
-        )
-
-        with pytest.raises(InsufficientPrivileges):
-            assert await gateway.async_init() is None
-
-    async def test_async_init_mock_elasticsearch_unreachable(
-        self, gateway: ElasticsearchGateway, es_aioclient_mock: AiohttpClientMocker
-    ) -> None:
-        """Test the async_init method with unreachable Elasticsearch."""
-
-        es_aioclient_mock.get(f"{TEST_CONFIG_ENTRY_DATA_URL}", exc=client_exceptions.ServerTimeoutError())
-
-        with pytest.raises(CannotConnect):
-            assert await gateway.async_init() is None
+        assert result is True
+        gateway._logger.info.assert_called_once_with("Connection to Elasticsearch has been reestablished.")
 
 
 class Test_Exception_Conversion:
     """Test the conversion of Elasticsearch exceptions to custom exceptions."""
 
+    @pytest.fixture
+    def gateway_settings(self) -> Gateway8Settings:
+        """Return a Gateway8Settings instance."""
+        return Gateway8Settings(
+            url=const.TEST_CONFIG_ENTRY_DATA_URL,
+            username="username",
+            password="password",
+            verify_certs=True,
+            ca_certs=None,
+            request_timeout=30,
+            minimum_version=None,
+        )
+
+    @pytest.fixture
+    async def gateway(self, gateway_settings, mock_elasticsearch_client):
+        """Return a mock Elasticsearch client."""
+        gateway = Elasticsearch8Gateway(gateway_settings=gateway_settings)
+
+        yield gateway
+
+        await gateway.stop()
+
     @pytest.mark.parametrize(
-        ("status_code", "expected_response"),
+        ("exception", "expected_exception", "message"),
+        [
+            (
+                elasticsearch8.TransportError(message="Test Case"),
+                CannotConnect,
+                "Unknown transport error connecting to Elasticsearch",
+            ),
+            (
+                elasticsearch8.AuthenticationException(message="Test Case", meta=MagicMock(), body=None),
+                AuthenticationRequired,
+                "Authentication error connecting to Elasticsearch",
+            ),
+            (
+                elasticsearch8.AuthorizationException(message="Test Case", meta=MagicMock(), body=None),
+                InsufficientPrivileges,
+                "Authorization error connecting to Elasticsearch",
+            ),
+            (
+                elasticsearch8.ConnectionTimeout(message="Test Case"),
+                CannotConnect,
+                "Connection timeout connecting to Elasticsearch",
+            ),
+            (
+                elasticsearch8.SSLError(message="Test Case"),
+                UntrustedCertificate,
+                "Could not complete TLS Handshake",
+            ),
+            (
+                elasticsearch8.ConnectionError(message="Test Case"),
+                CannotConnect,
+                "Error connecting to Elasticsearch",
+            ),
+            (
+                elasticsearch8.ApiError(
+                    message="Test Case",
+                    meta=mock_api_response_meta(status_code=None),  # type: ignore [arg-type]
+                    body=None,
+                ),
+                ServerError,
+                "Unknown API Error in request to Elasticsearch",
+            ),
+            (
+                elasticsearch8.ApiError(
+                    message="Test Case", meta=mock_api_response_meta(status_code=400), body=None
+                ),
+                ServerError,
+                "Error in request to Elasticsearch",
+            ),
+            (Exception(), Exception, ""),
+        ],
+        ids=[
+            "TransportError to CannotConnect",
+            "AuthenticationException to AuthenticationRequired",
+            "AuthorizationException to InsufficientPrivileges",
+            "ConnectionTimeout to CannotConnect",
+            "SSLError to UntrustedCertificate",
+            "ConnectionError to CannotConnect",
+            "ApiError to CannotConnect",
+            "ApiError(404) to ServerError",
+            "Exception to Exception",
+        ],
+    )
+    async def test_error_conversion_bulk_index_error(self, gateway, exception, expected_exception, message):
+        """Test the error converter handling of a bulk index error."""
+        with pytest.raises(expected_exception, match=message), gateway._error_converter():
+            raise exception
+
+    # async def test_error_conversion_unsupported_product_error(gateway):
+    #     with pytest.raises(CannotConnect, match="Unsupported product error connecting to Elasticsearch"):
+    #         with gateway._error_converter():
+    #             raise elasticsearch8.UnsupportedProductError("Error")
+
+    # async def test_error_conversion_authentication_exception(gateway):
+    #     with pytest.raises(AuthenticationRequired, match="Authentication error connecting to Elasticsearch"):
+    #         with gateway._error_converter():
+    #             raise elasticsearch8.AuthenticationException("Error")
+
+    # async def test_error_conversion_authorization_exception(gateway):
+    #     with pytest.raises(InsufficientPrivileges, match="Authorization error connecting to Elasticsearch"):
+    #         with gateway._error_converter():
+    #             raise elasticsearch8.AuthorizationException("Error")
+
+    # async def test_error_conversion_connection_timeout(gateway):
+    #     with pytest.raises(ServerError, match="Connection timeout connecting to Elasticsearch"):
+    #         with gateway._error_converter():
+    #             raise elasticsearch8.ConnectionTimeout("Error")
+
+    # async def test_error_conversion_ssl_error(gateway):
+    #     with pytest.raises(UntrustedCertificate, match="Could not complete TLS Handshake"):
+    #         with gateway._error_converter():
+    #             raise elasticsearch8.SSLError("Error")
+
+    # async def test_error_conversion_connection_error(gateway):
+    #     with pytest.raises(CannotConnect, match="Error connecting to Elasticsearch"):
+    #         with gateway._error_converter():
+    #             raise elasticsearch8.ConnectionError("Error")
+
+    # async def test_error_conversion_transport_error(gateway):
+    #     with pytest.raises(CannotConnect, match="Unknown transport error connecting to Elasticsearch"):
+    #         with gateway._error_converter():
+    #             raise elasticsearch8.TransportError("Error")
+
+    # async def test_error_conversion_api_error(gateway):
+    #     with pytest.raises(CannotConnect, match="Unknown API Error connecting to Elasticsearch"):
+    #         with gateway._error_converter():
+    #             raise elasticsearch8.ApiError("Error")
+
+    # async def test_error_conversion_unexpected_exception(gateway):
+    #     with patch("custom_components.elasticsearch.es_gateway_8.BASE_LOGGER") as mock_logger:
+    #         with pytest.raises(Exception):
+    #             with gateway._error_converter():
+    #                 raise Exception("Unexpected error")
+    #         mock_logger.exception.assert_called_once_with("Unknown and unexpected exception occurred.")
+
+    @pytest.mark.parametrize(
+        ("status_code", "expected_exception"),
         [
             (404, CannotConnect),
             (401, AuthenticationRequired),
@@ -360,103 +693,71 @@ class Test_Exception_Conversion:
             (400, CannotConnect),
             (502, CannotConnect),
             (503, CannotConnect),
-            (200, None),
         ],
         ids=[
             "404 to CannotConnect",
             "401 to AuthenticationRequired",
             "403 to InsufficientPrivileges",
-            "500 to ServerError",
-            "400 to ClientError",
+            "500 to CannotConnect",
+            "400 to CannotConnect",
             "502 to CannotConnect",
             "503 to CannotConnect",
-            "200 to None",
         ],
     )
-    async def test_simple_return_codes(
+    async def test_http_error_codes(
         self,
         gateway: ElasticsearchGateway,
-        es_aioclient_mock,
+        es_mock_builder,
         status_code: int,
-        expected_response: Any,
+        expected_exception: Any,
     ) -> None:
         """Test the error converter."""
-        temp = gateway.info
-        gateway.info = AsyncMock(return_value=CLUSTER_INFO_8DOT14_RESPONSE_BODY)
-        gateway.has_security = AsyncMock(return_value=True)
-        gateway._has_required_privileges = AsyncMock(return_value=True)
-        await gateway.async_init()
-        gateway.info = temp
+        es_mock_builder.with_server_error(status=status_code)
 
-        es_aioclient_mock.get(
-            f"{TEST_CONFIG_ENTRY_DATA_URL}",
-            status=status_code,
-            json=CLUSTER_INFO_8DOT14_RESPONSE_BODY,
-            headers={"x-elastic-product": "Elasticsearch"},
-        )
-
-        if expected_response is None:
-            assert await gateway.info() == CLUSTER_INFO_8DOT14_RESPONSE_BODY
-        else:
-            with pytest.raises(expected_response):
-                await gateway.info()
+        with pytest.raises(expected_exception):
+            await gateway.info()
 
     @pytest.mark.parametrize(
         ("aiohttp_exception", "expected_exception"),
         [
-            (client_exceptions.ServerConnectionError(), ServerError),
+            (client_exceptions.ServerConnectionError(), CannotConnect),
             # child exceptions of ServerConnectionError
             (
-                client_exceptions.ServerFingerprintMismatch(expected=b"", got=b"", host="host", port=0),
-                SSLError,
-            ),
-            (client_exceptions.ServerDisconnectedError(), ServerError),
-            (client_exceptions.ServerTimeoutError(), ServerError),
-            # (client_exceptions.ClientError(), ClientError),
-            # child exceptions of ClientError
-            # (client_exceptions.ClientResponseError(), ClientError),
-            (client_exceptions.ClientPayloadError(), ClientError),
-            (client_exceptions.ClientConnectionError(), ClientError),
-            # child exceptions of ClientConnectionError
-            # (
-            #     client_exceptions.ClientSSLError(connection_key=MagicMock(), os_error=Exception("AHHHHH")),
-            #     SSLError,
-            # ),
-            # child exceptions of ClientSSLError
-            # (client_exceptions.ClientConnectorSSLError(), SSLError),
-            (
-                client_exceptions.ClientConnectorCertificateError(
-                    connection_key=MagicMock(), certificate_error=Exception("AHHHHH")
+                client_exceptions.ServerFingerprintMismatch(
+                    expected=b"expected", got=b"actual", host="host", port=9200
                 ),
-                UntrustedCertificate,
+                CannotConnect,
             ),
+            (client_exceptions.ServerDisconnectedError(), CannotConnect),
+            (client_exceptions.ServerTimeoutError(), CannotConnect),
+            (client_exceptions.ClientError(), CannotConnect),
+            # child exceptions of ClientError
+            (
+                client_exceptions.ClientResponseError(request_info=MagicMock(), history=MagicMock()),
+                CannotConnect,
+            ),
+            (client_exceptions.ClientPayloadError(), CannotConnect),
+            (client_exceptions.ClientConnectionError(), CannotConnect),
+            (self_signed_tls_error(), UntrustedCertificate),
         ],
         ids=[
-            "ServerConnectionError to ServerError",
-            "ServerFingerprintMismatch to SSLError",
-            "ServerDisconnectedError to ServerError",
-            "ServerTimeoutError to ServerError",
-            # "ClientError to ClientError",
-            # "ClientResponseError to ClientError",
-            "ClientPayloadError to ClientError",
-            "ClientConnectionError to ClientError",
-            # "ClientSSLError to SSLConnectionError",
-            # "ClientConnectorSSLError to CannotConnect",
-            "ClientConnectorCertificateError to UntrustedCertificate",
+            "ServerConnectionError to CannotConnect",
+            "ServerFingerprintMismatch to CannotConnect",
+            "ServerDisconnectedError to CannotConnect",
+            "ServerTimeoutError to CannotConnect",
+            "ClientError to CannotConnect",
+            "ClientResponseError to CannotConnect",
+            "ClientPayloadError to CannotConnect",
+            "ClientConnectionError to CannotConnect",
+            "SSLCertVerificationError to UntrustedCertificate",
         ],
     )
-    async def test_simple_web_exceptions(
-        self, aiohttp_exception, expected_exception, es_aioclient_mock, gateway
+    async def test_aiohttp_web_exceptions(
+        self, aiohttp_exception, expected_exception, gateway, es_mock_builder
     ) -> None:
         """Test the error converter."""
-        temp = gateway.info
-        gateway.info = AsyncMock(return_value=CLUSTER_INFO_8DOT14_RESPONSE_BODY)
-        gateway.has_security = AsyncMock(return_value=True)
-        gateway._has_required_privileges = AsyncMock(return_value=True)
-        await gateway.async_init()
-        gateway.info = temp
 
-        es_aioclient_mock.get(f"{TEST_CONFIG_ENTRY_DATA_URL}", exc=aiohttp_exception)
+        es_mock_builder.with_server_error(exc=aiohttp_exception)
 
         with pytest.raises(expected_exception):
             await gateway.info()

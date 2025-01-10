@@ -19,16 +19,21 @@
 from __future__ import annotations
 
 from asyncio import get_running_loop
+from collections.abc import Generator
 from contextlib import contextmanager, suppress
+from http import HTTPStatus
+from ssl import SSLCertVerificationError
 from typing import TYPE_CHECKING
 from unittest import mock
 from unittest.mock import AsyncMock, MagicMock, patch
 
-# import custom_components.elasticsearch  # noqa: F401
 import pytest
-from aiohttp import ClientSession, TCPConnector
+from aiohttp import ClientSession, TCPConnector, client_exceptions
 from custom_components.elasticsearch.config_flow import ElasticFlowHandler
+from custom_components.elasticsearch.const import DATASTREAM_METRICS_INDEX_TEMPLATE_NAME
 from custom_components.elasticsearch.es_gateway_8 import Elasticsearch8Gateway, Gateway8Settings
+
+# import custom_components.elasticsearch  # noqa: F401
 from homeassistant.const import (
     CONF_PASSWORD,
     CONF_URL,
@@ -46,12 +51,15 @@ from pytest_homeassistant_custom_component.plugins import (  # noqa: F401
     snapshot,
     verify_cleanup,
 )
-from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
+from pytest_homeassistant_custom_component.test_util.aiohttp import (
+    AiohttpClientMocker,
+    AiohttpClientMockResponse,
+)
 
 from tests import const
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Awaitable, Callable, Generator
     from typing import Any
 
     from homeassistant.helpers.area_registry import AreaEntry, AreaRegistry
@@ -81,7 +89,7 @@ def gateway_config() -> dict:
     params=[
         {
             "gateway_class": Elasticsearch8Gateway,
-            "gatewaysettings": Gateway8Settings,
+            "gateway_settings": Gateway8Settings,
         },
     ],
     ids=["es8"],
@@ -90,7 +98,7 @@ async def gateway(request, gateway_config):
     """Mock ElasticsearchGateway instance."""
 
     gateway_class = request.param["gateway_class"]
-    gateway_settings_class = request.param["gatewaysettings"]
+    gateway_settings_class = request.param["gateway_settings"]
 
     settings = gateway_settings_class(**gateway_config)
 
@@ -108,7 +116,7 @@ async def initialized_gateway(gateway: Elasticsearch8Gateway):
     gateway.ping = AsyncMock(return_value=True)
     gateway.info = AsyncMock(return_value=const.CLUSTER_INFO_8DOT14_RESPONSE_BODY)
     gateway.has_security = AsyncMock(return_value=True)
-    gateway._has_required_privileges = AsyncMock(return_value=True)
+    gateway.has_privileges = AsyncMock(return_value=True)
 
     await gateway.async_init()
 
@@ -119,6 +127,24 @@ async def initialized_gateway(gateway: Elasticsearch8Gateway):
         yield gateway
 
     await gateway.stop()
+
+
+@pytest.fixture
+async def integration_setup(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+) -> Callable[[], Awaitable[bool]]:
+    """Fixture to set up the integration."""
+    config_entry.add_to_hass(hass)
+
+    async def run() -> bool:
+        result = await hass.config_entries.async_setup(config_entry.entry_id)
+
+        await hass.async_block_till_done()
+
+        return result
+
+    return run
 
 
 @contextmanager
@@ -153,16 +179,342 @@ def mock_es_aiohttp_client():
 
 
 @pytest.fixture
+def es_mock_builder() -> Generator[es_mocker, Any, None]:
+    """Fixture to return a builder for mocking Elasticsearch calls."""
+    with mock_es_aiohttp_client() as mock_session:
+        yield es_mocker(mock_session)
+
+
+@pytest.fixture
 def es_aioclient_mock():
     """Fixture to mock aioclient calls."""
     with mock_es_aiohttp_client() as mock_session:
         yield mock_session
 
 
+def self_signed_tls_error():
+    """Return a self-signed certificate error."""
+    connection_key = MagicMock()
+    connection_key.host = "mock_es_integration"
+    connection_key.port = 9200
+    connection_key.is_ssl = True
+
+    certificate_error = SSLCertVerificationError()
+    certificate_error.verify_code = 19
+    certificate_error.verify_message = "'self-signed certificate in certificate chain'"
+    certificate_error.library = "SSL"
+    certificate_error.reason = "CERTIFICATE_VERIFY_FAILED"
+    certificate_error.strerror = "[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signed certificate in certificate chain (_ssl.c:1000)"
+    certificate_error.errno = 1
+
+    return client_exceptions.ClientConnectorCertificateError(
+        connection_key=connection_key, certificate_error=certificate_error
+    )
+
+
+class es_mocker:
+    """Mock builder for Elasticsearch integration tests."""
+
+    mocker: AiohttpClientMocker
+    base_url: str = const.TEST_CONFIG_ENTRY_DATA_URL
+
+    def __init__(self, mocker):
+        """Initialize the mock builder."""
+        self.mocker = mocker
+
+    def reset(self):
+        """Reset the mock builder."""
+        self.mocker.clear_requests()
+
+        return self
+
+    def get_calls(self):
+        """Return the calls."""
+        # each mock_call is a tuple of method, url, body, and headers
+
+        return self.mocker.mock_calls
+
+    def clear(self):
+        """Clear the requests."""
+        self.mocker.mock_calls.clear()
+
+        return self
+
+    def with_server_error(self, status=None, exc=None):
+        """Mock Elasticsearch being unreachable."""
+        if status is None and exc is None:
+            self.mocker.get(f"{const.TEST_CONFIG_ENTRY_DATA_URL}", status=HTTPStatus.INTERNAL_SERVER_ERROR)
+
+        if exc is None:
+            self.mocker.get(f"{const.TEST_CONFIG_ENTRY_DATA_URL}", status=status)
+        else:
+            self.mocker.get(f"{const.TEST_CONFIG_ENTRY_DATA_URL}", exc=exc)
+
+        return self
+
+    def without_authentication(self):
+        """Mock the user not being authenticated."""
+        self.mocker.get(
+            f"{const.TEST_CONFIG_ENTRY_DATA_URL}",
+            status=401,
+            json=const.CLUSTER_INFO_MISSING_CREDENTIALS_RESPONSE_BODY,
+        )
+        return self
+
+    def with_server_timeout(self):
+        """Mock Elasticsearch being unreachable."""
+        self.mocker.get(f"{const.TEST_CONFIG_ENTRY_DATA_URL}", exc=client_exceptions.ServerTimeoutError())
+        return self
+
+    def _add_fail_after(
+        self, success: AiohttpClientMockResponse, failure: AiohttpClientMockResponse, fail_after
+    ):
+        if fail_after is None:
+            self.mocker.request(
+                url=success.url,
+                method=success.method,
+                status=success.status,
+                content=success.response,
+                headers=success.headers,
+                exc=success.exc,
+            )
+            return self
+
+        call_count = 0
+
+        async def side_effect(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count >= fail_after:
+                return failure
+
+            return success
+
+        self.mocker.request(success.method, f"{success.url}", side_effect=side_effect)
+
+        return self
+
+    def _as_elasticsearch_stateful(
+        self, version_response: dict[str, Any], with_security: bool = True, fail_after=None
+    ) -> es_mocker:
+        """Mock Elasticsearch version."""
+
+        self.base_url = (
+            const.TEST_CONFIG_ENTRY_DATA_URL if with_security else const.TEST_CONFIG_ENTRY_DATA_URL_INSECURE
+        )
+
+        self._add_fail_after(
+            success=AiohttpClientMockResponse(
+                method="GET",
+                url=self.base_url,
+                headers={"x-elastic-product": "Elasticsearch"},
+                json=version_response,
+            ),
+            failure=AiohttpClientMockResponse(
+                method="GET",
+                url=self.base_url,
+                status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            ),
+            fail_after=fail_after,
+        )
+
+        self.mocker.get(
+            url=f"{self.base_url}/_xpack/usage",
+            json={
+                "security": {"available": True, "enabled": with_security},
+            },
+        )
+
+        return self
+
+    def as_elasticsearch_8_0(self, with_security: bool = True) -> es_mocker:
+        """Mock Elasticsearch 8.0."""
+        return self._as_elasticsearch_stateful(const.CLUSTER_INFO_8DOT0_RESPONSE_BODY, with_security)
+
+    def as_elasticsearch_8_17(self, with_security: bool = True, fail_after=None) -> es_mocker:
+        """Mock Elasticsearch 8.17."""
+        return self._as_elasticsearch_stateful(
+            const.CLUSTER_INFO_8DOT17_RESPONSE_BODY, with_security, fail_after=fail_after
+        )
+
+    def as_elasticsearch_8_14(self, with_security: bool = True):
+        """Mock Elasticsearch 8.14."""
+
+        return self._as_elasticsearch_stateful(const.CLUSTER_INFO_8DOT14_RESPONSE_BODY, with_security)
+
+    def as_fake_elasticsearch(self) -> es_mocker:
+        """Mock a fake elasticsearch node response."""
+
+        self.mocker.get(
+            f"{self.base_url}",
+            status=200,
+            # No x-elastic-product header
+            json=const.CLUSTER_INFO_8DOT14_RESPONSE_BODY,
+        )
+
+        return self
+
+    def as_elasticsearch_serverless(self) -> es_mocker:
+        """Mock Elasticsearch version."""
+
+        self.base_url = const.TEST_CONFIG_ENTRY_DATA_URL
+
+        self.mocker.get(
+            f"{self.base_url}",
+            status=200,
+            json=const.CLUSTER_INFO_SERVERLESS_RESPONSE_BODY,
+            headers={"x-elastic-product": "Elasticsearch"},
+        )
+
+        self.mocker.get(
+            url=f"{self.base_url}/_xpack/usage", status=410, json=const.XPACK_USAGE_SERVERLESS_RESPONSE_BODY
+        )
+
+        return self
+
+    def with_incorrect_permissions(self):
+        """Mock the user being properly authenticated."""
+        self.mocker.post(
+            f"{self.base_url}/_security/user/_has_privileges",
+            status=200,
+            json={
+                "has_all_requested": False,
+            },
+        )
+
+        return self
+
+    def with_correct_permissions(self):
+        """Mock the user being properly authenticated."""
+
+        self.mocker.post(
+            f"{self.base_url}/_security/user/_has_privileges",
+            status=200,
+            json={
+                "has_all_requested": True,
+            },
+        )
+
+        return self
+
+    def with_selfsigned_certificate(self):
+        """Mock a self-signed certificate error."""
+
+        self.mocker.get(f"{self.base_url}", exc=self_signed_tls_error())
+
+        return self
+
+    def with_index_template(self, version=2):
+        """Mock the user being properly authenticated."""
+
+        # Mock index template setup
+        self.mocker.get(
+            f"{self.base_url}/_index_template/{DATASTREAM_METRICS_INDEX_TEMPLATE_NAME}",
+            status=200,
+            headers={"x-elastic-product": "Elasticsearch"},
+            json={
+                "index_templates": [{"name": "datastream_metrics", "index_template": {"version": version}}]
+            },
+        )
+
+        return self
+
+    def without_index_template(self):
+        """Mock the user being properly authenticated."""
+
+        # Mock index template setup
+        self.mocker.get(
+            f"{self.base_url}/_index_template/{DATASTREAM_METRICS_INDEX_TEMPLATE_NAME}",
+            status=200,
+            headers={"x-elastic-product": "Elasticsearch"},
+            json={},
+        )
+
+        self.mocker.put(
+            f"{self.base_url}/_index_template/{DATASTREAM_METRICS_INDEX_TEMPLATE_NAME}",
+            status=200,
+            headers={"x-elastic-product": "Elasticsearch"},
+            json={},
+        )
+        return self
+
+    def with_datastreams(self):
+        """Mock the user being properly authenticated."""
+
+        self.mocker.get(
+            f"{self.base_url}/_data_stream/metrics-homeassistant.*",
+            status=200,
+            headers={"x-elastic-product": "Elasticsearch"},
+            json={
+                "data_streams": [
+                    {
+                        "name": "metrics-homeassistant.sensor-default",
+                    },
+                    {
+                        "name": "metrics-homeassistant.counter-default",
+                    },
+                ]
+            },
+        )
+
+        self.mocker.put(
+            f"{self.base_url}/_data_stream/metrics-homeassistant.counter-default/_rollover",
+            status=200,
+            headers={"x-elastic-product": "Elasticsearch"},
+            json={
+                "acknowledged": True,
+                "shards_acknowledged": True,
+                "old_index": ".ds-metrics-homeassistant.counter-default-2024.12.19-000001",
+                "new_index": ".ds-metrics-homeassistant.counter-default-2025.01.10-000002",
+                "rolled_over": True,
+                "dry_run": False,
+                "lazy": False,
+                "conditions": {},
+            },
+        )
+        self.mocker.put(
+            f"{self.base_url}/_data_stream/metrics-homeassistant.sensor-default/_rollover",
+            status=200,
+            headers={"x-elastic-product": "Elasticsearch"},
+            json={
+                "acknowledged": True,
+                "shards_acknowledged": True,
+                "old_index": ".ds-metrics-homeassistant.sensor-default-2024.12.19-000001",
+                "new_index": ".ds-metrics-homeassistant.sensor-default-2025.01.10-000002",
+                "rolled_over": True,
+                "dry_run": False,
+                "lazy": False,
+                "conditions": {},
+            },
+        )
+
+        return self
+
+    def respond_to_bulk(self, status=200, fail_after=None):
+        """Mock the user being properly authenticated."""
+
+        self._add_fail_after(
+            success=AiohttpClientMockResponse(
+                method="PUT",
+                url=f"{self.base_url}/_bulk",
+                headers={"x-elastic-product": "Elasticsearch"},
+                json={"errors": status == 200, "items": [], "took": 7},
+            ),
+            failure=AiohttpClientMockResponse(
+                method="PUT",
+                url=f"{self.base_url}/_bulk",
+                status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            ),
+            fail_after=fail_after,
+        )
+
+        return self
+
+
 # This fixture enables loading custom integrations in all tests.
 # Remove to enable selective use of this fixture
 @pytest.fixture(autouse=True)
-def auto_enable_custom_integrations(enable_custom_integrations) -> None:
+def _auto_enable_custom_integrations(enable_custom_integrations) -> None:
     """Auto enable custom integrations."""
     return
 
@@ -171,7 +523,7 @@ def auto_enable_custom_integrations(enable_custom_integrations) -> None:
 # notifications. These calls would fail without this fixture since the persistent_notification
 # integration is never loaded during a test.
 @pytest.fixture(name="skip_notifications", autouse=True)
-def skip_notifications_fixture() -> Generator[Any, Any, Any]:
+def _skip_notifications_fixture() -> Generator[Any, Any, Any]:
     """Skip notification calls."""
     with (
         patch("homeassistant.components.persistent_notification.async_create"),
@@ -187,6 +539,12 @@ async def data() -> dict:
 
 
 @pytest.fixture
+async def version() -> int:
+    """Return a mock options dict."""
+    return ElasticFlowHandler.VERSION
+
+
+@pytest.fixture
 async def options() -> dict:
     """Return a mock options dict."""
     return const.TEST_CONFIG_ENTRY_BASE_OPTIONS
@@ -199,7 +557,7 @@ async def add_to_hass() -> bool:
 
 
 @pytest.fixture(autouse=True)
-async def fix_location(hass: HomeAssistant):
+async def _fix_location(hass: HomeAssistant):
     """Return whether to fix the location."""
 
     hass.config.latitude = 1.0
@@ -212,7 +570,7 @@ async def config_entry(
     data: dict,
     options: dict,
     add_to_hass: bool,
-    version: int = ElasticFlowHandler.VERSION,
+    version: int,
 ):
     """Create a mock config entry and add it to hass."""
 

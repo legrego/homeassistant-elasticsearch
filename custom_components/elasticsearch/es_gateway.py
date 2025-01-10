@@ -11,11 +11,11 @@ from custom_components.elasticsearch.const import ES_CHECK_PERMISSIONS_DATASTREA
 
 from .logger import LOGGER as BASE_LOGGER
 from .logger import log_enter_exit_debug
+from typing import Any
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import AsyncGenerator
     from logging import Logger
-    from typing import Any
 
     from elasticsearch8._async.client import AsyncElasticsearch as AsyncElasticsearch8
 
@@ -33,7 +33,7 @@ class GatewaySettings(ABC):
     request_timeout: int = 30
     verify_hostname: bool = True
     minimum_version: tuple[int, int] | None = None
-    minimum_privileges: MappingProxyType[str, Any] | None = None
+    minimum_privileges: MappingProxyType[str, Any] | None = MappingProxyType[str, Any]({})
 
     @abstractmethod
     def to_client(self) -> AsyncElasticsearch8:
@@ -70,7 +70,7 @@ class ElasticsearchGateway(ABC):
             raise UnsupportedVersion(msg)
 
         # Check minimum privileges
-        if await self.has_security() and not await self._has_required_privileges():
+        if await self.has_security() and not await self.has_privileges(self.settings.minimum_privileges):
             raise InsufficientPrivileges
 
     @property
@@ -82,11 +82,6 @@ class ElasticsearchGateway(ABC):
     @abstractmethod
     def settings(self) -> GatewaySettings:
         """Return the settings."""
-
-    @property
-    def url(self) -> str:
-        """Return the Home Assistant instance."""
-        return self.settings.url
 
     @classmethod
     @abstractmethod
@@ -153,7 +148,7 @@ class ElasticsearchGateway(ABC):
         """Check if the cluster has security enabled."""
 
     @abstractmethod
-    async def has_privileges(self, privileges) -> dict:
+    async def has_privileges(self, privileges) -> bool:
         """Check if the user has the specified privileges."""
 
     @abstractmethod
@@ -165,7 +160,7 @@ class ElasticsearchGateway(ABC):
         """Update an index template."""
 
     @abstractmethod
-    async def get_datastreams(self, datastream: str) -> dict:
+    async def get_datastream(self, datastream: str) -> dict:
         """Retrieve datastreams."""
 
     @abstractmethod
@@ -207,9 +202,3 @@ class ElasticsearchGateway(ABC):
         return (
             current_major > minimum_major or current_major == minimum_major and current_minor >= minimum_minor
         )
-
-    async def _has_required_privileges(self) -> bool:
-        """Check if the user has the required privileges."""
-        response = await self.has_privileges(privileges=self.settings.minimum_privileges)
-
-        return response.get("has_all_requested", False)

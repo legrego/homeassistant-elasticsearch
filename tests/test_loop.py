@@ -159,7 +159,7 @@ class Test_loop_handler:
 
         assert loop_handler._time_to_run() is True
 
-    async def test_loop_handler_wait_for_next_run_should_stop_(self):
+    async def test_loop_handler_wait_for_next_run_should_stop(self):
         """Test the _wait_for_next_run method of LoopHandler."""
 
         mock_func = MagicMock()
@@ -173,7 +173,7 @@ class Test_loop_handler:
         with pytest.raises(RuntimeError):
             await loop_handler._wait_for_next_run()
 
-    async def test_loop_handler_wait_for_next_run_should_spin_(self):
+    async def test_loop_handler_wait_for_next_run_should_spin(self):
         """Test the _wait_for_next_run method of LoopHandler."""
 
         mock_func = AsyncMock()

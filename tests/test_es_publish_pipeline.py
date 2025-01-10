@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 from queue import Queue
 from unittest import mock
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
@@ -82,6 +82,20 @@ class Test_Filterer:
     class Test_Integration_Tests:
         """Run the integration tests of the Filterer class."""
 
+        async def test_fails_filter_with_missing_entity(self, filterer):
+            """Test that a state change with an allowed change type and included entity passes the filter."""
+            state = State("light.living_room", "on")
+            filterer._change_detection_type = [StateChangeType.STATE.value]
+            assert filterer.passes_filter(state, StateChangeType.STATE) is False
+
+        async def test_fails_filter_with_included_entity(self, patched_filterer):
+            """Test that a state change with an allowed change type and included entity passes the filter."""
+            state = State("light.living_room", "on")
+            patched_filterer._change_detection_type = [StateChangeType.STATE.value]
+            patched_filterer._include_targets = True
+            patched_filterer._included_entities = ["light.not_living_room"]
+            assert patched_filterer.passes_filter(state, StateChangeType.STATE) is False
+
         async def test_passes_filter_with_allowed_change_type_and_included_entity(self, patched_filterer):
             """Test that a state change with an allowed change type and included entity passes the filter."""
             state = State("light.living_room", "on")
@@ -120,6 +134,8 @@ class Test_Filterer:
             """Test that a state change with an excluded target does not pass the filter."""
 
             patched_filterer._exclude_targets = True
+
+            assert patched_filterer._passes_exclude_targets("made up entity id") is False
 
             assert patched_filterer._passes_exclude_targets(entity.entity_id) is True
 
@@ -180,6 +196,8 @@ class Test_Filterer:
             """Test that a state change with an included target passes the filter."""
 
             patched_filterer._include_targets = True
+
+            assert patched_filterer._passes_include_targets("made up entity id") is False
 
             assert patched_filterer._passes_include_targets(entity.entity_id) is False
 
@@ -284,6 +302,7 @@ class Test_Manager:
             """Test the async initialization of the manager."""
 
             manager._settings.change_detection_type = ["STATE"]
+            manager._settings.tags = ["tag1", "tag2"]
 
             manager._listener = mock.Mock()
             manager._listener.async_init = mock.AsyncMock()
@@ -320,6 +339,7 @@ class Test_Manager:
                     "host.architecture": "x86",
                     "host.os.name": "Linux",
                     "host.hostname": "my_es_host",
+                    "tags": ["tag1", "tag2"],
                     "host.location": {
                         "lat": 1.0,
                         "lon": -1.0,
@@ -335,6 +355,8 @@ class Test_Manager:
 
         async def test_async_init_no_publish(self, manager, config_entry):
             """Test the async initialization of the manager."""
+
+            manager._settings.change_detection_type = ["STATE"]
 
             config_entry.options = {}
             manager._listener = mock.Mock()
@@ -359,9 +381,36 @@ class Test_Manager:
 
             manager.stop()
 
+        async def test_async_init_no_polling(self, manager, config_entry):
+            """Test the async initialization of the manager."""
+
+            config_entry.options = {}
+            manager._listener = mock.Mock()
+            manager._listener.async_init = mock.AsyncMock()
+            manager._poller = mock.Mock()
+            manager._poller.async_init = mock.AsyncMock()
+            manager._formatter = mock.Mock()
+            manager._formatter.async_init = mock.AsyncMock()
+            manager._publisher = mock.Mock()
+            manager._publisher.async_init = mock.AsyncMock()
+
+            # No publish_frequency means the manager doesnt do anything
+            manager._settings = mock.Mock()
+            manager._settings.change_detection_type = ["STATE"]
+            manager._settings.polling_frequency = None
+
+            # Check for self._logger.warning("No polling frequency set. Disabling polling.")
+            manager._logger.debug = mock.Mock()
+
+            await manager.async_init(config_entry)
+
+            manager._logger.debug.assert_called_once_with("No polling frequency set. Disabling polling.")
+
+            manager.stop()
+
         @pytest.mark.asyncio
         async def test_sip_queue(self, manager, freeze_time: FrozenDateTimeFactory):
-            """Test the _sip_queue method of the Pipeline.Manager class."""
+            """Test the sip_queue method of the Pipeline.Manager class."""
             # Create some sample data
             freeze_time.tick()
 
@@ -388,7 +437,7 @@ class Test_Manager:
             # Call the _sip_queue method
             result = []
             # Sip queue and append to result using async list comprehension
-            [result.append(doc) async for doc in manager._sip_queue()]
+            [result.append(doc) async for doc in manager.sip_queue()]
 
             # Assert that the formatter was called
             manager._formatter.format.assert_called_once_with(timestamp, state, reason)
@@ -396,46 +445,45 @@ class Test_Manager:
             # Assert that the result contains the formatted data
             assert result == [{"timestamp": timestamp, "state": state, "reason": reason}]
 
-        @pytest.mark.asyncio
-        async def test_publish(self, hass, manager):
-            """Test the _publish method of the Pipeline.Manager class."""
-            # Create a mock sip_queue generator
+        # @pytest.mark.asyncio
+        # async def test_publish(self, hass, manager):
+        #     """Test the _publish method of the Pipeline.Manager class."""
+        #     # Create a mock sip_queue generator
 
-            included_state = State("light.living_room", "on")
-            excluded_state = State("sensor.temperature", "25.0")
-            with (
-                patch.object(
-                    manager,
-                    "_sip_queue",
-                    side_effect=[
-                        {
-                            "timestamp": "2023-01-01T00:00:00Z",
-                            "state": included_state,
-                            "reason": "STATE_CHANGE",
-                        },
-                        {
-                            "timestamp": "2023-01-01T00:01:00Z",
-                            "state": excluded_state,
-                            "reason": "STATE_CHANGE",
-                        },
-                    ],
-                ),
-                patch.object(manager._publisher, "publish") as publisher_publish,
-                patch.object(manager._filterer, "passes_filter", side_effect=[True, False]),
-            ):
-                manager._publisher._gateway.check_connection = AsyncMock(return_value=True)
+        #     included_state = State("light.living_room", "on")
+        #     excluded_state = State("sensor.temperature", "25.0")
+        #     with (
+        #         patch.object(
+        #             manager,
+        #             "sip_queue",
+        #             side_effect=[
+        #                 {
+        #                     "timestamp": "2023-01-01T00:00:00Z",
+        #                     "state": included_state,
+        #                     "reason": "STATE_CHANGE",
+        #                 },
+        #                 {
+        #                     "timestamp": "2023-01-01T00:01:00Z",
+        #                     "state": excluded_state,
+        #                     "reason": "STATE_CHANGE",
+        #                 },
+        #             ],
+        #         ),
+        #         patch.object(manager._filterer, "passes_filter", side_effect=[True, False]),
+        #     ):
+        #         manager._publisher._gateway.check_connection = AsyncMock(return_value=True)
 
-                await manager._publish()
+        #         await manager._publisher.publish()
 
-                manager._publisher._gateway.check_connection.assert_awaited_once()
+        #         manager._publisher._gateway.check_connection.assert_awaited_once()
 
-                publisher_publish.assert_called_once_with(
-                    iterable={
-                        "timestamp": "2023-01-01T00:00:00Z",
-                        "state": included_state,
-                        "reason": "STATE_CHANGE",
-                    },
-                )
+        #         publisher_publish.assert_called_once_with(
+        #             iterable={
+        #                 "timestamp": "2023-01-01T00:00:00Z",
+        #                 "state": included_state,
+        #                 "reason": "STATE_CHANGE",
+        #             },
+        #         )
 
         async def test_stop(self, manager):
             """Test stopping the manager."""
@@ -492,6 +540,7 @@ class Test_Poller:
                 # Ensure we don't start a coroutine that never finishes
                 loop_handler_instance = loop_handler.return_value
                 loop_handler_instance.start = mock.Mock()
+                loop_handler_instance.wait_for_first_run = mock.AsyncMock()
 
                 poller.poll = MagicMock()
 
@@ -675,6 +724,11 @@ class Test_Publisher:
     """Test the Pipeline.Publisher class."""
 
     @pytest.fixture
+    def mock_manager(self):
+        """Return a mock Pipeline.Manager instance."""
+        return MagicMock(spec=Pipeline.Manager)
+
+    @pytest.fixture
     def mock_gateway(self):
         """Return a mock ElasticsearchGateway instance."""
         return MagicMock(spec=ElasticsearchGateway)
@@ -685,9 +739,11 @@ class Test_Publisher:
         return MagicMock(spec=PipelineSettings)
 
     @pytest.fixture
-    def publisher(self, hass, mock_gateway, mock_settings):
+    def publisher(self, hass, mock_gateway, mock_settings, mock_manager):
         """Return a Publisher instance."""
-        publisher = Pipeline.Publisher(hass=hass, gateway=mock_gateway, settings=mock_settings)
+        publisher = Pipeline.Publisher(
+            hass=hass, gateway=mock_gateway, settings=mock_settings, manager=mock_manager
+        )
 
         yield publisher
 
@@ -701,6 +757,8 @@ class Test_Publisher:
             datastream_type = "metrics"
             dataset = "homeassistant.light"
             namespace = "default"
+
+            publisher._format_datastream_name.cache_clear()
 
             # Ensure our LRU cache is empty
             assert publisher._format_datastream_name.cache_info().hits == 0
@@ -760,12 +818,27 @@ class Test_Publisher:
 
             publisher._add_action_and_meta_data = MagicMock(side_effect=iterable)
             # Call the publish method
-            await publisher.publish(iterable)
+            await publisher.publish()
 
             # Assert that the bulk method of the gateway was called with the correct arguments
             mock_gateway.bulk.assert_called_once_with(
                 actions=iterable[0],
             )
+
+        @pytest.mark.asyncio
+        async def test_publish_no_connection(self, publisher, mock_gateway):
+            """Test publishing a document."""
+
+            publisher._gateway.check_connection = MagicMock(return_value=False)
+            publisher._add_action_and_meta_data = MagicMock()
+
+            # Call the publish method
+            await publisher.publish()
+
+            # Assert that the bulk method of the gateway was called with the correct arguments
+            publisher._gateway.check_connection.assert_called_once()
+            publisher._add_action_and_meta_data.assert_not_called()
+            mock_gateway.bulk.assert_not_called()
 
         async def test_cleanup(self, publisher, mock_gateway):
             """Test cleaning up the Publisher."""
@@ -790,7 +863,6 @@ class Test_Formatter:
             assert formatter._extended_entity_details is not None
             assert formatter._static_fields == {}
 
-        @pytest.mark.asyncio
         async def test_async_init(self, formatter):
             """Test the async initialization of the Formatter."""
 

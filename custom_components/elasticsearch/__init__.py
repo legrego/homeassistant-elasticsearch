@@ -25,7 +25,7 @@ from custom_components.elasticsearch.logger import (
 
 from .es_integration import ElasticIntegration
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from homeassistant.core import HomeAssistant
 
 type ElasticIntegrationConfigEntry = ConfigEntry[ElasticIntegration]

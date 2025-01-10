@@ -127,7 +127,8 @@ TEST_ENTITY_OBJECT_ID_4 = "entity_object_id_4"
 TEST_ENTITY_OBJECT_ID_5 = "entity_object_id_5"
 
 
-TEST_CONFIG_ENTRY_DATA_URL = "http://mock_es_integration:9200"
+TEST_CONFIG_ENTRY_DATA_URL = "https://mock_es_integration:9200"
+TEST_CONFIG_ENTRY_DATA_URL_INSECURE = "http://mock_es_integration:9200"
 TEST_CONFIG_ENTRY_DATA_USERNAME = "hass_writer"
 TEST_CONFIG_ENTRY_DATA_PASSWORD = "changeme"
 TEST_CONFIG_ENTRY_DATA_TIMEOUT = 30
@@ -160,6 +161,18 @@ TEST_CONFIG_ENTRY_DEFAULT_OPTIONS = {
     CONF_TAGS: [],
     CONF_POLLING_FREQUENCY: 60,
     CONF_PUBLISH_FREQUENCY: 60,
+    CONF_INCLUDE_TARGETS: False,
+    CONF_EXCLUDE_TARGETS: False,
+    CONF_TARGETS_TO_INCLUDE: {},
+    CONF_TARGETS_TO_EXCLUDE: {},
+}
+
+TEST_CONFIG_ENTRY_FAST_PUBLISH_OPTIONS = {
+    CONF_CHANGE_DETECTION_ENABLED: True,
+    CONF_CHANGE_DETECTION_TYPE: [StateChangeType.STATE.value, StateChangeType.ATTRIBUTE.value],
+    CONF_TAGS: [],
+    CONF_POLLING_FREQUENCY: 2,
+    CONF_PUBLISH_FREQUENCY: 2,
     CONF_INCLUDE_TARGETS: False,
     CONF_EXCLUDE_TARGETS: False,
     CONF_TARGETS_TO_INCLUDE: {},
@@ -229,6 +242,21 @@ MOCK_LOCATION_DEVICE = {
     "lat": 44.0,
     "lon": 44.0,
 }
+
+XPACK_USAGE_SERVERLESS_RESPONSE_BODY = {
+    "error": {
+        "root_cause": [
+            {
+                "type": "api_not_available_exception",
+                "reason": "Request for uri [/_xpack/usage?pretty=true] with method [GET] exists but is not available when running in serverless mode",
+            }
+        ],
+        "type": "api_not_available_exception",
+        "reason": "Request for uri [/_xpack/usage?pretty=true] with method [GET] exists but is not available when running in serverless mode",
+    },
+    "status": 410,
+}
+
 
 CLUSTER_INFO_MISSING_CREDENTIALS_RESPONSE_BODY = {
     "error": {
@@ -312,6 +340,22 @@ CLUSTER_INFO_8DOT11_RESPONSE_BODY = {
     "tagline": "You Know, for Search",
 }
 
+CLUSTER_INFO_8DOT17_RESPONSE_BODY = {
+    "name": "640dcce4be79",
+    "cluster_name": "docker-cluster",
+    "cluster_uuid": "R-PPqCZYQTCMvkpGcyL4mA",
+    "version": {
+        "number": "8.17.0",
+        "build_flavor": "default",
+        "build_type": "docker",
+        "build_hash": "d9ec3fa628c7b0ba3d25692e277ba26814820b20",
+        "build_date": "2023-11-04T10:04:57.184859352Z",
+        "build_snapshot": False,
+        "lucene_version": "9.8.0",
+        "minimum_wire_compatibility_version": "7.17.0",
+        "minimum_index_compatibility_version": "7.0.0",
+    },
+}
 CLUSTER_INFO_8DOT14_RESPONSE_BODY = {
     "name": "640dcce4be79",
     "cluster_name": "docker-cluster",
