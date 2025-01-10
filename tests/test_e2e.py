@@ -205,7 +205,7 @@ class Test_Common_e2e:
             assert config_entry.state is ConfigEntryState.SETUP_RETRY
             assert (
                 config_entry.reason
-                == "Error retrieving cluster info from Elasticsearch. Error connecting to Elasticsearch: 500"
+                == "Error retrieving cluster info from Elasticsearch. Error in request to Elasticsearch: 500"
             )
 
         async def test_setup_server_timeout(

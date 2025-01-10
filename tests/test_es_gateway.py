@@ -505,6 +505,121 @@ class Test_Exception_Conversion:
         await gateway.stop()
 
     @pytest.mark.parametrize(
+        ("exception", "expected_exception", "message"),
+        [
+            (
+                elasticsearch8.TransportError(message="Test Case"),
+                CannotConnect,
+                "Unknown transport error connecting to Elasticsearch",
+            ),
+            (
+                elasticsearch8.AuthenticationException(message="Test Case", meta=MagicMock(), body=None),
+                AuthenticationRequired,
+                "Authentication error connecting to Elasticsearch",
+            ),
+            (
+                elasticsearch8.AuthorizationException(message="Test Case", meta=MagicMock(), body=None),
+                InsufficientPrivileges,
+                "Authorization error connecting to Elasticsearch",
+            ),
+            (
+                elasticsearch8.ConnectionTimeout(message="Test Case"),
+                CannotConnect,
+                "Connection timeout connecting to Elasticsearch",
+            ),
+            (
+                elasticsearch8.SSLError(message="Test Case"),
+                UntrustedCertificate,
+                "Could not complete TLS Handshake",
+            ),
+            (
+                elasticsearch8.ConnectionError(message="Test Case"),
+                CannotConnect,
+                "Error connecting to Elasticsearch",
+            ),
+            (
+                elasticsearch8.ApiError(
+                    message="Test Case",
+                    meta=mock_api_response_meta(status_code=None),  # type: ignore [arg-type]
+                    body=None,
+                ),
+                ServerError,
+                "Unknown API Error in request to Elasticsearch",
+            ),
+            (
+                elasticsearch8.ApiError(
+                    message="Test Case", meta=mock_api_response_meta(status_code=400), body=None
+                ),
+                ServerError,
+                "Error in request to Elasticsearch",
+            ),
+            (Exception(), Exception, ""),
+        ],
+        ids=[
+            "TransportError to CannotConnect",
+            "AuthenticationException to AuthenticationRequired",
+            "AuthorizationException to InsufficientPrivileges",
+            "ConnectionTimeout to CannotConnect",
+            "SSLError to UntrustedCertificate",
+            "ConnectionError to CannotConnect",
+            "ApiError to CannotConnect",
+            "ApiError(404) to ServerError",
+            "Exception to Exception",
+        ],
+    )
+    async def test_error_conversion_bulk_index_error(self, gateway, exception, expected_exception, message):
+        """Test the error converter handling of a bulk index error."""
+        with pytest.raises(expected_exception, match=message), gateway._error_converter():
+            raise exception
+
+    # async def test_error_conversion_unsupported_product_error(gateway):
+    #     with pytest.raises(CannotConnect, match="Unsupported product error connecting to Elasticsearch"):
+    #         with gateway._error_converter():
+    #             raise elasticsearch8.UnsupportedProductError("Error")
+
+    # async def test_error_conversion_authentication_exception(gateway):
+    #     with pytest.raises(AuthenticationRequired, match="Authentication error connecting to Elasticsearch"):
+    #         with gateway._error_converter():
+    #             raise elasticsearch8.AuthenticationException("Error")
+
+    # async def test_error_conversion_authorization_exception(gateway):
+    #     with pytest.raises(InsufficientPrivileges, match="Authorization error connecting to Elasticsearch"):
+    #         with gateway._error_converter():
+    #             raise elasticsearch8.AuthorizationException("Error")
+
+    # async def test_error_conversion_connection_timeout(gateway):
+    #     with pytest.raises(ServerError, match="Connection timeout connecting to Elasticsearch"):
+    #         with gateway._error_converter():
+    #             raise elasticsearch8.ConnectionTimeout("Error")
+
+    # async def test_error_conversion_ssl_error(gateway):
+    #     with pytest.raises(UntrustedCertificate, match="Could not complete TLS Handshake"):
+    #         with gateway._error_converter():
+    #             raise elasticsearch8.SSLError("Error")
+
+    # async def test_error_conversion_connection_error(gateway):
+    #     with pytest.raises(CannotConnect, match="Error connecting to Elasticsearch"):
+    #         with gateway._error_converter():
+    #             raise elasticsearch8.ConnectionError("Error")
+
+    # async def test_error_conversion_transport_error(gateway):
+    #     with pytest.raises(CannotConnect, match="Unknown transport error connecting to Elasticsearch"):
+    #         with gateway._error_converter():
+    #             raise elasticsearch8.TransportError("Error")
+
+    # async def test_error_conversion_api_error(gateway):
+    #     with pytest.raises(CannotConnect, match="Unknown API Error connecting to Elasticsearch"):
+    #         with gateway._error_converter():
+    #             raise elasticsearch8.ApiError("Error")
+
+    # async def test_error_conversion_unexpected_exception(gateway):
+    #     with patch("custom_components.elasticsearch.es_gateway_8.BASE_LOGGER") as mock_logger:
+    #         with pytest.raises(Exception):
+    #             with gateway._error_converter():
+    #                 raise Exception("Unexpected error")
+    #         mock_logger.exception.assert_called_once_with("Unknown and unexpected exception occurred.")
+
+    @pytest.mark.parametrize(
         ("status_code", "expected_exception"),
         [
             (404, CannotConnect),

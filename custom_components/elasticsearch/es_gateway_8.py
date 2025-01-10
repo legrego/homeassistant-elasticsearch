@@ -353,10 +353,12 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
             ) from err
 
         except elasticsearch8.ApiError as err:
-            message = append_msg("Unknown API Error connecting to Elasticsearch")
-            if hasattr(err, "status_code"):
-                message = append_msg(f"Error connecting to Elasticsearch: {err.status_code}")
-            raise CannotConnect(append_root_cause(err, message)) from err
+            if err.status_code is not None:
+                raise ServerError(
+                    append_msg(f"Error in request to Elasticsearch: {err.status_code}")
+                ) from err
+            else:
+                raise ServerError(append_msg("Unknown API Error in request to Elasticsearch")) from err
 
         except Exception:
             BASE_LOGGER.exception("Unknown and unexpected exception occurred.")
