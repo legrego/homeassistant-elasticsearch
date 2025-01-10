@@ -191,6 +191,7 @@ def es_aioclient_mock():
     with mock_es_aiohttp_client() as mock_session:
         yield mock_session
 
+
 def self_signed_tls_error():
     """Return a self-signed certificate error."""
     connection_key = MagicMock()
@@ -206,11 +207,9 @@ def self_signed_tls_error():
     certificate_error.strerror = "[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signed certificate in certificate chain (_ssl.c:1000)"
     certificate_error.errno = 1
 
-    ssl_exception = client_exceptions.ClientConnectorCertificateError(
+    return client_exceptions.ClientConnectorCertificateError(
         connection_key=connection_key, certificate_error=certificate_error
     )
-
-    return ssl_exception
 
 
 class es_mocker:
@@ -241,8 +240,11 @@ class es_mocker:
 
         return self
 
-    def with_server_error(self, status, exc=None):
+    def with_server_error(self, status=None, exc=None):
         """Mock Elasticsearch being unreachable."""
+        if status is None and exc is None:
+            self.mocker.get(f"{const.TEST_CONFIG_ENTRY_DATA_URL}", status=HTTPStatus.INTERNAL_SERVER_ERROR)
+
         if exc is None:
             self.mocker.get(f"{const.TEST_CONFIG_ENTRY_DATA_URL}", status=status)
         else:
@@ -330,6 +332,18 @@ class es_mocker:
         """Mock Elasticsearch 8.14."""
 
         return self._as_elasticsearch_stateful(const.CLUSTER_INFO_8DOT14_RESPONSE_BODY, with_security)
+
+    def as_fake_elasticsearch(self) -> es_mocker:
+        """Mock a fake elasticsearch node response."""
+
+        self.mocker.get(
+            f"{self.base_url}",
+            status=200,
+            # No x-elastic-product header
+            json=const.CLUSTER_INFO_8DOT14_RESPONSE_BODY,
+        )
+
+        return self
 
     def as_elasticsearch_serverless(self) -> es_mocker:
         """Mock Elasticsearch version."""
@@ -514,7 +528,7 @@ async def add_to_hass() -> bool:
 
 
 @pytest.fixture(autouse=True)
-async def fix_location(hass: HomeAssistant):
+async def _fix_location(hass: HomeAssistant):
     """Return whether to fix the location."""
 
     hass.config.latitude = 1.0

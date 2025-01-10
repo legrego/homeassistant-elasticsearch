@@ -174,6 +174,23 @@ class Test_Common_e2e:
             assert config_entry.state is ConfigEntryState.SETUP_ERROR
             assert config_entry.reason == "could not authenticate"
 
+        async def test_setup_fake_elasticsearch_error(
+            self, hass: HomeAssistant, integration_setup, es_mock_builder, config_entry
+        ):
+            """Test the scenario where we are not connecting to an authentic Elasticsearch endpoint."""
+
+            es_mock_builder.as_fake_elasticsearch()
+
+            assert await integration_setup() is False
+
+            assert config_entry.version == ElasticFlowHandler.VERSION
+
+            assert config_entry.state is ConfigEntryState.SETUP_RETRY
+            assert (
+                config_entry.reason
+                == "Error retrieving cluster info from Elasticsearch. Unsupported product error connecting to Elasticsearch"
+            )
+
         async def test_setup_server_error(
             self, hass: HomeAssistant, integration_setup, es_mock_builder, config_entry
         ):

@@ -3,6 +3,7 @@
 
 import os
 import ssl
+from ssl import SSLCertVerificationError
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
@@ -32,6 +33,26 @@ from tests.const import (
     CLUSTER_INFO_8DOT14_RESPONSE_BODY,
     TEST_CONFIG_ENTRY_DATA_URL,
 )
+
+
+def self_signed_tls_error():
+    """Return a self-signed certificate error."""
+    connection_key = MagicMock()
+    connection_key.host = "mock_es_integration"
+    connection_key.port = 9200
+    connection_key.is_ssl = True
+
+    certificate_error = SSLCertVerificationError()
+    certificate_error.verify_code = 19
+    certificate_error.verify_message = "'self-signed certificate in certificate chain'"
+    certificate_error.library = "SSL"
+    certificate_error.reason = "CERTIFICATE_VERIFY_FAILED"
+    certificate_error.strerror = "[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signed certificate in certificate chain (_ssl.c:1000)"
+    certificate_error.errno = 1
+
+    return client_exceptions.ClientConnectorCertificateError(
+        connection_key=connection_key, certificate_error=certificate_error
+    )
 
 
 def mock_es_exception(exception, message="None"):
@@ -249,34 +270,6 @@ class Test_Init:
             with pytest.raises(CannotConnect):
                 assert await gateway_mock_client.async_init() is None
 
-    class Test_Failures:
-        """Test failure scenarios during initialization."""
-
-        @pytest.mark.asyncio
-        async def test_async_init_ssl_error(self, gateway, es_mock_builder):
-            """Test async_init when there are insufficient privileges."""
-
-            es_mock_builder.with_selfsigned_certificate()
-
-            with pytest.raises(UntrustedCertificate):
-                await gateway.async_init()
-
-        async def test_async_init_unauthorized(self, gateway: ElasticsearchGateway, es_mock_builder) -> None:
-            """Test the async_init method with unauthorized user."""
-
-            # es_mock_builder.as_elasticsearch_8_17().with_incorrect_permissions()
-            es_mock_builder.with_server_error(status=403)
-            with pytest.raises(InsufficientPrivileges):
-                assert await gateway.async_init() is None
-
-        async def test_async_init_unreachable(self, gateway: ElasticsearchGateway, es_mock_builder) -> None:
-            """Test the async_init method with unreachable Elasticsearch."""
-
-            es_mock_builder.with_server_timeout()
-
-            with pytest.raises(CannotConnect):
-                assert await gateway.async_init() is None
-
 
 class Test_Public_Functions:
     """Public function tests for the Elasticsearch Gateway."""
@@ -301,6 +294,25 @@ class Test_Public_Functions:
         await gateway.async_init()
 
         assert await gateway.ping() is True
+
+
+    async def test_ping_auth_required(
+        self, gateway: ElasticsearchGateway, es_aioclient_mock: AiohttpClientMocker
+    ) -> None:
+        """Test the ping method."""
+        temp = gateway.ping
+        gateway.ping = AsyncMock(return_value=True)
+        gateway.has_security = AsyncMock(return_value=True)
+        gateway._has_required_privileges = AsyncMock(return_value=True)
+
+        es_aioclient_mock.get(
+            f"{TEST_CONFIG_ENTRY_DATA_URL}/",
+            status=403,
+        )
+
+        gateway.ping = temp
+
+        assert await gateway.ping() is False
 
     async def test_ping_fail(
         self, gateway: ElasticsearchGateway, es_aioclient_mock: AiohttpClientMocker
@@ -360,10 +372,10 @@ class Test_Public_Functions:
 
         assert await initialized_gateway.get_index_template("test_template") == {}
 
-    async def test_get_index_template_fail(
+    async def test_get_index_template_missing(
         self, initialized_gateway: ElasticsearchGateway, es_aioclient_mock: AiohttpClientMocker
     ) -> None:
-        """Test the get_index_template method."""
+        """Test the get_index_template method when the template is missing."""
 
         es_aioclient_mock.get(
             f"{TEST_CONFIG_ENTRY_DATA_URL}/_index_template/test_template",
@@ -372,22 +384,6 @@ class Test_Public_Functions:
         )
 
         assert await initialized_gateway.get_index_template("test_template", ignore=[404]) == {}
-
-    async def test_get_index_template_exception(
-        self,
-        initialized_gateway: ElasticsearchGateway,
-        es_aioclient_mock: AiohttpClientMocker,
-        cannot_connect_error,
-    ) -> None:
-        """Test the get_index_template method."""
-        es_aioclient_mock.get(
-            f"{TEST_CONFIG_ENTRY_DATA_URL}/_index_template/test_template",
-            exc=cannot_connect_error,
-        )
-
-        # type of cannot_connect_error
-        with pytest.raises(CannotConnect):
-            await initialized_gateway.get_index_template("test_template")
 
     async def test_put_index_template(
         self, initialized_gateway: ElasticsearchGateway, es_aioclient_mock: AiohttpClientMocker
@@ -486,8 +482,30 @@ class Test_Connection_Test:
 class Test_Exception_Conversion:
     """Test the conversion of Elasticsearch exceptions to custom exceptions."""
 
+    @pytest.fixture
+    def gateway_settings(self) -> Gateway8Settings:
+        """Return a Gateway8Settings instance."""
+        return Gateway8Settings(
+            url=const.TEST_CONFIG_ENTRY_DATA_URL,
+            username="username",
+            password="password",
+            verify_certs=True,
+            ca_certs=None,
+            request_timeout=30,
+            minimum_version=None,
+        )
+
+    @pytest.fixture
+    async def gateway(self, gateway_settings, mock_elasticsearch_client):
+        """Return a mock Elasticsearch client."""
+        gateway = Elasticsearch8Gateway(gateway_settings=gateway_settings)
+
+        yield gateway
+
+        await gateway.stop()
+
     @pytest.mark.parametrize(
-        ("status_code", "expected_response"),
+        ("status_code", "expected_exception"),
         [
             (404, CannotConnect),
             (401, AuthenticationRequired),
@@ -496,46 +514,29 @@ class Test_Exception_Conversion:
             (400, CannotConnect),
             (502, CannotConnect),
             (503, CannotConnect),
-            (200, None),
         ],
         ids=[
             "404 to CannotConnect",
             "401 to AuthenticationRequired",
             "403 to InsufficientPrivileges",
-            "500 to ServerError",
-            "400 to ClientError",
+            "500 to CannotConnect",
+            "400 to CannotConnect",
             "502 to CannotConnect",
             "503 to CannotConnect",
-            "200 to None",
         ],
     )
-    async def test_simple_return_codes(
+    async def test_http_error_codes(
         self,
         gateway: ElasticsearchGateway,
-        es_aioclient_mock,
+        es_mock_builder,
         status_code: int,
-        expected_response: Any,
+        expected_exception: Any,
     ) -> None:
         """Test the error converter."""
-        temp = gateway.info
-        gateway.info = AsyncMock(return_value=CLUSTER_INFO_8DOT14_RESPONSE_BODY)
-        gateway.has_security = AsyncMock(return_value=True)
-        gateway._has_required_privileges = AsyncMock(return_value=True)
-        await gateway.async_init()
-        gateway.info = temp
+        es_mock_builder.with_server_error(status=status_code)
 
-        es_aioclient_mock.get(
-            f"{TEST_CONFIG_ENTRY_DATA_URL}",
-            status=status_code,
-            json=CLUSTER_INFO_8DOT14_RESPONSE_BODY,
-            headers={"x-elastic-product": "Elasticsearch"},
-        )
-
-        if expected_response is None:
-            assert await gateway.info() == CLUSTER_INFO_8DOT14_RESPONSE_BODY
-        else:
-            with pytest.raises(expected_response):
-                await gateway.info()
+        with pytest.raises(expected_exception):
+            await gateway.info()
 
     @pytest.mark.parametrize(
         ("aiohttp_exception", "expected_exception"),
@@ -543,49 +544,41 @@ class Test_Exception_Conversion:
             (client_exceptions.ServerConnectionError(), CannotConnect),
             # child exceptions of ServerConnectionError
             (
-                client_exceptions.ServerFingerprintMismatch(expected=b"", got=b"", host="host", port=0),
+                client_exceptions.ServerFingerprintMismatch(
+                    expected=b"expected", got=b"actual", host="host", port=9200
+                ),
                 CannotConnect,
             ),
             (client_exceptions.ServerDisconnectedError(), CannotConnect),
             (client_exceptions.ServerTimeoutError(), CannotConnect),
-            # (client_exceptions.ClientError(), ClientError),
+            (client_exceptions.ClientError(), CannotConnect),
             # child exceptions of ClientError
-            # (client_exceptions.ClientResponseError(), ClientError),
+            (
+                client_exceptions.ClientResponseError(request_info=MagicMock(), history=MagicMock()),
+                CannotConnect,
+            ),
             (client_exceptions.ClientPayloadError(), CannotConnect),
             (client_exceptions.ClientConnectionError(), CannotConnect),
-            # child exceptions of ClientConnectionError
-            # (
-            #     client_exceptions.ClientSSLError(connection_key=MagicMock(), os_error=Exception("AHHHHH")),
-            #     SSLError,
-            # ),
-            # child exceptions of ClientSSLError
-            # (client_exceptions.ClientConnectorSSLError(), SSLError),
+            (self_signed_tls_error(), UntrustedCertificate),
         ],
         ids=[
             "ServerConnectionError to CannotConnect",
             "ServerFingerprintMismatch to CannotConnect",
             "ServerDisconnectedError to CannotConnect",
             "ServerTimeoutError to CannotConnect",
-            # "ClientError to ClientError",
-            # "ClientResponseError to ClientError",
+            "ClientError to CannotConnect",
+            "ClientResponseError to CannotConnect",
             "ClientPayloadError to CannotConnect",
             "ClientConnectionError to CannotConnect",
-            # "ClientSSLError to SSLConnectionError",
-            # "ClientConnectorSSLError to CannotConnect",
+            "SSLCertVerificationError to UntrustedCertificate",
         ],
     )
-    async def test_simple_web_exceptions(
-        self, aiohttp_exception, expected_exception, es_aioclient_mock, gateway
+    async def test_aiohttp_web_exceptions(
+        self, aiohttp_exception, expected_exception, gateway, es_mock_builder
     ) -> None:
         """Test the error converter."""
-        temp = gateway.info
-        gateway.info = AsyncMock(return_value=CLUSTER_INFO_8DOT14_RESPONSE_BODY)
-        gateway.has_security = AsyncMock(return_value=True)
-        gateway._has_required_privileges = AsyncMock(return_value=True)
-        await gateway.async_init()
-        gateway.info = temp
 
-        es_aioclient_mock.get(f"{TEST_CONFIG_ENTRY_DATA_URL}", exc=aiohttp_exception)
+        es_mock_builder.with_server_error(exc=aiohttp_exception)
 
         with pytest.raises(expected_exception):
             await gateway.info()
