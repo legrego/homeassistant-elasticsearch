@@ -200,12 +200,12 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
         return False
 
     @async_log_enter_exit_debug
-    async def has_privileges(self, privileges) -> dict:
+    async def has_privileges(self, privileges) -> bool:
         """Check if the user has the required privileges."""
         with self._error_converter(msg="Error checking user privileges"):
             response = await self.client.security.has_privileges(**privileges)
 
-        return self._convert_response(response)
+        return self._convert_response(response).get("has_all_requested", False)
 
     @async_log_enter_exit_debug
     async def get_index_template(self, name, ignore: list[int] | None = None) -> dict:

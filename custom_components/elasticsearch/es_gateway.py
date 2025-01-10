@@ -70,7 +70,7 @@ class ElasticsearchGateway(ABC):
             raise UnsupportedVersion(msg)
 
         # Check minimum privileges
-        if await self.has_security() and not await self._has_required_privileges():
+        if await self.has_security() and not await self.has_privileges(self.settings.minimum_privileges):
             raise InsufficientPrivileges
 
     @property
@@ -148,7 +148,7 @@ class ElasticsearchGateway(ABC):
         """Check if the cluster has security enabled."""
 
     @abstractmethod
-    async def has_privileges(self, privileges) -> dict:
+    async def has_privileges(self, privileges) -> bool:
         """Check if the user has the specified privileges."""
 
     @abstractmethod
@@ -202,9 +202,3 @@ class ElasticsearchGateway(ABC):
         return (
             current_major > minimum_major or current_major == minimum_major and current_minor >= minimum_minor
         )
-
-    async def _has_required_privileges(self) -> bool:
-        """Check if the user has the required privileges."""
-        response = await self.has_privileges(privileges=self.settings.minimum_privileges)
-
-        return response.get("has_all_requested", False)
