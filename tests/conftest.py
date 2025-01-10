@@ -252,6 +252,15 @@ class es_mocker:
 
         return self
 
+    def without_authentication(self):
+        """Mock the user not being authenticated."""
+        self.mocker.get(
+            f"{const.TEST_CONFIG_ENTRY_DATA_URL}",
+            status=401,
+            json=const.CLUSTER_INFO_MISSING_CREDENTIALS_RESPONSE_BODY,
+        )
+        return self
+
     def with_server_timeout(self):
         """Mock Elasticsearch being unreachable."""
         self.mocker.get(f"{const.TEST_CONFIG_ENTRY_DATA_URL}", exc=client_exceptions.ServerTimeoutError())
@@ -357,7 +366,9 @@ class es_mocker:
             headers={"x-elastic-product": "Elasticsearch"},
         )
 
-        self.mocker.get(url=f"{self.base_url}/_xpack/usage", status=401)
+        self.mocker.get(
+            url=f"{self.base_url}/_xpack/usage", status=410, json=const.XPACK_USAGE_SERVERLESS_RESPONSE_BODY
+        )
 
         return self
 
@@ -450,13 +461,31 @@ class es_mocker:
             f"{self.base_url}/_data_stream/metrics-homeassistant.counter-default/_rollover",
             status=200,
             headers={"x-elastic-product": "Elasticsearch"},
-            json={},
+            json={
+                "acknowledged": True,
+                "shards_acknowledged": True,
+                "old_index": ".ds-metrics-homeassistant.counter-default-2024.12.19-000001",
+                "new_index": ".ds-metrics-homeassistant.counter-default-2025.01.10-000002",
+                "rolled_over": True,
+                "dry_run": False,
+                "lazy": False,
+                "conditions": {},
+            },
         )
         self.mocker.put(
             f"{self.base_url}/_data_stream/metrics-homeassistant.sensor-default/_rollover",
             status=200,
             headers={"x-elastic-product": "Elasticsearch"},
-            json={},
+            json={
+                "acknowledged": True,
+                "shards_acknowledged": True,
+                "old_index": ".ds-metrics-homeassistant.sensor-default-2024.12.19-000001",
+                "new_index": ".ds-metrics-homeassistant.sensor-default-2025.01.10-000002",
+                "rolled_over": True,
+                "dry_run": False,
+                "lazy": False,
+                "conditions": {},
+            },
         )
 
         return self

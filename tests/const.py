@@ -243,6 +243,21 @@ MOCK_LOCATION_DEVICE = {
     "lon": 44.0,
 }
 
+XPACK_USAGE_SERVERLESS_RESPONSE_BODY = {
+    "error": {
+        "root_cause": [
+            {
+                "type": "api_not_available_exception",
+                "reason": "Request for uri [/_xpack/usage?pretty=true] with method [GET] exists but is not available when running in serverless mode",
+            }
+        ],
+        "type": "api_not_available_exception",
+        "reason": "Request for uri [/_xpack/usage?pretty=true] with method [GET] exists but is not available when running in serverless mode",
+    },
+    "status": 410,
+}
+
+
 CLUSTER_INFO_MISSING_CREDENTIALS_RESPONSE_BODY = {
     "error": {
         "root_cause": [

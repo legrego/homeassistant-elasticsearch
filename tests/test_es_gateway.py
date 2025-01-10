@@ -9,12 +9,16 @@ from unittest.mock import AsyncMock, MagicMock
 
 import elastic_transport
 import elasticsearch8
+import elasticsearch8.helpers
 import pytest
 from aiohttp import client_exceptions
+from custom_components.elasticsearch.const import ES_CHECK_PERMISSIONS_DATASTREAM
+from custom_components.elasticsearch.datastreams.index_template import index_template_definition
 from custom_components.elasticsearch.errors import (
     AuthenticationRequired,
     CannotConnect,
     InsufficientPrivileges,
+    ServerError,
     UnsupportedVersion,
     UntrustedCertificate,
 )
@@ -22,16 +26,15 @@ from custom_components.elasticsearch.es_gateway import (
     ElasticsearchGateway,
 )
 from custom_components.elasticsearch.es_gateway_8 import Elasticsearch8Gateway, Gateway8Settings
-from elastic_transport import BaseNode, ObjectApiResponse
+from elastic_transport import ApiResponseMeta, BaseNode, ObjectApiResponse
 from elasticsearch8._async.client import AsyncElasticsearch
-from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 from syrupy.assertion import SnapshotAssertion
 
 from tests import const
 from tests.const import (
     CLUSTER_INFO_8DOT0_RESPONSE_BODY,
     CLUSTER_INFO_8DOT14_RESPONSE_BODY,
-    TEST_CONFIG_ENTRY_DATA_URL,
+    CLUSTER_INFO_SERVERLESS_RESPONSE_BODY,
 )
 
 
@@ -52,6 +55,12 @@ def self_signed_tls_error():
 
     return client_exceptions.ClientConnectorCertificateError(
         connection_key=connection_key, certificate_error=certificate_error
+    )
+
+def mock_api_response_meta(status_code=200):
+    """Return a mock API response meta."""
+    return ApiResponseMeta(
+        status=status_code, headers=MagicMock(), http_version="1.1", duration=0.0, node=MagicMock()
     )
 
 
@@ -83,43 +92,105 @@ async def cannot_connect_error(gateway: ElasticsearchGateway):
 
 
 @pytest.fixture
-async def mock_elasticsearch_client():
+def gateway_settings() -> Gateway8Settings:
+    """Return a Gateway8Settings instance."""
+    return Gateway8Settings(
+        url=const.TEST_CONFIG_ENTRY_DATA_URL,
+        username="username",
+        password="password",
+        verify_certs=True,
+        ca_certs=None,
+        request_timeout=30,
+        minimum_version=None,
+    )
+
+
+@pytest.fixture
+async def mock_elasticsearch_client() -> MagicMock:
     """Return a mock Elasticsearch client."""
     return MagicMock(AsyncElasticsearch)
 
 
+@pytest.fixture
+async def gateway_mock_shared(gateway_settings, mock_elasticsearch_client) -> Elasticsearch8Gateway:
+    """Return a mock Elasticsearch client."""
+    gateway_settings.to_client = MagicMock(return_value=mock_elasticsearch_client)
+
+    gateway = Elasticsearch8Gateway(gateway_settings=gateway_settings)
+
+    gateway._client.options = MagicMock(return_value=gateway._client)
+
+    gateway._client.security = MagicMock()
+    gateway._client.security.has_privileges = mock_es_response({"has_all_requested": True})
+
+    gateway._client.indices = MagicMock()
+    gateway._client.indices.get_index_template = mock_es_response(
+        {
+            "index_templates": [
+                {
+                    "name": "datastream_metrics",
+                    "index_template": {"version": index_template_definition.get("version", 0)},
+                }
+            ]
+        }
+    )
+    gateway._client.indices.put_index_template = mock_es_response({})
+    gateway._client.indices.get_data_stream = mock_es_response(
+        {
+            "data_streams": [
+                {
+                    "name": "metrics-homeassistant.sensor-default",
+                },
+                {
+                    "name": "metrics-homeassistant.counter-default",
+                },
+            ]
+        }
+    )
+    gateway._client.indices.rollover = mock_es_response(
+        {
+            "acknowledged": True,
+            "shards_acknowledged": True,
+            "old_index": ".ds-metrics-homeassistant.domain-default-2024.12.19-000001",
+            "new_index": ".ds-metrics-homeassistant.domain-default-2025.01.10-000002",
+            "rolled_over": True,
+            "dry_run": False,
+            "lazy": False,
+            "conditions": {},
+        }
+    )
+
+    return gateway
+
+
+@pytest.fixture
+async def gateway_mock_stateful(gateway_mock_shared: Elasticsearch8Gateway) -> Elasticsearch8Gateway:
+    """Return a mock Elasticsearch client."""
+
+    gateway_mock_shared._client.info = mock_es_response(CLUSTER_INFO_8DOT14_RESPONSE_BODY)
+    gateway_mock_shared._client.xpack = MagicMock()
+    gateway_mock_shared._client.xpack.usage = mock_es_response(
+        {"security": {"available": True, "enabled": True}}
+    )
+    return gateway_mock_shared
+
+
+@pytest.fixture
+async def gateway_mock_serverless(gateway_mock_shared: Elasticsearch8Gateway) -> Elasticsearch8Gateway:
+    """Return a mock Elasticsearch client."""
+
+    gateway_mock_shared._client.info = mock_es_response(CLUSTER_INFO_SERVERLESS_RESPONSE_BODY)
+    gateway_mock_shared._client.xpack = MagicMock()
+
+    gateway_mock_shared._client.xpack.usage = mock_es_exception(
+        elasticsearch8.ApiError, message="api_not_available_exception"
+    )
+
+    return gateway_mock_shared
+
+
 class Test_Init:
     """Initialization tests for the Elasticsearch Gateway."""
-
-    @pytest.fixture
-    def gateway_settings(self) -> Gateway8Settings:
-        """Return a Gateway8Settings instance."""
-        return Gateway8Settings(
-            url=const.TEST_CONFIG_ENTRY_DATA_URL,
-            username="username",
-            password="password",
-            verify_certs=True,
-            ca_certs=None,
-            request_timeout=30,
-            minimum_version=None,
-        )
-
-    @pytest.fixture
-    async def gateway_mock_client(self, gateway_settings, mock_elasticsearch_client):
-        """Return a mock Elasticsearch client."""
-        gateway_settings.to_client = MagicMock(return_value=mock_elasticsearch_client)
-
-        gateway = Elasticsearch8Gateway(gateway_settings=gateway_settings)
-
-        gateway._client.info = mock_es_response(CLUSTER_INFO_8DOT14_RESPONSE_BODY)
-
-        gateway._client.security = MagicMock()
-        gateway._client.security.has_privileges = mock_es_response({"has_all_requested": True})
-
-        gateway._client.xpack = MagicMock()
-        gateway._client.xpack.usage = mock_es_response({"security": {"available": True, "enabled": True}})
-
-        return gateway
 
     @pytest.fixture
     async def gateway(self, gateway_settings):
@@ -224,185 +295,178 @@ class Test_Init:
 
             assert snapshot.num_executions == 1
 
-        async def test_async_init(self, gateway_mock_client) -> None:
+        async def test_async_init(self, gateway_mock_stateful) -> None:
             """Test the async initialization with proper permissions on a supported version."""
 
-            assert await gateway_mock_client.async_init() is None
+            assert await gateway_mock_stateful.async_init() is None
 
-        async def test_async_init_unsupported_version(self, gateway_mock_client) -> None:
+        async def test_async_init_unsupported_version(self, gateway_mock_stateful) -> None:
             """Test the async_init method when the target cluster is running an unsupported version."""
 
-            gateway_mock_client._client.info = mock_es_response(CLUSTER_INFO_8DOT0_RESPONSE_BODY)
+            gateway_mock_stateful._client.info = mock_es_response(CLUSTER_INFO_8DOT0_RESPONSE_BODY)
 
             with pytest.raises(UnsupportedVersion):
-                assert await gateway_mock_client.async_init() is None
+                assert await gateway_mock_stateful.async_init() is None
 
-        async def test_async_init_unauthenticated(self, gateway_mock_client) -> None:
+        async def test_async_init_unauthenticated(self, gateway_mock_stateful) -> None:
             """Test the async_init method with an unauthenticated session."""
 
-            gateway_mock_client._client.info = mock_es_exception(elasticsearch8.AuthenticationException)
+            gateway_mock_stateful._client.info = mock_es_exception(elasticsearch8.AuthenticationException)
 
             with pytest.raises(AuthenticationRequired):
-                await gateway_mock_client.async_init()
+                await gateway_mock_stateful.async_init()
 
         @pytest.mark.asyncio
-        async def test_async_init_ssl_error(self, gateway_mock_client):
+        async def test_async_init_ssl_error(self, gateway_mock_stateful):
             """Test async_init when there is a TLS Certificate issue."""
 
-            gateway_mock_client._client.info = mock_es_exception(elastic_transport.TlsError)
+            gateway_mock_stateful._client.info = mock_es_exception(elastic_transport.TlsError)
 
             with pytest.raises(UntrustedCertificate):
-                await gateway_mock_client.async_init()
+                await gateway_mock_stateful.async_init()
 
-        async def test_async_init_unauthorized(self, gateway_mock_client) -> None:
+        async def test_async_init_unauthorized(self, gateway_mock_stateful) -> None:
             """Test the async_init method unauthorized."""
 
-            gateway_mock_client._client.info = mock_es_exception(elasticsearch8.AuthorizationException)
+            gateway_mock_stateful._client.info = mock_es_exception(elasticsearch8.AuthorizationException)
 
             with pytest.raises(InsufficientPrivileges):
-                assert await gateway_mock_client.async_init() is None
+                assert await gateway_mock_stateful.async_init() is None
 
-        async def test_async_init_unreachable(self, gateway_mock_client) -> None:
+        async def test_async_init_unreachable(self, gateway_mock_stateful) -> None:
             """Test the async_init method with unreachable Elasticsearch."""
 
-            gateway_mock_client._client.info = mock_es_exception(elasticsearch8.ConnectionTimeout)
+            gateway_mock_stateful._client.info = mock_es_exception(elasticsearch8.ConnectionTimeout)
 
             with pytest.raises(CannotConnect):
-                assert await gateway_mock_client.async_init() is None
+                assert await gateway_mock_stateful.async_init() is None
 
 
 class Test_Public_Functions:
     """Public function tests for the Elasticsearch Gateway."""
 
-    async def test_ping(self, gateway: ElasticsearchGateway, es_aioclient_mock: AiohttpClientMocker) -> None:
+    async def test_ping(self, gateway_mock_stateful) -> None:
         """Test the ping method."""
+        assert await gateway_mock_stateful.ping() is True
 
-        temp = gateway.ping
-        gateway.ping = AsyncMock(return_value=True)
-        gateway.has_security = AsyncMock(return_value=True)
-        gateway._has_required_privileges = AsyncMock(return_value=True)
-
-        es_aioclient_mock.get(
-            f"{TEST_CONFIG_ENTRY_DATA_URL}",
-            status=200,
-            json=CLUSTER_INFO_8DOT14_RESPONSE_BODY,
-            headers={"x-elastic-product": "Elasticsearch"},
-        )
-
-        gateway.ping = temp
-
-        await gateway.async_init()
-
-        assert await gateway.ping() is True
-
-
-    async def test_ping_auth_required(
-        self, gateway: ElasticsearchGateway, es_aioclient_mock: AiohttpClientMocker
-    ) -> None:
+    async def test_ping_fail(self, gateway_mock_stateful) -> None:
         """Test the ping method."""
-        temp = gateway.ping
-        gateway.ping = AsyncMock(return_value=True)
-        gateway.has_security = AsyncMock(return_value=True)
-        gateway._has_required_privileges = AsyncMock(return_value=True)
+        gateway_mock_stateful._client.info = mock_es_exception(elasticsearch8.AuthenticationException)
+        with pytest.raises(AuthenticationRequired):
+            await gateway_mock_stateful.ping()
 
-        es_aioclient_mock.get(
-            f"{TEST_CONFIG_ENTRY_DATA_URL}/",
-            status=403,
+        gateway_mock_stateful._client.info = mock_es_exception(elasticsearch8.AuthorizationException)
+        with pytest.raises(AuthenticationRequired):
+            await gateway_mock_stateful.ping()
+
+        gateway_mock_stateful._client.info = mock_es_exception(elasticsearch8.ConnectionTimeout)
+        assert await gateway_mock_stateful.ping() is False
+
+    async def test_has_security_stateful_success(self, gateway_mock_stateful):
+        """Test the has_security method."""
+
+        assert await gateway_mock_stateful.has_security() is True
+
+        gateway_mock_stateful._client.info.assert_called_once()
+        gateway_mock_stateful._client.xpack.usage.assert_called_once()
+
+    async def test_has_security_stateful_missing(self, gateway_mock_stateful) -> None:
+        """Test the has_security method."""
+
+        gateway_mock_stateful._client.xpack.usage = mock_es_response(
+            {"other_feature": {"available": False, "enabled": False}}
         )
 
-        gateway.ping = temp
+        assert await gateway_mock_stateful.has_security() is False
 
-        assert await gateway.ping() is False
+        gateway_mock_stateful._client.info.assert_called_once()
+        gateway_mock_stateful._client.xpack.usage.assert_called_once()
 
-    async def test_ping_fail(
-        self, gateway: ElasticsearchGateway, es_aioclient_mock: AiohttpClientMocker
-    ) -> None:
-        """Test the ping method."""
-        temp = gateway.ping
-        gateway.ping = AsyncMock(return_value=True)
-        gateway.has_security = AsyncMock(return_value=True)
-        gateway._has_required_privileges = AsyncMock(return_value=True)
+    async def test_has_security_stateful_failure(self, gateway_mock_stateful) -> None:
+        """Test the has_security method."""
 
-        es_aioclient_mock.get(
-            f"{TEST_CONFIG_ENTRY_DATA_URL}/",
-            exc=Exception,
+        gateway_mock_stateful._client.xpack.usage = mock_es_response(
+            {"security": {"available": False, "enabled": False}}
         )
 
-        gateway.ping = temp
+        assert await gateway_mock_stateful.has_security() is False
 
-        assert await gateway.ping() is False
+        gateway_mock_stateful._client.info.assert_called_once()
+        gateway_mock_stateful._client.xpack.usage.assert_called_once()
 
-    async def test_has_privileges(
-        self, initialized_gateway: ElasticsearchGateway, es_aioclient_mock: AiohttpClientMocker
-    ) -> None:
-        """Test the has_privileges method."""
+    async def test_has_security_serverless(self, gateway_mock_serverless):
+        """Test the has_security method."""
 
-        es_aioclient_mock.get(
-            url=f"{TEST_CONFIG_ENTRY_DATA_URL}/_xpack/usage",
-            json={
-                "security": {"available": True, "enabled": True},
-            },
+        assert await gateway_mock_serverless.has_security() is True
+
+        gateway_mock_serverless._client.info.assert_called_once()
+        gateway_mock_serverless._client.xpack.usage.assert_not_called()
+
+    async def test_get_datastream(self, gateway_mock_stateful):
+        """Test the get_datastream method."""
+
+        await gateway_mock_stateful.get_datastream("metrics-homeassistant.*")
+
+        gateway_mock_stateful._client.indices.get_data_stream.assert_called_once_with(
+            name="metrics-homeassistant.*"
         )
-        es_aioclient_mock.post(
-            f"{TEST_CONFIG_ENTRY_DATA_URL}/_security/user/_has_privileges",
-            status=200,
-            json={
-                "has_all_requested": True,
-            },
+
+    async def test_rollover_datastream(self, gateway_mock_stateful):
+        """Test the get_datastream method."""
+
+        await gateway_mock_stateful.rollover_datastream("metrics-homeassistant.sensor-default")
+
+        gateway_mock_stateful._client.indices.rollover.assert_called_once_with(
+            alias="metrics-homeassistant.sensor-default"
         )
 
-        assert await initialized_gateway.has_privileges({}) == {
-            "has_all_requested": True,
-        }
+    async def test_has_privileges(self, gateway_mock_stateful):
+        """Test the has_privileges method when the underlying client returns that we do have privileges."""
+        privileges = ES_CHECK_PERMISSIONS_DATASTREAM
 
-    async def test_get_index_template(
-        self,
-        initialized_gateway: ElasticsearchGateway,
-        es_aioclient_mock: AiohttpClientMocker,
-        verify_cleanup,
-    ) -> None:
+        assert await gateway_mock_stateful.has_privileges(privileges) is True
+
+        gateway_mock_stateful._client.security.has_privileges.assert_called_once_with(**privileges)
+
+    async def test_has_privileges_false(self, gateway_mock_stateful):
+        """Test the has_privileges method when the underlying client returns that we do not have privileges."""
+        privileges = ES_CHECK_PERMISSIONS_DATASTREAM
+
+        gateway_mock_stateful._client.security.has_privileges = mock_es_response({"has_all_requested": False})
+
+        assert await gateway_mock_stateful.has_privileges(privileges) is False
+
+        gateway_mock_stateful._client.security.has_privileges.assert_called_once_with(**privileges)
+
+    async def test_get_index_template(self, gateway_mock_stateful):
         """Test the get_index_template method."""
 
-        es_aioclient_mock.get(
-            f"{TEST_CONFIG_ENTRY_DATA_URL}/_index_template/test_template",
-            status=200,
-            headers={"x-elastic-product": "Elasticsearch"},
-            json={},
+        await gateway_mock_stateful.get_index_template("datastream_metrics")
+
+        gateway_mock_stateful._client.indices.get_index_template.assert_called_once_with(
+            name="datastream_metrics"
         )
 
-        assert await initialized_gateway.get_index_template("test_template") == {}
-
-    async def test_get_index_template_missing(
-        self, initialized_gateway: ElasticsearchGateway, es_aioclient_mock: AiohttpClientMocker
-    ) -> None:
+    async def test_get_index_template_ignore_404(self, gateway_mock_stateful):
         """Test the get_index_template method when the template is missing."""
 
-        es_aioclient_mock.get(
-            f"{TEST_CONFIG_ENTRY_DATA_URL}/_index_template/test_template",
-            status=404,
-            json={},
-        )
+        gateway_mock_stateful._client.indices.get_index_template = mock_es_response({"index_templates": []})
 
-        assert await initialized_gateway.get_index_template("test_template", ignore=[404]) == {}
+        assert await gateway_mock_stateful.get_index_template("datastream_metrics", ignore=[404]) == {
+            "index_templates": []
+        }
 
-    async def test_put_index_template(
-        self, initialized_gateway: ElasticsearchGateway, es_aioclient_mock: AiohttpClientMocker
-    ) -> None:
+        gateway_mock_stateful._client.indices.get_index_template.assert_called_with(name="datastream_metrics")
+        gateway_mock_stateful._client.options.assert_called_with(ignore_status=[404])
+
+    async def test_put_index_template(self, gateway_mock_stateful):
         """Test the put_index_template method."""
 
-        es_aioclient_mock.put(
-            f"{TEST_CONFIG_ENTRY_DATA_URL}/_index_template/test_template",
-            status=200,
-            json={},
+        await gateway_mock_stateful.put_index_template("datastream_metrics", index_template_definition)
+
+        gateway_mock_stateful._client.indices.put_index_template.assert_called_once_with(
+            name="datastream_metrics", **index_template_definition
         )
-
-        assert await initialized_gateway.put_index_template("test_template", {}) == {}
-
-        method, url, data, headers = es_aioclient_mock.mock_calls[0]
-
-        assert method == "PUT"
-        assert str(url) == f"{TEST_CONFIG_ENTRY_DATA_URL}/_index_template/test_template"
-        assert data == b"{}"
 
 
 class Test_Connection_Test:

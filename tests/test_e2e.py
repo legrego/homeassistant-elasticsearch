@@ -160,10 +160,27 @@ class Test_Common_e2e:
             assert es_mock_builder.mocker.call_count == 9
             assert strip_headers_from_mock_calls(es_mock_builder.mocker.mock_calls) == snapshot
 
-        async def test_setup_authentication_failure(
+        async def test_setup_missing_authentication(
             self, hass: HomeAssistant, integration_setup, es_mock_builder, config_entry
         ):
             """Test the scenario where we fail authentication during setup."""
+
+            es_mock_builder.without_authentication()
+
+            assert await integration_setup() is False
+
+            assert config_entry.version == ElasticFlowHandler.VERSION
+
+            assert config_entry.state is ConfigEntryState.SETUP_ERROR
+            assert (
+                config_entry.reason
+                == "Error retrieving cluster info from Elasticsearch. Authentication error connecting to Elasticsearch (type=security_exception; reason=missing authentication credentials for REST request [/?pretty])"
+            )
+
+        async def test_setup_authorization_failure(
+            self, hass: HomeAssistant, integration_setup, es_mock_builder, config_entry
+        ):
+            """Test the scenario where we fail authorization during setup."""
 
             es_mock_builder.as_elasticsearch_8_17().with_incorrect_permissions()
 
