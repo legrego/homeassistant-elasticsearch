@@ -186,7 +186,10 @@ class Test_Common_e2e:
             assert config_entry.version == ElasticFlowHandler.VERSION
 
             assert config_entry.state is ConfigEntryState.SETUP_RETRY
-            assert config_entry.reason == "Error connecting to Elasticsearch: 500"
+            assert (
+                config_entry.reason
+                == "Error retrieving cluster info from Elasticsearch. Error connecting to Elasticsearch: 500"
+            )
 
         async def test_setup_server_timeout(
             self, hass: HomeAssistant, integration_setup, es_mock_builder, config_entry
@@ -200,21 +203,27 @@ class Test_Common_e2e:
             assert config_entry.version == ElasticFlowHandler.VERSION
 
             assert config_entry.state is ConfigEntryState.SETUP_RETRY
-            assert config_entry.reason == "Connection timeout connecting to Elasticsearch"
+            assert (
+                config_entry.reason
+                == "Error retrieving cluster info from Elasticsearch. Connection timeout connecting to Elasticsearch"
+            )
 
         async def test_setup_tls_error(
             self, hass: HomeAssistant, integration_setup, es_mock_builder, config_entry
         ):
             """Test the scenario where we fail a connection during setup."""
 
-            es_mock_builder.with_untrusted_certificate()
+            es_mock_builder.with_selfsigned_certificate()
 
             assert await integration_setup() is False
 
             assert config_entry.version == ElasticFlowHandler.VERSION
 
             assert config_entry.state is ConfigEntryState.SETUP_RETRY
-            assert config_entry.reason == "Untrusted certificate connecting to Elasticsearch"
+            assert (
+                config_entry.reason
+                == "Error retrieving cluster info from Elasticsearch. Could not complete TLS Handshake. Cannot connect to host mock_es_integration:9200 ssl:True [SSLCertVerificationError: ()]"
+            )
 
         async def test_setup_unsupported_error(
             self, hass: HomeAssistant, integration_setup, es_mock_builder, config_entry

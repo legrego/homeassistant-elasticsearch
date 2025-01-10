@@ -1,5 +1,5 @@
 # serializer version: 1
-# name: Test_Init.Test_ElasticsearchStateful.test_es8_async_init_with_tls_custom_ca
+# name: Test_Init.Test_Initialization.test_init_tls_custom_ca
   dict({
     'issuer': tuple(
       tuple(

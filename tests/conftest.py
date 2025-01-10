@@ -22,6 +22,7 @@ from asyncio import get_running_loop
 from collections.abc import Generator
 from contextlib import contextmanager, suppress
 from http import HTTPStatus
+from ssl import SSLCertVerificationError
 from typing import TYPE_CHECKING
 from unittest import mock
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -190,6 +191,27 @@ def es_aioclient_mock():
     with mock_es_aiohttp_client() as mock_session:
         yield mock_session
 
+def self_signed_tls_error():
+    """Return a self-signed certificate error."""
+    connection_key = MagicMock()
+    connection_key.host = "mock_es_integration"
+    connection_key.port = 9200
+    connection_key.is_ssl = True
+
+    certificate_error = SSLCertVerificationError()
+    certificate_error.verify_code = 19
+    certificate_error.verify_message = "'self-signed certificate in certificate chain'"
+    certificate_error.library = "SSL"
+    certificate_error.reason = "CERTIFICATE_VERIFY_FAILED"
+    certificate_error.strerror = "[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signed certificate in certificate chain (_ssl.c:1000)"
+    certificate_error.errno = 1
+
+    ssl_exception = client_exceptions.ClientConnectorCertificateError(
+        connection_key=connection_key, certificate_error=certificate_error
+    )
+
+    return ssl_exception
+
 
 class es_mocker:
     """Mock builder for Elasticsearch integration tests."""
@@ -350,23 +372,10 @@ class es_mocker:
 
         return self
 
-    def with_untrusted_certificate(self):
-        """Mock the user being properly authenticated."""
+    def with_selfsigned_certificate(self):
+        """Mock a self-signed certificate error."""
 
-        class MockTLSError(client_exceptions.ClientConnectorCertificateError):
-            """Mocks an TLS error caused by an untrusted certificate.
-
-            This is imperfect, but gets the job done for now.
-            """
-
-            def __init__(self) -> None:
-                self._conn_key = MagicMock()
-                self._certificate_error = Exception("AHHHH")
-
-        self.mocker.get(
-            f"{self.base_url}",
-            exc=MockTLSError,
-        )
+        self.mocker.get(f"{self.base_url}", exc=self_signed_tls_error())
 
         return self
 

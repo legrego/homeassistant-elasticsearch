@@ -9,7 +9,6 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 
 import elasticsearch8
-from aiohttp import client_exceptions
 from elastic_transport import ObjectApiResponse
 from elasticsearch8._async.client import AsyncElasticsearch
 from elasticsearch8.helpers import BulkIndexError, async_streaming_bulk
@@ -20,11 +19,9 @@ from custom_components.elasticsearch.encoder import Serializer
 from custom_components.elasticsearch.errors import (
     AuthenticationRequired,
     CannotConnect,
-    ClientError,
     IndexingError,
     InsufficientPrivileges,
     ServerError,
-    SSLError,
     UntrustedCertificate,
 )
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway, GatewaySettings
@@ -256,6 +253,7 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
             async for ok, result in async_streaming_bulk(
                 client=self.client,
                 actions=actions,
+                max_retries=3,
                 raise_on_error=False,
                 yield_ok=True,
             ):
@@ -294,6 +292,13 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
     def _error_converter(self, msg: str | None = None):
         """Convert an internal error from the elasticsearch package into one of our own."""
 
+        def append_msg(append_msg: str) -> str:
+            """Append the exception's message to the caller's message."""
+            if msg is None:
+                return append_msg
+
+            return f"{msg}. {append_msg}"
+
         def append_root_cause(err: elasticsearch8.ApiError, msg: str) -> str:
             """Append the root cause to the error message."""
             if not err.info:
@@ -315,83 +320,43 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
             yield
 
         except BulkIndexError as err:
-            msg = "Error indexing data"
-            raise IndexingError(msg) from err
+            raise IndexingError(append_msg("Error indexing data")) from err
 
         except elasticsearch8.UnsupportedProductError as err:
             # The HTTP response didn't include headers={"x-elastic-product": "Elasticsearch"}
-            msg = "Unsupported product error connecting to Elasticsearch"
-            raise CannotConnect(msg) from err
+            raise CannotConnect(append_msg("Unsupported product error connecting to Elasticsearch")) from err
 
         except elasticsearch8.AuthenticationException as err:
-            msg = "Authentication error connecting to Elasticsearch"
-            raise AuthenticationRequired(append_root_cause(err, msg)) from err
+            raise AuthenticationRequired(
+                append_root_cause(err, append_msg("Authentication error connecting to Elasticsearch"))
+            ) from err
 
         except elasticsearch8.AuthorizationException as err:
-            msg = "Authorization error connecting to Elasticsearch"
-            raise InsufficientPrivileges(append_root_cause(err, msg)) from err
+            raise InsufficientPrivileges(
+                append_root_cause(err, append_msg("Authorization error connecting to Elasticsearch"))
+            ) from err
 
         except elasticsearch8.ConnectionTimeout as err:
-            msg = "Connection timeout connecting to Elasticsearch"
-            raise ServerError(msg) from err
+            raise ServerError(append_msg("Connection timeout connecting to Elasticsearch")) from err
+
+        except elasticsearch8.SSLError as err:
+            raise UntrustedCertificate(
+                append_msg(f"Could not complete TLS Handshake. {err.message}")
+            ) from err
 
         except elasticsearch8.ConnectionError as err:
-            if len(err.errors) == 0:
-                msg = f"Connection error connecting to Elasticsearch: {err.message}"
-                raise CannotConnect(msg) from err
-
-            if not isinstance(err.errors[0], elasticsearch8.TransportError):
-                msg = f"Unknown transport error connecting to Elasticsearch: {err.message}"
-                raise CannotConnect(msg) from err
-
-            sub_error: elasticsearch8.TransportError = err.errors[0]
-
-            if isinstance(sub_error.errors[0], client_exceptions.ClientConnectorCertificateError):
-                msg = "Untrusted certificate connecting to Elasticsearch"
-                raise UntrustedCertificate(msg) from err
-
-            if issubclass(type(sub_error.errors[0]), client_exceptions.ServerFingerprintMismatch):
-                msg = "SSL certificate does not match expected fingerprint"
-                raise SSLError(msg) from err
-
-            if issubclass(type(sub_error.errors[0]), client_exceptions.ServerConnectionError):
-                msg = f"Server error connecting to Elasticsearch: {err.message}"
-                raise ServerError(msg) from err
-
-            if issubclass(type(sub_error.errors[0]), client_exceptions.ClientError):
-                msg = f"Client error connecting to Elasticsearch: {err.message}"
-                raise ClientError(msg) from err
-
-            if isinstance(err, elasticsearch8.SSLError):
-                msg = "SSL error connecting to Elasticsearch"
-                raise SSLError(msg) from err
-
-            msg = "Connection error connecting to Elasticsearch"
-            raise CannotConnect(msg) from err
+            raise CannotConnect(append_msg(f"Error connecting to Elasticsearch. {err.message}")) from err
 
         except elasticsearch8.TransportError as err:
-            if len(err.errors) == 0:
-                msg = f"Unknown transport error connecting to Elasticsearch: {err.message}"
-                raise CannotConnect(msg) from err
-
-            if not isinstance(err.errors[0], elasticsearch8.TransportError):
-                msg = f"Unknown transport error connecting to Elasticsearch: {err.message}"
-                raise CannotConnect(msg) from err
-
-            sub_error: elasticsearch8.TransportError = err.errors[0]
-
-            if hasattr(sub_error, "status"):
-                msg = f"Error connecting to Elasticsearch: {getattr(sub_error, "status")}"
-                raise CannotConnect(msg) from err
-
-            msg = f"Unknown transport error connecting to Elasticsearch: {err.message}"
-            raise CannotConnect(msg) from err
+            raise CannotConnect(
+                append_msg(f"Unknown transport error connecting to Elasticsearch: {err.message}")
+            ) from err
 
         except elasticsearch8.ApiError as err:
-            msg = "Unknown API Error connecting to Elasticsearch"
+            message = append_msg("Unknown API Error connecting to Elasticsearch")
             if hasattr(err, "status_code"):
-                msg = f"Error connecting to Elasticsearch: {err.status_code}"
-            raise CannotConnect(append_root_cause(err, msg)) from err
+                message = append_msg(f"Error connecting to Elasticsearch: {err.status_code}")
+            raise CannotConnect(append_root_cause(err, message)) from err
 
         except Exception:
             BASE_LOGGER.exception("Unknown and unexpected exception occurred.")
