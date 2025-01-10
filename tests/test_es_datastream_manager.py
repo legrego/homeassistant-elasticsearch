@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 from custom_components.elasticsearch.es_datastream_manager import DatastreamManager
+from elasticsearch.datastreams import index_template
 from elasticsearch.es_gateway import ElasticsearchGateway
 
 
@@ -57,7 +58,14 @@ class Test_Initialization:
             """Test initialization of the DatastreamManager with an existing ES cluster."""
             datastream_manager._gateway.get_index_template = AsyncMock(
                 return_value={
-                    "index_templates": [{"name": "datastream_metrics", "index_template": {"version": 2}}]
+                    "index_templates": [
+                        {
+                            "name": "datastream_metrics",
+                            "index_template": {
+                                "version": index_template.index_template_definition["version"]
+                            },
+                        }
+                    ]
                 },
             )
 
