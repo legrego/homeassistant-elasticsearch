@@ -240,6 +240,47 @@ MOCK_LOCATION_DEVICE = {
     "lon": 44.0,
 }
 
+BULK_ERROR_RESPONSE_BODY = {
+    "errors": True,
+    "took": 0,
+    "items": [
+        {
+            "create": {
+                "_index": ".ds-metrics-homeassistant.counter-default-2025.01.12-000001",
+                "_id": "90mKWJQB7GOvwEliFLmd",
+                "status": 400,
+                "error": {
+                    "type": "document_parsing_exception",
+                    "reason": "[1:1223] failed to parse: data stream timestamp field [@timestamp] is missing",
+                    "caused_by": {
+                        "type": "illegal_argument_exception",
+                        "reason": "data stream timestamp field [@timestamp] is missing",
+                    },
+                },
+            }
+        }
+    ],
+}
+
+BULK_SUCCESS_RESPONSE_BODY = {
+    "errors": False,
+    "took": 2004,
+    "items": [
+        {
+            "create": {
+                "_index": ".ds-metrics-homeassistant.counter-default-2025.01.12-000001",
+                "_id": "oEmJWJQB7GOvwEliMbKW",
+                "_version": 1,
+                "result": "created",
+                "_shards": {"total": 2, "successful": 1, "failed": 0},
+                "_seq_no": 0,
+                "_primary_term": 1,
+                "status": 201,
+            }
+        }
+    ],
+}
+
 XPACK_USAGE_SERVERLESS_RESPONSE_BODY = {
     "error": {
         "root_cause": [

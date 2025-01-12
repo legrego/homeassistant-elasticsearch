@@ -69,6 +69,27 @@
     }),
   })
 # ---
+# name: Test_Common_e2e.Test_Normal_Configuration.test_setup_to_bulk_item_level_error
+  dict({
+    'error': tuple(
+      'Failed to publish %d of %d documents',
+      1,
+      1,
+    ),
+    'request': list([
+      tuple(
+        'GET',
+        URL('https://mock_es_integration:9200/'),
+        None,
+      ),
+      tuple(
+        'PUT',
+        URL('https://mock_es_integration:9200/_bulk'),
+        b'{"create":{"_index":"metrics-homeassistant.counter-default"}}\n{"@timestamp":"2023-04-12T12:00:00+00:00","event.action":"State change","event.kind":"event","event.type":"change","hass.entity.domain":"counter","hass.entity.id":"counter.entity_object_id","hass.entity.value":"value2","hass.entity.valueas":{"string":"value2"},"hass.entity.object.id":"entity_object_id","data_stream.type":"metrics","data_stream.dataset":"homeassistant.counter","data_stream.namespace":"default","hass.entity.area.floor.id":"entity_floor","hass.entity.area.floor.name":"entity floor","hass.entity.area.id":"entity_area","hass.entity.area.name":"entity area","hass.entity.labels":["entity label 1","entity label 2","entity label 3"],"hass.entity.friendly_name":"entity object id","hass.entity.platform":"entity platform","hass.entity.device.class":"entity device class","hass.entity.device.labels":["device label 1","device label 2","device label 3"],"hass.entity.device.name":"device name","hass.entity.device.area.floor.id":"device_floor","hass.entity.device.area.floor.name":"device floor","hass.entity.device.area.id":"device_area","hass.entity.device.area.name":"device area","agent.version":"1.0.0","host.architecture":"x86","host.os.name":"Linux","host.hostname":"my_es_host","host.location":{"lat":1.0,"lon":-1.0}}\n',
+      ),
+    ]),
+  })
+# ---
 # name: Test_Common_e2e.Test_Normal_Configuration.test_setup_to_publish
   list([
     tuple(
@@ -117,6 +138,71 @@
       b'{"create":{"_index":"metrics-homeassistant.counter-default"}}\n{"@timestamp":"2023-04-12T12:00:00+00:00","event.action":"Polling","event.kind":"event","event.type":"info","hass.entity.domain":"counter","hass.entity.id":"counter.entity_object_id","hass.entity.value":"value","hass.entity.valueas":{"string":"value"},"hass.entity.object.id":"entity_object_id","data_stream.type":"metrics","data_stream.dataset":"homeassistant.counter","data_stream.namespace":"default","hass.entity.area.floor.id":"entity_floor","hass.entity.area.floor.name":"entity floor","hass.entity.area.id":"entity_area","hass.entity.area.name":"entity area","hass.entity.labels":["entity label 1","entity label 2","entity label 3"],"hass.entity.friendly_name":"entity object id","hass.entity.platform":"entity platform","hass.entity.device.class":"entity device class","hass.entity.device.labels":["device label 1","device label 2","device label 3"],"hass.entity.device.name":"device name","hass.entity.device.area.floor.id":"device_floor","hass.entity.device.area.floor.name":"device floor","hass.entity.device.area.id":"device_area","hass.entity.device.area.name":"device area","agent.version":"1.0.0","host.architecture":"x86","host.os.name":"Linux","host.hostname":"my_es_host","host.location":{"lat":1.0,"lon":-1.0}}\n',
     ),
   ])
+# ---
+# name: Test_Common_e2e.Test_Normal_Configuration.test_setup_to_publish.1
+  dict({
+    'info': tuple(
+      'Successfully published %d documents',
+      1,
+    ),
+    'request': list([
+      tuple(
+        'GET',
+        URL('https://mock_es_integration:9200/'),
+        None,
+      ),
+      tuple(
+        'GET',
+        URL('https://mock_es_integration:9200/'),
+        None,
+      ),
+      tuple(
+        'GET',
+        URL('https://mock_es_integration:9200/'),
+        None,
+      ),
+      tuple(
+        'GET',
+        URL('https://mock_es_integration:9200/_xpack/usage'),
+        None,
+      ),
+      tuple(
+        'POST',
+        URL('https://mock_es_integration:9200/_security/user/_has_privileges'),
+        b'{"cluster":["manage_index_templates","monitor"],"index":[{"names":["metrics-homeassistant.*"],"privileges":["manage","index","create_index","create"]}]}',
+      ),
+      tuple(
+        'GET',
+        URL('https://mock_es_integration:9200/_index_template/metrics-homeassistant'),
+        None,
+      ),
+      tuple(
+        'PUT',
+        URL('https://mock_es_integration:9200/_index_template/metrics-homeassistant'),
+        b'{"composed_of":"metrics-homeassistant@custom","data_stream":{},"ignore_missing_component_templates":"metrics-homeassistant@custom","index_patterns":["metrics-homeassistant.*-default"],"priority":500,"template":{"mappings":{"dynamic":"false","dynamic_templates":[{"hass_entity_attributes":{"path_match":"hass.entity.attributes.*","mapping":{"type":"text","fields":{"keyword":{"ignore_above":1024,"type":"keyword"},"float":{"ignore_malformed":true,"type":"float"}}}}}],"properties":{"data_stream":{"properties":{"type":{"type":"constant_keyword","value":"metrics"},"dataset":{"type":"constant_keyword"},"namespace":{"type":"constant_keyword"}}},"hass":{"type":"object","properties":{"entity":{"type":"object","properties":{"id":{"type":"keyword"},"domain":{"type":"keyword"},"friendly_name":{"type":"keyword"},"name":{"type":"keyword"},"attributes":{"type":"object","dynamic":true},"object":{"type":"object","properties":{"id":{"type":"keyword","time_series_dimension":true}}},"location":{"type":"geo_point"},"value":{"type":"text","fields":{"keyword":{"ignore_above":1024,"type":"keyword"}}},"valueas":{"properties":{"string":{"type":"text","fields":{"keyword":{"ignore_above":1024,"type":"keyword"}}},"float":{"ignore_malformed":true,"type":"float"},"boolean":{"type":"boolean"},"datetime":{"type":"date"},"date":{"type":"date","format":"strict_date"},"time":{"type":"date","format":"HH:mm:ss.SSSSSS||time||strict_hour_minute_second||time_no_millis"},"integer":{"ignore_malformed":true,"type":"integer"}}},"platform":{"type":"keyword"},"unit_of_measure":{"type":"keyword"},"state":{"properties":{"class":{"type":"keyword"}}},"labels":{"type":"keyword"},"area":{"type":"object","properties":{"floor":{"type":"object","properties":{"id":{"type":"keyword"},"name":{"type":"keyword"}}},"id":{"type":"keyword"},"name":{"type":"keyword"}}},"device":{"type":"object","properties":{"id":{"type":"keyword"},"name":{"type":"keyword"},"class":{"type":"keyword"},"labels":{"type":"keyword"},"area":{"type":"object","properties":{"floor":{"type":"object","properties":{"id":{"type":"keyword"},"name":{"type":"keyword"}}},"id":{"type":"keyword"},"name":{"type":"keyword"}}}}}}}}},"@timestamp":{"type":"date_nanos","format":"strict_date_optional_time_nanos"},"tags":{"ignore_above":1024,"type":"keyword"},"event":{"properties":{"action":{"type":"keyword","ignore_above":1024},"type":{"ignore_above":1024,"type":"keyword"},"kind":{"ignore_above":1024,"type":"keyword"}}},"agent":{"properties":{"version":{"ignore_above":1024,"type":"keyword"}}},"host":{"properties":{"architecture":{"ignore_above":1024,"type":"keyword"},"location":{"type":"geo_point"},"hostname":{"ignore_above":1024,"type":"keyword"},"name":{"ignore_above":1024,"type":"keyword"},"os":{"properties":{"name":{"ignore_above":1024,"type":"keyword"}}}}},"ecs":{"properties":{"version":{"ignore_above":1024,"type":"keyword"}}}}},"settings":{"codec":"best_compression","index.mode":"time_series","mapping":{"total_fields":{"limit":"10000"}}},"lifecycle":{"data_retention":"365d"}},"version":3}',
+      ),
+      tuple(
+        'GET',
+        URL('https://mock_es_integration:9200/'),
+        None,
+      ),
+      tuple(
+        'PUT',
+        URL('https://mock_es_integration:9200/_bulk'),
+        b'{"create":{"_index":"metrics-homeassistant.counter-default"}}\n{"@timestamp":"2023-04-12T12:00:00+00:00","event.action":"Polling","event.kind":"event","event.type":"info","hass.entity.domain":"counter","hass.entity.id":"counter.entity_object_id","hass.entity.value":"value","hass.entity.valueas":{"string":"value"},"hass.entity.object.id":"entity_object_id","data_stream.type":"metrics","data_stream.dataset":"homeassistant.counter","data_stream.namespace":"default","hass.entity.area.floor.id":"entity_floor","hass.entity.area.floor.name":"entity floor","hass.entity.area.id":"entity_area","hass.entity.area.name":"entity area","hass.entity.labels":["entity label 1","entity label 2","entity label 3"],"hass.entity.friendly_name":"entity object id","hass.entity.platform":"entity platform","hass.entity.device.class":"entity device class","hass.entity.device.labels":["device label 1","device label 2","device label 3"],"hass.entity.device.name":"device name","hass.entity.device.area.floor.id":"device_floor","hass.entity.device.area.floor.name":"device floor","hass.entity.device.area.id":"device_area","hass.entity.device.area.name":"device area","agent.version":"1.0.0","host.architecture":"x86","host.os.name":"Linux","host.hostname":"my_es_host","host.location":{"lat":1.0,"lon":-1.0}}\n',
+      ),
+      tuple(
+        'GET',
+        URL('https://mock_es_integration:9200/'),
+        None,
+      ),
+      tuple(
+        'PUT',
+        URL('https://mock_es_integration:9200/_bulk'),
+        b'{"create":{"_index":"metrics-homeassistant.counter-default"}}\n{"@timestamp":"2023-04-12T12:00:00+00:00","event.action":"State change","event.kind":"event","event.type":"change","hass.entity.domain":"counter","hass.entity.id":"counter.entity_object_id","hass.entity.value":"value2","hass.entity.valueas":{"string":"value2"},"hass.entity.object.id":"entity_object_id","data_stream.type":"metrics","data_stream.dataset":"homeassistant.counter","data_stream.namespace":"default","hass.entity.area.floor.id":"entity_floor","hass.entity.area.floor.name":"entity floor","hass.entity.area.id":"entity_area","hass.entity.area.name":"entity area","hass.entity.labels":["entity label 1","entity label 2","entity label 3"],"hass.entity.friendly_name":"entity object id","hass.entity.platform":"entity platform","hass.entity.device.class":"entity device class","hass.entity.device.labels":["device label 1","device label 2","device label 3"],"hass.entity.device.name":"device name","hass.entity.device.area.floor.id":"device_floor","hass.entity.device.area.floor.name":"device floor","hass.entity.device.area.id":"device_area","hass.entity.device.area.name":"device area","agent.version":"1.0.0","host.architecture":"x86","host.os.name":"Linux","host.hostname":"my_es_host","host.location":{"lat":1.0,"lon":-1.0}}\n',
+      ),
+    ]),
+  })
 # ---
 # name: Test_Common_e2e.Test_Normal_Configuration.test_setup_to_publish_error[403]
   list([

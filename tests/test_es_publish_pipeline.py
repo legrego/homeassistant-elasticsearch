@@ -6,6 +6,11 @@ from unittest import mock
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from custom_components.elasticsearch.errors import (
+    AuthenticationRequired,
+    ESIntegrationConnectionException,
+    IndexingError,
+)
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 from custom_components.elasticsearch.es_publish_pipeline import (
     EventQueue,
@@ -13,6 +18,7 @@ from custom_components.elasticsearch.es_publish_pipeline import (
     PipelineSettings,
     StateChangeType,
 )
+from elastic_transport import ApiResponseMeta
 from freezegun.api import FrozenDateTimeFactory
 from homeassistant.core import Event, HomeAssistant, State
 from homeassistant.helpers.entity_registry import RegistryEntry
@@ -44,6 +50,13 @@ def settings():
         excluded_devices=[],
         included_entities=[],
         excluded_entities=[],
+    )
+
+
+def mock_api_response_meta(status_code=200):
+    """Return a mock API response meta."""
+    return ApiResponseMeta(
+        status=status_code, headers=MagicMock(), http_version="1.1", duration=0.0, node=MagicMock()
     )
 
 
@@ -479,6 +492,54 @@ class Test_Manager:
                 manager._publisher._gateway.check_connection.assert_awaited_once()
 
                 manager._publisher._gateway.bulk.assert_awaited()
+
+        @pytest.mark.asyncio
+        @pytest.mark.parametrize(
+            ("exception", "error_message"),
+            [
+                (IndexingError, "Indexing error in publishing loop."),
+                (
+                    AuthenticationRequired,
+                    "Authentication issue in publishing loop.",
+                ),
+                (ESIntegrationConnectionException, "Connection error in publishing loop."),
+                (Exception, "Unknown error while publishing documents."),
+            ],
+            ids=[
+                "IndexingError",
+                "AuthenticationRequired",
+                "ESIntegrationConnectionException",
+                "Exception",
+            ],
+        )
+        async def test_publish_exceptions(self, hass, manager, exception, error_message):
+            """Test the _publish method of the Pipeline.Manager class."""
+            # Create a mock sip_queue generator
+
+            state = State("light.living_room", "on")
+            with (
+                patch.object(
+                    manager,
+                    "sip_queue",
+                    side_effect=[
+                        {
+                            "timestamp": "2023-01-01T00:00:00Z",
+                            "state": state,
+                            "reason": "STATE_CHANGE",
+                        },
+                    ],
+                ),
+                patch.object(manager._filterer, "passes_filter", return_value=True),
+            ):
+                manager._publisher._gateway.check_connection = AsyncMock(return_value=True)
+                manager._publisher._gateway.bulk = AsyncMock(side_effect=exception())
+
+                manager._publisher._logger.error = MagicMock()
+                manager._publisher._config_entry = None
+
+                await manager._publisher.publish()
+
+                assert manager._publisher._logger.error.call_args[0][0] == error_message
 
         async def test_stop(self, manager):
             """Test stopping the manager."""

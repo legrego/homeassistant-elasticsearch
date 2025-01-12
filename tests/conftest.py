@@ -408,6 +408,18 @@ class es_mocker:
 
         return self
 
+    def respond_to_bulk_with_item_level_error(self):
+        """Mock a bulk response with an item-level error."""
+
+        self.mocker.put(
+            f"{self.base_url}/_bulk",
+            status=200,
+            headers={"x-elastic-product": "Elasticsearch"},
+            json=const.BULK_ERROR_RESPONSE_BODY,
+        )
+
+        return self
+
     def respond_to_bulk(self, status=200, fail_after=None):
         """Mock the user being properly authenticated."""
 
@@ -416,7 +428,7 @@ class es_mocker:
                 method="PUT",
                 url=f"{self.base_url}/_bulk",
                 headers={"x-elastic-product": "Elasticsearch"},
-                json={"errors": status == 200, "items": [], "took": 7},
+                json=const.BULK_SUCCESS_RESPONSE_BODY,
             ),
             failure=AiohttpClientMockResponse(
                 method="PUT",

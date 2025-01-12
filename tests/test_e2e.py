@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 from unittest import mock
+from unittest.mock import MagicMock
 
 import pytest
 from custom_components.elasticsearch.config_flow import ElasticFlowHandler
@@ -99,6 +100,21 @@ class Test_Common_e2e:
             assert es_mock_builder.mocker.call_count == 9
             assert strip_headers_from_mock_calls(es_mock_builder.mocker.mock_calls) == snapshot
 
+            # Queue an entity state change and check that it is published with item level reporting
+            hass.states.async_set(entity.entity_id, "value2")
+
+            config_entry.runtime_data._gateway._logger.error = MagicMock()
+            config_entry.runtime_data._gateway._logger.info = MagicMock()
+            await config_entry.runtime_data._pipeline_manager._publisher.publish()
+
+            assert es_mock_builder.mocker.call_count == 11
+            config_entry.runtime_data._gateway._logger.error.assert_not_called()
+
+            assert {
+                "request": strip_headers_from_mock_calls(es_mock_builder.mocker.mock_calls),
+                "info": config_entry.runtime_data._gateway._logger.info.call_args.args,
+            } == snapshot
+
         async def test_setup_to_publish_ping_error(
             self,
             hass: HomeAssistant,
@@ -159,6 +175,44 @@ class Test_Common_e2e:
 
             assert es_mock_builder.mocker.call_count == 9
             assert strip_headers_from_mock_calls(es_mock_builder.mocker.mock_calls) == snapshot
+
+        async def test_setup_to_bulk_item_level_error(
+            self,
+            hass: HomeAssistant,
+            integration_setup,
+            config_entry,
+            entity,
+            device,
+            es_mock_builder,
+            snapshot: SnapshotAssertion,
+        ):
+            """Test the full integration setup and execution."""
+
+            es_mock_builder.as_elasticsearch_8_17().with_correct_permissions().without_index_template().respond_to_bulk_with_item_level_error()
+
+            # Queue an entity state change
+            hass.states.async_set(entity.entity_id, "value")
+
+            # Load the Config Entry
+            assert await integration_setup() is True
+            assert config_entry.state is ConfigEntryState.LOADED
+
+            config_entry.runtime_data._gateway._logger.error = MagicMock()
+            config_entry.runtime_data._gateway._logger.info = MagicMock()
+
+            es_mock_builder.clear()
+
+            # Queue an entity state change
+            hass.states.async_set(entity.entity_id, "value2")
+
+            # invoke a publish
+            await config_entry.runtime_data._pipeline_manager._publisher.publish()
+
+            config_entry.runtime_data._gateway._logger.info.assert_not_called()
+            assert {
+                "request": strip_headers_from_mock_calls(es_mock_builder.mocker.mock_calls),
+                "error": config_entry.runtime_data._gateway._logger.error.call_args.args,
+            } == snapshot
 
         async def test_setup_missing_authentication(
             self, hass: HomeAssistant, integration_setup, es_mock_builder, config_entry
