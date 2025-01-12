@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 from queue import Queue
 from unittest import mock
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
@@ -270,7 +270,6 @@ class Test_Filterer:
             assert filterer._passes_entity_exists_filter(state.entity_id) is False
 
 
-
 class Test_Manager:
     """Test the Pipeline.Manager class."""
 
@@ -446,45 +445,40 @@ class Test_Manager:
             # Assert that the result contains the formatted data
             assert result == [{"timestamp": timestamp, "state": state, "reason": reason}]
 
-        # @pytest.mark.asyncio
-        # async def test_publish(self, hass, manager):
-        #     """Test the _publish method of the Pipeline.Manager class."""
-        #     # Create a mock sip_queue generator
+        @pytest.mark.asyncio
+        async def test_publish(self, hass, manager, snapshot):
+            """Test the _publish method of the Pipeline.Manager class."""
+            # Create a mock sip_queue generator
 
-        #     included_state = State("light.living_room", "on")
-        #     excluded_state = State("sensor.temperature", "25.0")
-        #     with (
-        #         patch.object(
-        #             manager,
-        #             "sip_queue",
-        #             side_effect=[
-        #                 {
-        #                     "timestamp": "2023-01-01T00:00:00Z",
-        #                     "state": included_state,
-        #                     "reason": "STATE_CHANGE",
-        #                 },
-        #                 {
-        #                     "timestamp": "2023-01-01T00:01:00Z",
-        #                     "state": excluded_state,
-        #                     "reason": "STATE_CHANGE",
-        #                 },
-        #             ],
-        #         ),
-        #         patch.object(manager._filterer, "passes_filter", side_effect=[True, False]),
-        #     ):
-        #         manager._publisher._gateway.check_connection = AsyncMock(return_value=True)
+            included_state = State("light.living_room", "on")
+            excluded_state = State("sensor.temperature", "25.0")
+            with (
+                patch.object(
+                    manager,
+                    "sip_queue",
+                    side_effect=[
+                        {
+                            "timestamp": "2023-01-01T00:00:00Z",
+                            "state": included_state,
+                            "reason": "STATE_CHANGE",
+                        },
+                        {
+                            "timestamp": "2023-01-01T00:01:00Z",
+                            "state": excluded_state,
+                            "reason": "STATE_CHANGE",
+                        },
+                    ],
+                ),
+                patch.object(manager._filterer, "passes_filter", side_effect=[True, False]),
+            ):
+                manager._publisher._gateway.check_connection = AsyncMock(return_value=True)
+                manager._publisher._gateway.bulk = AsyncMock()
 
-        #         await manager._publisher.publish()
+                await manager._publisher.publish()
 
-        #         manager._publisher._gateway.check_connection.assert_awaited_once()
+                manager._publisher._gateway.check_connection.assert_awaited_once()
 
-        #         publisher_publish.assert_called_once_with(
-        #             iterable={
-        #                 "timestamp": "2023-01-01T00:00:00Z",
-        #                 "state": included_state,
-        #                 "reason": "STATE_CHANGE",
-        #             },
-        #         )
+                manager._publisher._gateway.bulk.assert_awaited()
 
         async def test_stop(self, manager):
             """Test stopping the manager."""
@@ -704,22 +698,6 @@ class Test_Listener:
             await listener._handle_event(event)
 
             listener._queue.put.assert_not_called()
-
-        # async def test_listener_stop(self, listener):
-        #     """Test stopping the Listener."""
-
-        #     with patch.object(listener, "_cancel_listener") as cancel_listener:
-        #         listener.stop()
-
-        #         cancel_listener.assert_called_once()
-
-        # async def test_listener_cleanup(self, listener):
-        #     """Test cleaning up the Listener."""
-        #     with patch.object(listener, "_cancel_listener") as cancel_listener:
-        #         listener.__del__()
-
-        #         cancel_listener.assert_called_once()
-
 
 class Test_Publisher:
     """Test the Pipeline.Publisher class."""

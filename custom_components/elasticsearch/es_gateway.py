@@ -51,7 +51,7 @@ class GatewaySettings(ABC):
             "request_timeout": self.request_timeout,
             "verify_hostname": self.verify_hostname,
             "minimum_version": self.minimum_version,
-            "minimum_privileges": self.minimum_privileges.copy(),
+            "minimum_privileges": self.minimum_privileges.copy() if self.minimum_privileges else None,
         }
 
 

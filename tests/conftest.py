@@ -19,26 +19,18 @@
 from __future__ import annotations
 
 from asyncio import get_running_loop
-from collections.abc import Generator
-from contextlib import contextmanager, suppress
 from http import HTTPStatus
 from ssl import SSLCertVerificationError
 from typing import TYPE_CHECKING
 from unittest import mock
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from aiohttp import ClientSession, TCPConnector, client_exceptions
 from custom_components.elasticsearch.config_flow import ElasticFlowHandler
 from custom_components.elasticsearch.const import DATASTREAM_METRICS_INDEX_TEMPLATE_NAME
-from custom_components.elasticsearch.es_gateway_8 import Elasticsearch8Gateway, Gateway8Settings
 
 # import custom_components.elasticsearch  # noqa: F401
-from homeassistant.const import (
-    CONF_PASSWORD,
-    CONF_URL,
-    CONF_USERNAME,
-)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.json import json_dumps
 from pytest_homeassistant_custom_component.common import (
@@ -46,7 +38,6 @@ from pytest_homeassistant_custom_component.common import (
 )
 from pytest_homeassistant_custom_component.plugins import (  # noqa: F401
     aioclient_mock,
-    # enable_event_loop_debug,
     skip_stop_scripts,
     snapshot,
     verify_cleanup,
@@ -71,65 +62,6 @@ MODULE = "custom_components.elasticsearch"
 
 
 @pytest.fixture
-def gateway_config() -> dict:
-    """Mock Gateway configuration."""
-    return {
-        CONF_URL: const.TEST_CONFIG_ENTRY_DATA_URL,
-        CONF_USERNAME: const.TEST_CONFIG_ENTRY_DATA_USERNAME,
-        CONF_PASSWORD: const.TEST_CONFIG_ENTRY_DATA_PASSWORD,
-        "verify_certs": True,
-        "ca_certs": None,
-        "request_timeout": 30,
-        "minimum_version": None,
-        "minimum_privileges": {},
-    }
-
-
-@pytest.fixture(
-    params=[
-        {
-            "gateway_class": Elasticsearch8Gateway,
-            "gateway_settings": Gateway8Settings,
-        },
-    ],
-    ids=["es8"],
-)
-async def gateway(request, gateway_config):
-    """Mock ElasticsearchGateway instance."""
-
-    gateway_class = request.param["gateway_class"]
-    gateway_settings_class = request.param["gateway_settings"]
-
-    settings = gateway_settings_class(**gateway_config)
-
-    gateway = gateway_class(gateway_settings=settings)
-
-    with suppress(Exception):
-        yield gateway
-
-    await gateway.stop()
-
-
-@pytest.fixture
-async def initialized_gateway(gateway: Elasticsearch8Gateway):
-    """Return an initialized ElasticsearchGateway."""
-    gateway.ping = AsyncMock(return_value=True)
-    gateway.info = AsyncMock(return_value=const.CLUSTER_INFO_8DOT14_RESPONSE_BODY)
-    gateway.has_security = AsyncMock(return_value=True)
-    gateway.has_privileges = AsyncMock(return_value=True)
-
-    await gateway.async_init()
-
-    if isinstance(gateway, Elasticsearch8Gateway):
-        gateway.client._verified_elasticsearch = MagicMock(return_value=True)
-
-    with suppress(Exception):
-        yield gateway
-
-    await gateway.stop()
-
-
-@pytest.fixture
 async def integration_setup(
     hass: HomeAssistant,
     config_entry: MockConfigEntry,
@@ -146,10 +78,10 @@ async def integration_setup(
 
     return run
 
+@pytest.fixture
+def es_mock_builder() -> Generator[es_mocker, Any, None]:
+    """Fixture to return a builder for mocking Elasticsearch calls."""
 
-@contextmanager
-def mock_es_aiohttp_client():
-    """Context manager to mock aiohttp client."""
     mocker = AiohttpClientMocker()
 
     def create_session(*args, **kwargs):
@@ -175,21 +107,7 @@ def mock_es_aiohttp_client():
             side_effect=create_tcpconnector,
         ),
     ):
-        yield mocker
-
-
-@pytest.fixture
-def es_mock_builder() -> Generator[es_mocker, Any, None]:
-    """Fixture to return a builder for mocking Elasticsearch calls."""
-    with mock_es_aiohttp_client() as mock_session:
-        yield es_mocker(mock_session)
-
-
-@pytest.fixture
-def es_aioclient_mock():
-    """Fixture to mock aioclient calls."""
-    with mock_es_aiohttp_client() as mock_session:
-        yield mock_session
+        yield es_mocker(mocker)
 
 
 def self_signed_tls_error():
@@ -535,7 +453,7 @@ def _skip_notifications_fixture() -> Generator[Any, Any, Any]:
 @pytest.fixture
 async def data() -> dict:
     """Return a mock data dict."""
-    return const.TEST_CONFIG_ENTRY_BASE_DATA
+    return const.TEST_CONFIG_ENTRY_DEFAULT_DATA
 
 
 @pytest.fixture
