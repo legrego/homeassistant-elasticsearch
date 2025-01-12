@@ -265,16 +265,10 @@ class Pipeline:
         @log_enter_exit_debug
         def stop(self) -> None:
             """Stop the manager."""
-            if self._cancel_publisher is not None:
-                self._cancel_publisher.cancel()
 
             self._listener.stop()
             self._poller.stop()
             self._publisher.stop()
-
-        def __del__(self) -> None:
-            """Clean up the manager."""
-            self.stop()
 
     class Filterer:
         """Filters state changes for processing."""
@@ -461,10 +455,6 @@ class Pipeline:
             if self._cancel_listener:
                 self._cancel_listener()
                 self._cancel_listener = None
-
-        def __del__(self) -> None:
-            """Clean up the listener."""
-            self.stop()
 
     class Poller:
         """Polls for state changes and queues them for processing."""

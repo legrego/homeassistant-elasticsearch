@@ -266,8 +266,9 @@ class Test_Filterer:
         async def test_passes_entity_exists_filter(self, entity_registry, filterer):
             """Test that a state change for an entity that exists passes the filter."""
             state = State("light.living_room", "on")
+
             assert filterer._passes_entity_exists_filter(state.entity_id) is False
-            # now add to the entity registry and check again
+
 
 
 class Test_Manager:

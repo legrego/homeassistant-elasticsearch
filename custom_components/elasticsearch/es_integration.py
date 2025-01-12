@@ -88,15 +88,10 @@ class ElasticIntegration:
 
             raise
 
-    async def async_shutdown(self) -> bool:
+    async def async_shutdown(self) -> None:
         """Async shutdown procedure."""
-        try:
-            self._pipeline_manager.stop()
-            await self._gateway.stop()
-        except Exception:
-            self._logger.exception("Error stopping pipeline manager")
-
-        return True
+        self._pipeline_manager.stop()
+        await self._gateway.stop()
 
     @classmethod
     def build_gateway_parameters(
@@ -121,9 +116,7 @@ class ElasticIntegration:
     def build_pipeline_manager_parameters(cls, hass, gateway, config_entry: ConfigEntry) -> dict:
         """Build the parameters for the Elasticsearch pipeline manager."""
 
-        if config_entry.options is None:
-            msg = "Config entry options are required for the pipeline manager."
-            raise ValueError(msg)
+        assert config_entry.options is not None
 
         settings = PipelineSettings(
             polling_frequency=config_entry.options[CONF_POLLING_FREQUENCY],

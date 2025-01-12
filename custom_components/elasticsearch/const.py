@@ -13,7 +13,6 @@ CONF_PUBLISH_FREQUENCY: str = "publish_frequency"
 CONF_POLLING_FREQUENCY: str = "polling_frequency"
 CONF_AUTHENTICATION_TYPE: str = "authentication_type"
 
-CONF_CHANGE_DETECTION_ENABLED: str = "change_detection_enabled"
 CONF_CHANGE_DETECTION_TYPE: str = "change_detection_type"
 
 CONF_DEBUG_FILTER: str = "debug_filter"

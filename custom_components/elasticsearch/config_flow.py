@@ -339,8 +339,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
     async def async_step_reauth(self, user_input: dict | None = None) -> ConfigFlowResult:
         """Handle reauthorization."""
         entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
-        if entry is None:
-            return self.async_abort(reason="no_entry")
+        assert entry is not None
 
         self._reauth_entry = entry
 

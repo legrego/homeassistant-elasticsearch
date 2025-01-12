@@ -852,7 +852,6 @@ class Test_Common_e2e:
         async def options(self) -> dict:
             """Return a mock options dict."""
             return {
-                const.CONF_CHANGE_DETECTION_ENABLED: True,
                 const.CONF_CHANGE_DETECTION_TYPE: ["STATE", "ATTRIBUTE"],
                 const.CONF_TAGS: ["tags"],
                 const.CONF_POLLING_FREQUENCY: 60,
