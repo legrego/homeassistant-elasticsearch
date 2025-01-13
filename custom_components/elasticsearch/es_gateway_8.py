@@ -261,7 +261,7 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
                 action, outcome = result.popitem()
                 if not ok:
                     errcount += 1
-                    self._logger.error("failed to %s document %s", action, outcome)
+                    self._logger.error("failed to %s, error information: %s", action, outcome)
                 else:
                     okcount += 1
 
@@ -282,9 +282,9 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
 
     def _convert_response(self, response: ObjectApiResponse[Any]) -> dict[Any, Any]:
         """Convert the API response to a dictionary."""
-        if not isinstance(response.body, dict):
-            msg = "Invalid response from Elasticsearch"
-            raise TypeError(msg)
+
+        # The response body is always a dictionary, but mypy doesn't know that
+        assert isinstance(response.body, dict)
 
         return dict(response.body)
 

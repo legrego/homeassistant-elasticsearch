@@ -97,7 +97,7 @@ class ElasticIntegration:
     def build_gateway_parameters(
         cls,
         config_entry: ConfigEntry,
-        minimum_privileges: MappingProxyType[str, Any] | None = ES_CHECK_PERMISSIONS_DATASTREAM,
+        minimum_privileges: MappingProxyType[str, Any] = ES_CHECK_PERMISSIONS_DATASTREAM,
     ) -> Gateway8Settings:
         """Build the parameters for the Elasticsearch gateway."""
         return Gateway8Settings(
@@ -116,6 +116,7 @@ class ElasticIntegration:
     def build_pipeline_manager_parameters(cls, hass, gateway, config_entry: ConfigEntry) -> dict:
         """Build the parameters for the Elasticsearch pipeline manager."""
 
+        # Options are never none, but mypy doesn't know that
         assert config_entry.options is not None
 
         settings = PipelineSettings(

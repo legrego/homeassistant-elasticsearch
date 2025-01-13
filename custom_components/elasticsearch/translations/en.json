@@ -70,10 +70,6 @@
                     "polling_frequency": "Gather all entity states at this interval",
                     "change_detection_type": "Choose what types of entity changes to listen for and publish",
                     "tags": "Tags to apply to all published events",
-                    "excluded_domains": "Domains to exclude from publishing. Defaults to none.",
-                    "excluded_entities": "Entities to exclude from publishing. Defaults to none.",
-                    "included_domains": "Domains to publish. Defaults to all domains.",
-                    "included_entities": "Entities to publish. Defaults to all entities.",
                     "include_targets": "Toggle to only publish the set of targets below",
                     "exclude_targets": "Toggle to exclude publishing the set of targets below"
                 },

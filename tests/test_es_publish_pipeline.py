@@ -22,17 +22,13 @@ from elastic_transport import ApiResponseMeta
 from freezegun.api import FrozenDateTimeFactory
 from homeassistant.core import Event, HomeAssistant, State
 from homeassistant.helpers.entity_registry import RegistryEntry
-from homeassistant.util import dt as dt_util
 from syrupy.assertion import SnapshotAssertion
 
 from tests import const
-from tests.const import (
-    MOCK_NOON_APRIL_12TH_2023,
-)
 
 
-@pytest.fixture
-def settings():
+@pytest.fixture(name="settings")
+def settings_fixture():
     """Return a PipelineSettings instance."""
     return PipelineSettings(
         polling_frequency=60,
@@ -58,21 +54,6 @@ def mock_api_response_meta(status_code=200):
     return ApiResponseMeta(
         status=status_code, headers=MagicMock(), http_version="1.1", duration=0.0, node=MagicMock()
     )
-
-
-@pytest.fixture
-def freeze_time(freezer: FrozenDateTimeFactory):
-    """Freeze time so we can properly assert on payload contents."""
-
-    frozen_time = dt_util.parse_datetime(MOCK_NOON_APRIL_12TH_2023)
-    if frozen_time is None:
-        msg = "Invalid date string"
-        raise ValueError(msg)
-
-    freezer.move_to(frozen_time)
-
-    return freezer
-
 
 class Test_Filterer:
     """Test the Pipeline.Filterer class."""
@@ -572,10 +553,7 @@ class Test_Poller:
         queue: EventQueue = Queue[tuple[datetime, State, StateChangeType]]()
         settings = MagicMock()
         filterer = MagicMock()
-        poller = Pipeline.Poller(hass, filterer, queue, settings)
-        yield poller
-
-        poller.stop()
+        return Pipeline.Poller(hass, filterer, queue, settings)
 
     class Test_Unit_Tests:
         """Run the unit tests of the Poller class."""
@@ -595,7 +573,7 @@ class Test_Poller:
             ):
                 # Ensure we don't start a coroutine that never finishes
                 loop_handler_instance = loop_handler.return_value
-                loop_handler_instance.start = mock.Mock()
+                loop_handler_instance.start = mock.AsyncMock()
                 loop_handler_instance.wait_for_first_run = mock.AsyncMock()
 
                 poller.poll = MagicMock()
@@ -610,20 +588,6 @@ class Test_Poller:
                 )
 
                 loop_handler_instance.start.assert_called_once()
-
-        async def test_stop(self, poller: Pipeline.Poller):
-            """Test stopping the poller."""
-
-            with patch.object(poller, "_cancel_poller") as cancel_poller:
-                poller.stop()
-                cancel_poller.cancel.assert_called_once()
-
-        async def test_cleanup(self, poller: Pipeline.Poller):
-            """Test cleaning up the poller."""
-
-            with patch.object(poller, "stop") as stop:
-                poller.__del__()
-                stop.assert_called_once()
 
     class Test_Integration_Tests:
         """Run the integration tests of the Poller class."""
@@ -760,6 +724,7 @@ class Test_Listener:
 
             listener._queue.put.assert_not_called()
 
+
 class Test_Publisher:
     """Test the Pipeline.Publisher class."""
 
@@ -781,13 +746,9 @@ class Test_Publisher:
     @pytest.fixture
     def publisher(self, hass, mock_gateway, mock_settings, mock_manager):
         """Return a Publisher instance."""
-        publisher = Pipeline.Publisher(
+        return Pipeline.Publisher(
             hass=hass, gateway=mock_gateway, settings=mock_settings, manager=mock_manager
         )
-
-        yield publisher
-
-        publisher.stop()
 
     class Test_Unit_Tests:
         """Run the unit tests of the Publisher class."""
@@ -879,12 +840,6 @@ class Test_Publisher:
             publisher._gateway.check_connection.assert_called_once()
             publisher._add_action_and_meta_data.assert_not_called()
             mock_gateway.bulk.assert_not_called()
-
-        async def test_cleanup(self, publisher, mock_gateway):
-            """Test cleaning up the Publisher."""
-            with patch.object(publisher, "stop") as stop:
-                publisher.__del__()
-                stop.assert_called_once()
 
 
 class Test_Formatter:

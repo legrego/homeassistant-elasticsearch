@@ -33,7 +33,7 @@ class GatewaySettings(ABC):
     request_timeout: int = 30
     verify_hostname: bool = True
     minimum_version: tuple[int, int] | None = None
-    minimum_privileges: MappingProxyType[str, Any] | None = MappingProxyType[str, Any]({})
+    minimum_privileges: MappingProxyType[str, Any] = MappingProxyType[str, Any]({})
 
     @abstractmethod
     def to_client(self) -> AsyncElasticsearch8:
@@ -51,7 +51,8 @@ class GatewaySettings(ABC):
             "request_timeout": self.request_timeout,
             "verify_hostname": self.verify_hostname,
             "minimum_version": self.minimum_version,
-            "minimum_privileges": self.minimum_privileges.copy() if self.minimum_privileges else None,
+            # Perform a shallow copy of the mapping proxy to allow serialization
+            "minimum_privileges": self.minimum_privileges.copy(),
         }
 
 
@@ -180,7 +181,7 @@ class ElasticsearchGateway(ABC):
 
     @abstractmethod
     async def rollover_datastream(self, datastream: str) -> dict:
-        """Rollover an index."""
+        """Rollover a datastream."""
 
     @abstractmethod
     async def bulk(self, actions: AsyncGenerator[dict[str, Any], Any]) -> None:

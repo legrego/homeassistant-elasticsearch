@@ -18,9 +18,7 @@ from custom_components.elasticsearch.const import DOMAIN as ELASTIC_DOMAIN
 from custom_components.elasticsearch.es_integration import ElasticIntegration
 from freezegun.api import FrozenDateTimeFactory
 from homeassistant.config_entries import ConfigEntryState, ConfigFlow
-from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
-from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import (
     MockConfigEntry,  # noqa: F401
     MockModule,
@@ -46,8 +44,8 @@ if TYPE_CHECKING:
 MODULE = "custom_components.elasticsearch"
 
 
-@pytest.fixture
-async def flow():
+@pytest.fixture(name="mock_flow")
+async def flow_fixture():
     """Set up the config flow for testing."""
 
     class MockFlow(ConfigFlow):
@@ -56,8 +54,8 @@ async def flow():
     return MockFlow
 
 
-@pytest.fixture
-async def mock_module(hass: HomeAssistant) -> MockModule:
+@pytest.fixture(name="mock_module")
+async def mock_module_fixture(hass: HomeAssistant) -> MockModule:
     """Return a mock module useful for initializing a mock integration."""
 
     setup = {
@@ -70,21 +68,21 @@ async def mock_module(hass: HomeAssistant) -> MockModule:
     return MockModule(**setup)
 
 
-@pytest.fixture
-async def mock_platform(hass: HomeAssistant):
+@pytest.fixture(name="mock_platform")
+async def mock_platform_fixture(hass: HomeAssistant):
     """Set up the platform for testing."""
     return new_mock_platform(hass, f"{ELASTIC_DOMAIN}.config_flow")
 
 
 @pytest.fixture
-def _config_flow(mock_platform, flow):
+def _config_flow(mock_platform, mock_flow):
     """Set up the Elastic Integration config flow."""
-    with new_mock_config_flow(ELASTIC_DOMAIN, flow):
+    with new_mock_config_flow(ELASTIC_DOMAIN, mock_flow):
         yield
 
 
-@pytest.fixture
-async def mock_integration(hass: HomeAssistant, _config_flow, mock_module: MockModule) -> Integration:
+@pytest.fixture(name="mock_integration")
+async def mock_integration_fixture(hass: HomeAssistant, _config_flow, mock_module: MockModule) -> Integration:
     """Mock an integration which has the same root methods but does not have a config_flow.
 
     Use this to simplify mocking of the root methods of __init__.py.
@@ -106,6 +104,7 @@ class Test_Config_Migration:
         after_options: dict,
         snapshot: SnapshotAssertion,
     ) -> bool:
+        """Test config data and options migration scenarios."""
         mock_entry = MockConfigEntry(
             unique_id="mock migration",
             domain=ELASTIC_DOMAIN,
@@ -802,39 +801,10 @@ class Test_Private_Methods:
 class Test_Common_e2e:
     """Test a full integration setup and execution."""
 
-    @pytest.fixture
-    async def options(self) -> dict:
-        """Return a mock options dict."""
-        return const.TEST_CONFIG_ENTRY_DEFAULT_OPTIONS
-
-    @pytest.fixture(autouse=True)
-    def _fix_system_info(self):
-        """Return a mock system info."""
-        with mock.patch("custom_components.elasticsearch.es_publish_pipeline.SystemInfo") as system_info:
-            system_info_instance = system_info.return_value
-            system_info_instance.async_get_system_info = mock.AsyncMock(
-                return_value=mock.Mock(
-                    version="1.0.0",
-                    arch="x86",
-                    os_name="Linux",
-                    hostname="my_es_host",
-                ),
-            )
-
-            yield
-
-    @pytest.fixture
-    def freeze_time(self, freezer: FrozenDateTimeFactory):
+    @pytest.fixture(autouse=True, name="freeze_time")
+    def freeze_time_fixture(self, freeze_time_fixture: FrozenDateTimeFactory):
         """Freeze time so we can properly assert on payload contents."""
-
-        frozen_time = dt_util.parse_datetime(const.MOCK_NOON_APRIL_12TH_2023)
-        if frozen_time is None:
-            msg = "Invalid date string"
-            raise ValueError(msg)
-
-        freezer.move_to(frozen_time)
-
-        return freezer
+        return freeze_time_fixture
 
     class Test_Pipeline_Settings:
         """Test Pipeline Settings."""

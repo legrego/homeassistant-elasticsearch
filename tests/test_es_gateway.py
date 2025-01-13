@@ -56,6 +56,7 @@ def self_signed_tls_error():
         connection_key=connection_key, certificate_error=certificate_error
     )
 
+
 def mock_api_response_meta(status_code=200):
     """Return a mock API response meta."""
     return ApiResponseMeta(
@@ -78,6 +79,7 @@ def mock_es_exception(exception, message="None"):
 def mock_es_response(body):
     """Return an AsyncMock that mocks an Elasticsearch API response."""
     return AsyncMock(return_value=ObjectApiResponse(meta={}, body=body))
+
 
 @pytest.fixture
 def gateway_settings() -> Gateway8Settings:
@@ -147,7 +149,7 @@ async def gateway_mock_shared(gateway_settings) -> Elasticsearch8Gateway:
 
 @pytest.fixture
 async def gateway_mock_stateful(gateway_mock_shared: Elasticsearch8Gateway) -> Elasticsearch8Gateway:
-    """Return a mock Elasticsearch client."""
+    """Return a mock Elasticsearch client for a Stateful ES Cluster."""
 
     gateway_mock_shared._client.info = mock_es_response(CLUSTER_INFO_8DOT14_RESPONSE_BODY)
     gateway_mock_shared._client.xpack = MagicMock()
@@ -159,7 +161,7 @@ async def gateway_mock_stateful(gateway_mock_shared: Elasticsearch8Gateway) -> E
 
 @pytest.fixture
 async def gateway_mock_serverless(gateway_mock_shared: Elasticsearch8Gateway) -> Elasticsearch8Gateway:
-    """Return a mock Elasticsearch client."""
+    """Return a mock Elasticsearch client for serverless ES."""
 
     gateway_mock_shared._client.info = mock_es_response(CLUSTER_INFO_SERVERLESS_RESPONSE_BODY)
     gateway_mock_shared._client.xpack = MagicMock()
@@ -439,6 +441,8 @@ class Test_Public_Functions:
         )
 
     class Test_Check_Connection:
+        """Tests for the check_connection method."""
+
         @pytest.fixture(name="gateway")
         async def gateway_fixture(self, gateway_settings):
             """Return a gateway instance."""
@@ -589,6 +593,7 @@ class Test_Exception_Conversion:
         """Test the error converter handling of a bulk index error."""
         with pytest.raises(expected_exception, match=message), gateway_mock_shared._error_converter():
             raise exception
+
 
 class Test_Errors_e2e:
     """Test the error handling of aiohttp errors through the ES Client and Gateway."""

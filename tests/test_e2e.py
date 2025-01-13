@@ -3,15 +3,12 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from unittest import mock
 from unittest.mock import MagicMock
 
 import pytest
 from custom_components.elasticsearch.config_flow import ElasticFlowHandler
 from freezegun.api import FrozenDateTimeFactory
 from homeassistant.config_entries import ConfigEntryState
-from homeassistant.core import HomeAssistant
-from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import (
     MockConfigEntry,  # noqa: F401
 )
@@ -25,42 +22,10 @@ if TYPE_CHECKING:
 MODULE = "custom_components.elasticsearch"
 
 
-@pytest.fixture(autouse=True)
-def _fix_system_info():
-    """Return a mock system info."""
-    with mock.patch("custom_components.elasticsearch.es_publish_pipeline.SystemInfo") as system_info:
-        system_info_instance = system_info.return_value
-        system_info_instance.async_get_system_info = mock.AsyncMock(
-            return_value=mock.Mock(
-                version="1.0.0",
-                arch="x86",
-                os_name="Linux",
-                hostname="my_es_host",
-            ),
-        )
-
-        yield
-
-
-def strip_headers_from_mock_calls(mock_calls):
-    """Strip headers from mock calls."""
-    # mock calls are a 4 item tuple, return a 3 item tuple
-
-    return [(call[0], call[1], call[2]) for call in mock_calls]
-
-
-@pytest.fixture(autouse=True)
-def freeze_time(freezer: FrozenDateTimeFactory):
+@pytest.fixture(autouse=True, name="freeze_time")
+def auto_freeze_time_fixture(freeze_time: FrozenDateTimeFactory):
     """Freeze time so we can properly assert on payload contents."""
-
-    frozen_time = dt_util.parse_datetime(const.MOCK_NOON_APRIL_12TH_2023)
-    if frozen_time is None:
-        msg = "Invalid date string"
-        raise ValueError(msg)
-
-    freezer.move_to(frozen_time)
-
-    return freezer
+    return freeze_time
 
 
 class Test_Common_e2e:
@@ -84,7 +49,7 @@ class Test_Common_e2e:
             es_mock_builder,
             snapshot: SnapshotAssertion,
         ):
-            """Test the full integration setup and execution."""
+            """Test the full integration setup and execution to publishing."""
 
             es_mock_builder.as_elasticsearch_8_17().with_correct_permissions().without_index_template().respond_to_bulk(
                 status=200
@@ -98,7 +63,7 @@ class Test_Common_e2e:
             assert config_entry.state is ConfigEntryState.LOADED
 
             assert es_mock_builder.mocker.call_count == 9
-            assert strip_headers_from_mock_calls(es_mock_builder.mocker.mock_calls) == snapshot
+            assert es_mock_builder.get_calls() == snapshot
 
             # Queue an entity state change and check that it is published with item level reporting
             hass.states.async_set(entity.entity_id, "value2")
@@ -111,7 +76,7 @@ class Test_Common_e2e:
             config_entry.runtime_data._gateway._logger.error.assert_not_called()
 
             assert {
-                "request": strip_headers_from_mock_calls(es_mock_builder.mocker.mock_calls),
+                "request": es_mock_builder.get_calls(),
                 "info": config_entry.runtime_data._gateway._logger.info.call_args.args,
             } == snapshot
 
@@ -125,10 +90,7 @@ class Test_Common_e2e:
             es_mock_builder,
             snapshot: SnapshotAssertion,
         ):
-            """Test the full integration setup and execution."""
-
-            # create an async side effect function that returns
-
+            """Test the full integration setup and execution with an error during the check connection step of publishing."""
             es_mock_builder.as_elasticsearch_8_17(
                 fail_after=5
             ).with_correct_permissions().without_index_template().respond_to_bulk(status=200)
@@ -144,9 +106,11 @@ class Test_Common_e2e:
 
             await config_entry.runtime_data._pipeline_manager._publisher.publish()
 
+            # We check the connection while publishing and if the ping fails we do not
+            # perform the bulk request, so this stays at 10
             assert es_mock_builder.mocker.call_count == 10
 
-            assert strip_headers_from_mock_calls(es_mock_builder.mocker.mock_calls) == snapshot
+            assert es_mock_builder.get_calls() == snapshot
 
         @pytest.mark.parametrize("status_code", [403, 404, 500])
         async def test_setup_to_publish_error(
@@ -160,8 +124,7 @@ class Test_Common_e2e:
             status_code,
             snapshot: SnapshotAssertion,
         ):
-            """Test the full integration setup and execution."""
-
+            """Test the full integration setup and execution up until a publishing error."""
             es_mock_builder.as_elasticsearch_8_17().with_correct_permissions().without_index_template().respond_to_bulk(
                 status=status_code
             )
@@ -174,7 +137,7 @@ class Test_Common_e2e:
             assert config_entry.state is ConfigEntryState.LOADED
 
             assert es_mock_builder.mocker.call_count == 9
-            assert strip_headers_from_mock_calls(es_mock_builder.mocker.mock_calls) == snapshot
+            assert es_mock_builder.get_calls() == snapshot
 
         async def test_setup_to_bulk_item_level_error(
             self,
@@ -186,7 +149,7 @@ class Test_Common_e2e:
             es_mock_builder,
             snapshot: SnapshotAssertion,
         ):
-            """Test the full integration setup and execution."""
+            """Test the full integration setup and execution up until an item-level error in a bulk request."""
 
             es_mock_builder.as_elasticsearch_8_17().with_correct_permissions().without_index_template().respond_to_bulk_with_item_level_error()
 
@@ -210,7 +173,7 @@ class Test_Common_e2e:
 
             config_entry.runtime_data._gateway._logger.info.assert_not_called()
             assert {
-                "request": strip_headers_from_mock_calls(es_mock_builder.mocker.mock_calls),
+                "request": es_mock_builder.get_calls(),
                 "error": config_entry.runtime_data._gateway._logger.error.call_args.args,
             } == snapshot
 
@@ -265,7 +228,7 @@ class Test_Common_e2e:
         async def test_setup_server_error(
             self, hass: HomeAssistant, integration_setup, es_mock_builder, config_entry
         ):
-            """Test the scenario where we fail a connection during setup."""
+            """Test the scenario where we receive a 500 error during the first phase of setup."""
 
             es_mock_builder.with_server_error(status=500)
 
@@ -282,7 +245,7 @@ class Test_Common_e2e:
         async def test_setup_server_timeout(
             self, hass: HomeAssistant, integration_setup, es_mock_builder, config_entry
         ):
-            """Test the scenario where we fail a connection during setup."""
+            """Test the scenario where we receive a timeout during the first phase of setup."""
 
             es_mock_builder.with_server_timeout()
 
@@ -299,7 +262,7 @@ class Test_Common_e2e:
         async def test_setup_tls_error(
             self, hass: HomeAssistant, integration_setup, es_mock_builder, config_entry
         ):
-            """Test the scenario where we fail a connection during setup."""
+            """Test the scenario where we receive a TLS error during the first phase of setup.."""
 
             es_mock_builder.with_selfsigned_certificate()
 
@@ -316,7 +279,7 @@ class Test_Common_e2e:
         async def test_setup_unsupported_error(
             self, hass: HomeAssistant, integration_setup, es_mock_builder, config_entry
         ):
-            """Test the scenario where we fail a connection during setup."""
+            """Test the scenario where we connect and find an Elasticsearch node running an unsupported version."""
 
             es_mock_builder.as_elasticsearch_8_0()
 
@@ -345,7 +308,7 @@ class Test_Common_e2e:
             es_mock_builder,
             snapshot: SnapshotAssertion,
         ):
-            """Test the full integration setup and execution."""
+            """Test the full integration setup and execution with publishing disabled."""
 
             es_mock_builder.as_elasticsearch_8_17().with_correct_permissions().without_index_template().respond_to_bulk(
                 status=200
@@ -394,10 +357,9 @@ class Test_Common_e2e:
             config_entry,
             entity,
             device,
-            freeze_time,
             snapshot: SnapshotAssertion,
         ):
-            """Test the full integration setup and execution."""
+            """Test the full integration setup with a legacy v1 configuration, migration, and go until publishing."""
 
             es_mock_builder.as_elasticsearch_8_17().with_correct_permissions().without_index_template().respond_to_bulk(
                 status=200
@@ -415,5 +377,5 @@ class Test_Common_e2e:
             assert snapshot == {
                 "data": config_entry.data,
                 "options": config_entry.options,
-                "mock_calls": strip_headers_from_mock_calls(es_mock_builder.mocker.mock_calls),
+                "mock_calls": es_mock_builder.get_calls(),
             }

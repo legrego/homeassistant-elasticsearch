@@ -55,7 +55,7 @@ class Test_Initialization:
             datastream_manager._gateway.rollover_datastream.assert_not_called()
 
         async def test_async_init_second_run(self, datastream_manager):
-            """Test initialization of the DatastreamManager with an existing ES cluster."""
+            """Test initialization of the DatastreamManager on a cluster that already contains the required index template."""
             datastream_manager._gateway.get_index_template = AsyncMock(
                 return_value={
                     "index_templates": [

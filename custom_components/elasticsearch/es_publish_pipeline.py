@@ -59,7 +59,7 @@ from custom_components.elasticsearch.errors import (
     IndexingError,
 )
 from custom_components.elasticsearch.logger import LOGGER as BASE_LOGGER
-from custom_components.elasticsearch.logger import log_enter_exit_debug
+from custom_components.elasticsearch.logger import log_enter_exit_debug, log_enter_exit_info
 from custom_components.elasticsearch.loop import LoopHandler
 from custom_components.elasticsearch.system_info import SystemInfo, SystemInfoResult
 
@@ -157,7 +157,6 @@ class Pipeline:
             self._hass: HomeAssistant = hass
             self._gateway: ElasticsearchGateway = gateway
 
-            self._cancel_publisher: Task | None = None
             self._config_entry: ConfigEntry | None = None
 
             self._settings: PipelineSettings = settings
@@ -262,13 +261,19 @@ class Pipeline:
             """Return the queue."""
             return self._queue
 
+        @log_enter_exit_info
+        def reload_config_entry(self, msg) -> None:
+            """Reload the config entry."""
+
+            if self._config_entry and self._config_entry.state == "loaded":
+                msg += " Reloading integration."
+                self._hass.config_entries.async_schedule_reload(self._config_entry.entry_id)
+
         @log_enter_exit_debug
         def stop(self) -> None:
             """Stop the manager."""
 
             self._listener.stop()
-            self._poller.stop()
-            self._publisher.stop()
 
     class Filterer:
         """Filters state changes for processing."""
@@ -487,7 +492,7 @@ class Pipeline:
                 log=self._logger,
             )
 
-            self._cancel_poller = config_entry.async_create_background_task(
+            config_entry.async_create_background_task(
                 self._hass,
                 async_create_catching_coro(state_poll_loop.start()),
                 "es_state_poll_task",
@@ -508,16 +513,6 @@ class Pipeline:
             for state in all_states:
                 if self._filterer.passes_filter(state, reason):
                     self._queue.put((now, state, reason))
-
-        @log_enter_exit_debug
-        def stop(self) -> None:
-            """Stop the poller."""
-            if self._cancel_poller:
-                self._cancel_poller.cancel()
-
-        def __del__(self) -> None:
-            """Clean up the poller."""
-            self.stop()
 
     class Formatter:
         """Formats state changes into documents."""
@@ -796,8 +791,6 @@ class Pipeline:
         @log_enter_exit_debug
         async def async_init(self, config_entry: ConfigEntry) -> None:
             """Initialize the publisher."""
-            self._config_entry = config_entry
-
             filter_format_publish = LoopHandler(
                 name="es_filter_format_publish_loop",
                 func=self.publish,
@@ -805,7 +798,7 @@ class Pipeline:
                 log=self._logger,
             )
 
-            self._cancel_publisher = config_entry.async_create_background_task(
+            config_entry.async_create_background_task(
                 self._hass,
                 async_create_catching_coro(filter_format_publish.start()),
                 "es_filter_format_publish_task",
@@ -851,40 +844,30 @@ class Pipeline:
 
                 await self._gateway.bulk(actions=actions)
 
+            except IndexingError:
+                msg = "Indexing error in publishing loop."
+
+                self._logger.error(msg)
+                self._logger.debug(msg, exc_info=True)
+
             except AuthenticationRequired:
                 msg = "Authentication issue in publishing loop."
 
-                if self._config_entry and self._config_entry.state == "loaded":
-                    msg += " Reloading integration."
-                    self._hass.config_entries.async_schedule_reload(self._config_entry.entry_id)
+                self._manager.reload_config_entry(msg)
 
                 self._logger.error(msg)
                 self._logger.debug(msg, exc_info=True)
-
-            except IndexingError:
-                msg = "Indexing error in publishing loop."
-                self._logger.debug(msg, exc_info=True)
-                self._logger.error(msg)
 
             except ESIntegrationConnectionException:
                 msg = "Connection error in publishing loop."
 
-                if self._config_entry and self._config_entry.state == "loaded":
-                    msg += " Reloading integration."
-                    self._hass.config_entries.async_schedule_reload(self._config_entry.entry_id)
+                self._manager.reload_config_entry(msg)
 
-                self._logger.debug(msg, exc_info=True)
                 self._logger.error(msg)
+                self._logger.debug(msg, exc_info=True)
 
             except Exception:  # noqa: BLE001
                 msg = "Unknown error while publishing documents."
-                self._logger.debug(msg, exc_info=True)
+
                 self._logger.error(msg)
-
-        @log_enter_exit_debug
-        def stop(self) -> None:
-            """Stop the publisher."""
-
-        def __del__(self) -> None:
-            """Clean up the publisher."""
-            self.stop()
+                self._logger.debug(msg, exc_info=True)

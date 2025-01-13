@@ -1,4 +1,8 @@
-"""Index management facilities."""
+"""Manage Elasticsearch datastreams and index templates.
+
+This class provides methods to initialize, install, and update
+Elasticsearch index templates for Home Assistant datastreams.
+"""
 
 from logging import Logger
 
@@ -13,9 +17,9 @@ from .logger import async_log_enter_exit_debug
 
 
 class DatastreamManager:
-    """Index management facilities."""
+    """Datastream manager."""
 
-    _logger = BASE_LOGGER
+    _logger: Logger
 
     def __init__(
         self,
@@ -30,7 +34,7 @@ class DatastreamManager:
 
     @async_log_enter_exit_debug
     async def async_init(self) -> None:
-        """Perform init for index management."""
+        """Perform initializiation of required datastream primitives."""
         if await self._needs_index_template():
             await self._install_index_template()
         elif await self._needs_index_template_update():
@@ -61,7 +65,7 @@ class DatastreamManager:
 
         if imported_version != new_version:
             self._logger.info(
-                "Update required from [%s} to [%s] for Home Assistant datastream index template",
+                "Update required from [%s] to [%s] for Home Assistant datastream index template",
                 imported_version,
                 new_version,
             )
@@ -81,13 +85,15 @@ class DatastreamManager:
 
     @async_log_enter_exit_debug
     async def _update_index_template(self) -> None:
-        """Initialize any required datastream templates."""
-        self._logger.info("Updating Index template and rolling over Homeassistant datastreams")
+        """Update the specified index template and rollover the indices."""
+        self._logger.info("Updating Index template and rolling over Home Assistant datastreams")
 
         await self._install_index_template()
 
+        datastream_wildcard = index_template_definition["index_patterns"][0]
+
         # Rollover all Home Assistant datastreams to ensure we don't get mapping conflicts
-        datastreams = await self._gateway.get_datastream(datastream="metrics-homeassistant.*")
+        datastreams = await self._gateway.get_datastream(datastream=datastream_wildcard)
 
         for datastream in datastreams.get("data_streams", []):
             self._logger.info("Rolling over datastream [%s]", datastream["name"])
