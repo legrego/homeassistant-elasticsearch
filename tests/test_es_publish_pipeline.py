@@ -55,6 +55,7 @@ def mock_api_response_meta(status_code=200):
         status=status_code, headers=MagicMock(), http_version="1.1", duration=0.0, node=MagicMock()
     )
 
+
 class Test_Filterer:
     """Test the Pipeline.Filterer class."""
 
