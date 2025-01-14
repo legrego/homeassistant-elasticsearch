@@ -89,7 +89,7 @@ class PipelineSettings:
         self,
         include_targets: bool,
         exclude_targets: bool,
-        debug_filter: bool,
+        debug_attribute_filtering: bool,
         included_areas: list[str],
         excluded_areas: list[str],
         included_labels: list[str],
@@ -108,7 +108,7 @@ class PipelineSettings:
         self.polling_frequency: int = polling_frequency
         self.change_detection_type: list[StateChangeType] = change_detection_type
         self.tags: list[str] = tags
-        self.debug_filter: bool = debug_filter
+        self.debug_attribute_filtering: bool = debug_attribute_filtering
         self.include_targets: bool = include_targets
         self.exclude_targets: bool = exclude_targets
         self.included_labels: list[str] = included_labels
@@ -127,7 +127,7 @@ class PipelineSettings:
             CONF_POLLING_FREQUENCY: self.polling_frequency,
             CONF_CHANGE_DETECTION_TYPE: [i.value for i in self.change_detection_type],
             CONF_TAGS: self.tags,
-            "debug_filter": self.debug_filter,
+            "debug_attribute_filtering": self.debug_attribute_filtering,
             "included_areas": self.included_areas,
             "excluded_areas": self.excluded_areas,
             "included_labels": self.included_labels,
@@ -298,7 +298,7 @@ class Pipeline:
             self._include_targets: bool = settings.include_targets
             self._exclude_targets: bool = settings.exclude_targets
 
-            self._debug_filter: bool = settings.debug_filter
+            self._debug_attribute_filtering: bool = settings.debug_attribute_filtering
 
             self._included_areas: list[str] = settings.included_areas
             self._excluded_areas: list[str] = settings.excluded_areas
@@ -315,103 +315,129 @@ class Pipeline:
             self._area_registry = area_registry.async_get(hass)
             self._device_registry = device_registry.async_get(hass)
 
-        def passes_filter(self, state: State, reason: StateChangeType) -> bool:
-            """Filter state changes for processing."""
+        def _reject(self, base_message, message: str) -> bool:
+            """Help handle logging for cases where a filter results in rejection of the entity state update."""
 
-            if not self._passes_change_detection_type_filter(reason):
-                self._logger.debug(
-                    "Entity [%s] state change type [%s] failed filter.", state.entity_id, reason
-                )
-                return False
+            message = base_message + " Rejected: " + message
+            self._logger.debug(message)
 
-            if not self._passes_entity_exists_filter(entity_id=state.entity_id):
-                self._logger.debug("Entity [%s] not found in registry.", state.entity_id)
-                return False
+            return False
 
-            if self._exclude_targets and not self._passes_exclude_targets(entity_id=state.entity_id):
-                self._logger.debug("Entity [%s] failed exclude filter.", state.entity_id)
-                return False
+        def _accept(self, base_message, message: str) -> bool:
+            """Help handle logging for cases where a filter results in inclusion of the entity state update."""
 
-            if self._include_targets and not self._passes_include_targets(entity_id=state.entity_id):
-                self._logger.debug("Entity [%s] failed include filter.", state.entity_id)
-                return False
+            message = base_message + " Accepted: " + message
+            self._logger.debug(message)
 
             return True
 
-        def _passes_exclude_targets(self, entity_id: str) -> bool:
-            if entity_id in self._excluded_entities:
+        def passes_filter(self, state: State, reason: StateChangeType) -> bool:
+            """Filter state changes for processing."""
+            base_msg = f"Processing filters for entity [{state.entity_id}]: "
+
+            if not self._passes_change_detection_type_filter(reason):
                 return False
+
+            if not self._passes_entity_exists_filter(entity_id=state.entity_id):
+                return False
+
+            if self._exclude_targets and not self._passes_exclude_targets(entity_id=state.entity_id):
+                return False
+
+            if self._include_targets and not self._passes_include_targets(entity_id=state.entity_id):
+                return False
+
+            return self._accept(base_msg, "Entity passed all filters.")
+
+        def _passes_exclude_targets(self, entity_id: str) -> bool:
+            base_msg = f"Processing exclusion filters for entity [{entity_id}]: "
+
+            if entity_id in self._excluded_entities:
+                return self._reject(base_msg, "In the excluded entities list.")
 
             entity = self._entity_registry.async_get(entity_id)
 
             # If the entity is not found, we can't check the other filters, so we return False
             if entity is None:
-                return False
+                return self._reject(base_msg, "Not found in registry.")
 
             if entity.device_id in self._excluded_devices:
-                return False
+                return self._reject(base_msg, f"Is on an excluded device [{entity.device_id}].")
 
             if entity.area_id in self._excluded_areas:
-                return False
+                return self._reject(base_msg, f"Is in an excluded area [{entity.area_id}].")
 
             if any(label in self._excluded_labels for label in entity.labels):
-                return False
+                return self._reject(base_msg, "Has an excluded entity label.")
 
             # Check the device for labels
             if entity.device_id is not None:
                 device = self._device_registry.async_get(entity.device_id)
                 if device is not None:
                     if any(label in self._excluded_labels for label in device.labels):
-                        return False
+                        return self._reject(
+                            base_msg, f"Has an excluded device label from device {entity.device_id}."
+                        )
 
-            return True
+            return self._accept(base_msg, f"Entity [{entity_id}] was not filtered by any exclusion filters.")
 
         def _passes_include_targets(self, entity_id: str) -> bool:
+            base_msg = f"Processing inclusion filters for entity [{entity_id}]: "
+
             if entity_id in self._included_entities:
-                return True
+                return self._accept(base_msg, f"Entity [{entity_id}] is in the included entities list.")
 
             entity = self._entity_registry.async_get(entity_id)
 
-            # If the entity is not found, we can't check the other filters, so we return False
+            # entity should not be None because our caller has ensured us it exists, but just in case (and to make mypy happy)
             if entity is None:
-                return False
+                return self._reject(base_msg, "Entity not found in registry.")
 
             if entity.device_id in self._included_devices:
-                return True
+                return self._accept(
+                    base_msg, f"Entity [{entity_id}] is on an included device [{entity.device_id}]."
+                )
 
             if entity.area_id in self._included_areas:
-                return True
+                return self._accept(
+                    base_msg, f"Entity [{entity_id}] is in an included area [{entity.area_id}]."
+                )
 
             if any(label in self._included_labels for label in entity.labels):
-                return True
+                return self._accept(base_msg, f"Entity [{entity_id}] has an included entity label.")
 
             # Check the device for labels
             if entity.device_id is not None:
                 device = self._device_registry.async_get(entity.device_id)
                 if device is not None:
                     if any(label in self._included_labels for label in device.labels):
-                        return True
+                        return self._accept(base_msg, f"Entity [{entity_id}] has an included device label.")
 
             return False
 
         def _passes_change_detection_type_filter(self, reason: StateChangeType) -> bool:
             """Determine if a state change should be published."""
+            base_msg = f"Processing change detection type filter: Change type [{reason.value}]: "
 
             # If polling is enabled, we publish all polled events
             if reason.value == StateChangeType.NO_CHANGE.value:
-                return True
+                return self._accept(base_msg, "Always publish polling events.")
 
-            return reason.value in self._change_detection_type
+            if reason.value in self._change_detection_type:
+                return self._accept(base_msg, "is in the change detection type list.")
+
+            return self._reject(base_msg, "is not in the change detection type list.")
 
         def _passes_entity_exists_filter(self, entity_id: str) -> bool:
             """Check the entity registry and make sure we can see the entity before proceeding."""
+            base_msg = f"Processing entity exists filter for entity [{entity_id}]: "
 
             entity = self._entity_registry.async_get(entity_id)
 
             if entity is None:
-                return False
+                return self._reject(base_msg, "Entity not found in registry.")
 
-            return True
+            return self._accept(base_msg, "Entity found in registry.")
 
     class Listener:
         """Listens for state changes and queues them for processing."""
@@ -508,13 +534,10 @@ class Pipeline:
             """Poll for state changes and queue them for send."""
 
             now: datetime = datetime.now(tz=UTC)
-
-            all_states = self._hass.states.async_all()
-
             reason = StateChangeType.NO_CHANGE
 
             # Ensure we only queue states that pass the filter
-            for state in all_states:
+            for state in self._hass.states.async_all():
                 if self._filterer.passes_filter(state, reason):
                     await self._queue.put((now, state, reason))
 
@@ -528,7 +551,7 @@ class Pipeline:
             self._logger = log if log else BASE_LOGGER
             self._static_fields: dict[str, Any] = {}
 
-            self._debug_filter: bool = settings.debug_filter
+            self._debug_attribute_filtering: bool = settings.debug_attribute_filtering
 
             self._extended_entity_details = ExtendedEntityDetails(hass, self._logger)
 
@@ -651,25 +674,25 @@ class Pipeline:
 
         def filter_attribute(self, entity_id, key, value) -> bool:
             """Filter out attributes we don't want to publish."""
-            msg: str | None = None
 
-            if key in SKIP_ATTRIBUTES:
-                msg = f"Attribute {key} is a skippable attribute. It has value {value} and is from entity {entity_id}."
-
-            elif not isinstance(key, ALLOWED_ATTRIBUTE_KEY_TYPES):
-                msg = f"Attribute {key} has a disallowed key type {type(key)}. It has value {value} from entity {entity_id}."
-
-            elif not isinstance(value, ALLOWED_ATTRIBUTE_VALUE_TYPES):
-                msg = f"Attribute {key} has a disallowed value type {type(value)}. It has value {value} from entity {entity_id}."
-
-            elif key.strip() == "":
-                msg = f"Attribute {key} is whitespace or empty. It has value {value} from entity {entity_id}."
-
-            if msg is not None:
-                if self._debug_filter:
-                    self._logger.debug(msg)
+            def reject(msg: str) -> bool:
+                if self._debug_attribute_filtering:
+                    message = f"Filtering attributes for entity [{entity_id}]: Attribute [{key}] " + msg
+                    self._logger.debug(message)
 
                 return False
+
+            if key in SKIP_ATTRIBUTES:
+                return reject("is in the list of attributes to skip.")
+
+            if not isinstance(key, ALLOWED_ATTRIBUTE_KEY_TYPES):
+                return reject(f"has a disallowed key type [{type(key)}].")
+
+            if not isinstance(value, ALLOWED_ATTRIBUTE_VALUE_TYPES):
+                return reject(f"with value [{value}] has disallowed value type [{type(value)}].")
+
+            if key.strip() == "":
+                return reject("is empty after stripping leading and trailing whitespace.")
 
             return True
 

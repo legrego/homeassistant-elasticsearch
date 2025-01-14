@@ -15,7 +15,7 @@ CONF_AUTHENTICATION_TYPE: str = "authentication_type"
 
 CONF_CHANGE_DETECTION_TYPE: str = "change_detection_type"
 
-CONF_DEBUG_FILTER: str = "debug_filter"
+CONF_DEBUG_ATTRIBUTE_FILTERING: str = "debug_attribute_filtering"
 
 CONF_INCLUDE_TARGETS: str = "include_targets"
 CONF_EXCLUDE_TARGETS: str = "exclude_targets"

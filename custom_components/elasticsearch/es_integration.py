@@ -16,7 +16,7 @@ from homeassistant.const import (
 
 from custom_components.elasticsearch.const import (
     CONF_CHANGE_DETECTION_TYPE,
-    CONF_DEBUG_FILTER,
+    CONF_DEBUG_ATTRIBUTE_FILTERING,
     CONF_EXCLUDE_TARGETS,
     CONF_INCLUDE_TARGETS,
     CONF_POLLING_FREQUENCY,
@@ -124,7 +124,7 @@ class ElasticIntegration:
             publish_frequency=config_entry.options[CONF_PUBLISH_FREQUENCY],
             change_detection_type=config_entry.options[CONF_CHANGE_DETECTION_TYPE],
             tags=config_entry.options[CONF_TAGS],
-            debug_filter=config_entry.options.get(CONF_DEBUG_FILTER, False),
+            debug_attribute_filtering=config_entry.options.get(CONF_DEBUG_ATTRIBUTE_FILTERING, False),
             include_targets=config_entry.options[CONF_INCLUDE_TARGETS],
             exclude_targets=config_entry.options[CONF_EXCLUDE_TARGETS],
             included_areas=config_entry.options[CONF_TARGETS_TO_INCLUDE].get("area_id", []),

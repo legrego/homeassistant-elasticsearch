@@ -35,7 +35,7 @@ def settings_fixture():
         publish_frequency=60,
         change_detection_type=[],
         tags=[],
-        debug_filter=True,
+        debug_attribute_filtering=True,
         include_targets=False,
         exclude_targets=False,
         included_areas=[],
