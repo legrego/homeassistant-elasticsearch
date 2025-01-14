@@ -109,7 +109,7 @@ class Test_Filterer:
 
             assert patched_filterer.passes_filter(state, StateChangeType.STATE) is False
 
-        async def test_passes_filter_with_disallowed_change_type(self, patched_filterer):
+        async def test_fails_filter_with_disallowed_change_type(self, patched_filterer):
             """Test that a state change with an allowed change type and excluded entity does not pass the filter."""
             state = State("light.living_room", "on")
             patched_filterer._change_detection_type = [StateChangeType.NO_CHANGE.name]
