@@ -79,6 +79,9 @@ SKIP_ATTRIBUTES = [
     "unit_of_measurement",
 ]
 
+# Trim keys with values that are None, empty lists, or empty objects
+SKIP_VALUES = (None, [], {})
+
 type EventQueue = asyncio.Queue[tuple[datetime, State, StateChangeType]]
 
 
@@ -585,10 +588,12 @@ class Pipeline:
                 **self._static_fields,
             }
 
-            # Return the document with null and [] values removed
-            return {k: v for k, v in document.items() if v is not None and v != [] and v != {}}
-
-        # Methods for assembling the document
+            return {
+                k: v
+                for k, v in document.items()
+                # Filter empty values
+                if v not in SKIP_VALUES
+            }
 
         def _state_to_extended_details(self, state: State) -> dict:
             """Gather entity details from the state object and return a mapped dictionary ready to be put in an elasticsearch document."""
@@ -606,11 +611,12 @@ class Pipeline:
                 entry_dict["location.lat"] = state.attributes["latitude"]
                 entry_dict["location.lon"] = state.attributes["longitude"]
 
-            # Trim keys with values that are None or are empty lists
             return {
                 f"hass.entity.{k}": entry_dict.get(v)
+                # Re-write HA-centric entity keys to ES-centric entity keys
                 for k, v in EXTENDED_DETAILS_TO_ES_DOCUMENT.items()
-                if (entry_dict.get(v) is not None and entry_dict.get(v) != [])
+                # Filter empty values
+                if (entry_dict.get(v) not in SKIP_VALUES)
             }
 
         def _state_to_attributes(self, state: State) -> dict:
