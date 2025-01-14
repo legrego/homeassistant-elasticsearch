@@ -230,14 +230,20 @@ class Pipeline:
             """Sip an event off of the queue."""
 
             while not self._queue.empty():
-                timestamp, state, reason = await self._queue.get()
+                timestamp: datetime | None = None
+                state: State | None = None
+                reason: StateChangeType | None = None
 
                 try:
+                    timestamp, state, reason = self._queue.get_nowait()
+
                     yield self._formatter.format(timestamp, state, reason)
+                except asyncio.QueueEmpty:
+                    pass
                 except Exception:
                     self._logger.exception(
                         "Error formatting document for entity [%s]. Skipping document.",
-                        state.entity_id,
+                        state.entity_id if state is not None else "Unknown",
                     )
 
         @property
@@ -482,7 +488,7 @@ class Pipeline:
 
             # Ensure we only queue states that pass the filter
             if self._filterer.passes_filter(new_state, reason):
-                await self._queue.put((event.time_fired, new_state, reason))
+                self._queue.put_nowait((event.time_fired, new_state, reason))
 
         @log_enter_exit_debug
         def stop(self) -> None:
@@ -539,7 +545,7 @@ class Pipeline:
             # Ensure we only queue states that pass the filter
             for state in self._hass.states.async_all():
                 if self._filterer.passes_filter(state, reason):
-                    await self._queue.put((now, state, reason))
+                    self._queue.put_nowait((now, state, reason))
 
     class Formatter:
         """Formats state changes into documents."""

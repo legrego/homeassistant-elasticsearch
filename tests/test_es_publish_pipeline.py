@@ -428,7 +428,7 @@ class Test_Manager:
             }
 
             # Add the sample data to the queue
-            await manager._queue.put((timestamp, state, reason))
+            manager._queue.put_nowait((timestamp, state, reason))
 
             # Call the _sip_queue method
             result = []
@@ -703,24 +703,24 @@ class Test_Listener:
         @pytest.mark.asyncio
         async def test_listener_handle_event(self, hass, listener, event):
             """Test handling a state_changed event."""
-            listener._queue.put = AsyncMock()
+            listener._queue.put_nowait = MagicMock()
 
             await listener._handle_event(event)
 
-            listener._queue.put.assert_called_once_with(
+            listener._queue.put_nowait.assert_called_once_with(
                 (event.time_fired, event.data["new_state"], StateChangeType.STATE),
             )
 
         @pytest.mark.asyncio
         async def test_listener_handle_event_empty_new_state(self, hass, listener, event):
             """Test handling a state_changed event."""
-            listener._queue.put = AsyncMock()
+            listener._queue.put_nowait = MagicMock()
 
             event.data["new_state"] = None
 
             await listener._handle_event(event)
 
-            listener._queue.put.assert_not_called()
+            listener._queue.put_nowait.assert_not_called()
 
 
 class Test_Publisher:
