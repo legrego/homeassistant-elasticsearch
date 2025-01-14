@@ -111,7 +111,7 @@ def es_mock_builder() -> Generator[es_mocker, Any, None]:
 
 
 @pytest.fixture
-def freeze_time(self, freezer: FrozenDateTimeFactory):
+def freeze_time(freezer: FrozenDateTimeFactory):
     """Freeze time so we can properly assert on payload contents."""
 
     frozen_time = dt_util.parse_datetime(const.MOCK_NOON_APRIL_12TH_2023)

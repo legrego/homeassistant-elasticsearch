@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import re
 import unicodedata
 from collections.abc import AsyncGenerator
@@ -9,7 +10,6 @@ from datetime import UTC, datetime
 from functools import lru_cache
 from logging import Logger
 from math import isinf, isnan
-from queue import Queue
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.sun.const import STATE_ABOVE_HORIZON, STATE_BELOW_HORIZON
@@ -79,7 +79,7 @@ SKIP_ATTRIBUTES = [
     "unit_of_measurement",
 ]
 
-type EventQueue = Queue[tuple[datetime, State, StateChangeType]]
+type EventQueue = asyncio.Queue[tuple[datetime, State, StateChangeType]]
 
 
 class PipelineSettings:
@@ -163,7 +163,7 @@ class Pipeline:
 
             self._static_fields: dict[str, str | float | list[str] | dict[str, float]] = {}
 
-            self._queue: EventQueue = Queue[tuple[datetime, State, StateChangeType]]()
+            self._queue: EventQueue = asyncio.Queue[tuple[datetime, State, StateChangeType]]()
 
             self._filterer: Pipeline.Filterer = Pipeline.Filterer(
                 hass=self._hass,
@@ -202,10 +202,51 @@ class Pipeline:
         async def async_init(self, config_entry: ConfigEntry) -> None:
             """Initialize the manager."""
 
-            if self._settings.publish_frequency is None or self._settings.publish_frequency == 0:
+            self._config_entry = config_entry
+
+            if self._settings.publish_frequency == 0:
                 self._logger.warning("No publish frequency set. Disabling publishing.")
                 return
 
+            await self._populate_static_fields()
+
+            # Initialize listener if change detection type is configured
+            if len(self._settings.change_detection_type) != 0:
+                await self._listener.async_init()
+            else:
+                self._logger.debug("No change detection type set. Disabling change listener.")
+
+            # We only need to initialize the poller if the user has configured a polling frequency
+            if self._settings.polling_frequency > 0:
+                await self._poller.async_init(config_entry=config_entry)
+            else:
+                self._logger.debug("No polling frequency set. Disabling polling.")
+
+            # Initialize document sinks
+            await self._formatter.async_init(self._static_fields)
+            await self._publisher.async_init(config_entry=config_entry)
+
+        async def sip_queue(self) -> AsyncGenerator[dict[str, Any], Any]:
+            """Sip an event off of the queue."""
+
+            while not self._queue.empty():
+                timestamp, state, reason = await self._queue.get()
+
+                try:
+                    yield self._formatter.format(timestamp, state, reason)
+                except Exception:
+                    self._logger.exception(
+                        "Error formatting document for entity [%s]. Skipping document.",
+                        state.entity_id,
+                    )
+
+        @property
+        def queue(self) -> EventQueue:
+            """Return the queue."""
+            return self._queue
+
+        async def _populate_static_fields(self) -> None:
+            """Populate the static fields for generated documents."""
             system_info: SystemInfo = SystemInfo(hass=self._hass)
             result: SystemInfoResult | None = await system_info.async_get_system_info()
 
@@ -227,39 +268,6 @@ class Pipeline:
 
             if self._settings.tags != []:
                 self._static_fields[CONF_TAGS] = self._settings.tags
-
-            if len(self._settings.change_detection_type) != 0:
-                await self._listener.async_init()
-
-            if self._settings.polling_frequency is not None and self._settings.polling_frequency > 0:
-                await self._poller.async_init(config_entry=config_entry)
-            else:
-                self._logger.debug("No polling frequency set. Disabling polling.")
-
-            # Initialize document sinks
-            await self._formatter.async_init(self._static_fields)
-            await self._publisher.async_init(config_entry=config_entry)
-
-            self._config_entry = config_entry
-
-        async def sip_queue(self) -> AsyncGenerator[dict[str, Any], Any]:
-            """Sip an event off of the queue."""
-
-            while not self._queue.empty():
-                timestamp, state, reason = self._queue.get()
-
-                try:
-                    yield self._formatter.format(timestamp, state, reason)
-                except Exception:
-                    self._logger.exception(
-                        "Error formatting document for entity [%s]. Skipping document.",
-                        state.entity_id,
-                    )
-
-        @property
-        def queue(self) -> EventQueue:
-            """Return the queue."""
-            return self._queue
 
         @log_enter_exit_info
         def reload_config_entry(self, msg) -> None:
@@ -307,16 +315,12 @@ class Pipeline:
             self._area_registry = area_registry.async_get(hass)
             self._device_registry = device_registry.async_get(hass)
 
-        @log_enter_exit_debug
-        async def async_init(self) -> None:
-            """Initialize the filterer."""
-
         def passes_filter(self, state: State, reason: StateChangeType) -> bool:
             """Filter state changes for processing."""
 
             if not self._passes_change_detection_type_filter(reason):
                 self._logger.debug(
-                    "Entity [%s} state change type [%s] failed filter.", state.entity_id, reason
+                    "Entity [%s] state change type [%s] failed filter.", state.entity_id, reason
                 )
                 return False
 
@@ -452,7 +456,7 @@ class Pipeline:
 
             # Ensure we only queue states that pass the filter
             if self._filterer.passes_filter(new_state, reason):
-                self._queue.put((event.time_fired, new_state, reason))
+                await self._queue.put((event.time_fired, new_state, reason))
 
         @log_enter_exit_debug
         def stop(self) -> None:
@@ -512,7 +516,7 @@ class Pipeline:
             # Ensure we only queue states that pass the filter
             for state in all_states:
                 if self._filterer.passes_filter(state, reason):
-                    self._queue.put((now, state, reason))
+                    await self._queue.put((now, state, reason))
 
     class Formatter:
         """Formats state changes into documents."""
@@ -545,7 +549,7 @@ class Pipeline:
                 "hass.entity.domain": state.domain,
                 "hass.entity.id": state.entity_id,
                 "hass.entity.value": state.state,
-                "hass.entity.valueas": self.state_to_coerced_value(state),
+                "hass.entity.valueas": self._state_to_coerced_value(state),
                 "hass.entity.object.id": state.object_id,
                 **Pipeline.Formatter.domain_to_datastream(state.domain),
                 **self._state_to_extended_details(state),
@@ -553,7 +557,7 @@ class Pipeline:
             }
 
             # Return the document with null and [] values removed
-            return {k: v for k, v in document.items() if v is not None and len(v) != 0}
+            return {k: v for k, v in document.items() if v is not None and v != [] and v != {}}
 
         # Methods for assembling the document
 
@@ -567,24 +571,17 @@ class Pipeline:
             entry_dict = extended_registry_entry.to_dict(flatten=True, keep_keys=KEYS_TO_KEEP)
 
             # The logic for friendly name is in the state for some reason
-            entry_dict.update(
-                {
-                    "friendly_name": state.name,
-                },
-            )
+            entry_dict["friendly_name"] = state.name
+
             if "latitude" in state.attributes and "longitude" in state.attributes:
-                entry_dict.update(
-                    {
-                        "location": {
-                            "lat": state.attributes["latitude"],
-                            "lon": state.attributes["longitude"],
-                        }
-                    }
-                )
+                entry_dict["location.lat"] = state.attributes["latitude"]
+                entry_dict["location.lon"] = state.attributes["longitude"]
+
+            # Trim keys with values that are None or are empty lists
             return {
                 f"hass.entity.{k}": entry_dict.get(v)
                 for k, v in EXTENDED_DETAILS_TO_ES_DOCUMENT.items()
-                if (entry_dict.get(v) is not None and len(entry_dict.get(v, [])) != 0)
+                if (entry_dict.get(v) is not None and entry_dict.get(v) != [])
             }
 
         def _state_to_attributes(self, state: State) -> dict:
@@ -594,12 +591,6 @@ class Pipeline:
 
             for key, value in state.attributes.items():
                 if not self.filter_attribute(state.entity_id, key, value):
-                    if self._debug_filter:
-                        self._logger.debug(
-                            "Attribute [%s] failed filter for entity [%s].",
-                            key,
-                            state.entity_id,
-                        )
                     continue
 
                 new_key = self.normalize_attribute_name(key)
@@ -616,9 +607,9 @@ class Pipeline:
 
             return attributes
 
-        def state_to_coerced_value(self, state: State) -> dict:
+        def _state_to_coerced_value(self, state: State) -> dict:
             """Coerce the state value into a dictionary of possible types."""
-            value = state.state
+            value: str = state.state
 
             success, result = self.try_state_as_boolean(state)
             if success and result is not None:

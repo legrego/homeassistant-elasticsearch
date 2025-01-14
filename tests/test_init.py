@@ -802,9 +802,9 @@ class Test_Common_e2e:
     """Test a full integration setup and execution."""
 
     @pytest.fixture(autouse=True, name="freeze_time")
-    def freeze_time_fixture(self, freeze_time_fixture: FrozenDateTimeFactory):
+    def auto_freeze_time_fixture(self, freeze_time: FrozenDateTimeFactory):
         """Freeze time so we can properly assert on payload contents."""
-        return freeze_time_fixture
+        return freeze_time
 
     class Test_Pipeline_Settings:
         """Test Pipeline Settings."""

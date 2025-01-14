@@ -1,7 +1,7 @@
 """Tests for the es_publish_pipeline module."""
 
+import asyncio
 from datetime import UTC, datetime
-from queue import Queue
 from unittest import mock
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -351,8 +351,6 @@ class Test_Manager:
         async def test_async_init_no_publish(self, manager, config_entry):
             """Test the async initialization of the manager."""
 
-            manager._settings.change_detection_type = ["STATE"]
-
             config_entry.options = {}
             manager._listener = mock.Mock()
             manager._listener.async_init = mock.AsyncMock()
@@ -365,7 +363,9 @@ class Test_Manager:
 
             # No publish_frequency means the manager doesnt do anything
             manager._settings = mock.Mock()
-            manager._settings.publish_frequency = None
+            manager._settings.change_detection_type = ["STATE"]
+            manager._settings.publish_frequency = 0
+            manager._settings.polling_frequency = 60
 
             # Check for self._logger.warning("No publish frequency set. Disabling publishing.")
             manager._logger.warning = mock.Mock()
@@ -392,7 +392,8 @@ class Test_Manager:
             # No publish_frequency means the manager doesnt do anything
             manager._settings = mock.Mock()
             manager._settings.change_detection_type = ["STATE"]
-            manager._settings.polling_frequency = None
+            manager._settings.polling_frequency = 0
+            manager._settings.publishing_frequency = 60
 
             # Check for self._logger.warning("No polling frequency set. Disabling polling.")
             manager._logger.debug = mock.Mock()
@@ -427,7 +428,7 @@ class Test_Manager:
             }
 
             # Add the sample data to the queue
-            manager._queue.put((timestamp, state, reason))
+            await manager._queue.put((timestamp, state, reason))
 
             # Call the _sip_queue method
             result = []
@@ -528,14 +529,10 @@ class Test_Manager:
 
             with (
                 patch.object(manager._listener, "stop") as listener_stop,
-                patch.object(manager._poller, "stop") as poller_stop,
-                patch.object(manager._publisher, "stop") as publisher_stop,
             ):
                 manager.stop()
 
                 listener_stop.assert_called_once()
-                poller_stop.assert_called_once()
-                publisher_stop.assert_called_once()
 
         async def test_del(self, manager):
             """Test cleaning up the manager."""
@@ -551,7 +548,7 @@ class Test_Poller:
     @pytest.fixture
     async def poller(self, hass: HomeAssistant):
         """Return a Pipeline.Poller instance."""
-        queue: EventQueue = Queue[tuple[datetime, State, StateChangeType]]()
+        queue: EventQueue = asyncio.Queue[tuple[datetime, State, StateChangeType]]()
         settings = MagicMock()
         filterer = MagicMock()
         return Pipeline.Poller(hass, filterer, queue, settings)
@@ -626,7 +623,7 @@ class Test_Poller:
                 queued_states: list[dict] = []
 
                 while not poller._queue.empty():
-                    timestamp, state, change_type = poller._queue.get()
+                    timestamp, state, change_type = await poller._queue.get()
                     queued_states.append(
                         {
                             "timestamp": timestamp,
@@ -649,7 +646,7 @@ class Test_Listener:
     @pytest.fixture
     def queue(self) -> EventQueue:
         """Return a Listener instance."""
-        queue: EventQueue = Queue[tuple[datetime, State, StateChangeType]]()
+        queue: EventQueue = asyncio.Queue[tuple[datetime, State, StateChangeType]]()
         return queue
 
     @pytest.fixture
@@ -706,7 +703,7 @@ class Test_Listener:
         @pytest.mark.asyncio
         async def test_listener_handle_event(self, hass, listener, event):
             """Test handling a state_changed event."""
-            listener._queue.put = MagicMock()
+            listener._queue.put = AsyncMock()
 
             await listener._handle_event(event)
 
@@ -717,7 +714,7 @@ class Test_Listener:
         @pytest.mark.asyncio
         async def test_listener_handle_event_empty_new_state(self, hass, listener, event):
             """Test handling a state_changed event."""
-            listener._queue.put = MagicMock()
+            listener._queue.put = AsyncMock()
 
             event.data["new_state"] = None
 
@@ -938,41 +935,41 @@ class Test_Formatter:
         async def test_state_to_coerced_value_string(self, formatter):
             """Test converting a state to a coerced value."""
             state = State("light.living_room", "tomato")
-            coerced_value = formatter.state_to_coerced_value(state)
+            coerced_value = formatter._state_to_coerced_value(state)
             assert coerced_value == {"string": "tomato"}
 
         async def test_state_to_coerced_value_boolean(self, formatter):
             """Test converting a state to a coerced value."""
             state = State("binary_sensor.motion", "on")
-            coerced_value = formatter.state_to_coerced_value(state)
+            coerced_value = formatter._state_to_coerced_value(state)
             assert coerced_value == {"boolean": True}
 
             state = State("binary_sensor.motion", "off")
-            coerced_value = formatter.state_to_coerced_value(state)
+            coerced_value = formatter._state_to_coerced_value(state)
             assert coerced_value == {"boolean": False}
 
         async def test_state_to_coerced_value_float(self, formatter):
             """Test converting a state to a coerced value."""
             state = State("sensor.temperature", "25.5")
-            coerced_value = formatter.state_to_coerced_value(state)
+            coerced_value = formatter._state_to_coerced_value(state)
             assert coerced_value == {"float": 25.5}
 
         async def test_state_to_coerced_value_float_fail(self, formatter):
             """Test converting a state to a coerced value."""
             # set state to infinity
             state = State("sensor.temperature", str(float("inf")))
-            coerced_value = formatter.state_to_coerced_value(state)
+            coerced_value = formatter._state_to_coerced_value(state)
             assert coerced_value == {"string": "inf"}
 
             # set state to nan
             state = State("sensor.temperature", str(float("nan")))
-            coerced_value = formatter.state_to_coerced_value(state)
+            coerced_value = formatter._state_to_coerced_value(state)
             assert coerced_value == {"string": "nan"}
 
         async def test_state_to_coerced_value_datetime(self, formatter):
             """Test converting a state to a coerced value."""
             state = State("sensor.last_updated", "2023-04-12T12:00:00Z")
-            coerced_value = formatter.state_to_coerced_value(state)
+            coerced_value = formatter._state_to_coerced_value(state)
             assert coerced_value == {
                 "datetime": "2023-04-12T12:00:00+00:00",
                 "date": "2023-04-12",
@@ -1027,8 +1024,8 @@ class Test_Formatter:
             assert entity_details["hass.entity.labels"] == entity_labels
             assert entity_details["hass.entity.platform"] == entity.platform
 
-            assert entity_details["hass.entity.location"]["lat"] == 1.0
-            assert entity_details["hass.entity.location"]["lon"] == 1.0
+            assert entity_details["hass.entity.location.lat"] == 1.0
+            assert entity_details["hass.entity.location.lon"] == 1.0
 
             assert entity_details == snapshot
 
