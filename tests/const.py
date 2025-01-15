@@ -25,7 +25,7 @@ from homeassistant.const import (
 TEST_DEVICE_AREA_NAME = "device area"
 TEST_DEVICE_FLOOR_NAME = "device floor"
 TEST_DEVICE_LABELS = ["device label 1", "device label 2", "device label 3"]
-
+TEST_DEVICE_ID = "very_unique_device_id"
 TEST_DEVICE_NAME = "device name"
 
 TEST_ENTITY_DOMAIN = COUNTER_DOMAIN
@@ -35,6 +35,9 @@ TEST_ENTITY_FLOOR_NAME = "entity floor"
 TEST_ENTITY_LABELS = ["entity label 1", "entity label 2", "entity label 3"]
 TEST_ENTITY_PLATFORM = "entity platform"
 TEST_ENTITY_DEVICE_CLASS = "entity device class"
+
+TEST_ENTITY_STATE_LAST_UPDATED = datetime(year=2024, month=4, day=12, hour=1)
+TEST_ENTITY_STATE_LAST_CHANGED = datetime(year=2024, month=4, day=12, hour=2)
 
 TEST_ENTITY_STATE = "entity state"
 TEST_ENTITY_STATE_FLOAT = "123.456"
@@ -46,6 +49,15 @@ TEST_ENTITY_STATE_DATE = "2024-04-12"
 TEST_ENTITY_STATE_TIME = "00:00:00"
 TEST_ENTITY_STATE_BOOLEAN = "True"
 TEST_ENTITY_STATE_BOOLEAN_ON = "on"
+
+TEST_ENTITY_STATE_ATTRIBUTES = {
+    "string": "abc123",
+    "int": 123,
+    "float": 123.456,
+    "list": [1, 2, 3, 4],
+    "set": {5, 5},
+    "tuple": (6, 6),
+}
 
 TEST_ENTITY_STATE_ATTRIBUTES_INCLUDE = [
     {
@@ -119,6 +131,8 @@ TEST_ENTITY_STATE_ATTRIBUTE_COMBINATION_IDS = [
 ]
 
 TEST_ENTITY_OBJECT_ID_0 = "entity_object_id"
+TEST_ENTITY_ID_0 = TEST_ENTITY_DOMAIN + "." + TEST_ENTITY_OBJECT_ID_0
+
 TEST_ENTITY_OBJECT_ID_1 = "entity_object_id_1"
 TEST_ENTITY_OBJECT_ID_2 = "entity_object_id_2"
 TEST_ENTITY_OBJECT_ID_3 = "entity_object_id_3"
@@ -227,6 +241,18 @@ TEST_ENTITY_STATE_COMBINATIONS = [
         },
     }
 ]
+
+TEST_MANAGER_STATIC_FIELDS = {
+    "agent.version": "1.0.0",
+    "host.architecture": "x86",
+    "host.os.name": "Linux",
+    "host.hostname": "my_es_host",
+    "tags": ["tag1", "tag2"],
+    "host.location": {
+        "lat": 1.0,
+        "lon": -1.0,
+    },
+}
 
 MOCK_NOON_APRIL_12TH_2023 = "2023-04-12T12:00:00+00:00"
 

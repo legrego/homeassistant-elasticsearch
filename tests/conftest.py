@@ -19,17 +19,20 @@
 from __future__ import annotations
 
 from asyncio import get_running_loop
+from datetime import datetime
 from typing import TYPE_CHECKING
 from unittest import mock
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
+import attr
 import pytest
 from aiohttp import ClientSession, TCPConnector
 from custom_components.elasticsearch.config_flow import ElasticFlowHandler
 from freezegun.api import FrozenDateTimeFactory
 
 # import custom_components.elasticsearch  # noqa: F401
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, State
+from homeassistant.helpers.device_registry import DeviceEntry
 from homeassistant.helpers.json import json_dumps
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import (
@@ -169,8 +172,19 @@ async def add_to_hass() -> bool:
     return True
 
 
-@pytest.fixture(autouse=True)
-def _fix_system_info():
+@pytest.fixture(name="mock_loop_handler")
+def mock_loop_handler_fixture():
+    """Return a mock loop handler that will return."""
+    with (
+        patch("custom_components.elasticsearch.es_publish_pipeline.LoopHandler") as loop_handler,
+    ):
+        loop_handler.start = AsyncMock()
+
+        yield loop_handler
+
+
+@pytest.fixture(autouse=True, name="fix_system_info")
+def fix_system_info_fixture():
     """Return a mock system info."""
     with mock.patch("custom_components.elasticsearch.es_publish_pipeline.SystemInfo") as system_info:
         system_info_instance = system_info.return_value
@@ -183,7 +197,7 @@ def _fix_system_info():
             ),
         )
 
-        yield
+        yield system_info_instance.async_get_system_info
 
 
 @pytest.fixture(autouse=True)
@@ -272,7 +286,18 @@ async def device_area(
     return area_registry.async_create(device_area_name, **extra_settings)
 
 
+@attr.s(frozen=True, slots=True)
+class MockDeviceEntry(DeviceEntry):
+    """Device Registry Entry with fixed ID."""
+
+    # Use @patch("homeassistant.helpers.device_registry.DeviceEntry", MockDeviceEntry)
+    # when creating a device to force the device_id to be the same each time
+
+    id: str = attr.ib(default=const.TEST_DEVICE_ID)
+
+
 @pytest.fixture
+@patch("homeassistant.helpers.device_registry.DeviceEntry", MockDeviceEntry)
 async def device(
     config_entry: MockConfigEntry,
     device_registry: DeviceRegistry,
@@ -448,19 +473,38 @@ async def state() -> str:
     return const.TEST_ENTITY_STATE
 
 
+@pytest.fixture(name="attributes")
+async def attributes_fixture() -> dict:
+    """Return a mock attributes dict."""
+    return const.TEST_ENTITY_STATE_ATTRIBUTES
+
+
+@pytest.fixture(name="last_changed")
+async def last_changed_fixture() -> datetime:
+    """Return a mock last changed."""
+    return const.TEST_ENTITY_STATE_LAST_CHANGED
+
+
+@pytest.fixture(name="last_updated")
+async def last_updated_fixture() -> datetime:
+    """Return a mock last updated."""
+    return const.TEST_ENTITY_STATE_LAST_UPDATED
+
+
 @pytest.fixture
 async def entity_state(
     entity_id: str,
     state: str,
     attributes: dict[str, Any],
-    last_changed: str,
-    last_updated: str,
-) -> dict[str, Any]:
+    last_changed: datetime,
+    last_updated: datetime,
+) -> State:
     """Return a state."""
-    return {
-        "entity_id": entity_id,
-        "state": state,
-        "attributes": attributes,
-        "last_changed": last_changed,
-        "last_updated": last_updated,
-    }
+
+    return State(
+        entity_id=entity_id,
+        state=state,
+        attributes=attributes,
+        last_changed=last_changed,
+        last_updated=last_updated,
+    )

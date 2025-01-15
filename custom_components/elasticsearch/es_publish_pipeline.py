@@ -59,13 +59,15 @@ from custom_components.elasticsearch.errors import (
     IndexingError,
 )
 from custom_components.elasticsearch.logger import LOGGER as BASE_LOGGER
-from custom_components.elasticsearch.logger import log_enter_exit_debug, log_enter_exit_info
+from custom_components.elasticsearch.logger import (
+    async_log_enter_exit_debug,
+    log_enter_exit_debug,
+    log_enter_exit_info,
+)
 from custom_components.elasticsearch.loop import LoopHandler
 from custom_components.elasticsearch.system_info import SystemInfo, SystemInfoResult
 
 if TYPE_CHECKING:  # pragma: no cover
-    from asyncio import Task
-
     from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 
 ALLOWED_ATTRIBUTE_KEY_TYPES = str
@@ -82,7 +84,9 @@ SKIP_ATTRIBUTES = [
 # Trim keys with values that are None, empty lists, or empty objects
 SKIP_VALUES = (None, [], {})
 
-type EventQueue = asyncio.Queue[tuple[datetime, State, StateChangeType]]
+
+class EventQueue(asyncio.Queue[tuple[datetime, State, StateChangeType]]):
+    """Queue for storing events."""
 
 
 class PipelineSettings:
@@ -166,7 +170,7 @@ class Pipeline:
 
             self._static_fields: dict[str, str | float | list[str] | dict[str, float]] = {}
 
-            self._queue: EventQueue = asyncio.Queue[tuple[datetime, State, StateChangeType]]()
+            self._queue: EventQueue = EventQueue()
 
             self._filterer: Pipeline.Filterer = Pipeline.Filterer(
                 hass=self._hass,
@@ -201,14 +205,14 @@ class Pipeline:
                 log=self._logger,
             )
 
-        @log_enter_exit_debug
+        @async_log_enter_exit_debug
         async def async_init(self, config_entry: ConfigEntry) -> None:
             """Initialize the manager."""
 
             self._config_entry = config_entry
 
             if self._settings.publish_frequency == 0:
-                self._logger.warning("No publish frequency set. Disabling publishing.")
+                self._logger.error("No publish frequency set. Disabling publishing.")
                 return
 
             await self._populate_static_fields()
@@ -217,13 +221,13 @@ class Pipeline:
             if len(self._settings.change_detection_type) != 0:
                 await self._listener.async_init()
             else:
-                self._logger.debug("No change detection type set. Disabling change listener.")
+                self._logger.warning("No change detection type set. Disabling change listener.")
 
             # We only need to initialize the poller if the user has configured a polling frequency
             if self._settings.polling_frequency > 0:
                 await self._poller.async_init(config_entry=config_entry)
             else:
-                self._logger.debug("No polling frequency set. Disabling polling.")
+                self._logger.warning("No polling frequency set. Disabling polling.")
 
             # Initialize document sinks
             await self._formatter.async_init(self._static_fields)
@@ -465,7 +469,7 @@ class Pipeline:
             self._queue: EventQueue = queue
             self._cancel_listener = None
 
-        @log_enter_exit_debug
+        @async_log_enter_exit_debug
         async def async_init(self) -> None:
             """Initialize the listener."""
 
@@ -514,14 +518,11 @@ class Pipeline:
             """Initialize the poller."""
             self._logger = log if log else BASE_LOGGER
             self._hass: HomeAssistant = hass
-            self._cancel_poller: Task | None = None
-
             self._queue: EventQueue = queue
             self._filterer: Pipeline.Filterer = filterer
-
             self._settings: PipelineSettings = settings
 
-        @log_enter_exit_debug
+        @async_log_enter_exit_debug
         async def async_init(self, config_entry: ConfigEntry) -> None:
             """Initialize the poller."""
             state_poll_loop = LoopHandler(
@@ -545,8 +546,8 @@ class Pipeline:
             now: datetime = datetime.now(tz=UTC)
             reason = StateChangeType.NO_CHANGE
 
-            # Ensure we only queue states that pass the filter
             for state in self._hass.states.async_all():
+                # Ensure we only queue states that pass the filter
                 if self._filterer.passes_filter(state, reason):
                     self._queue.put_nowait((now, state, reason))
 
@@ -564,7 +565,7 @@ class Pipeline:
 
             self._extended_entity_details = ExtendedEntityDetails(hass, self._logger)
 
-        @log_enter_exit_debug
+        @async_log_enter_exit_debug
         async def async_init(self, static_fields: dict[str, Any]) -> None:
             """Initialize the formatter."""
             self._static_fields = static_fields
@@ -814,7 +815,7 @@ class Pipeline:
             self._hass = hass
             self._queue: EventQueue = manager.queue
 
-        @log_enter_exit_debug
+        @async_log_enter_exit_debug
         async def async_init(self, config_entry: ConfigEntry) -> None:
             """Initialize the publisher."""
             filter_format_publish = LoopHandler(
@@ -886,8 +887,6 @@ class Pipeline:
 
             except ESIntegrationConnectionException:
                 msg = "Connection error in publishing loop."
-
-                self._manager.reload_config_entry(msg)
 
                 self._logger.error(msg)
                 self._logger.debug(msg, exc_info=True)
