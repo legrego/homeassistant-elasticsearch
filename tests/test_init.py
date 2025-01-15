@@ -137,7 +137,6 @@ class Test_Config_Migration:
 
         return True
 
-    @pytest.mark.asyncio
     async def test_config_migration_v1tov2(
         self,
         hass: HomeAssistant,
@@ -161,7 +160,6 @@ class Test_Config_Migration:
             },
         )
 
-    @pytest.mark.asyncio
     async def test_config_migration_v2tov3(
         self,
         snapshot: SnapshotAssertion,
@@ -181,7 +179,6 @@ class Test_Config_Migration:
             after_data={"url": "http://migration-test:9200"},
         )
 
-    @pytest.mark.asyncio
     async def test_config_migration_v3tov4(
         self,
         hass: HomeAssistant,
@@ -206,7 +203,6 @@ class Test_Config_Migration:
             snapshot=snapshot,
         )
 
-    @pytest.mark.asyncio
     async def test_config_migration_v4tov5(
         self,
         hass: HomeAssistant,
@@ -247,7 +243,6 @@ class Test_Config_Migration:
             snapshot=snapshot,
         )
 
-    @pytest.mark.asyncio
     async def test_config_migration_v5tov6(
         self,
         hass: HomeAssistant,
@@ -360,7 +355,6 @@ class Test_Config_Migration:
             snapshot=snapshot,
         )
 
-    @pytest.mark.asyncio
     async def test_config_migration_v6tov7(
         self,
         hass: HomeAssistant,
@@ -431,7 +425,6 @@ class Test_Config_Migration:
             snapshot=snapshot,
         )
 
-    @pytest.mark.asyncio
     async def test_config_migration_v1tov7(
         self,
         hass: HomeAssistant,

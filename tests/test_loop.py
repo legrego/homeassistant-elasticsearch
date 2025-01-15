@@ -48,7 +48,6 @@ class Test_loop_handler_sync:
         assert loop_handler._should_keep_running.call_count == 1
 
 
-@pytest.mark.asyncio
 class Test_loop_handler:
     """Test the LoopHandler class."""
 

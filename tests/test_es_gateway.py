@@ -288,7 +288,6 @@ class Test_Initialization:
         with pytest.raises(AuthenticationRequired):
             await gateway_mock_stateful.async_init()
 
-    @pytest.mark.asyncio
     async def test_async_init_ssl_error(self, gateway_mock_stateful):
         """Test async_init when there is a TLS Certificate issue."""
 
