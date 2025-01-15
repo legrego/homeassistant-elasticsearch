@@ -71,7 +71,9 @@
                     "change_detection_type": "Choose what types of entity changes to listen for and publish",
                     "tags": "Tags to apply to all published events",
                     "include_targets": "Toggle to only publish the set of targets below",
-                    "exclude_targets": "Toggle to exclude publishing the set of targets below"
+                    "exclude_targets": "Toggle to exclude publishing the set of targets below",
+                    "targets_to_include": "Select the targets to include",
+                    "targets_to_exclude": "Select the targets to exclude"
                 },
                 "data_description": {
                     "publish_frequency": "Set to zero to disable publishing.",
