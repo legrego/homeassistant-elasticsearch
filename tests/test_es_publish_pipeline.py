@@ -520,28 +520,19 @@ class Test_Manager:
         manager._formatter._state_to_extended_details = MagicMock(return_value={})
 
         # Build a bus event to put onto the queue
-        reason = StateChangeType.STATE
-        old_state = State("light.light_1", "off")
+        timestamp = const.MOCK_NOON_APRIL_12TH_2023
         new_state = State("light.light_1", "on")
-        event = Event(
-            "state_changed",
-            {
-                "entity_id": "light.light_1",
-                "old_state": old_state,
-                "new_state": new_state,
-                "attributes": {"brightness": 255},
-            },
-        )
+        reason = StateChangeType.STATE
 
         # Add the sample event to the queue
-        manager._queue.put_nowait((event.time_fired, new_state, reason))
+        manager._queue.put_nowait((timestamp, new_state, reason))
 
         # Sip queue and append to result using async list comprehension
         result = []
         [result.append(doc) async for doc in manager.sip_queue()]
 
         # Assert that the formatter was called
-        manager._formatter.format.assert_called_once_with(event.time_fired, new_state, reason)
+        manager._formatter.format.assert_called_once_with(timestamp, new_state, reason)
 
         # Assert that the result is as expected
         assert result == snapshot
