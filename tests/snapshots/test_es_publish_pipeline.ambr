@@ -3757,52 +3757,27 @@
     }),
   })
 # ---
-# name: Test_Manager.Test_Unit_Tests.test_init
-  dict({
-    'settings': dict({
-      'change_detection_type': list([
-      ]),
-      'debug_attribute_filtering': True,
-      'excluded_areas': list([
-      ]),
-      'excluded_devices': list([
-      ]),
-      'excluded_entities': list([
-      ]),
-      'excluded_labels': list([
-      ]),
-      'included_areas': list([
-      ]),
-      'included_devices': list([
-      ]),
-      'included_entities': list([
-      ]),
-      'included_labels': list([
-      ]),
-      'polling_frequency': 60,
-      'publish_frequency': 60,
-      'tags': list([
-      ]),
-    }),
-    'static_fields': dict({
-    }),
-  })
-# ---
-# name: Test_Poller.Test_Integration_Tests.test_poll[states0]
-  list([
-  ])
-# ---
-# name: Test_Poller.Test_Integration_Tests.test_poll[states1]
+# name: Test_Manager.test_sip_queue_and_format
   list([
     dict({
-      'change type': 'polling',
-      'entity_id': 'light.living_room',
-      'state': 'on',
-      'timestamp': HAFakeDatetime(2023, 4, 12, 12, 0, 1, tzinfo=datetime.timezone.utc),
+      '@timestamp': '2025-01-15T07:36:25.623301+00:00',
+      'data_stream.dataset': 'homeassistant.light',
+      'data_stream.namespace': 'default',
+      'data_stream.type': 'metrics',
+      'event.action': 'State change',
+      'event.kind': 'event',
+      'event.type': 'change',
+      'hass.entity.domain': 'light',
+      'hass.entity.id': 'light.light_1',
+      'hass.entity.object.id': 'light_1',
+      'hass.entity.value': 'on',
+      'hass.entity.valueas': dict({
+        'boolean': True,
+      }),
     }),
   ])
 # ---
-# name: Test_Poller.Test_Integration_Tests.test_poll[states2]
+# name: Test_Poller.Test_Integration_Tests.test_poll[Multiple states]
   list([
     dict({
       'change type': 'polling',
@@ -3814,6 +3789,20 @@
       'change type': 'polling',
       'entity_id': 'switch.living_room',
       'state': 'off',
+      'timestamp': HAFakeDatetime(2023, 4, 12, 12, 0, 1, tzinfo=datetime.timezone.utc),
+    }),
+  ])
+# ---
+# name: Test_Poller.Test_Integration_Tests.test_poll[No states]
+  list([
+  ])
+# ---
+# name: Test_Poller.Test_Integration_Tests.test_poll[One state]
+  list([
+    dict({
+      'change type': 'polling',
+      'entity_id': 'light.living_room',
+      'state': 'on',
       'timestamp': HAFakeDatetime(2023, 4, 12, 12, 0, 1, tzinfo=datetime.timezone.utc),
     }),
   ])
