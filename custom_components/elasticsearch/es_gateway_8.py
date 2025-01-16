@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ssl
+from collections import OrderedDict
 from contextlib import contextmanager
 from dataclasses import dataclass
 from types import MappingProxyType
@@ -11,7 +12,7 @@ from typing import TYPE_CHECKING, Any
 import elasticsearch8
 from elastic_transport import ObjectApiResponse
 from elasticsearch8._async.client import AsyncElasticsearch
-from elasticsearch8.helpers import BulkIndexError, async_streaming_bulk
+from elasticsearch8.helpers import async_streaming_bulk
 from homeassistant.util.ssl import client_context
 
 from custom_components.elasticsearch.const import ES_CHECK_PERMISSIONS_DATASTREAM
@@ -19,7 +20,6 @@ from custom_components.elasticsearch.encoder import Serializer
 from custom_components.elasticsearch.errors import (
     AuthenticationRequired,
     CannotConnect,
-    IndexingError,
     InsufficientPrivileges,
     ServerError,
     UntrustedCertificate,
@@ -299,28 +299,27 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
 
             return f"{msg}. {append_msg}"
 
-        def append_root_cause(err: elasticsearch8.ApiError, msg: str) -> str:
+        def append_cause(err: elasticsearch8.ApiError, msg: str) -> str:
             """Append the root cause to the error message."""
-            if not err.info:
+            if err.info is None or err.info.get("error", None) is None:
                 return msg
 
-            root_cause = err.info.get("error", {}).get("root_cause", [])
-            if not root_cause:
-                return msg
+            error_details = err.info["error"]
 
-            cause = root_cause[0]
+            specifics: OrderedDict = OrderedDict()
+            if "type" in error_details:
+                specifics["type"] = error_details["type"]
 
-            # Append the values of all of the keys under cause except for `header` as it contains auth info
-            general = msg
-            specifics = "; ".join(f"{k}={v}" for k, v in cause.items() if k != "header")
+            if "reason" in error_details:
+                specifics["reason"] = error_details["reason"]
 
-            return f"{general} ({specifics})"
+            # join specifics into a string with key: value pairs
+            specific_str = "; ".join(f"{k}={v}" for k, v in specifics.items())
+
+            return f"{msg} ({specific_str})"
 
         try:
             yield
-
-        except BulkIndexError as err:
-            raise IndexingError(append_msg("Error indexing data")) from err
 
         except elasticsearch8.UnsupportedProductError as err:
             # The HTTP response didn't include headers={"x-elastic-product": "Elasticsearch"}
@@ -328,12 +327,12 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
 
         except elasticsearch8.AuthenticationException as err:
             raise AuthenticationRequired(
-                append_root_cause(err, append_msg("Authentication error connecting to Elasticsearch"))
+                append_cause(err, append_msg("Authentication error connecting to Elasticsearch"))
             ) from err
 
         except elasticsearch8.AuthorizationException as err:
             raise InsufficientPrivileges(
-                append_root_cause(err, append_msg("Authorization error connecting to Elasticsearch"))
+                append_cause(err, append_msg("Authorization error connecting to Elasticsearch"))
             ) from err
 
         except elasticsearch8.ConnectionTimeout as err:

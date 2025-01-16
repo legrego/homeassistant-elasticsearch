@@ -67,7 +67,7 @@ index_template_definition: dict[str, Any] = {
                                     }
                                 },
                                 "platform": {"type": "keyword"},
-                                "unit_of_measure": {"type": "keyword"},
+                                "unit_of_measurement": {"type": "keyword"},
                                 "state": {"properties": {"class": {"type": "keyword"}}},
                                 "labels": {"type": "keyword"},
                                 "area": {
@@ -148,5 +148,5 @@ index_template_definition: dict[str, Any] = {
     "ignore_missing_component_templates": "metrics-homeassistant@custom",
     "priority": 500,
     "data_stream": {},
-    "version": 3,
+    "version": 4,
 }

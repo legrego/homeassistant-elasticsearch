@@ -273,39 +273,6 @@ class Test_ExtendedRegistryEntry:
 
         assert extended_entity.device_class == expected_device_class
 
-    @pytest.mark.parametrize(
-        ("entity_area_name", "device_area_name", "expected_area_name"),
-        [
-            ("Entity", "Device", "Entity"),
-            ("Entity", None, "Entity"),
-            (None, "Device", "Device"),
-            (None, None, None),
-        ],
-        ids=[
-            "Entity area; Device area",
-            "Entity area; No device area",
-            "No entity area; Device area",
-            "No areas",
-        ],
-    )
-    async def test_area_handling(
-        self, details, entity, device, entity_area_name, device_area_name, expected_area_name
-    ):
-        """Test our handling of the area property."""
-
-        extended_entity = ExtendedRegistryEntry(details=details, entity=entity, device=device)
-
-        if entity_area_name:
-            assert extended_entity._entity.area_id is not None
-
-        if device_area_name:
-            assert extended_entity._device.area_id is not None
-
-        if expected_area_name is not None:
-            assert extended_entity.area.name == expected_area_name
-        else:
-            assert extended_entity.area is None
-
     @pytest.mark.parametrize(*testconst.ENTITY_MATRIX_COMPREHENSIVE)
     @pytest.mark.parametrize(*testconst.DEVICE_MATRIX_COMPREHENSIVE)
     async def test_entity_device_combinations(
@@ -347,16 +314,10 @@ class Test_ExtendedRegistryEntry:
         assert document.pop("unit_of_measurement", None) == entity_unit_of_measurement
 
         # Floor will be pulled from area if present
-        if entity_area_name:
-            assert document.pop("area.name", None) == entity_area_name
-            assert document.pop("area.id", None) == name_to_id(entity_area_name)
-            assert document.pop("area.floor.name", None) == entity_floor_name
-            assert document.pop("area.floor.id", None) == name_to_id(entity_floor_name)
-        else:
-            assert document.pop("area.name", None) == device_area_name
-            assert document.pop("area.id", None) == name_to_id(device_area_name)
-            assert document.pop("area.floor.name", None) == device_floor_name
-            assert document.pop("area.floor.id", None) == name_to_id(device_floor_name)
+        assert document.pop("area.name", None) == entity_area_name
+        assert document.pop("area.id", None) == name_to_id(entity_area_name)
+        assert document.pop("area.floor.name", None) == entity_floor_name
+        assert document.pop("area.floor.id", None) == name_to_id(entity_floor_name)
 
         assert document.pop("labels", None) == entity_labels
 

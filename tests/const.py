@@ -305,10 +305,7 @@ MANAGER_STATIC_FIELDS = {
     "host.os.name": "Linux",
     "host.hostname": "my_es_host",
     "tags": ["tag1", "tag2"],
-    "host.location": {
-        "lat": MOCK_LOCATION_SERVER_LAT,
-        "lon": MOCK_LOCATION_SERVER_LON,
-    },
+    "host.location": [MOCK_LOCATION_SERVER_LON, MOCK_LOCATION_SERVER_LAT],
 }
 
 MOCK_NOON_APRIL_12TH_2023 = datetime(year=2023, month=4, day=12, hour=12, minute=0, second=0, tzinfo=UTC)

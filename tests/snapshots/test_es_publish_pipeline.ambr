@@ -25,8 +25,6 @@
 # ---
 # name: Test_Formatter.test_format_edge_cases[With boolean state and non-compliant attributes-Entity with labels-Device with name, area]
   dict({
-    'hass.entity.area.id': 'device_area',
-    'hass.entity.area.name': 'device area',
     'hass.entity.device.area.id': 'device_area',
     'hass.entity.device.area.name': 'device area',
     'hass.entity.value': 'True',
@@ -74,8 +72,6 @@
 # ---
 # name: Test_Formatter.test_format_edge_cases[With datetime state and both compliant and non-compliant attributes-Entity with labels-Device with name, area]
   dict({
-    'hass.entity.area.id': 'device_area',
-    'hass.entity.area.name': 'device area',
     'hass.entity.attributes.float': 123.456,
     'hass.entity.attributes.int': 123,
     'hass.entity.attributes.string': 'abc123',
@@ -221,8 +217,6 @@
 # ---
 # name: Test_Formatter.test_format_edge_cases[With int state and comprehensive compliant attributes-Entity with labels-Device with name, area]
   dict({
-    'hass.entity.area.id': 'device_area',
-    'hass.entity.area.name': 'device area',
     'hass.entity.attributes.bool': True,
     'hass.entity.attributes.collision_test': 'second value',
     'hass.entity.attributes.complex_dict': '{"string": "abc123", "int": 123, "float": 123.456, "list": [1, 2, 3, 4], "set": [5], "tuple": [6, 6], "list_of_tuples": [[7, 7], [8, 8]], "list_of_sets": [[9], [10]], "another_dict": "{\\"string\\": \\"abc123\\", \\"int\\": 123, \\"list_of_sets\\": [[9], [10]]}"}',
@@ -347,10 +341,6 @@
     'event.action': 'State change',
     'event.kind': 'event',
     'event.type': 'change',
-    'hass.entity.area.floor.id': 'device_floor',
-    'hass.entity.area.floor.name': 'device floor',
-    'hass.entity.area.id': 'device_area',
-    'hass.entity.area.name': 'device area',
     'hass.entity.device.area.floor.id': 'device_floor',
     'hass.entity.device.area.floor.name': 'device floor',
     'hass.entity.device.area.id': 'device_area',
@@ -485,10 +475,6 @@
     'event.action': 'State change',
     'event.kind': 'event',
     'event.type': 'change',
-    'hass.entity.area.floor.id': 'device_floor',
-    'hass.entity.area.floor.name': 'device floor',
-    'hass.entity.area.id': 'device_area',
-    'hass.entity.area.name': 'device area',
     'hass.entity.attributes.float': 123.456,
     'hass.entity.attributes.int': 123,
     'hass.entity.attributes.string': 'abc123',
@@ -624,8 +610,10 @@
       'entity label 2',
       'entity label 3',
     ]),
-    'location.lat': 1.0,
-    'location.lon': 1.0,
+    'location': list([
+      1.0,
+      1.0,
+    ]),
     'name': 'user-modified entity name',
     'platform': 'entity platform',
     'unit_of_measurement': 'Mbit/s',

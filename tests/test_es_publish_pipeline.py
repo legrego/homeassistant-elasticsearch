@@ -5,11 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from custom_components.elasticsearch import utils
-from custom_components.elasticsearch.errors import (
-    AuthenticationRequired,
-    CannotConnect,
-    IndexingError,
-)
+from custom_components.elasticsearch.errors import AuthenticationRequired, CannotConnect
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 from custom_components.elasticsearch.es_publish_pipeline import (
     EventQueue,
@@ -19,6 +15,7 @@ from custom_components.elasticsearch.es_publish_pipeline import (
 )
 from elastic_transport import ApiResponseMeta
 from freezegun.api import FrozenDateTimeFactory
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import Event, HomeAssistant, State
 from homeassistant.helpers.entity_registry import RegistryEntry
 from syrupy.assertion import SnapshotAssertion
@@ -188,6 +185,12 @@ class Test_Filterer:
     async def test_filter_with_missing_entity(self, config_entry, entity_id, entity_state, filterer):
         """Test receiving an entity that we have not added to HomeAssistant by not including the entity fixture."""
         filterer._change_detection_type = [StateChangeType.STATE.value]
+
+        assert filterer.passes_filter(entity_state, StateChangeType.STATE) is False
+
+    async def test_filter_with_excluded_change_type(self, config_entry, entity_id, entity_state, filterer):
+        """Test receiving an entity that we have not added to HomeAssistant by not including the entity fixture."""
+        filterer._change_detection_type = [StateChangeType.ATTRIBUTE.value]
 
         assert filterer.passes_filter(entity_state, StateChangeType.STATE) is False
 
@@ -427,10 +430,7 @@ class Test_Manager:
             "host.os.name": "Linux",
             "host.hostname": "my_es_host",
             "tags": ["tag1", "tag2"],
-            "host.location": {
-                "lat": testconst.MOCK_LOCATION_SERVER_LAT,
-                "lon": testconst.MOCK_LOCATION_SERVER_LON,
-            },
+            "host.location": [testconst.MOCK_LOCATION_SERVER_LON, testconst.MOCK_LOCATION_SERVER_LAT],
         }
 
         manager._listener.async_init.assert_awaited_once()
@@ -544,6 +544,38 @@ class Test_Manager:
                 "hass.entity.valueas.boolean": True,
             }
         ]
+
+    async def test_reload_config_entry(self, hass, config_entry, manager, mock_loop_handler):
+        """Test the reload_config_entry method of the Pipeline.Manager class."""
+
+        config_entry.mock_state(hass, ConfigEntryState.LOADED)
+
+        await manager.async_init(config_entry)
+
+        manager._hass.config_entries.async_schedule_reload = MagicMock()
+
+        manager.reload_config_entry(msg="Test message")
+
+        manager._logger.info.assert_called_once_with("%s Reloading integration.", "Test message")
+
+        manager._hass.config_entries.async_schedule_reload.assert_called_once_with(config_entry.entry_id)
+
+    async def test_reload_config_entry_not_loaded(self, hass, config_entry, manager, mock_loop_handler):
+        """Test the reload_config_entry method where the config_entry is not loaded of the Pipeline.Manager class."""
+
+        config_entry.mock_state(hass, ConfigEntryState.NOT_LOADED)
+
+        await manager.async_init(config_entry)
+
+        manager._hass.config_entries.async_schedule_reload = MagicMock()
+
+        manager.reload_config_entry(msg="Test message")
+
+        manager._logger.warning.assert_called_once_with(
+            "%s Config entry not found or not loaded.", "Test message"
+        )
+
+        manager._hass.config_entries.async_schedule_reload.assert_not_called()
 
     async def test_stop(self, manager):
         """Ensure that stopping the manager stops active listeners."""
@@ -814,14 +846,12 @@ class Test_Publisher:
             [
                 ("check_connection", [False], None, 0, 0),
                 ("check_connection", AuthenticationRequired(), None, 0, 1),
-                ("bulk", IndexingError(), "Indexing error in publishing loop.", 1, 0),
                 ("bulk", CannotConnect(), "Connection error in publishing loop.", 1, 0),
                 ("bulk", Exception(), "Unknown error while publishing documents.", 1, 0),
             ],
             ids=[
                 "Check connection fails; skip bulk",
                 "Check connection returns Authentication required; reload integration",
-                "Bulk raises indexing error; log and continue",
                 "Bulk raises CannotConnect; log and continue",
                 "Bulk raises unknown error; log and continue",
             ],
@@ -855,12 +885,6 @@ class Test_Publisher:
             with patch.object(publisher._gateway, "bulk", side_effect=Exception):
                 await publisher.publish()
                 publisher._logger.error.assert_called_once_with("Unknown error while publishing documents.")
-
-        async def test_publish_indexing_issue(self, publisher):
-            """Ensure we gracefully handle indexing errors."""
-            with patch.object(publisher._gateway, "bulk", side_effect=IndexingError):
-                await publisher.publish()
-                publisher._logger.error.assert_called_once_with("Indexing error in publishing loop.")
 
         async def test_publish_authentication_issue(self, publisher):
             """Ensure we attempt a reload of the config entry if we receive an AuthenticationRequired error."""

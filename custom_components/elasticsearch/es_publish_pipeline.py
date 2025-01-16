@@ -13,7 +13,7 @@ from math import isinf, isnan
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.sun.const import STATE_ABOVE_HORIZON, STATE_BELOW_HORIZON
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.const import (
     EVENT_STATE_CHANGED,
     STATE_CLOSED,
@@ -47,7 +47,6 @@ from custom_components.elasticsearch.entity_details import (
 from custom_components.elasticsearch.errors import (
     AuthenticationRequired,
     ESIntegrationConnectionException,
-    IndexingError,
 )
 from custom_components.elasticsearch.logger import LOGGER as BASE_LOGGER
 from custom_components.elasticsearch.logger import (
@@ -119,7 +118,6 @@ class PipelineSettings:
         self.excluded_entities: list[str] = excluded_entities
 
 
-
 class Pipeline:
     """Manages the Pipeline lifecycle."""
 
@@ -142,7 +140,7 @@ class Pipeline:
 
             self._settings: PipelineSettings = settings
 
-            self._static_fields: dict[str, str | float | list[str] | dict[str, float]] = {}
+            self._static_fields: dict[str, str | float | list[str] | list[float]] = {}
 
             self._queue: EventQueue = EventQueue()
 
@@ -248,10 +246,10 @@ class Pipeline:
                     self._static_fields["host.hostname"] = result.hostname
 
             if self._hass.config.latitude is not None and self._hass.config.longitude is not None:
-                self._static_fields["host.location"] = {
-                    "lat": self._hass.config.latitude,
-                    "lon": self._hass.config.longitude,
-                }
+                self._static_fields["host.location"] = [
+                    self._hass.config.longitude,
+                    self._hass.config.latitude,
+                ]
 
             if self._settings.tags != []:
                 self._static_fields[CONF_TAGS] = self._settings.tags
@@ -260,9 +258,11 @@ class Pipeline:
         def reload_config_entry(self, msg) -> None:
             """Reload the config entry."""
 
-            if self._config_entry and self._config_entry.state == "loaded":
-                msg += " Reloading integration."
+            if self._config_entry and self._config_entry.state == ConfigEntryState.LOADED:
+                self._logger.info("%s Reloading integration.", msg)
                 self._hass.config_entries.async_schedule_reload(self._config_entry.entry_id)
+            else:
+                self._logger.warning("%s Config entry not found or not loaded.", msg)
 
         @log_enter_exit_debug
         def stop(self) -> None:
@@ -394,10 +394,10 @@ class Pipeline:
 
             # If polling is enabled, we publish all polled events
             if reason.value == StateChangeType.NO_CHANGE.value:
-                return self._accept(base_msg, "Always publish polling events.")
+                return True
 
             if reason.value in self._change_detection_type:
-                return self._accept(base_msg, "is in the change detection type list.")
+                return True
 
             return self._reject(base_msg, "is not in the change detection type list.")
 
@@ -546,8 +546,8 @@ class Pipeline:
             # The logic for friendly name is in the state for some reason
             document["friendly_name"] = state.name
 
-            document["location.lat"] = state.attributes.get("latitude", None)
-            document["location.lon"] = state.attributes.get("longitude", None)
+            if state.attributes.get("longitude") and state.attributes.get("latitude"):
+                document["location"] = [state.attributes.get("longitude"), state.attributes.get("latitude")]
 
             return document
 
@@ -802,15 +802,8 @@ class Pipeline:
 
                 await self._gateway.bulk(actions=actions)
 
-            except IndexingError:
-                msg = "Indexing error in publishing loop."
-
-                self._logger.error(msg)
-                self._logger.debug(msg, exc_info=True)
-
             except AuthenticationRequired:
                 msg = "Authentication issue in publishing loop."
-
                 self._manager.reload_config_entry(msg)
 
                 self._logger.error(msg)

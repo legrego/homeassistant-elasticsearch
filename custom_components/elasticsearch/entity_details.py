@@ -137,10 +137,6 @@ class ExtendedRegistryEntry:
         if self._entity.area_id is not None:
             return self._details.area_registry.async_get_area(self._entity.area_id)
 
-        # If the entity has no area, try to get the area from the device
-        if self.device is not None and self.device.area is not None:
-            return self.device.area
-
         return None
 
     @property

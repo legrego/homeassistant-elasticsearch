@@ -89,9 +89,9 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ElasticIntegrat
             config_entry,
             ElasticFlowHandler.VERSION,
         )
-    except ValueError:
+    except Exception:  # noqa: BLE001
         LOGGER.exception(
-            "Migration failed attempting to migrate from version %s to version %s. Ended on %s.",
+            "Migration failed attempting to migrate from version %s to version %s.",
             config_entry.version,
             ElasticFlowHandler.VERSION,
         )
