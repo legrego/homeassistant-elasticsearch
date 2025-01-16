@@ -32,6 +32,7 @@ from homeassistant.helpers import state as state_helper
 from homeassistant.util import dt as dt_util
 from homeassistant.util.logging import async_create_catching_coro
 
+from custom_components.elasticsearch import utils
 from custom_components.elasticsearch.const import (
     CONF_CHANGE_DETECTION_TYPE,
     CONF_POLLING_FREQUENCY,
@@ -42,16 +43,9 @@ from custom_components.elasticsearch.const import (
     DATASTREAM_TYPE,
     StateChangeType,
 )
-from custom_components.elasticsearch.const import (
-    CONST_ENTITY_DETAILS_TO_ES_DOCUMENT as EXTENDED_DETAILS_TO_ES_DOCUMENT,
-)
-from custom_components.elasticsearch.const import (
-    CONST_ENTITY_DETAILS_TO_ES_DOCUMENT_KEYS as KEYS_TO_KEEP,
-)
 from custom_components.elasticsearch.encoder import convert_set_to_list
 from custom_components.elasticsearch.entity_details import (
     ExtendedEntityDetails,
-    ExtendedRegistryEntry,
 )
 from custom_components.elasticsearch.errors import (
     AuthenticationRequired,
@@ -80,9 +74,6 @@ SKIP_ATTRIBUTES = [
     "state_class",
     "unit_of_measurement",
 ]
-
-# Trim keys with values that are None, empty lists, or empty objects
-SKIP_VALUES = (None, [], {})
 
 
 class EventQueue(asyncio.Queue[tuple[datetime, State, StateChangeType]]):
@@ -578,47 +569,29 @@ class Pipeline:
                 "event.action": reason.to_publish_reason(),
                 "event.kind": "event",
                 "event.type": "info" if reason == StateChangeType.NO_CHANGE else "change",
+                "hass.entity": {**self._state_to_extended_details(state)},
                 "hass.entity.attributes": self._state_to_attributes(state),
-                "hass.entity.domain": state.domain,
-                "hass.entity.id": state.entity_id,
                 "hass.entity.value": state.state,
                 "hass.entity.valueas": self._state_to_coerced_value(state),
                 "hass.entity.object.id": state.object_id,
                 **Pipeline.Formatter.domain_to_datastream(state.domain),
-                **self._state_to_extended_details(state),
                 **self._static_fields,
             }
 
-            return {
-                k: v
-                for k, v in document.items()
-                # Filter empty values
-                if v not in SKIP_VALUES
-            }
+            return utils.prepare_dict(document)
 
         def _state_to_extended_details(self, state: State) -> dict:
             """Gather entity details from the state object and return a mapped dictionary ready to be put in an elasticsearch document."""
 
-            extended_registry_entry: ExtendedRegistryEntry = self._extended_entity_details.async_get(
-                state.entity_id,
-            )
-
-            entry_dict = extended_registry_entry.to_dict(flatten=True, keep_keys=KEYS_TO_KEEP)
+            document = self._extended_entity_details.async_get(state.entity_id).to_dict()
 
             # The logic for friendly name is in the state for some reason
-            entry_dict["friendly_name"] = state.name
+            document["friendly_name"] = state.name
 
-            if "latitude" in state.attributes and "longitude" in state.attributes:
-                entry_dict["location.lat"] = state.attributes["latitude"]
-                entry_dict["location.lon"] = state.attributes["longitude"]
+            document["location.lat"] = state.attributes.get("latitude", None)
+            document["location.lon"] = state.attributes.get("longitude", None)
 
-            return {
-                f"hass.entity.{k}": entry_dict.get(v)
-                # Re-write HA-centric entity keys to ES-centric entity keys
-                for k, v in EXTENDED_DETAILS_TO_ES_DOCUMENT.items()
-                # Filter empty values
-                if (entry_dict.get(v) not in SKIP_VALUES)
-            }
+            return document
 
         def _state_to_attributes(self, state: State) -> dict:
             """Convert the attributes of a State object into a dictionary compatible with Elasticsearch mappings."""

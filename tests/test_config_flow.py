@@ -75,7 +75,7 @@ class Test_Setup_Flows:
         with patch(gateway_async_init, side_effect=UntrustedCertificate):
             result = await hass.config_entries.flow.async_configure(
                 initial_form,
-                user_input={testconst.CONF_URL: testconst.TEST_CONFIG_ENTRY_DATA_URL},
+                user_input={testconst.CONF_URL: testconst.CONFIG_ENTRY_DATA_URL},
             )
 
         assert result is not None
@@ -91,7 +91,7 @@ class Test_Setup_Flows:
         with patch(gateway_async_init, side_effect=AuthenticationRequired):
             result = await hass.config_entries.flow.async_configure(
                 initial_form,
-                user_input={testconst.CONF_URL: testconst.TEST_CONFIG_ENTRY_DATA_URL},
+                user_input={testconst.CONF_URL: testconst.CONFIG_ENTRY_DATA_URL},
             )
 
         assert result is not None
@@ -105,15 +105,13 @@ class Test_Setup_Flows:
         """Test the full config flow."""
         with patch(gateway_async_init, return_value=True):
             result = await hass.config_entries.flow.async_configure(
-                initial_form, user_input={testconst.CONF_URL: testconst.TEST_CONFIG_ENTRY_DATA_URL}
+                initial_form, user_input={testconst.CONF_URL: testconst.CONFIG_ENTRY_DATA_URL}
             )
 
         # The entry should be now created
         assert "type" in result and result["type"] == FlowResultType.CREATE_ENTRY
-        assert "title" in result and result["title"] == testconst.TEST_CONFIG_ENTRY_DATA_URL
-        assert "data" in result and result["data"] == {
-            testconst.CONF_URL: testconst.TEST_CONFIG_ENTRY_DATA_URL
-        }
+        assert "title" in result and result["title"] == testconst.CONFIG_ENTRY_DATA_URL
+        assert "data" in result and result["data"] == {testconst.CONF_URL: testconst.CONFIG_ENTRY_DATA_URL}
         assert "options" in result and result["options"] == ElasticOptionsFlowHandler.default_options
 
     @pytest.mark.parametrize(
@@ -128,7 +126,7 @@ class Test_Setup_Flows:
         """Test transitions from the url form to other forms."""
         with patch(gateway_async_init, side_effect=exception()):
             result = await hass.config_entries.flow.async_configure(
-                initial_form, user_input={testconst.CONF_URL: testconst.TEST_CONFIG_ENTRY_DATA_URL}
+                initial_form, user_input={testconst.CONF_URL: testconst.CONFIG_ENTRY_DATA_URL}
             )
 
         assert "type" in result and result["type"] == FlowResultType.FORM
@@ -146,9 +144,9 @@ class Test_Setup_Flows:
             )
 
         assert "type" in result and result["type"] == FlowResultType.CREATE_ENTRY
-        assert "title" in result and result["title"] == testconst.TEST_CONFIG_ENTRY_DATA_URL
+        assert "title" in result and result["title"] == testconst.CONFIG_ENTRY_DATA_URL
         assert "data" in result and result["data"] == {
-            testconst.CONF_URL: testconst.TEST_CONFIG_ENTRY_DATA_URL,
+            testconst.CONF_URL: testconst.CONFIG_ENTRY_DATA_URL,
             compconst.CONF_SSL_VERIFY_HOSTNAME: True,
             haconst.CONF_VERIFY_SSL: True,
         }
@@ -219,9 +217,9 @@ class Test_Setup_Flows:
             )
 
         assert "type" in result and result["type"] == FlowResultType.CREATE_ENTRY
-        assert "title" in result and result["title"] == testconst.TEST_CONFIG_ENTRY_DATA_URL
+        assert "title" in result and result["title"] == testconst.CONFIG_ENTRY_DATA_URL
         assert "data" in result and result["data"] == {
-            testconst.CONF_URL: testconst.TEST_CONFIG_ENTRY_DATA_URL,
+            testconst.CONF_URL: testconst.CONFIG_ENTRY_DATA_URL,
             **settings,
         }
         assert "options" in result and result["options"] == ElasticOptionsFlowHandler.default_options
@@ -355,10 +353,10 @@ class Test_Reauth_Flow:
             domain=compconst.DOMAIN,
             unique_id="config_entry_id",
             data={
-                **testconst.TEST_CONFIG_ENTRY_BASE_DATA,
+                **testconst.CONFIG_ENTRY_BASE_DATA,
                 **existing_auth_settings,
             },
-            options=testconst.TEST_CONFIG_ENTRY_DEFAULT_OPTIONS,
+            options=testconst.CONFIG_ENTRY_DEFAULT_OPTIONS,
             title="config_entry_title",
         )
 
@@ -390,8 +388,8 @@ class Test_Reauth_Flow:
         config_entry = MockConfigEntry(
             domain=compconst.DOMAIN,
             unique_id="config_entry_id",
-            data={**testconst.TEST_CONFIG_ENTRY_BASE_DATA},
-            options=testconst.TEST_CONFIG_ENTRY_DEFAULT_OPTIONS,
+            data={**testconst.CONFIG_ENTRY_BASE_DATA},
+            options=testconst.CONFIG_ENTRY_DEFAULT_OPTIONS,
             title="config_entry_title",
         )
 
@@ -421,9 +419,9 @@ class Test_Options_Flow:
             domain=compconst.DOMAIN,
             unique_id="config_entry_id",
             data={
-                **testconst.TEST_CONFIG_ENTRY_DEFAULT_DATA,
+                **testconst.CONFIG_ENTRY_DEFAULT_DATA,
             },
-            options=testconst.TEST_CONFIG_ENTRY_BASE_OPTIONS,
+            options=testconst.CONFIG_ENTRY_BASE_OPTIONS,
             title="config_entry_title",
         )
 
@@ -436,10 +434,10 @@ class Test_Options_Flow:
         assert "step_id" in result and result["step_id"] == "options"
 
         result = await hass.config_entries.options.async_configure(
-            result["flow_id"], user_input={**testconst.TEST_CONFIG_ENTRY_DEFAULT_OPTIONS}
+            result["flow_id"], user_input={**testconst.CONFIG_ENTRY_DEFAULT_OPTIONS}
         )
 
         assert "type" in result and result["type"] is FlowResultType.CREATE_ENTRY
 
         # The options should be updated, but they are stored under data
-        assert "data" in result and result["data"] == {**testconst.TEST_CONFIG_ENTRY_DEFAULT_OPTIONS}
+        assert "data" in result and result["data"] == {**testconst.CONFIG_ENTRY_DEFAULT_OPTIONS}

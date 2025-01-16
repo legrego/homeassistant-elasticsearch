@@ -9,7 +9,31 @@ from custom_components.elasticsearch.logger import LOGGER as BASE_LOGGER
 from custom_components.elasticsearch.loop import LoopHandler
 
 
-class Test_loop_handler_sync:
+class Test_Initialization:
+    """Test initialization of the LoopHandler class."""
+
+    async def test_init(self):
+        """Test initializing the loop handler."""
+
+        # Create a mock function
+        mock_func = MagicMock()
+
+        # Create a LoopHandler instance with a frequency of 1 second
+        loop_handler = LoopHandler(mock_func, "test_loop", 1)
+
+        # Assert that the function, name, frequency, and log are set correctly
+        assert loop_handler._func == mock_func
+        assert loop_handler._name == "test_loop"
+        assert loop_handler._frequency == 1
+        assert loop_handler._running is False
+        assert loop_handler._should_stop is False
+        assert loop_handler._run_count == 0
+        assert loop_handler._log == BASE_LOGGER
+        assert loop_handler._next_run_time <= time.monotonic()
+        assert loop_handler._next_run_time >= time.monotonic() - 2
+
+
+class Test_Loop_Handler:
     """Test the LoopHandler class with syncronous functions."""
 
     def test_loop_handler_start(self):
@@ -47,10 +71,6 @@ class Test_loop_handler_sync:
         assert mock_func.call_count >= 1
         assert loop_handler._should_keep_running.call_count == 1
 
-
-class Test_loop_handler:
-    """Test the LoopHandler class."""
-
     async def test_loop_handler_stop(self):
         """Test starting the loop handler."""
 
@@ -79,26 +99,6 @@ class Test_loop_handler:
         await asyncio.sleep(1)
 
         assert loop_task.done()
-
-    async def test_loop_handler_init(self):
-        """Test initializing the loop handler."""
-
-        # Create a mock function
-        mock_func = MagicMock()
-
-        # Create a LoopHandler instance with a frequency of 1 second
-        loop_handler = LoopHandler(mock_func, "test_loop", 1)
-
-        # Assert that the function, name, frequency, and log are set correctly
-        assert loop_handler._func == mock_func
-        assert loop_handler._name == "test_loop"
-        assert loop_handler._frequency == 1
-        assert loop_handler._running is False
-        assert loop_handler._should_stop is False
-        assert loop_handler._run_count == 0
-        assert loop_handler._log == BASE_LOGGER
-        assert loop_handler._next_run_time <= time.monotonic()
-        assert loop_handler._next_run_time >= time.monotonic() - 2
 
     async def test_loop_handler_time_to_run(self):
         """Test the _time_to_run method of LoopHandler."""

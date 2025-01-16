@@ -18,11 +18,13 @@
 # pytest includes fixtures OOB which you can use as defined on this page)
 from __future__ import annotations
 
+import logging
 from asyncio import get_running_loop
 from datetime import datetime
+from logging import Logger
 from typing import TYPE_CHECKING
 from unittest import mock
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import attr
 import pytest
@@ -34,7 +36,6 @@ from freezegun.api import FrozenDateTimeFactory
 from homeassistant.core import HomeAssistant, State
 from homeassistant.helpers.device_registry import DeviceEntry
 from homeassistant.helpers.json import json_dumps
-from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import (
     MockConfigEntry,  # noqa: F401
 )
@@ -48,7 +49,7 @@ from pytest_homeassistant_custom_component.test_util.aiohttp import (
     AiohttpClientMocker,
 )
 
-from tests import const
+from tests import const as testconst
 from tests.test_util.es_mocker import es_mocker
 
 if TYPE_CHECKING:
@@ -61,6 +62,10 @@ if TYPE_CHECKING:
     from homeassistant.helpers.floor_registry import FloorEntry, FloorRegistry
 
 MODULE = "custom_components.elasticsearch"
+logging.getLogger("homeassistant").setLevel(logging.WARNING)
+logging.getLogger("homeassistant.loader").setLevel(logging.ERROR)
+logging.getLogger("pytest_homeassistant_custom_component").setLevel(logging.WARNING)
+logging.getLogger("asyncio").setLevel(logging.WARNING)
 
 
 @pytest.fixture
@@ -117,7 +122,7 @@ def es_mock_builder() -> Generator[es_mocker, Any, None]:
 def freeze_time(freezer: FrozenDateTimeFactory):
     """Freeze time so we can properly assert on payload contents."""
 
-    frozen_time = dt_util.parse_datetime(const.MOCK_NOON_APRIL_12TH_2023)
+    frozen_time = testconst.MOCK_NOON_APRIL_12TH_2023
     if frozen_time is None:
         msg = "Invalid date string"
         raise ValueError(msg)
@@ -148,10 +153,16 @@ def _skip_notifications_fixture() -> Generator[Any, Any, Any]:
         yield
 
 
+@pytest.fixture(name="mock_logger")
+def mock_logger_fixture():
+    """Return a mock logger instance."""
+    return MagicMock(spec=Logger)
+
+
 @pytest.fixture
 async def data() -> dict:
     """Return a mock data dict."""
-    return const.TEST_CONFIG_ENTRY_DEFAULT_DATA
+    return testconst.CONFIG_ENTRY_DEFAULT_DATA
 
 
 @pytest.fixture
@@ -163,7 +174,7 @@ async def version() -> int:
 @pytest.fixture
 async def options() -> dict:
     """Return a mock options dict."""
-    return const.TEST_CONFIG_ENTRY_BASE_OPTIONS
+    return testconst.CONFIG_ENTRY_BASE_OPTIONS
 
 
 @pytest.fixture
@@ -204,8 +215,8 @@ def fix_system_info_fixture():
 async def _fix_location(hass: HomeAssistant):
     """Return whether to fix the location."""
 
-    hass.config.latitude = 1.0
-    hass.config.longitude = -1.0
+    hass.config.latitude = testconst.MOCK_LOCATION_SERVER_LAT
+    hass.config.longitude = testconst.MOCK_LOCATION_SERVER_LON
 
 
 @pytest.fixture
@@ -253,15 +264,27 @@ async def device_floor(floor_registry: FloorRegistry, device_floor_name: str):
 
 
 @pytest.fixture
+async def device_area_id():
+    """Return an device area id."""
+    return testconst.DEVICE_AREA_ID
+
+
+@pytest.fixture
 async def device_area_name():
     """Return an device area name."""
-    return const.TEST_DEVICE_AREA_NAME
+    return testconst.DEVICE_AREA_NAME
+
+
+@pytest.fixture
+async def device_floor_id():
+    """Return an device floor name."""
+    return testconst.DEVICE_FLOOR_ID
 
 
 @pytest.fixture
 async def device_floor_name():
     """Return an device floor name."""
-    return const.TEST_DEVICE_FLOOR_NAME
+    return testconst.DEVICE_FLOOR_NAME
 
 
 @pytest.fixture
@@ -293,7 +316,25 @@ class MockDeviceEntry(DeviceEntry):
     # Use @patch("homeassistant.helpers.device_registry.DeviceEntry", MockDeviceEntry)
     # when creating a device to force the device_id to be the same each time
 
-    id: str = attr.ib(default=const.TEST_DEVICE_ID)
+    id: str = attr.ib(default=testconst.DEVICE_ID)
+
+
+@pytest.fixture
+async def device_labels():
+    """Mock device labels."""
+    return testconst.DEVICE_LABELS
+
+
+@pytest.fixture
+async def device_id():
+    """Return a device id."""
+    return testconst.DEVICE_ID
+
+
+@pytest.fixture
+async def device_name():
+    """Return a device name."""
+    return testconst.DEVICE_NAME
 
 
 @pytest.fixture
@@ -331,54 +372,69 @@ async def device(
 
 
 @pytest.fixture
-async def device_labels():
-    """Mock device labels."""
-    return const.TEST_DEVICE_LABELS
-
-
-@pytest.fixture
-async def device_name():
-    """Return a device name."""
-    return const.TEST_DEVICE_NAME
-
-
-# Entity Fixtures
-
-
-@pytest.fixture
 async def entity_labels():
     """Mock entity labels."""
-    return const.TEST_ENTITY_LABELS
+    return testconst.ENTITY_LABELS
 
 
 @pytest.fixture
 async def entity_id(entity_domain: str, entity_object_id: str):
-    """Return an entity id."""
+    """Provide a sample entity id."""
     return f"{entity_domain}.{entity_object_id}"
 
 
 @pytest.fixture
+async def entity_unit_of_measurement():
+    """Provide a sample entity unit of measurement."""
+    return testconst.ENTITY_UNIT_OF_MEASUREMENT
+
+
+@pytest.fixture
 async def entity_domain():
-    """Return an entity domain."""
-    return const.TEST_ENTITY_DOMAIN
+    """Provide a sample entity domain."""
+    return testconst.ENTITY_DOMAIN
+
+
+@pytest.fixture
+async def entity_name():
+    """Return the entity name."""
+    return testconst.ENTITY_NAME
+
+
+@pytest.fixture
+async def entity_original_name():
+    """Return the original name for the entity."""
+    return testconst.ENTITY_ORIGINAL_NAME
 
 
 @pytest.fixture
 async def entity_object_id():
-    """Return an entity name."""
-    return const.TEST_ENTITY_OBJECT_ID_0
+    """Provide a sample entity name."""
+    return testconst.ENTITY_OBJECT_ID
+
+
+@pytest.fixture
+async def entity_area_id():
+    """Provide a sample entity area id."""
+    return testconst.ENTITY_AREA_ID
 
 
 @pytest.fixture
 async def entity_area_name():
-    """Return an entity area name."""
-    return const.TEST_ENTITY_AREA_NAME
+    """Provide a sample entity area name."""
+    return testconst.ENTITY_AREA_NAME
+
+
+@pytest.fixture
+async def entity_floor_id():
+    """Provide a sample entity floor id."""
+    return testconst.ENTITY_FLOOR_ID
 
 
 @pytest.fixture
 async def entity_floor_name():
-    """Return an entity floor name."""
-    return const.TEST_ENTITY_FLOOR_NAME
+    """Provide a sample entity floor name."""
+    return testconst.ENTITY_FLOOR_NAME
 
 
 @pytest.fixture
@@ -401,7 +457,7 @@ async def entity_floor(
 @pytest.fixture
 async def entity_platform():
     """Return an entity platform."""
-    return const.TEST_ENTITY_PLATFORM
+    return testconst.ENTITY_PLATFORM
 
 
 @pytest.fixture
@@ -427,6 +483,18 @@ async def entity_area(
 
 
 @pytest.fixture
+async def entity_original_device_class() -> str:
+    """Return an entity device class."""
+    return testconst.ENTITY_ORIGINAL_DEVICE_CLASS
+
+
+@pytest.fixture
+async def entity_device_class() -> str:
+    """Return an entity device class."""
+    return testconst.ENTITY_DEVICE_CLASS
+
+
+@pytest.fixture
 async def attach_device():
     """Return whether to attach a device to an entity."""
     return True
@@ -436,14 +504,19 @@ async def attach_device():
 async def entity(
     config_entry: MockConfigEntry,
     entity_registry: EntityRegistry,
+    entity_original_device_class: str,
+    entity_device_class: str,
     entity_domain: str,
     entity_id: str,
     entity_object_id: str,
     entity_area: AreaEntry,
     entity_labels: list[str],
     entity_platform: str,
-    device,
-    attach_device: bool,
+    entity_unit_of_measurement,
+    entity_original_name: str,
+    entity_name: str,
+    device_id: str,
+    request,
 ):
     """Mock an entity."""
     entity_registry.async_get_or_create(
@@ -452,8 +525,16 @@ async def entity(
         unique_id=entity_id,
         suggested_object_id=entity_object_id,
         platform=entity_platform,
-        original_device_class=const.TEST_ENTITY_DEVICE_CLASS,
+        original_device_class=entity_original_device_class,
+        original_name=entity_original_name,
+        unit_of_measurement=entity_unit_of_measurement,
     )
+
+    if entity_name is not None:
+        entity_registry.async_update_entity(entity_id=entity_id, name=entity_name)
+
+    if entity_device_class is not None:
+        entity_registry.async_update_entity(entity_id=entity_id, device_class=entity_device_class)
 
     if entity_labels is not None and len(entity_labels) > 0:
         entity_registry.async_update_entity(entity_id=entity_id, labels={*entity_labels})
@@ -461,41 +542,41 @@ async def entity(
     if entity_area is not None:
         entity_registry.async_update_entity(entity_id=entity_id, area_id=entity_area.id)
 
-    if device is not None and attach_device:
-        entity_registry.async_update_entity(entity_id=entity_id, device_id=device.id)
+    if device_id is not None:
+        entity_registry.async_update_entity(entity_id=entity_id, device_id=device_id)
 
     return entity_registry.async_get(entity_id)
 
 
-@pytest.fixture
-async def state() -> str:
-    """Return a state."""
-    return const.TEST_ENTITY_STATE
+@pytest.fixture(name="state_value")
+async def state_value_fixture() -> str:
+    """Return a state value."""
+    return testconst.ENTITY_STATE_STRING
 
 
-@pytest.fixture(name="attributes")
-async def attributes_fixture() -> dict:
+@pytest.fixture(name="entity_attributes")
+async def entity_attributes_fixture() -> dict:
     """Return a mock attributes dict."""
-    return const.TEST_ENTITY_STATE_ATTRIBUTES
+    return testconst.ENTITY_ATTRIBUTES
 
 
 @pytest.fixture(name="last_changed")
 async def last_changed_fixture() -> datetime:
     """Return a mock last changed."""
-    return const.TEST_ENTITY_STATE_LAST_CHANGED
+    return testconst.ENTITY_STATE_LAST_CHANGED
 
 
 @pytest.fixture(name="last_updated")
 async def last_updated_fixture() -> datetime:
     """Return a mock last updated."""
-    return const.TEST_ENTITY_STATE_LAST_UPDATED
+    return testconst.ENTITY_STATE_LAST_UPDATED
 
 
 @pytest.fixture
 async def entity_state(
     entity_id: str,
-    state: str,
-    attributes: dict[str, Any],
+    state_value: str,
+    entity_attributes: dict[str, Any],
     last_changed: datetime,
     last_updated: datetime,
 ) -> State:
@@ -503,8 +584,8 @@ async def entity_state(
 
     return State(
         entity_id=entity_id,
-        state=state,
-        attributes=attributes,
+        state=state_value,
+        attributes=entity_attributes,
         last_changed=last_changed,
         last_updated=last_updated,
     )

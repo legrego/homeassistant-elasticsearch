@@ -22,6 +22,12 @@ async def mock_gateway() -> AsyncMock:
     return gateway
 
 
+@pytest.fixture
+async def datastream_manager(mock_gateway) -> DatastreamManager:
+    """Return an DatastreamManager instance."""
+    return DatastreamManager(mock_gateway)
+
+
 class Test_Initialization:
     """Test the DatastreamManager class sync methods."""
 
@@ -33,71 +39,61 @@ class Test_Initialization:
         assert datastream_manager is not None
         assert datastream_manager._gateway == mock_gateway
 
-    class Test_Async_init:
-        """Test the DatastreamManager class initialization scenarios."""
+    async def test_async_init_first_run(self, datastream_manager):
+        """Test initialization of the DatastreamManager with a fresh ES cluster."""
 
-        @pytest.fixture
-        async def datastream_manager(self, mock_gateway) -> DatastreamManager:
-            """Return an DatastreamManager instance."""
-            return DatastreamManager(mock_gateway)
+        datastream_manager._gateway.get_index_template = AsyncMock(
+            return_value={"index_templates": []},
+        )
 
-        async def test_async_init_first_run(self, datastream_manager):
-            """Test initialization of the DatastreamManager with a fresh ES cluster."""
+        await datastream_manager.async_init()
 
-            datastream_manager._gateway.get_index_template = AsyncMock(
-                return_value={"index_templates": []},
-            )
+        datastream_manager._gateway.get_index_template.assert_called_once()
+        datastream_manager._gateway.put_index_template.assert_called_once()
+        datastream_manager._gateway.rollover_datastream.assert_not_called()
 
-            await datastream_manager.async_init()
+    async def test_async_init_second_run(self, datastream_manager):
+        """Test initialization of the DatastreamManager on a cluster that already contains the required index template."""
+        datastream_manager._gateway.get_index_template = AsyncMock(
+            return_value={
+                "index_templates": [
+                    {
+                        "name": "datastream_metrics",
+                        "index_template": {"version": index_template.index_template_definition["version"]},
+                    }
+                ]
+            },
+        )
 
-            datastream_manager._gateway.get_index_template.assert_called_once()
-            datastream_manager._gateway.put_index_template.assert_called_once()
-            datastream_manager._gateway.rollover_datastream.assert_not_called()
+        await datastream_manager.async_init()
 
-        async def test_async_init_second_run(self, datastream_manager):
-            """Test initialization of the DatastreamManager on a cluster that already contains the required index template."""
-            datastream_manager._gateway.get_index_template = AsyncMock(
-                return_value={
-                    "index_templates": [
-                        {
-                            "name": "datastream_metrics",
-                            "index_template": {
-                                "version": index_template.index_template_definition["version"]
-                            },
-                        }
-                    ]
-                },
-            )
+        assert datastream_manager._gateway.get_index_template.call_count == 2
+        datastream_manager._gateway.put_index_template.assert_not_called()
+        datastream_manager._gateway.rollover_datastream.assert_not_called()
 
-            await datastream_manager.async_init()
+    async def test_async_init_update_required(self, datastream_manager):
+        """Test initialization of the DatastreamManager with an existing ES cluster that requires an index template update and rollover."""
+        datastream_manager._gateway.get_index_template = AsyncMock(
+            return_value={
+                "index_templates": [{"name": "datastream_metrics", "index_template": {"version": 1}}]
+            },
+        )
 
-            assert datastream_manager._gateway.get_index_template.call_count == 2
-            datastream_manager._gateway.put_index_template.assert_not_called()
-            datastream_manager._gateway.rollover_datastream.assert_not_called()
+        datastream_manager._gateway.get_datastream = AsyncMock(
+            return_value={
+                "data_streams": [
+                    {
+                        "name": "metrics-homeassistant.sensor-default",
+                    },
+                    {
+                        "name": "metrics-homeassistant.counter-default",
+                    },
+                ]
+            }
+        )
 
-        async def test_async_init_update_required(self, datastream_manager):
-            """Test initialization of the DatastreamManager with an existing ES cluster that requires an index template update and rollover."""
-            datastream_manager._gateway.get_index_template = AsyncMock(
-                return_value={
-                    "index_templates": [{"name": "datastream_metrics", "index_template": {"version": 1}}]
-                },
-            )
+        await datastream_manager.async_init()
 
-            datastream_manager._gateway.get_datastream = AsyncMock(
-                return_value={
-                    "data_streams": [
-                        {
-                            "name": "metrics-homeassistant.sensor-default",
-                        },
-                        {
-                            "name": "metrics-homeassistant.counter-default",
-                        },
-                    ]
-                }
-            )
-
-            await datastream_manager.async_init()
-
-            assert datastream_manager._gateway.get_index_template.call_count == 2
-            datastream_manager._gateway.put_index_template.assert_called_once()
-            assert datastream_manager._gateway.rollover_datastream.call_count == 2
+        assert datastream_manager._gateway.get_index_template.call_count == 2
+        datastream_manager._gateway.put_index_template.assert_called_once()
+        assert datastream_manager._gateway.rollover_datastream.call_count == 2

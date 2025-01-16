@@ -28,39 +28,8 @@ CONF_SSL_CA_PATH: str = "ssl_ca_path"
 
 CONF_TAGS: str = "tags"
 
-CONST_ENTITY_DETAILS_TO_ES_DOCUMENT: MappingProxyType[str, str] = MappingProxyType(
-    {
-        # Keys are the key in the ES Document
-        # Values are the keys from the ExtendedEntityRegistry flattened dict
-        # Entity Attributes
-        "area.floor.id": "floor.floor_id",
-        "area.floor.name": "floor.name",
-        "area.id": "area.id",
-        "area.name": "area.name",
-        "labels": "labels",
-        "name": "name",
-        "id": "object_id",
-        "location.lat": "location.lat",
-        "location.lon": "location.lon",
-        "friendly_name": "friendly_name",
-        "platform": "platform",
-        "unit_of_measurement": "unit_of_measurement",
-        "state.class": "state_class",
-        # Device Attributes
-        "device.class": "device_class",
-        # "device.id": "device.id",
-        "device.labels": "device.labels",
-        "device.name": "device.name",
-        "device.friendly_name": "device.friendly_name",
-        "device.area.floor.id": "device.floor.floor_id",
-        "device.area.floor.name": "device.floor.name",
-        "device.area.id": "device.area.id",
-        "device.area.name": "device.area.name",
-    }
-)
-
-CONST_ENTITY_DETAILS_TO_ES_DOCUMENT_KEYS = list(CONST_ENTITY_DETAILS_TO_ES_DOCUMENT.values())
-
+# For trimming keys with values that are None, empty lists, or empty objects
+SKIP_VALUES = [None, [], {}]
 
 ONE_MINUTE: int = 60
 ONE_HOUR: int = 60 * 60

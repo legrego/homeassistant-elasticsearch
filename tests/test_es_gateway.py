@@ -27,14 +27,8 @@ from custom_components.elasticsearch.es_gateway import (
 from custom_components.elasticsearch.es_gateway_8 import Elasticsearch8Gateway, Gateway8Settings
 from elastic_transport import ApiResponseMeta, BaseNode, ObjectApiResponse
 from elasticsearch8._async.client import AsyncElasticsearch
-from syrupy.assertion import SnapshotAssertion
 
-from tests import const
-from tests.const import (
-    CLUSTER_INFO_8DOT0_RESPONSE_BODY,
-    CLUSTER_INFO_8DOT14_RESPONSE_BODY,
-    CLUSTER_INFO_SERVERLESS_RESPONSE_BODY,
-)
+from tests import const as testconst
 
 
 def self_signed_tls_error():
@@ -85,7 +79,7 @@ def mock_es_response(body):
 def gateway_settings() -> Gateway8Settings:
     """Return a Gateway8Settings instance."""
     return Gateway8Settings(
-        url=const.TEST_CONFIG_ENTRY_DATA_URL,
+        url=testconst.CONFIG_ENTRY_DATA_URL,
         username="username",
         password="password",
         verify_certs=True,
@@ -151,7 +145,7 @@ async def gateway_mock_shared(gateway_settings) -> Elasticsearch8Gateway:
 async def gateway_mock_stateful(gateway_mock_shared: Elasticsearch8Gateway) -> Elasticsearch8Gateway:
     """Return a mock Elasticsearch client for a Stateful ES Cluster."""
 
-    gateway_mock_shared._client.info = mock_es_response(CLUSTER_INFO_8DOT14_RESPONSE_BODY)
+    gateway_mock_shared._client.info = mock_es_response(testconst.CLUSTER_INFO_8DOT14_RESPONSE_BODY)
     gateway_mock_shared._client.xpack = MagicMock()
     gateway_mock_shared._client.xpack.usage = mock_es_response(
         {"security": {"available": True, "enabled": True}}
@@ -163,7 +157,7 @@ async def gateway_mock_stateful(gateway_mock_shared: Elasticsearch8Gateway) -> E
 async def gateway_mock_serverless(gateway_mock_shared: Elasticsearch8Gateway) -> Elasticsearch8Gateway:
     """Return a mock Elasticsearch client for serverless ES."""
 
-    gateway_mock_shared._client.info = mock_es_response(CLUSTER_INFO_SERVERLESS_RESPONSE_BODY)
+    gateway_mock_shared._client.info = mock_es_response(testconst.CLUSTER_INFO_SERVERLESS_RESPONSE_BODY)
     gateway_mock_shared._client.xpack = MagicMock()
 
     gateway_mock_shared._client.xpack.usage = mock_es_exception(
@@ -180,7 +174,7 @@ class Test_Initialization:
         """Test initializing a gateway with basic authentication."""
         gateway = Elasticsearch8Gateway(
             gateway_settings=Gateway8Settings(
-                url=const.TEST_CONFIG_ENTRY_DATA_URL, username="username", password="password"
+                url=testconst.CONFIG_ENTRY_DATA_URL, username="username", password="password"
             )
         )
 
@@ -192,7 +186,7 @@ class Test_Initialization:
         # API Key Authentication
         gateway = Elasticsearch8Gateway(
             gateway_settings=Gateway8Settings(
-                url=const.TEST_CONFIG_ENTRY_DATA_URL,
+                url=testconst.CONFIG_ENTRY_DATA_URL,
                 api_key="api",
             )
         )
@@ -203,7 +197,7 @@ class Test_Initialization:
         """Test initializing a gateway with no authentication."""
         gateway = Elasticsearch8Gateway(
             gateway_settings=Gateway8Settings(
-                url=const.TEST_CONFIG_ENTRY_DATA_URL_INSECURE,
+                url=testconst.CONFIG_ENTRY_DATA_URL_INSECURE,
             )
         )
 
@@ -231,7 +225,7 @@ class Test_Initialization:
 
         gateway = Elasticsearch8Gateway(
             gateway_settings=Gateway8Settings(
-                url=const.TEST_CONFIG_ENTRY_DATA_URL,
+                url=testconst.CONFIG_ENTRY_DATA_URL,
                 verify_certs=verify_certs,
                 verify_hostname=verify_hostname,
             )
@@ -243,7 +237,7 @@ class Test_Initialization:
         assert ssl_context.check_hostname == expected_verify_hostname
         assert ssl_context.verify_mode == expected_verify_mode
 
-    async def test_init_tls_custom_ca(self, snapshot: SnapshotAssertion) -> None:
+    async def test_init_tls_custom_ca(self) -> None:
         """Test initializing a gateway with TLS and custom ca cert."""
 
         # cert is located in "certs/http_ca.crt" relative to this file, get the absolute path
@@ -251,7 +245,7 @@ class Test_Initialization:
 
         gateway = Elasticsearch8Gateway(
             gateway_settings=Gateway8Settings(
-                url=const.TEST_CONFIG_ENTRY_DATA_URL,
+                url=testconst.CONFIG_ENTRY_DATA_URL,
                 verify_certs=True,
                 verify_hostname=True,
                 ca_certs=f"{current_directory}/certs/http_ca.crt",
@@ -261,11 +255,10 @@ class Test_Initialization:
         node: BaseNode = gateway._client._transport.node_pool.get()
         ssl_context = node._ssl_context  # type: ignore[reportAttributeAccessIssue]
 
-        for cert in ssl_context.get_ca_certs():
-            if cert["serialNumber"] == "25813FA4F725F5566FCF014C0B8B0973E710DF90":
-                assert cert == snapshot
-
-        assert snapshot.num_executions == 1
+        assert any(
+            cert["serialNumber"] == "25813FA4F725F5566FCF014C0B8B0973E710DF90"
+            for cert in ssl_context.get_ca_certs()
+        )
 
     async def test_async_init(self, gateway_mock_stateful) -> None:
         """Test the async initialization with proper permissions on a supported version."""
@@ -275,7 +268,7 @@ class Test_Initialization:
     async def test_async_init_unsupported_version(self, gateway_mock_stateful) -> None:
         """Test the async_init method when the target cluster is running an unsupported version."""
 
-        gateway_mock_stateful._client.info = mock_es_response(CLUSTER_INFO_8DOT0_RESPONSE_BODY)
+        gateway_mock_stateful._client.info = mock_es_response(testconst.CLUSTER_INFO_8DOT0_RESPONSE_BODY)
 
         with pytest.raises(UnsupportedVersion):
             assert await gateway_mock_stateful.async_init() is None

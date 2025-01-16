@@ -1,10 +1,10 @@
 """Tests for the es_publish_pipeline module."""
 
 from datetime import UTC, datetime
-from logging import Logger
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from custom_components.elasticsearch import utils
 from custom_components.elasticsearch.errors import (
     AuthenticationRequired,
     CannotConnect,
@@ -23,7 +23,7 @@ from homeassistant.core import Event, HomeAssistant, State
 from homeassistant.helpers.entity_registry import RegistryEntry
 from syrupy.assertion import SnapshotAssertion
 
-from tests import const
+import tests.const as testconst
 
 
 @pytest.fixture(name="pipeline_settings")
@@ -53,12 +53,6 @@ def mock_api_response_meta(status_code=200):
     return ApiResponseMeta(
         status=status_code, headers=MagicMock(), http_version="1.1", duration=0.0, node=MagicMock()
     )
-
-
-@pytest.fixture(name="mock_logger")
-def mock_logger_fixture():
-    """Return a mock logger instance."""
-    return MagicMock(spec=Logger)
 
 
 @pytest.fixture(name="mock_queue")
@@ -200,8 +194,8 @@ class Test_Filterer:
     @pytest.mark.parametrize(
         ("exclude_labels", "should_exclude_on_label"),
         [
-            ([const.TEST_ENTITY_LABELS[0]], True),
-            ([const.TEST_DEVICE_LABELS[0]], True),
+            ([testconst.ENTITY_LABELS[0]], True),
+            ([testconst.DEVICE_LABELS[0]], True),
             ([], False),
         ],
         ids=[
@@ -212,17 +206,17 @@ class Test_Filterer:
     )
     @pytest.mark.parametrize(
         ("exclude_areas", "should_exclude_on_area"),
-        [([const.TEST_ENTITY_AREA_ID], True), ([], False)],
+        [([testconst.ENTITY_AREA_ID], True), ([], False)],
         ids=["area excluded", "area not excluded"],
     )
     @pytest.mark.parametrize(
         ("exclude_devices", "should_exclude_on_device"),
-        [([const.TEST_DEVICE_ID], True), ([], False)],
+        [([testconst.DEVICE_ID], True), ([], False)],
         ids=["device excluded", "device not excluded"],
     )
     @pytest.mark.parametrize(
         ("exclude_entities", "should_exclude_on_entity"),
-        [([const.TEST_ENTITY_ID_0], True), ([], False)],
+        [([testconst.ENTITY_ID], True), ([], False)],
         ids=["entity excluded", "entity not excluded"],
     )
     @pytest.mark.parametrize(
@@ -271,25 +265,25 @@ class Test_Filterer:
     @pytest.mark.parametrize(
         ("include_labels", "should_include_on_label"),
         [
-            ([const.TEST_ENTITY_LABELS[0]], True),
-            ([const.TEST_DEVICE_LABELS[0]], True),
+            ([testconst.ENTITY_LABELS[0]], True),
+            ([testconst.DEVICE_LABELS[0]], True),
             ([], False),
         ],
         ids=["entity label included", "device label included", "entity and device label not included"],
     )
     @pytest.mark.parametrize(
         ("include_areas", "should_include_on_area"),
-        [([const.TEST_ENTITY_AREA_ID], True), ([], False)],
+        [([testconst.ENTITY_AREA_ID], True), ([], False)],
         ids=["area included", "area not included"],
     )
     @pytest.mark.parametrize(
         ("include_devices", "should_include_on_device"),
-        [([const.TEST_DEVICE_ID], True), ([], False)],
+        [([testconst.DEVICE_ID], True), ([], False)],
         ids=["device included", "device not included"],
     )
     @pytest.mark.parametrize(
         ("include_entities", "should_include_on_entity"),
-        [([const.TEST_ENTITY_ID_0], True), ([], False)],
+        [([testconst.ENTITY_ID], True), ([], False)],
         ids=["entity included", "entity not included"],
     )
     @pytest.mark.parametrize(
@@ -405,7 +399,7 @@ class Test_Filterer:
 class Test_Manager:
     """Test the Pipeline.Manager class."""
 
-    async def test_init(self, manager, pipeline_settings, snapshot: SnapshotAssertion):
+    async def test_init(self, manager, pipeline_settings):
         """Test the initialization of the manager."""
 
         assert manager._gateway is not None
@@ -433,8 +427,8 @@ class Test_Manager:
             "host.hostname": "my_es_host",
             "tags": ["tag1", "tag2"],
             "host.location": {
-                "lat": 1.0,
-                "lon": -1.0,
+                "lat": testconst.MOCK_LOCATION_SERVER_LAT,
+                "lon": testconst.MOCK_LOCATION_SERVER_LON,
             },
         }
 
@@ -510,7 +504,7 @@ class Test_Manager:
         # Assert that the formatter was called
         manager._formatter.format.assert_called_once_with(event.time_fired, new_state, reason)
 
-    async def test_sip_queue_and_format(self, manager, formatter, snapshot):
+    async def test_sip_queue_and_format(self, manager, formatter):
         """Test the sip_queue method of the Pipeline.Manager class."""
 
         # Swap out the formatter with a real formatter instance
@@ -520,7 +514,7 @@ class Test_Manager:
         manager._formatter._state_to_extended_details = MagicMock(return_value={})
 
         # Build a bus event to put onto the queue
-        timestamp = const.MOCK_NOON_APRIL_12TH_2023
+        timestamp = testconst.MOCK_NOON_APRIL_12TH_2023
         new_state = State("light.light_1", "on")
         reason = StateChangeType.STATE
 
@@ -535,7 +529,20 @@ class Test_Manager:
         manager._formatter.format.assert_called_once_with(timestamp, new_state, reason)
 
         # Assert that the result is as expected
-        assert result == snapshot
+        assert result == [
+            {
+                "@timestamp": "2023-04-12T12:00:00+00:00",
+                "data_stream.dataset": "homeassistant.light",
+                "data_stream.namespace": "default",
+                "data_stream.type": "metrics",
+                "event.action": "State change",
+                "event.kind": "event",
+                "event.type": "change",
+                "hass.entity.object.id": "light_1",
+                "hass.entity.value": "on",
+                "hass.entity.valueas.boolean": True,
+            }
+        ]
 
     async def test_stop(self, manager):
         """Ensure that stopping the manager stops active listeners."""
@@ -864,289 +871,267 @@ class Test_Publisher:
 class Test_Formatter:
     """Test the Pipeline.Formatter class."""
 
-    class Test_Unit_Tests:
-        """Run the unit tests of the Formatter class."""
+    async def test_init(self, formatter):
+        """Test the initialization of the Formatter."""
+        assert formatter._extended_entity_details is not None
+        assert formatter._static_fields == {}
 
-        async def test_init(self, formatter):
-            """Test the initialization of the Formatter."""
-            assert formatter._extended_entity_details is not None
-            assert formatter._static_fields == {}
+    async def test_async_init(self, formatter):
+        """Test the async initialization of the Formatter."""
+        static_fields = {
+            "agent.version": "1.0.0",
+            "host.architecture": "x86",
+            "host.os.name": "Linux",
+            "host.hostname": "my_es_host",
+        }
 
-        async def test_async_init(self, formatter):
-            """Test the async initialization of the Formatter."""
-            static_fields = {
-                "agent.version": "1.0.0",
-                "host.architecture": "x86",
-                "host.os.name": "Linux",
-                "host.hostname": "my_es_host",
-            }
+        await formatter.async_init(
+            static_fields=static_fields,
+        )
 
-            await formatter.async_init(
-                static_fields=static_fields,
-            )
+        assert formatter._static_fields == static_fields
 
-            assert formatter._static_fields == static_fields
+    async def test_state_to_attributes(self, formatter):
+        """Test converting a state to attributes."""
+        state = State("light.living_room", "on", {"brightness": 255, "color_temp": 4000})
+        attributes = formatter._state_to_attributes(state)
+        assert attributes == {"brightness": 255, "color_temp": 4000}
 
-        async def test_state_to_attributes(self, formatter):
-            """Test converting a state to attributes."""
-            state = State("light.living_room", "on", {"brightness": 255, "color_temp": 4000})
-            attributes = formatter._state_to_attributes(state)
-            assert attributes == {"brightness": 255, "color_temp": 4000}
+    async def test_state_to_attributes_skip(self, formatter):
+        """Test converting a state to attributes."""
 
-        async def test_state_to_attributes_skip(self, formatter):
-            """Test converting a state to attributes."""
+        class CustomAttributeClass:
+            def __init__(self) -> None:
+                self.field = "This class should be skipped, as it cannot be serialized."
 
-            class CustomAttributeClass:
-                def __init__(self) -> None:
-                    self.field = "This class should be skipped, as it cannot be serialized."
+        state = State(
+            "light.living_room",
+            "on",
+            {
+                "brightness": 255,
+                "color_temp": 4000,
+                "friendly_name": "tomato",  # Skip, exists elsewhere
+                "not allowed": CustomAttributeClass(),  # Skip, type not allowed
+            },
+        )
 
+        attributes = formatter._state_to_attributes(state)
+        assert attributes == {"brightness": 255, "color_temp": 4000}
+
+    async def test_state_to_attributes_duplicate_sanitize(self, formatter):
+        """Test converting a state to attributes."""
+        # Patch the logger and make sure we print a debug message
+
+        with patch.object(formatter._logger, "warning") as warning:
             state = State(
                 "light.living_room",
                 "on",
-                {
-                    "brightness": 255,
-                    "color_temp": 4000,
-                    "friendly_name": "tomato",  # Skip, exists elsewhere
-                    "not allowed": CustomAttributeClass(),  # Skip, type not allowed
-                },
+                {"brightness": 255, "color_temp": 4000, "color_temp!": 4000},
             )
-
             attributes = formatter._state_to_attributes(state)
             assert attributes == {"brightness": 255, "color_temp": 4000}
+            warning.assert_called_once()
 
-        async def test_state_to_attributes_duplicate_sanitize(self, formatter):
-            """Test converting a state to attributes."""
-            # Patch the logger and make sure we print a debug message
+    async def test_state_to_attributes_objects(self, formatter):
+        """Test converting a state to attributes."""
+        orig_attributes = {
+            "brightness": 255,
+            "temperature": 92.8,
+            "colors": {"red"},  # Set
+            "lights": ["lamp", "ceiling"],  # List
+            "child": {"name": "Alice"},  # Dict
+            "children": [{"name": "Alice"}],  # List of dicts
+        }
 
-            with patch.object(formatter._logger, "warning") as warning:
-                state = State(
-                    "light.living_room",
-                    "on",
-                    {"brightness": 255, "color_temp": 4000, "color_temp!": 4000},
-                )
-                attributes = formatter._state_to_attributes(state)
-                assert attributes == {"brightness": 255, "color_temp": 4000}
-                warning.assert_called_once()
+        state = State("light.living_room", "on", orig_attributes)
+        transformed_attributes = formatter._state_to_attributes(state)
 
-        async def test_state_to_attributes_objects(self, formatter, snapshot: SnapshotAssertion):
-            """Test converting a state to attributes."""
-            # Test attributes that are dicts, sets, and lists
-            orig_attributes = {
+        assert transformed_attributes == {
+            "brightness": 255,
+            "child": '{"name": "Alice"}',
+            "children": ['{"name": "Alice"}'],
+            "temperature": 92.8,
+            "colors": ["red"],
+            "lights": ["lamp", "ceiling"],
+        }
+
+    @pytest.mark.parametrize(*testconst.ENTITY_STATE_MATRIX_COMPREHENSIVE)
+    async def test_state_to_attributes_matrix(
+        self, formatter, entity_id, entity_state_value, entity_state_change_type, entity_attributes, snapshot
+    ):
+        """Test converting a state to attributes."""
+        state = State(entity_id=entity_id, state=entity_state_value, attributes=entity_attributes)
+        attributes = formatter._state_to_attributes(state)
+        assert attributes == snapshot
+
+    async def test_state_to_coerced_value_string(self, formatter):
+        """Test converting a state to a coerced value."""
+        state = State("light.living_room", "tomato")
+        coerced_value = formatter._state_to_coerced_value(state)
+        assert coerced_value == {"string": "tomato"}
+
+    async def test_state_to_coerced_value_boolean(self, formatter):
+        """Test converting a state to a coerced value."""
+        state = State("binary_sensor.motion", "on")
+        coerced_value = formatter._state_to_coerced_value(state)
+        assert coerced_value == {"boolean": True}
+
+        state = State("binary_sensor.motion", "off")
+        coerced_value = formatter._state_to_coerced_value(state)
+        assert coerced_value == {"boolean": False}
+
+    async def test_state_to_coerced_value_float(self, formatter):
+        """Test converting a state to a coerced value."""
+        state = State("sensor.temperature", "25.5")
+        coerced_value = formatter._state_to_coerced_value(state)
+        assert coerced_value == {"float": 25.5}
+
+    async def test_state_to_coerced_value_float_fail(self, formatter):
+        """Test converting a state to a coerced value."""
+        # set state to infinity
+        state = State("sensor.temperature", str(float("inf")))
+        coerced_value = formatter._state_to_coerced_value(state)
+        assert coerced_value == {"string": "inf"}
+
+        # set state to nan
+        state = State("sensor.temperature", str(float("nan")))
+        coerced_value = formatter._state_to_coerced_value(state)
+        assert coerced_value == {"string": "nan"}
+
+    async def test_state_to_coerced_value_datetime(self, formatter):
+        """Test converting a state to a coerced value."""
+        state = State("sensor.last_updated", "2023-04-12T12:00:00Z")
+        coerced_value = formatter._state_to_coerced_value(state)
+        assert coerced_value == {
+            "datetime": "2023-04-12T12:00:00+00:00",
+            "date": "2023-04-12",
+            "time": "12:00:00",
+        }
+
+    async def test_domain_to_datastream(self, formatter):
+        """Test converting a state to a datastream."""
+        datastream = formatter.domain_to_datastream(testconst.ENTITY_DOMAIN)
+        assert datastream == {
+            "data_stream.type": "metrics",
+            "data_stream.dataset": f"homeassistant.{testconst.ENTITY_DOMAIN}",
+            "data_stream.namespace": "default",
+        }
+
+    async def test_state_to_extended_details(
+        self,
+        formatter,
+        entity: RegistryEntry,
+        entity_object_id,
+        entity_area_name,
+        entity_floor_name,
+        entity_labels,
+        device_name,
+        device_area_name,
+        device_floor_name,
+        device_labels,
+        snapshot,
+    ):
+        """Test converting a state to entity details."""
+        state = State(
+            entity_id=entity.entity_id,
+            state="on",
+            attributes={
                 "brightness": 255,
-                "color_temp": 4000,
-                "colors": {"red"},  # Set
-                "lights": ["lamp", "ceiling"],  # List
-                "child": {"name": "Alice"},  # Dict
-                "children": [{"name": "Alice"}],  # List of dicts
-            }
-            state = State("light.living_room", "on", orig_attributes)
-            transformed_attributes = formatter._state_to_attributes(state)
+                "latitude": 1.0,
+                "longitude": 1.0,
+            },
+        )
 
-            assert snapshot == {
-                "orig_attributes": orig_attributes,
-                "transformed_attributes": transformed_attributes,
-            }
+        entity_details = formatter._state_to_extended_details(state)
 
-        async def test_state_to_coerced_value_string(self, formatter):
-            """Test converting a state to a coerced value."""
-            state = State("light.living_room", "tomato")
-            coerced_value = formatter._state_to_coerced_value(state)
-            assert coerced_value == {"string": "tomato"}
+        assert entity_details == snapshot
 
-        async def test_state_to_coerced_value_boolean(self, formatter):
-            """Test converting a state to a coerced value."""
-            state = State("binary_sensor.motion", "on")
-            coerced_value = formatter._state_to_coerced_value(state)
-            assert coerced_value == {"boolean": True}
+    async def test_state_to_extended_details_exception(
+        self,
+        formatter,
+        snapshot,
+    ):
+        """Test that we properly raise an exception when we canoot get additional entity details."""
+        state = State(entity_id="tomato.pancakes", state="on", attributes={"brightness": 255})
 
-            state = State("binary_sensor.motion", "off")
-            coerced_value = formatter._state_to_coerced_value(state)
-            assert coerced_value == {"boolean": False}
+        with pytest.raises(ValueError):
+            formatter._state_to_extended_details(state)
 
-        async def test_state_to_coerced_value_float(self, formatter):
-            """Test converting a state to a coerced value."""
-            state = State("sensor.temperature", "25.5")
-            coerced_value = formatter._state_to_coerced_value(state)
-            assert coerced_value == {"float": 25.5}
+    @pytest.mark.parametrize(*testconst.DEVICE_MATRIX_SIMPLE)
+    @pytest.mark.parametrize(*testconst.ENTITY_MATRIX_SIMPLE)
+    @pytest.mark.parametrize(*testconst.ENTITY_STATE_MATRIX_SIMPLE)
+    async def test_format_simple_cases(
+        self,
+        formatter,
+        entity,
+        entity_area_name,
+        entity_floor_name,
+        entity_labels,
+        device,
+        device_name,
+        device_area_name,
+        device_floor_name,
+        device_labels,
+        entity_state_value,
+        entity_state_change_type,
+        entity_attributes: dict,
+        freeze_time: FrozenDateTimeFactory,
+        snapshot,
+    ):
+        """Test converting a state to entity details."""
+        time = datetime.now(tz=UTC)
+        state = State(entity_id=entity.entity_id, state=entity_state_value, attributes=entity_attributes)
+        reason = entity_state_change_type
 
-        async def test_state_to_coerced_value_float_fail(self, formatter):
-            """Test converting a state to a coerced value."""
-            # set state to infinity
-            state = State("sensor.temperature", str(float("inf")))
-            coerced_value = formatter._state_to_coerced_value(state)
-            assert coerced_value == {"string": "inf"}
+        document = formatter.format(time, state, reason)
 
-            # set state to nan
-            state = State("sensor.temperature", str(float("nan")))
-            coerced_value = formatter._state_to_coerced_value(state)
-            assert coerced_value == {"string": "nan"}
+        assert document == snapshot
 
-        async def test_state_to_coerced_value_datetime(self, formatter):
-            """Test converting a state to a coerced value."""
-            state = State("sensor.last_updated", "2023-04-12T12:00:00Z")
-            coerced_value = formatter._state_to_coerced_value(state)
-            assert coerced_value == {
-                "datetime": "2023-04-12T12:00:00+00:00",
-                "date": "2023-04-12",
-                "time": "12:00:00",
-            }
+    @pytest.mark.parametrize(*testconst.DEVICE_MATRIX_EXTRA)
+    @pytest.mark.parametrize(*testconst.ENTITY_MATRIX_EXTRA)
+    @pytest.mark.parametrize(*testconst.ENTITY_STATE_MATRIX_EXTRA)
+    async def test_format_edge_cases(
+        self,
+        formatter,
+        entity,
+        entity_area_name,
+        entity_floor_name,
+        entity_labels,
+        device,
+        device_name,
+        device_area_name,
+        device_floor_name,
+        device_labels,
+        entity_state_value,
+        entity_state_change_type,
+        entity_attributes: dict,
+        freeze_time: FrozenDateTimeFactory,
+        snapshot: SnapshotAssertion,
+    ):
+        """Test converting a state to entity details."""
+        time = datetime.now(tz=UTC)
+        state = State(entity_id=entity.entity_id, state=entity_state_value, attributes=entity_attributes)
+        reason = entity_state_change_type
 
-        async def test_domain_to_datastream(self, formatter):
-            """Test converting a state to a datastream."""
-            datastream = formatter.domain_to_datastream(const.TEST_ENTITY_DOMAIN)
-            assert datastream == {
-                "data_stream.type": "metrics",
-                "data_stream.dataset": f"homeassistant.{const.TEST_ENTITY_DOMAIN}",
-                "data_stream.namespace": "default",
-            }
+        document = formatter.format(time, state, reason)
 
-    class Test_Integration_Tests:
-        """Run the integration tests of the Formatter class."""
+        assert document.get("hass.entity.labels", []) == entity_labels
+        assert document.get("hass.entity.device.labels", []) == device_labels
+        assert document.get("event.action") == entity_state_change_type.to_publish_reason()
 
-        async def test_state_to_extended_details(
-            self,
-            formatter,
-            entity: RegistryEntry,
-            entity_object_id,
-            entity_area_name,
-            entity_floor_name,
-            entity_labels,
-            device_name,
-            device_area_name,
-            device_floor_name,
-            device_labels,
-            snapshot,
-        ):
-            """Test converting a state to entity details."""
-            state = State(
-                entity_id=entity.entity_id,
-                state="on",
-                attributes={
-                    "brightness": 255,
-                    "latitude": 1.0,
-                    "longitude": 1.0,
-                },
+        # Keep the list of keys we want to keep in the snapshot to a minimum
+        assert (
+            utils.keep_dict_keys(
+                d=document,
+                prefixes=[
+                    "hass.entity.attributes",
+                    "hass.entity.value",
+                    "hass.entity.valueas",
+                    "hass.entity.area",
+                    "hass.entity.floor",
+                    "hass.entity.device.area",
+                    "hass.entity.device.floor",
+                ],
             )
-
-            entity_details = formatter._state_to_extended_details(state)
-
-            assert entity_details["hass.entity.area.name"] == entity_area_name
-            assert entity_details["hass.entity.area.floor.name"] == entity_floor_name
-            assert entity_details["hass.entity.device.labels"] == device_labels
-            assert entity_details["hass.entity.device.name"] == device_name
-            assert entity_details["hass.entity.device.class"] == entity.original_device_class
-            assert entity_details["hass.entity.labels"] == entity_labels
-            assert entity_details["hass.entity.platform"] == entity.platform
-
-            assert entity_details["hass.entity.location.lat"] == 1.0
-            assert entity_details["hass.entity.location.lon"] == 1.0
-
-            assert entity_details == snapshot
-
-        async def test_state_to_extended_details_exception(
-            self,
-            formatter,
-            snapshot,
-        ):
-            """Test converting a state to entity details."""
-            state = State(entity_id="tomato.pancakes", state="on", attributes={"brightness": 255})
-
-            with pytest.raises(ValueError):
-                formatter._state_to_extended_details(state)
-
-        @pytest.mark.parametrize(
-            const.TEST_DEVICE_COMBINATION_FIELD_NAMES,
-            const.TEST_DEVICE_COMBINATIONS,
-            ids=const.TEST_DEVICE_COMBINATION_IDS,
+            == snapshot
         )
-        @pytest.mark.parametrize(
-            const.TEST_ENTITY_COMBINATION_FIELD_NAMES,
-            const.TEST_ENTITY_COMBINATIONS,
-            ids=const.TEST_ENTITY_COMBINATION_IDS,
-        )
-        @pytest.mark.parametrize(
-            const.TEST_ENTITY_STATE_ATTRIBUTE_COMBINATION_FIELD_NAMES,
-            const.TEST_ENTITY_STATE_ATTRIBUTE_COMBINATIONS,
-            ids=const.TEST_ENTITY_STATE_ATTRIBUTE_COMBINATION_IDS,
-        )
-        async def test_format(
-            self,
-            formatter,
-            entity,
-            entity_object_id,
-            entity_area_name,
-            entity_floor_name,
-            entity_domain: str,
-            entity_labels,
-            device_name,
-            device_area_name,
-            device_floor_name,
-            device_labels,
-            attributes: dict,
-            freeze_time: FrozenDateTimeFactory,
-            snapshot,
-        ):
-            """Test converting a state to entity details."""
-            time = datetime.now(tz=UTC)
-            state = State(entity_id=entity.entity_id, state="on", attributes=attributes)
-            reason = StateChangeType.STATE
-
-            document = formatter.format(time, state, reason)
-
-            assert document["@timestamp"] == time.isoformat()
-
-            assert document["data_stream.dataset"] == f"homeassistant.{entity.domain}"
-            assert document["data_stream.type"] == "metrics"
-            assert document["data_stream.namespace"] == "default"
-
-            assert document["event.action"] == "State change"
-            assert document["event.kind"] == "event"
-            assert document["event.type"] == "change"
-
-            assert document["hass.entity.friendly_name"] is not None
-            assert document["hass.entity.domain"] == entity.domain
-            assert document["hass.entity.id"] is not None
-            assert document["hass.entity.object.id"] == entity_object_id
-            assert document["hass.entity.value"] == "on"
-            assert document["hass.entity.valueas"] == {"boolean": True}
-
-            assert document["data_stream.namespace"] == "default"
-
-            assert document == snapshot
-
-        @pytest.mark.parametrize(
-            "reason_type",
-            [
-                StateChangeType.STATE,
-                StateChangeType.ATTRIBUTE,
-                StateChangeType.NO_CHANGE,
-            ],
-            ids=[
-                "state",
-                "attribute",
-                "no_change",
-            ],
-        )
-        async def test_format_reason_types(
-            self,
-            formatter,
-            entity,
-            reason_type: StateChangeType,
-            freeze_time: FrozenDateTimeFactory,
-            snapshot,
-        ):
-            """Test converting a state to entity details."""
-            time = datetime.now(tz=UTC)
-            state = State(entity_id=entity.entity_id, state="on", attributes={"brightness": 255})
-            reason = reason_type
-
-            document = formatter.format(time, state, reason)
-
-            assert document["event.action"] == reason_type.to_publish_reason()
-            assert document["event.kind"] == "event"
-            if reason_type == StateChangeType.NO_CHANGE:
-                assert document["event.type"] == "info"
-            else:
-                assert document["event.type"] == "change"
-
-            assert document == snapshot

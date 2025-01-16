@@ -26,7 +26,7 @@ from pytest_homeassistant_custom_component.test_util.aiohttp import (
     AiohttpClientMockResponse,
 )
 
-from tests import const
+from tests import const as testconst
 
 if TYPE_CHECKING:
     from typing import Any
@@ -56,7 +56,7 @@ class es_mocker:
     """Mock builder for Elasticsearch integration tests."""
 
     mocker: AiohttpClientMocker
-    base_url: str = const.TEST_CONFIG_ENTRY_DATA_URL
+    base_url: str = testconst.CONFIG_ENTRY_DATA_URL
 
     def __init__(self, mocker):
         """Initialize the mock builder."""
@@ -86,27 +86,27 @@ class es_mocker:
     def with_server_error(self, status=None, exc=None):
         """Mock Elasticsearch being unreachable."""
         if status is None and exc is None:
-            self.mocker.get(f"{const.TEST_CONFIG_ENTRY_DATA_URL}", status=HTTPStatus.INTERNAL_SERVER_ERROR)
+            self.mocker.get(f"{self.base_url}", status=HTTPStatus.INTERNAL_SERVER_ERROR)
 
         if exc is None:
-            self.mocker.get(f"{const.TEST_CONFIG_ENTRY_DATA_URL}", status=status)
+            self.mocker.get(f"{self.base_url}", status=status)
         else:
-            self.mocker.get(f"{const.TEST_CONFIG_ENTRY_DATA_URL}", exc=exc)
+            self.mocker.get(f"{self.base_url}", exc=exc)
 
         return self
 
     def without_authentication(self):
         """Mock the user not being authenticated."""
         self.mocker.get(
-            f"{const.TEST_CONFIG_ENTRY_DATA_URL}",
+            f"{self.base_url}",
             status=401,
-            json=const.CLUSTER_INFO_MISSING_CREDENTIALS_RESPONSE_BODY,
+            json=testconst.CLUSTER_INFO_MISSING_CREDENTIALS_RESPONSE_BODY,
         )
         return self
 
     def with_server_timeout(self):
         """Mock Elasticsearch being unreachable."""
-        self.mocker.get(f"{const.TEST_CONFIG_ENTRY_DATA_URL}", exc=client_exceptions.ServerTimeoutError())
+        self.mocker.get(f"{self.base_url}", exc=client_exceptions.ServerTimeoutError())
         return self
 
     def _add_fail_after(
@@ -143,7 +143,7 @@ class es_mocker:
         """Mock Elasticsearch version."""
 
         self.base_url = (
-            const.TEST_CONFIG_ENTRY_DATA_URL if with_security else const.TEST_CONFIG_ENTRY_DATA_URL_INSECURE
+            testconst.CONFIG_ENTRY_DATA_URL if with_security else testconst.CONFIG_ENTRY_DATA_URL_INSECURE
         )
 
         self._add_fail_after(
@@ -172,18 +172,18 @@ class es_mocker:
 
     def as_elasticsearch_8_0(self, with_security: bool = True) -> es_mocker:
         """Mock Elasticsearch 8.0."""
-        return self._as_elasticsearch_stateful(const.CLUSTER_INFO_8DOT0_RESPONSE_BODY, with_security)
+        return self._as_elasticsearch_stateful(testconst.CLUSTER_INFO_8DOT0_RESPONSE_BODY, with_security)
 
     def as_elasticsearch_8_17(self, with_security: bool = True, fail_after=None) -> es_mocker:
         """Mock Elasticsearch 8.17."""
         return self._as_elasticsearch_stateful(
-            const.CLUSTER_INFO_8DOT17_RESPONSE_BODY, with_security, fail_after=fail_after
+            testconst.CLUSTER_INFO_8DOT17_RESPONSE_BODY, with_security, fail_after=fail_after
         )
 
     def as_elasticsearch_8_14(self, with_security: bool = True):
         """Mock Elasticsearch 8.14."""
 
-        return self._as_elasticsearch_stateful(const.CLUSTER_INFO_8DOT14_RESPONSE_BODY, with_security)
+        return self._as_elasticsearch_stateful(testconst.CLUSTER_INFO_8DOT14_RESPONSE_BODY, with_security)
 
     def as_fake_elasticsearch(self) -> es_mocker:
         """Mock a fake elasticsearch node response."""
@@ -192,7 +192,7 @@ class es_mocker:
             f"{self.base_url}",
             status=200,
             # No x-elastic-product header
-            json=const.CLUSTER_INFO_8DOT14_RESPONSE_BODY,
+            json=testconst.CLUSTER_INFO_8DOT14_RESPONSE_BODY,
         )
 
         return self
@@ -200,17 +200,19 @@ class es_mocker:
     def as_elasticsearch_serverless(self) -> es_mocker:
         """Mock Elasticsearch version."""
 
-        self.base_url = const.TEST_CONFIG_ENTRY_DATA_URL
+        self.base_url = testconst.CONFIG_ENTRY_DATA_URL
 
         self.mocker.get(
             f"{self.base_url}",
             status=200,
-            json=const.CLUSTER_INFO_SERVERLESS_RESPONSE_BODY,
+            json=testconst.CLUSTER_INFO_SERVERLESS_RESPONSE_BODY,
             headers={"x-elastic-product": "Elasticsearch"},
         )
 
         self.mocker.get(
-            url=f"{self.base_url}/_xpack/usage", status=410, json=const.XPACK_USAGE_SERVERLESS_RESPONSE_BODY
+            url=f"{self.base_url}/_xpack/usage",
+            status=410,
+            json=testconst.XPACK_USAGE_SERVERLESS_RESPONSE_BODY,
         )
 
         return self
@@ -340,7 +342,7 @@ class es_mocker:
             f"{self.base_url}/_bulk",
             status=200,
             headers={"x-elastic-product": "Elasticsearch"},
-            json=const.BULK_ERROR_RESPONSE_BODY,
+            json=testconst.BULK_ERROR_RESPONSE_BODY,
         )
 
         return self
@@ -353,7 +355,7 @@ class es_mocker:
                 method="PUT",
                 url=f"{self.base_url}/_bulk",
                 headers={"x-elastic-product": "Elasticsearch"},
-                json=const.BULK_SUCCESS_RESPONSE_BODY,
+                json=testconst.BULK_SUCCESS_RESPONSE_BODY,
             ),
             failure=AiohttpClientMockResponse(
                 method="PUT",
