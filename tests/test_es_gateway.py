@@ -4,7 +4,7 @@
 import os
 import ssl
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import elastic_transport
 import elasticsearch8
@@ -142,7 +142,9 @@ async def gateway_mock_shared(gateway_settings) -> Elasticsearch8Gateway:
 
 
 @pytest.fixture
-async def gateway_mock_stateful(gateway_mock_shared: Elasticsearch8Gateway) -> Elasticsearch8Gateway:
+async def gateway_mock_stateful(
+    gateway_mock_shared: Elasticsearch8Gateway, mock_logger
+) -> Elasticsearch8Gateway:
     """Return a mock Elasticsearch client for a Stateful ES Cluster."""
 
     gateway_mock_shared._client.info = mock_es_response(testconst.CLUSTER_INFO_8DOT14_RESPONSE_BODY)
@@ -150,6 +152,9 @@ async def gateway_mock_stateful(gateway_mock_shared: Elasticsearch8Gateway) -> E
     gateway_mock_shared._client.xpack.usage = mock_es_response(
         {"security": {"available": True, "enabled": True}}
     )
+
+    gateway_mock_shared._logger = mock_logger
+
     return gateway_mock_shared
 
 
@@ -432,17 +437,66 @@ class Test_Public_Functions:
             name="datastream_metrics", **index_template_definition
         )
 
+    async def test_bulk(self, gateway_mock_stateful):
+        """Test the bulk method."""
+
+        async def yield_doc():
+            yield AsyncMock()
+            yield AsyncMock()
+            yield AsyncMock()
+
+        async def yield_response():
+            yield (
+                True,  # OK
+                {
+                    "action": "create",
+                    "outcome": {
+                        "_index": ".ds-metrics-homeassistant.counter-default-2025.01.12-000001",
+                        "_id": "oEmJWJQB7GOvwEliMbKW",
+                        "_version": 1,
+                        "result": "created",
+                        "_shards": {"total": 2, "successful": 1, "failed": 0},
+                        "_seq_no": 0,
+                        "_primary_term": 1,
+                        "status": 201,
+                    },
+                },
+            )
+
+        with patch(
+            "custom_components.elasticsearch.es_gateway_8.async_streaming_bulk"
+        ) as mock_streaming_bulk:
+            mock_streaming_bulk.side_effect = [yield_response()]
+
+            await gateway_mock_stateful.bulk(actions=yield_doc())
+
+            assert mock_streaming_bulk.call_count == 1
+            gateway_mock_stateful._logger.info.assert_called_once_with(
+                "Successfully published %d documents", 1
+            )
+
+    async def test_bulk_nothing_to_do(self, gateway_mock_stateful):
+        """Test the bulk method."""
+
+        with patch(
+            "custom_components.elasticsearch.es_gateway_8.async_streaming_bulk"
+        ) as mock_streaming_bulk:
+            await gateway_mock_stateful.bulk(actions=[])
+
+            assert mock_streaming_bulk.call_count == 1
+            gateway_mock_stateful._logger.debug.assert_called_once_with(
+                "Publish skipped, no new events to publish."
+            )
+
     class Test_Check_Connection:
         """Tests for the check_connection method."""
 
         @pytest.fixture(name="gateway")
-        async def gateway_fixture(self, gateway_settings):
+        async def gateway_fixture(self, gateway_settings, mock_logger):
             """Return a gateway instance."""
             gateway = Elasticsearch8Gateway(gateway_settings=gateway_settings)
 
-            gateway._logger.debug = MagicMock()
-            gateway._logger.error = MagicMock()
-            gateway._logger.info = MagicMock()
+            gateway._logger = mock_logger
 
             try:
                 yield gateway

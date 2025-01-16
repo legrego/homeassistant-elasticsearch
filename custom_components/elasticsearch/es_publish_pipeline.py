@@ -34,9 +34,6 @@ from homeassistant.util.logging import async_create_catching_coro
 
 from custom_components.elasticsearch import utils
 from custom_components.elasticsearch.const import (
-    CONF_CHANGE_DETECTION_TYPE,
-    CONF_POLLING_FREQUENCY,
-    CONF_PUBLISH_FREQUENCY,
     CONF_TAGS,
     DATASTREAM_DATASET_PREFIX,
     DATASTREAM_NAMESPACE,
@@ -62,6 +59,9 @@ from custom_components.elasticsearch.loop import LoopHandler
 from custom_components.elasticsearch.system_info import SystemInfo, SystemInfoResult
 
 if TYPE_CHECKING:  # pragma: no cover
+    from homeassistant.helpers.device_registry import DeviceEntry
+    from homeassistant.helpers.entity_registry import RegistryEntry
+
     from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 
 ALLOWED_ATTRIBUTE_KEY_TYPES = str
@@ -118,23 +118,6 @@ class PipelineSettings:
         self.included_entities: list[str] = included_entities
         self.excluded_entities: list[str] = excluded_entities
 
-    def to_dict(self) -> dict:
-        """Convert the settings to a dictionary."""
-        return {
-            CONF_PUBLISH_FREQUENCY: self.publish_frequency,
-            CONF_POLLING_FREQUENCY: self.polling_frequency,
-            CONF_CHANGE_DETECTION_TYPE: [i.value for i in self.change_detection_type],
-            CONF_TAGS: self.tags,
-            "debug_attribute_filtering": self.debug_attribute_filtering,
-            "included_areas": self.included_areas,
-            "excluded_areas": self.excluded_areas,
-            "included_labels": self.included_labels,
-            "excluded_labels": self.excluded_labels,
-            "included_devices": self.included_devices,
-            "excluded_devices": self.excluded_devices,
-            "included_entities": self.included_entities,
-            "excluded_entities": self.excluded_entities,
-        }
 
 
 class Pipeline:
@@ -342,80 +325,66 @@ class Pipeline:
             if not self._passes_change_detection_type_filter(reason):
                 return False
 
-            if not self._passes_entity_exists_filter(entity_id=state.entity_id):
+            entity: RegistryEntry | None = self._entity_registry.async_get(state.entity_id)
+
+            if not entity:
+                return self._reject(base_msg, "Entity not found in registry.")
+
+            device: DeviceEntry | None = (
+                self._device_registry.async_get(entity.device_id) if entity.device_id else None
+            )
+
+            if self._exclude_targets and not self._passes_exclude_targets(entity=entity, device=device):
                 return False
 
-            if self._exclude_targets and not self._passes_exclude_targets(entity_id=state.entity_id):
-                return False
-
-            if self._include_targets and not self._passes_include_targets(entity_id=state.entity_id):
+            if self._include_targets and not self._passes_include_targets(entity=entity, device=device):
                 return False
 
             return self._accept(base_msg, "Entity passed all filters.")
 
-        def _passes_exclude_targets(self, entity_id: str) -> bool:
-            base_msg = f"Processing exclusion filters for entity [{entity_id}]: "
+        def _passes_exclude_targets(self, entity: RegistryEntry, device: DeviceEntry | None) -> bool:
+            base_msg = f"Processing exclusion filters for entity [{entity.entity_id}]: "
 
-            if entity_id in self._excluded_entities:
+            if entity.entity_id in self._excluded_entities:
                 return self._reject(base_msg, "In the excluded entities list.")
 
-            entity = self._entity_registry.async_get(entity_id)
-
-            # If the entity is not found, we can't check the other filters, so we return False
-            if entity is None:
-                return self._reject(base_msg, "Not found in registry.")
-
-            if entity.device_id in self._excluded_devices:
-                return self._reject(base_msg, f"Is on an excluded device [{entity.device_id}].")
-
             if entity.area_id in self._excluded_areas:
-                return self._reject(base_msg, f"Is in an excluded area [{entity.area_id}].")
+                return self._reject(base_msg, f"In an excluded area [{entity.area_id}].")
 
-            if any(label in self._excluded_labels for label in entity.labels):
-                return self._reject(base_msg, "Has an excluded entity label.")
+            for label in entity.labels:
+                if label in self._excluded_labels:
+                    return self._reject(base_msg, f"Excluded entity label present: [{label}].")
 
-            # Check the device for labels
-            if entity.device_id is not None:
-                device = self._device_registry.async_get(entity.device_id)
-                if device is not None:
-                    if any(label in self._excluded_labels for label in device.labels):
-                        return self._reject(
-                            base_msg, f"Has an excluded device label from device {entity.device_id}."
-                        )
+            if device is not None:
+                if device.id in self._excluded_devices:
+                    return self._reject(base_msg, f"Attached to an excluded device [{device.id}].")
 
-            return self._accept(base_msg, f"Entity [{entity_id}] was not filtered by any exclusion filters.")
+                for label in device.labels:
+                    if label in self._excluded_labels:
+                        return self._reject(base_msg, f"Excluded device label present: [{label}].")
 
-        def _passes_include_targets(self, entity_id: str) -> bool:
-            base_msg = f"Processing inclusion filters for entity [{entity_id}]: "
+            return self._accept(base_msg, "Entity was not excluded by filters.")
 
-            if entity_id in self._included_entities:
-                return self._accept(base_msg, f"Entity [{entity_id}] is in the included entities list.")
+        def _passes_include_targets(self, entity: RegistryEntry, device: DeviceEntry | None) -> bool:
+            base_msg = f"Processing inclusion filters for entity [{entity.entity_id}]: "
 
-            entity = self._entity_registry.async_get(entity_id)
-
-            # entity should not be None because our caller has ensured us it exists, but just in case (and to make mypy happy)
-            if entity is None:
-                return self._reject(base_msg, "Entity not found in registry.")
-
-            if entity.device_id in self._included_devices:
-                return self._accept(
-                    base_msg, f"Entity [{entity_id}] is on an included device [{entity.device_id}]."
-                )
+            if entity.entity_id in self._included_entities:
+                return self._accept(base_msg, "In the included entities list.")
 
             if entity.area_id in self._included_areas:
-                return self._accept(
-                    base_msg, f"Entity [{entity_id}] is in an included area [{entity.area_id}]."
-                )
+                return self._accept(base_msg, f"In an included area [{entity.area_id}].")
 
-            if any(label in self._included_labels for label in entity.labels):
-                return self._accept(base_msg, f"Entity [{entity_id}] has an included entity label.")
+            for label in entity.labels:
+                if label in self._included_labels:
+                    return self._accept(base_msg, f"Included entity label present: [{label}].")
 
-            # Check the device for labels
-            if entity.device_id is not None:
-                device = self._device_registry.async_get(entity.device_id)
-                if device is not None:
-                    if any(label in self._included_labels for label in device.labels):
-                        return self._accept(base_msg, f"Entity [{entity_id}] has an included device label.")
+            if device is not None:
+                if device.id in self._included_devices:
+                    return self._accept(base_msg, f"Attached to an included device [{device.id}].")
+
+                for label in device.labels:
+                    if label in self._included_labels:
+                        return self._accept(base_msg, f"Included device label present: [{label}].")
 
             return False
 
@@ -431,17 +400,6 @@ class Pipeline:
                 return self._accept(base_msg, "is in the change detection type list.")
 
             return self._reject(base_msg, "is not in the change detection type list.")
-
-        def _passes_entity_exists_filter(self, entity_id: str) -> bool:
-            """Check the entity registry and make sure we can see the entity before proceeding."""
-            base_msg = f"Processing entity exists filter for entity [{entity_id}]: "
-
-            entity = self._entity_registry.async_get(entity_id)
-
-            if entity is None:
-                return self._reject(base_msg, "Entity not found in registry.")
-
-            return self._accept(base_msg, "Entity found in registry.")
 
     class Listener:
         """Listens for state changes and queues them for processing."""

@@ -352,6 +352,8 @@ class Test_Filterer:
     async def test_include_exclude_filter(
         self,
         filterer,
+        entity,
+        entity_id,
         include_targets: bool,
         exclude_targets: bool,
         matches_exclude_targets: bool,
@@ -361,7 +363,6 @@ class Test_Filterer:
     ):
         """Test filtering entities with various include and exclude targets."""
         filterer._passes_change_detection_type_filter = MagicMock(return_value=True)
-        filterer._passes_entity_exists_filter = MagicMock(return_value=True)
 
         filterer._exclude_targets = exclude_targets
         filterer._include_targets = include_targets
@@ -371,7 +372,7 @@ class Test_Filterer:
 
         should_pass = passes_include and passes_exclude
 
-        assert filterer.passes_filter(State("light.living_room", "on"), StateChangeType.STATE) == should_pass
+        assert filterer.passes_filter(State(entity_id, "on"), StateChangeType.STATE) == should_pass
 
     async def test_change_detection_type_filter(self, filterer):
         """Test that a state changes are properly filtered according to the change detection type setting."""
