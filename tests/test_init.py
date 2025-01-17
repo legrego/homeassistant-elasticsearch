@@ -660,7 +660,7 @@ class Test_Public_Methods:
 
             assert await integration_setup() is False
 
-            assert config_entry.state is ConfigEntryState.SETUP_ERROR
+            assert config_entry.state is ConfigEntryState.SETUP_RETRY
 
     async def test_async_setup_entry_async_init_exception(
         self,

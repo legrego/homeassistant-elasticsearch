@@ -332,7 +332,6 @@ class Test_Filterer:
             or should_include_on_label
         )
 
-
     @pytest.mark.parametrize(
         ("include_targets", "matches_include_targets", "passes_include"),
         [(True, True, True), (True, False, False), (False, False, True), (False, True, True)],
