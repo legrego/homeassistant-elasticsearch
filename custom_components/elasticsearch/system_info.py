@@ -31,7 +31,7 @@ class SystemInfo:
     async def _get_system_info(self) -> dict:
         try:
             return await async_get_system_info(self._hass)
-        except Exception as err:
+        except Exception as err:  # noqa: BLE001
             msg = "Unknown error retrieving system info"
             LOGGER.exception(msg)
             raise ValueError(msg) from err

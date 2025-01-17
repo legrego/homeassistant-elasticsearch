@@ -7,10 +7,6 @@ class ESIntegrationException(HomeAssistantError):  # noqa: N818
     """Base class for Elastic exceptions."""
 
 
-class IndexingError(ESIntegrationException):
-    """Error indexing data."""
-
-
 class ESIntegrationConnectionException(ESIntegrationException):
     """Base class for Elasticsearch exceptions."""
 

@@ -1,404 +1,369 @@
 # type: ignore  # noqa: PGH003
 """Test Entity Details."""
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from custom_components.elasticsearch.const import CONST_ENTITY_DETAILS_TO_ES_DOCUMENT_KEYS as KEYS_TO_KEEP
+from custom_components.elasticsearch import const as compconst
+from custom_components.elasticsearch import utils
 from custom_components.elasticsearch.entity_details import (
     ExtendedDeviceEntry,
+    ExtendedEntityDetails,
     ExtendedRegistryEntry,
 )
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.area_registry import AreaEntry
-from homeassistant.helpers.device_registry import DeviceEntry, DeviceRegistry
-from homeassistant.helpers.floor_registry import FloorEntry
 
-from tests import const
-
-# Helper functions for the snapshot
+from tests import const as testconst
 
 
-def trim_entity_dict(entity_dict):
-    """Trim the entity dict to only the keys we care about."""
-    if entity_dict is None:
-        return None
-    return {
-        "entity_id": entity_dict.get("entity_id", None),
-        "area_id": entity_dict.get("area", {}).get("id", None),
-        "floor_name": entity_dict.get("floor", {}).get("name", None),
-        "labels": entity_dict.get("labels", None),
-    }
+@pytest.fixture(name="mock_extended_registry")
+async def mock_extended_registry_fixture():
+    """Return a mock ExtendedRegistryEntry instance."""
+    mock_extended_registry = MagicMock(spec=ExtendedRegistryEntry)
+
+    with patch(
+        "custom_components.elasticsearch.entity_details.ExtendedRegistryEntry",
+        return_value=mock_extended_registry,
+    ) as mock:
+        yield mock
 
 
-def trim_device_dict(device_dict):
-    """Trim the device dict to only the keys we care about."""
-    if device_dict is None:
-        return None
-    return {
-        "name": device_dict.get("name", None),
-        "area_id": device_dict.get("area", {}).get("id", None),
-        "floor_name": device_dict.get("floor", {}).get("name", None),
-        "labels": device_dict.get("labels", None),
-    }
+@pytest.fixture(name="details")
+def details_fixture(hass: HomeAssistant, mock_logger):
+    """Create an ExtendedEntityDetails instance."""
+    return ExtendedEntityDetails(hass=hass, logger=mock_logger)
+
+
+@pytest.fixture(name="extended_registry")
+def extended_registry_fixture(entity_id, details):
+    """Create an ExtendedRegistryEntry instance for the provided entity."""
+
+    return details.async_get(entity_id)
+
+
+class Test_ExtendedEntityDetails:
+    """Test the ExtendedEntityDetails class."""
+
+    async def test_init(self, hass: HomeAssistant, details):
+        """Test the init method."""
+        assert details is not None
+        assert details._logger is not None
+        assert details.area_registry is not None
+        assert details.floor_registry is not None
+        assert details.device_registry is not None
+        assert details.entity_registry is not None
+
+    async def test_get_entity(self, entity, entity_id, details, mock_extended_registry):
+        """Test retrieving extended details on an entity with no device."""
+        details.async_get(entity_id)
+
+        mock_extended_registry.assert_called_once_with(details=details, entity=entity, device=None)
+
+    async def test_get_entity_with_device(self, entity, entity_id, device, details, mock_extended_registry):
+        """Test retrieving extended details on an entity with a device attached."""
+        details.async_get(entity_id)
+
+        mock_extended_registry.assert_called_once_with(details=details, entity=entity, device=device)
+
+    async def test_get_entity_with_missing_device(
+        self, entity, entity_id, device, details, mock_extended_registry
+    ):
+        """Test retrieving extended details on an entity with an invalid device id."""
+        details.device_registry.async_get = MagicMock(return_value=None)
+
+        details.async_get(entity_id)
+
+        details._logger.debug.assert_called_once_with(
+            "Device id [%s] present for entity [%s] but device not found.",
+            entity.device_id,
+            entity_id,
+        )
+
+        mock_extended_registry.assert_called_once_with(details=details, entity=entity, device=None)
+
+    async def test_get_entity_missing(self, details, mock_extended_registry):
+        """Test retrieving extended details on an entity which is missing from the registry."""
+
+        entity_id = "counter.nonexistent_entity"
+
+        with pytest.raises(
+            ValueError,
+            match=f"Entity not found: {entity_id}",
+        ):
+            details.async_get(entity_id)
 
 
 class Test_ExtendedRegistryEntry:
     """Test the ExtendedRegistryEntry class."""
 
-    @pytest.fixture
-    def extended_registry_entry(
+    async def test_init(
         self,
-        hass,
+        details,
         entity,
-        entity_object_id,  # These are used by the parametrize decorator
+        entity_id,
+        entity_object_id,
         entity_area_name,
+        entity_area_id,
         entity_floor_name,
+        entity_floor_id,
+        entity_labels,
+        device,
+        device_id,
+        device_name,
+        device_area_name,
+        device_area_id,
+        device_floor_name,
+        device_floor_id,
+        device_labels,
+    ):
+        """Create an ExtendedRegistryEntry instance."""
+        extended_entity = ExtendedRegistryEntry(details=details, entity=entity, device=device)
+
+        assert extended_entity is not None
+        assert extended_entity._entity == entity
+        assert extended_entity.id == entity_id
+        assert extended_entity.area.id == entity_area_id
+        assert extended_entity.area.name == entity_area_name
+        assert extended_entity.floor.floor_id == entity_floor_id
+        assert extended_entity.floor.name == entity_floor_name
+        assert extended_entity.labels == entity_labels
+
+        assert extended_entity.device is not None
+        assert extended_entity.device.id == device_id
+        assert extended_entity.device.name == device_name
+        assert extended_entity.device.area.id == device_area_id
+        assert extended_entity.device.area.name == device_area_name
+        assert extended_entity.device.floor.floor_id == device_floor_id
+        assert extended_entity.device.floor.name == device_floor_name
+        assert extended_entity.device.labels == device_labels
+
+    async def test_init_entity_only(
+        self,
+        details,
+        entity,
+        entity_id,
+        entity_object_id,
+        entity_area_name,
+        entity_area_id,
+        entity_floor_name,
+        entity_floor_id,
         entity_labels,
     ):
         """Create an ExtendedRegistryEntry instance."""
-        entry = ExtendedRegistryEntry(hass, entity)
+        extended_entity = ExtendedRegistryEntry(details=details, entity=entity)
 
-        assert entry.entity is not None
-        assert entry.entity.id == entity.id
+        assert extended_entity is not None
+        assert extended_entity._entity == entity
+        assert extended_entity.id == entity_id
+        assert extended_entity.area.id == entity_area_id
+        assert extended_entity.area.name == entity_area_name
+        assert extended_entity.floor.floor_id == entity_floor_id
+        assert extended_entity.floor.name == entity_floor_name
+        assert extended_entity.labels == entity_labels
 
-        return entry
+        assert extended_entity.device is None
 
-    async def test_init(self, hass: HomeAssistant, entity):
-        """Test the init method."""
-        new_entry = ExtendedRegistryEntry(hass, entity)
-
-        assert new_entry is not None
-        assert new_entry.entity is not None
-        assert new_entry.entity.entity_id == entity.entity_id
-
-        new_entry = ExtendedRegistryEntry(hass=hass, entity_id=entity.entity_id)
-
-        assert new_entry is not None
-        assert new_entry.entity is not None
-        assert new_entry.entity.entity_id == entity.entity_id
-
-    async def test_init_failures(self, hass: HomeAssistant):
-        """Test the init method."""
-        with pytest.raises(ValueError):
-            ExtendedRegistryEntry(hass=hass, entity=None, entity_id=None)
-
-        with pytest.raises(ValueError):
-            ExtendedRegistryEntry(hass=hass, entity=None, entity_id="nonexistent_entity_id")
-
-    async def test_area_property(
+    async def test_init_entity_with_device(
         self,
-        entity_area: AreaEntry,
-        extended_registry_entry: ExtendedRegistryEntry,
-    ):
-        """Test the area property getter."""
-        assert hasattr(extended_registry_entry, "area")
-        assert extended_registry_entry.area is not None
-        assert extended_registry_entry.area == entity_area
-        assert extended_registry_entry.area.name == const.TEST_ENTITY_AREA_NAME
-
-    @pytest.mark.parametrize(
-        "entity_area_name",
-        [None],
-        ids=["passthrough"],
-    )
-    async def test_entity_area_property_from_device(
-        self,
-        entity_area_name,
+        details,
         entity,
-        device_area_name,
-        device,
-        extended_registry_entry: ExtendedRegistryEntry,
-    ):
-        """Test the area property getter."""
-        assert hasattr(extended_registry_entry, "area")
-        assert extended_registry_entry.area is not None
-        assert extended_registry_entry.area.name == const.TEST_DEVICE_AREA_NAME
-
-    async def test_device_property(
-        self,
-        device: DeviceEntry,
-        extended_registry_entry: ExtendedRegistryEntry,
-    ):
-        """Test the device property getter."""
-        assert hasattr(extended_registry_entry, "device")
-        assert extended_registry_entry.device is not None
-
-        extended_device_entry = extended_registry_entry.device
-
-        assert extended_device_entry._device == device
-
-    async def test_device_property_deleted(
-        self,
-        hass: HomeAssistant,
-        device: DeviceEntry,
-        extended_registry_entry: ExtendedRegistryEntry,
-        device_registry: DeviceRegistry,
-    ):
-        """Test the device property getter fails if the device_id on the entity doesnt exist."""
-
-        # Remove the device from the registry
-        device_registry.async_remove_device(device_id=device.id)
-
-        assert hasattr(extended_registry_entry, "device")
-
-        assert extended_registry_entry.device is None
-
-    @pytest.mark.parametrize(
-        "attach_device",
-        [False],
-        ids=["entity_with_no_device"],
-    )
-    async def test_device_property_not_attached(
-        self,
-        extended_registry_entry: ExtendedRegistryEntry,
-        attach_device,
-    ):
-        """Test the device property getter fails if there is no device attached for this entity id."""
-
-        assert hasattr(extended_registry_entry, "device")
-
-        assert extended_registry_entry.device is None
-
-    async def test_labels_property(
-        self,
-        entity_labels: list,
-        extended_registry_entry: ExtendedRegistryEntry,
-    ):
-        """Test the labels property getter."""
-        assert hasattr(extended_registry_entry, "labels")
-        assert extended_registry_entry.labels is not None
-
-        # Verify our labels are not out of order
-        assert extended_registry_entry.labels == sorted(entity_labels)
-        assert sorted(extended_registry_entry.labels) == extended_registry_entry.labels
-
-        assert extended_registry_entry.labels == const.TEST_ENTITY_LABELS
-
-    async def test_floor_property(
-        self,
-        entity_floor: FloorEntry,
-        extended_registry_entry: ExtendedRegistryEntry,
-    ):
-        """Test the floor property getter."""
-        # Make sure the area is also present
-        assert hasattr(extended_registry_entry, "floor")
-        assert extended_registry_entry.floor is not None
-        assert extended_registry_entry.floor == entity_floor
-        assert extended_registry_entry.floor.name == const.TEST_ENTITY_FLOOR_NAME
-
-    async def test_to_dict(
-        self,
-        extended_registry_entry: ExtendedRegistryEntry,
-        snapshot,
-    ):
-        """Test the to_dict method."""
-
-        assert extended_registry_entry.to_dict() is not None
-
-        assert trim_entity_dict(extended_registry_entry.to_dict()) == snapshot
-
-    async def test_to_flattened_dict(
-        self,
-        extended_registry_entry: ExtendedRegistryEntry,
+        entity_id,
+        entity_name,
         entity_area_name,
+        entity_area_id,
+        entity_floor_name,
+        entity_floor_id,
+        entity_labels,
+        device,
+        device_id,
+        device_name,
         device_area_name,
-        snapshot,
+        device_area_id,
+        device_floor_name,
+        device_floor_id,
+        device_labels,
     ):
-        """Test to_dict with flatten and keep_keys method."""
+        """Create an ExtendedRegistryEntry instance."""
+        extended_entity = ExtendedRegistryEntry(details=details, entity=entity, device=device)
 
-        flattened = extended_registry_entry.to_dict(flatten=True, keep_keys=KEYS_TO_KEEP)
+        assert extended_entity is not None
+        assert extended_entity._entity == entity
+        assert extended_entity.id == entity_id
+        assert extended_entity.name == entity_name
+        assert extended_entity.area.id == entity_area_id
+        assert extended_entity.area.name == entity_area_name
+        assert extended_entity.floor.name == entity_floor_name
+        assert extended_entity.floor.floor_id == entity_floor_id
+        assert extended_entity.labels == entity_labels
 
-        assert flattened is not None
+        assert extended_entity.device is not None
+        assert extended_entity.device.id == device_id
+        assert extended_entity.device.name == device_name
+        assert extended_entity.device.area.id == device_area_id
+        assert extended_entity.device.area.name == device_area_name
+        assert extended_entity.device.floor.floor_id == device_floor_id
+        assert extended_entity.device.floor.name == device_floor_name
+        assert extended_entity.device.labels == device_labels
 
-        assert flattened == snapshot
+    async def test_to_dict(self, details, entity, device, snapshot):
+        """Create an ExtendedRegistryEntry instance."""
+        extended_entity = ExtendedRegistryEntry(details=details, entity=entity, device=device)
+
+        assert extended_entity is not None
+
+        assert extended_entity.to_dict() == snapshot
 
     @pytest.mark.parametrize(
-        const.TEST_DEVICE_COMBINATION_FIELD_NAMES,
-        const.TEST_DEVICE_COMBINATIONS,
-        ids=const.TEST_DEVICE_COMBINATION_IDS,
+        ("entity_original_name", "entity_name", "expected_name"),
+        [
+            ("Original", "New", "New"),
+            ("Original", None, "Original"),
+            (None, "New", "New"),
+            (None, None, None),
+        ],
+        ids=[
+            "Default name; updated by user",
+            "Default name",
+            "No default name; updated by user",
+            "No default name",
+        ],
     )
+    async def test_name_handling(
+        self, entity_registry, details, entity, entity_original_name, entity_name, expected_name
+    ):
+        """Test our handling of the name and original_name properties."""
+
+        extended_entity = ExtendedRegistryEntry(details=details, entity=entity, device=None)
+
+        assert extended_entity._entity.original_name == entity_original_name
+        assert extended_entity._entity.name == entity_name
+
+        assert extended_entity.name == expected_name
+
     @pytest.mark.parametrize(
-        const.TEST_ENTITY_COMBINATION_FIELD_NAMES,
-        const.TEST_ENTITY_COMBINATIONS,
-        ids=const.TEST_ENTITY_COMBINATION_IDS,
+        ("entity_original_device_class", "entity_device_class", "expected_device_class"),
+        [
+            ("Original", "New", "New"),
+            ("Original", None, "Original"),
+            (None, "New", "New"),
+            (None, None, None),
+        ],
+        ids=[
+            "Default device_class; updated by user",
+            "Default device_class",
+            "No default device_class; updated by user",
+            "No default device_class",
+        ],
     )
+    async def test_device_class_handling(
+        self,
+        entity_registry,
+        details,
+        entity,
+        entity_device_class,
+        entity_original_device_class,
+        expected_device_class,
+    ):
+        """Test our handling of the device_class and original_device_class properties."""
+
+        extended_entity = ExtendedRegistryEntry(details=details, entity=entity, device=None)
+
+        assert extended_entity._entity.original_device_class == entity_original_device_class
+        assert extended_entity._entity.device_class == entity_device_class
+
+        assert extended_entity.device_class == expected_device_class
+
+    @pytest.mark.parametrize(*testconst.ENTITY_MATRIX_COMPREHENSIVE)
+    @pytest.mark.parametrize(*testconst.DEVICE_MATRIX_COMPREHENSIVE)
     async def test_entity_device_combinations(
         self,
+        details,
         entity,
         entity_object_id,
+        entity_name,
         entity_area_name,
         entity_floor_name,
+        entity_device_class,
+        entity_domain: str,
         entity_labels,
+        entity_platform,
+        entity_unit_of_measurement,
+        device,
+        device_id,
         device_name,
         device_area_name,
         device_floor_name,
         device_labels,
-        extended_registry_entry,
-        snapshot,
     ):
         """Test the entity details edge cases."""
+        entry_dict = ExtendedRegistryEntry(details=details, entity=entity, device=device).to_dict()
 
-        # Basic entity detail check
-        assert extended_registry_entry.entity is not None
-        assert extended_registry_entry.entity.id == entity.id
+        document = utils.flatten_dict(entry_dict)
 
-        as_dict = extended_registry_entry.to_dict()
-        as_flattened_dict = extended_registry_entry.to_dict(flatten=True, keep_keys=KEYS_TO_KEEP)
-        assert as_dict is not None
-        assert as_flattened_dict is not None
+        def name_to_id(name):
+            if name is None:
+                return None
+            return name.replace(" ", "_")
 
-        # Ensure the dict has the same entries that were used to populate the entities and devices
-        if entity_area_name is not None:
-            assert as_dict["area"] is not None
-            assert as_dict["area"]["name"] == entity_area_name
+        # Entity details
+        assert document.pop("name") is entity_name
+        assert document.pop("id", None) == entity_domain + "." + entity_object_id
+        assert document.pop("domain", None) == entity_domain
+        assert document.pop("device_class", None) == entity_device_class
+        assert document.pop("platform", None) == entity_platform
+        assert document.pop("unit_of_measurement", None) == entity_unit_of_measurement
 
-        # Test for entity -> device area fallback
-        if entity_area_name is None and device_area_name is not None:
-            assert as_dict["area"] is not None
-            assert as_dict["area"]["name"] == device_area_name
+        # Floor will be pulled from area if present
+        assert document.pop("area.name", None) == entity_area_name
+        assert document.pop("area.id", None) == name_to_id(entity_area_name)
+        assert document.pop("area.floor.name", None) == entity_floor_name
+        assert document.pop("area.floor.id", None) == name_to_id(entity_floor_name)
 
-        if entity_floor_name is not None:
-            assert as_dict["floor"] is not None
-            assert as_dict["floor"]["name"] == entity_floor_name
+        assert document.pop("labels", None) == entity_labels
 
-        # Test for entity -> device floor fallback
-        if entity_area_name is None and entity_floor_name is None and device_floor_name is not None:
-            assert as_dict["floor"] is not None
-            assert as_dict["floor"]["name"] == device_floor_name
+        # Device details
+        assert document.pop("device.name", None) == device_name
+        assert document.pop("device.id", None) == testconst.DEVICE_ID
+        assert document.pop("device.area.name", None) == device_area_name
+        assert document.pop("device.area.id", None) == name_to_id(device_area_name)
+        assert document.pop("device.area.floor.name", None) == device_floor_name
+        assert document.pop("device.area.floor.id", None) == name_to_id(device_floor_name)
+        assert document.pop("device.labels", None) == device_labels
 
-        if entity_labels is not None:
-            assert as_dict["labels"] is not None
-            assert as_dict["labels"] == entity_labels
-
-        if device_name is not None:
-            assert as_dict["device"] is not None
-            assert as_dict["device"]["name"] == device_name
-
-        if device_area_name is not None:
-            assert as_dict["device"]["area"] is not None
-            assert as_dict["device"]["area"]["name"] == device_area_name
-
-        if device_floor_name is not None:
-            assert as_dict["device"]["floor"] is not None
-            assert as_dict["device"]["floor"]["name"] == device_floor_name
-
-        if device_labels is not None:
-            assert as_dict["device"]["labels"] is not None
-            assert as_dict["device"]["labels"] == device_labels
-
-        assert snapshot == {
-            "source_entity": {
-                "entity_id": entity_object_id,
-                "entity_area_name": entity_area_name,
-                "entity_floor_name": entity_floor_name,
-                "entity_labels": entity_labels,
-            },
-            "flattened": as_flattened_dict,
-            "source_device": {
-                "device_name": device_name,
-                "device_area_name": device_area_name,
-                "device_floor_name": device_floor_name,
-                "device_labels": device_labels,
-            },
-        }
+        # Ensure that remaining keys are trimmable
+        assert utils.skip_dict_values(document, skip_values=compconst.SKIP_VALUES) == {}
 
 
 class Test_ExtendedDeviceEntry:
     """Test the ExtendedDeviceEntry class."""
 
-    @pytest.fixture
-    def extended_device_entry(
+    async def test_init(
         self,
-        hass,
+        details,
         device,
+        device_id,
         device_name,
         device_area_name,
+        device_area_id,
         device_floor_name,
+        device_floor_id,
         device_labels,
     ):
         """Create an ExtendedDeviceEntry instance."""
-        entry = ExtendedDeviceEntry(hass, device=device)
+        extended_device = ExtendedDeviceEntry(details=details, device=device)
 
-        assert entry.device is not None
-        assert entry.device.id == device.id
+        assert extended_device is not None
+        assert extended_device._device == device
+        assert extended_device.id == device_id
+        assert extended_device.name == device_name
+        assert extended_device.area.id == device_area_id
+        assert extended_device.area.name == device_area_name
+        assert extended_device.floor.floor_id == device_floor_id
+        assert extended_device.floor.name == device_floor_name
+        assert extended_device.labels == device_labels
 
-        return entry
+    async def test_to_dict(self, details, device, snapshot):
+        """Create an ExtendedDeviceEntry instance."""
+        extended_device = ExtendedDeviceEntry(details=details, device=device).to_dict()
 
-    async def test_init(self, hass: HomeAssistant, device):
-        """Test the init method."""
-        new_entry = ExtendedDeviceEntry(hass, device)
-
-        assert new_entry is not None
-        assert new_entry.device is not None
-        assert new_entry.device.id == device.id
-
-        new_entry = ExtendedDeviceEntry(hass=hass, device_id=device.id)
-
-        assert new_entry is not None
-        assert new_entry.device is not None
-        assert new_entry.device.id == device.id
-
-    async def test_init_failures(self, hass: HomeAssistant):
-        """Test the init method."""
-        with pytest.raises(ValueError):
-            ExtendedDeviceEntry(hass=hass, device=None, device_id=None)
-
-        with pytest.raises(ValueError):
-            ExtendedDeviceEntry(hass=hass, device=None, device_id="nonexistent_device_id")
-
-    async def test_area_property(
-        self,
-        extended_device_entry: ExtendedRegistryEntry,
-    ):
-        """Test the area property getter."""
-        assert hasattr(extended_device_entry, "area")
-        assert extended_device_entry.area is not None
-        assert extended_device_entry.area.name == const.TEST_DEVICE_AREA_NAME
-
-    async def test_floor_property(
-        self,
-        extended_device_entry: ExtendedRegistryEntry,
-    ):
-        """Test the floor property getter."""
-        # Make sure the area is also present
-        assert hasattr(extended_device_entry, "floor")
-        assert extended_device_entry.floor is not None
-        assert extended_device_entry.floor.name == const.TEST_DEVICE_FLOOR_NAME
-
-    async def test_labels_property(
-        self,
-        device_labels,
-        extended_device_entry: ExtendedRegistryEntry,
-    ):
-        """Test the labels property getter."""
-        assert hasattr(extended_device_entry, "labels")
-        assert extended_device_entry.labels is not None
-
-        # Verify our labels are not out of order
-        assert extended_device_entry.labels == sorted(device_labels)
-        assert sorted(extended_device_entry.labels) == extended_device_entry.labels
-
-        assert extended_device_entry.labels == const.TEST_DEVICE_LABELS
-
-    async def test_to_dict(
-        self,
-        extended_device_entry: ExtendedRegistryEntry,
-        snapshot,
-    ):
-        """Test the to_dict method."""
-
-        assert extended_device_entry.to_dict() is not None
-
-        assert trim_device_dict(extended_device_entry.to_dict()) == snapshot
-
-    async def test_to_flattened_dict(
-        self,
-        extended_device_entry: ExtendedRegistryEntry,
-        snapshot,
-    ):
-        """Test to_dict with flatten and keep_keys method."""
-
-        flattened = extended_device_entry.to_dict(flatten=True, keep_keys=KEYS_TO_KEEP)
-
-        assert flattened is not None
-
-        assert flattened == snapshot
+        assert utils.flatten_dict(extended_device) == snapshot

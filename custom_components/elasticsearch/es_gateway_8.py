@@ -3,16 +3,16 @@
 from __future__ import annotations
 
 import ssl
+from collections import OrderedDict
 from contextlib import contextmanager
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 
 import elasticsearch8
-from aiohttp import client_exceptions
 from elastic_transport import ObjectApiResponse
 from elasticsearch8._async.client import AsyncElasticsearch
-from elasticsearch8.helpers import BulkIndexError, async_streaming_bulk
+from elasticsearch8.helpers import async_streaming_bulk
 from homeassistant.util.ssl import client_context
 
 from custom_components.elasticsearch.const import ES_CHECK_PERMISSIONS_DATASTREAM
@@ -20,11 +20,8 @@ from custom_components.elasticsearch.encoder import Serializer
 from custom_components.elasticsearch.errors import (
     AuthenticationRequired,
     CannotConnect,
-    ClientError,
-    IndexingError,
     InsufficientPrivileges,
     ServerError,
-    SSLError,
     UntrustedCertificate,
 )
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway, GatewaySettings
@@ -32,7 +29,7 @@ from custom_components.elasticsearch.es_gateway import ElasticsearchGateway, Gat
 from .logger import LOGGER as BASE_LOGGER
 from .logger import async_log_enter_exit_debug
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import AsyncGenerator
     from logging import Logger
 
@@ -77,6 +74,9 @@ class Gateway8Settings(GatewaySettings):
 class Elasticsearch8Gateway(ElasticsearchGateway):
     """Encapsulates Elasticsearch operations."""
 
+    _settings: Gateway8Settings
+    _client: AsyncElasticsearch
+
     def __init__(
         self,
         gateway_settings: Gateway8Settings,
@@ -89,12 +89,11 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
             log=log,
         )
 
-        self._client: AsyncElasticsearch | None = None
-        self._settings: Gateway8Settings = gateway_settings
+        self._settings = gateway_settings
+        self._client = self._settings.to_client()
 
     async def async_init(self) -> None:
         """Initialize the Elasticsearch Gateway."""
-        self._client = self._settings.to_client()
 
         await super().async_init()
 
@@ -137,16 +136,12 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
     @property
     def client(self) -> AsyncElasticsearch:
         """Return the underlying ES Client."""
-        if self._client is None:
-            raise CannotConnect("Elasticsearch client not initialized.")
 
         return self._client
 
     @property
     def settings(self) -> Gateway8Settings:
         """Return the settings."""
-        if not self._settings:
-            raise CannotConnect("Elasticsearch settings not initialized.")
 
         return self._settings
 
@@ -205,12 +200,12 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
         return False
 
     @async_log_enter_exit_debug
-    async def has_privileges(self, privileges) -> dict:
+    async def has_privileges(self, privileges) -> bool:
         """Check if the user has the required privileges."""
         with self._error_converter(msg="Error checking user privileges"):
             response = await self.client.security.has_privileges(**privileges)
 
-        return self._convert_response(response)
+        return self._convert_response(response).get("has_all_requested", False)
 
     @async_log_enter_exit_debug
     async def get_index_template(self, name, ignore: list[int] | None = None) -> dict:
@@ -232,7 +227,7 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
         return self._convert_response(response)
 
     @async_log_enter_exit_debug
-    async def get_datastreams(self, datastream: str) -> dict:
+    async def get_datastream(self, datastream: str) -> dict:
         """Retrieve datastreams."""
         with self._error_converter(msg="Error retrieving datastreams"):
             response = await self.client.indices.get_data_stream(name=datastream)
@@ -258,6 +253,7 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
             async for ok, result in async_streaming_bulk(
                 client=self.client,
                 actions=actions,
+                max_retries=3,
                 raise_on_error=False,
                 yield_ok=True,
             ):
@@ -265,7 +261,7 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
                 action, outcome = result.popitem()
                 if not ok:
                     errcount += 1
-                    self._logger.error("failed to %s document %s", action, outcome)
+                    self._logger.error("failed to %s, error information: %s", action, outcome)
                 else:
                     okcount += 1
 
@@ -286,9 +282,9 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
 
     def _convert_response(self, response: ObjectApiResponse[Any]) -> dict[Any, Any]:
         """Convert the API response to a dictionary."""
-        if not isinstance(response.body, dict):
-            msg = "Invalid response from Elasticsearch"
-            raise TypeError(msg)
+
+        # The response body is always a dictionary, but mypy doesn't know that
+        assert isinstance(response.body, dict)
 
         return dict(response.body)
 
@@ -296,104 +292,72 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
     def _error_converter(self, msg: str | None = None):
         """Convert an internal error from the elasticsearch package into one of our own."""
 
-        def append_root_cause(err: elasticsearch8.ApiError, msg: str) -> str:
+        def append_msg(append_msg: str) -> str:
+            """Append the exception's message to the caller's message."""
+            if msg is None:
+                return append_msg
+
+            return f"{msg}. {append_msg}"
+
+        def append_cause(err: elasticsearch8.ApiError, msg: str) -> str:
             """Append the root cause to the error message."""
-            if not err.info:
+            if err.info is None or err.info.get("error", None) is None:
                 return msg
 
-            root_cause = err.info.get("error", {}).get("root_cause", [])
-            if not root_cause:
-                return msg
+            error_details = err.info["error"]
 
-            cause = root_cause[0]
+            specifics: OrderedDict = OrderedDict()
+            if "type" in error_details:
+                specifics["type"] = error_details["type"]
 
-            # Append the values of all of the keys under cause except for `header` as it contains auth info
-            general = msg
-            specifics = "; ".join(f"{k}={v}" for k, v in cause.items() if k != "header")
+            if "reason" in error_details:
+                specifics["reason"] = error_details["reason"]
 
-            return f"{general} ({specifics})"
+            # join specifics into a string with key: value pairs
+            specific_str = "; ".join(f"{k}={v}" for k, v in specifics.items())
+
+            return f"{msg} ({specific_str})"
 
         try:
             yield
 
-        except BulkIndexError as err:
-            msg = "Error indexing data"
-            raise IndexingError(msg) from err
-
         except elasticsearch8.UnsupportedProductError as err:
             # The HTTP response didn't include headers={"x-elastic-product": "Elasticsearch"}
-            msg = "Unsupported product error connecting to Elasticsearch"
-            raise CannotConnect(msg) from err
+            raise CannotConnect(append_msg("Unsupported product error connecting to Elasticsearch")) from err
 
         except elasticsearch8.AuthenticationException as err:
-            msg = "Authentication error connecting to Elasticsearch"
-            raise AuthenticationRequired(append_root_cause(err, msg)) from err
+            raise AuthenticationRequired(
+                append_cause(err, append_msg("Authentication error connecting to Elasticsearch"))
+            ) from err
 
         except elasticsearch8.AuthorizationException as err:
-            msg = "Authorization error connecting to Elasticsearch"
-            raise InsufficientPrivileges(append_root_cause(err, msg)) from err
+            raise InsufficientPrivileges(
+                append_cause(err, append_msg("Authorization error connecting to Elasticsearch"))
+            ) from err
 
         except elasticsearch8.ConnectionTimeout as err:
-            msg = "Connection timeout connecting to Elasticsearch"
-            raise ServerError(msg) from err
+            raise ServerError(append_msg("Connection timeout connecting to Elasticsearch")) from err
+
+        except elasticsearch8.SSLError as err:
+            raise UntrustedCertificate(
+                append_msg(f"Could not complete TLS Handshake. {err.message}")
+            ) from err
 
         except elasticsearch8.ConnectionError as err:
-            if len(err.errors) == 0:
-                msg = f"Connection error connecting to Elasticsearch: {err.message}"
-                raise CannotConnect(msg) from err
-
-            if not isinstance(err.errors[0], elasticsearch8.TransportError):
-                msg = f"Unknown transport error connecting to Elasticsearch: {err.message}"
-                raise CannotConnect(msg) from err
-
-            sub_error: elasticsearch8.TransportError = err.errors[0]
-
-            if isinstance(sub_error.errors[0], client_exceptions.ClientConnectorCertificateError):
-                msg = "Untrusted certificate connecting to Elasticsearch"
-                raise UntrustedCertificate(msg) from err
-
-            if issubclass(type(sub_error.errors[0]), client_exceptions.ServerFingerprintMismatch):
-                msg = "SSL certificate does not match expected fingerprint"
-                raise SSLError(msg) from err
-
-            if issubclass(type(sub_error.errors[0]), client_exceptions.ServerConnectionError):
-                msg = f"Server error connecting to Elasticsearch: {err.message}"
-                raise ServerError(msg) from err
-
-            if issubclass(type(sub_error.errors[0]), client_exceptions.ClientError):
-                msg = f"Client error connecting to Elasticsearch: {err.message}"
-                raise ClientError(msg) from err
-
-            if isinstance(err, elasticsearch8.SSLError):
-                msg = "SSL error connecting to Elasticsearch"
-                raise SSLError(msg) from err
-
-            msg = "Connection error connecting to Elasticsearch"
-            raise CannotConnect(msg) from err
+            raise CannotConnect(append_msg(f"Error connecting to Elasticsearch. {err.message}")) from err
 
         except elasticsearch8.TransportError as err:
-            if len(err.errors) == 0:
-                msg = f"Unknown transport error connecting to Elasticsearch: {err.message}"
-                raise CannotConnect(msg) from err
-
-            if not isinstance(err.errors[0], elasticsearch8.TransportError):
-                msg = f"Unknown transport error connecting to Elasticsearch: {err.message}"
-                raise CannotConnect(msg) from err
-
-            sub_error: elasticsearch8.TransportError = err.errors[0]
-
-            if hasattr(sub_error, "status"):
-                msg = f"Error connecting to Elasticsearch: {getattr(sub_error, "status")}"
-                raise CannotConnect(msg) from err
-
-            msg = f"Unknown transport error connecting to Elasticsearch: {err.message}"
-            raise CannotConnect(msg) from err
+            raise CannotConnect(
+                append_msg(f"Unknown transport error connecting to Elasticsearch: {err.message}")
+            ) from err
 
         except elasticsearch8.ApiError as err:
-            msg = "Unknown API Error connecting to Elasticsearch"
-            if hasattr(err, "status_code"):
-                msg = f"Error connecting to Elasticsearch: {err.status_code}"
-            raise CannotConnect(append_root_cause(err, msg)) from err
+            if err.status_code is not None:
+                raise ServerError(
+                    append_msg(f"Error in request to Elasticsearch: {err.status_code}")
+                ) from err
+            else:
+                raise ServerError(append_msg("Unknown API Error in request to Elasticsearch")) from err
 
         except Exception:
             BASE_LOGGER.exception("Unknown and unexpected exception occurred.")

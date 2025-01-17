@@ -18,40 +18,42 @@
 # pytest includes fixtures OOB which you can use as defined on this page)
 from __future__ import annotations
 
+import logging
 from asyncio import get_running_loop
-from contextlib import contextmanager, suppress
+from datetime import datetime
+from logging import Logger
 from typing import TYPE_CHECKING
 from unittest import mock
 from unittest.mock import AsyncMock, MagicMock, patch
 
-# import custom_components.elasticsearch  # noqa: F401
+import attr
 import pytest
 from aiohttp import ClientSession, TCPConnector
 from custom_components.elasticsearch.config_flow import ElasticFlowHandler
-from custom_components.elasticsearch.es_gateway_8 import Elasticsearch8Gateway, Gateway8Settings
-from homeassistant.const import (
-    CONF_PASSWORD,
-    CONF_URL,
-    CONF_USERNAME,
-)
-from homeassistant.core import HomeAssistant
+from freezegun.api import FrozenDateTimeFactory
+
+# import custom_components.elasticsearch  # noqa: F401
+from homeassistant.core import HomeAssistant, State
+from homeassistant.helpers.device_registry import DeviceEntry
 from homeassistant.helpers.json import json_dumps
 from pytest_homeassistant_custom_component.common import (
     MockConfigEntry,  # noqa: F401
 )
 from pytest_homeassistant_custom_component.plugins import (  # noqa: F401
     aioclient_mock,
-    # enable_event_loop_debug,
     skip_stop_scripts,
     snapshot,
     verify_cleanup,
 )
-from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
+from pytest_homeassistant_custom_component.test_util.aiohttp import (
+    AiohttpClientMocker,
+)
 
-from tests import const
+from tests import const as testconst
+from tests.test_util.es_mocker import es_mocker
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Awaitable, Callable, Generator
     from typing import Any
 
     from homeassistant.helpers.area_registry import AreaEntry, AreaRegistry
@@ -60,70 +62,34 @@ if TYPE_CHECKING:
     from homeassistant.helpers.floor_registry import FloorEntry, FloorRegistry
 
 MODULE = "custom_components.elasticsearch"
+logging.getLogger("homeassistant").setLevel(logging.WARNING)
+logging.getLogger("homeassistant.loader").setLevel(logging.ERROR)
+logging.getLogger("pytest_homeassistant_custom_component").setLevel(logging.WARNING)
+logging.getLogger("asyncio").setLevel(logging.WARNING)
 
 
 @pytest.fixture
-def gateway_config() -> dict:
-    """Mock Gateway configuration."""
-    return {
-        CONF_URL: const.TEST_CONFIG_ENTRY_DATA_URL,
-        CONF_USERNAME: const.TEST_CONFIG_ENTRY_DATA_USERNAME,
-        CONF_PASSWORD: const.TEST_CONFIG_ENTRY_DATA_PASSWORD,
-        "verify_certs": True,
-        "ca_certs": None,
-        "request_timeout": 30,
-        "minimum_version": None,
-        "minimum_privileges": {},
-    }
+async def integration_setup(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+) -> Callable[[], Awaitable[bool]]:
+    """Fixture to set up the integration."""
+    config_entry.add_to_hass(hass)
 
+    async def run() -> bool:
+        result = await hass.config_entries.async_setup(config_entry.entry_id)
 
-@pytest.fixture(
-    params=[
-        {
-            "gateway_class": Elasticsearch8Gateway,
-            "gatewaysettings": Gateway8Settings,
-        },
-    ],
-    ids=["es8"],
-)
-async def gateway(request, gateway_config):
-    """Mock ElasticsearchGateway instance."""
+        await hass.async_block_till_done()
 
-    gateway_class = request.param["gateway_class"]
-    gateway_settings_class = request.param["gatewaysettings"]
+        return result
 
-    settings = gateway_settings_class(**gateway_config)
-
-    gateway = gateway_class(gateway_settings=settings)
-
-    with suppress(Exception):
-        yield gateway
-
-    await gateway.stop()
+    return run
 
 
 @pytest.fixture
-async def initialized_gateway(gateway: Elasticsearch8Gateway):
-    """Return an initialized ElasticsearchGateway."""
-    gateway.ping = AsyncMock(return_value=True)
-    gateway.info = AsyncMock(return_value=const.CLUSTER_INFO_8DOT14_RESPONSE_BODY)
-    gateway.has_security = AsyncMock(return_value=True)
-    gateway._has_required_privileges = AsyncMock(return_value=True)
+def es_mock_builder() -> Generator[es_mocker, Any, None]:
+    """Fixture to return a builder for mocking Elasticsearch calls."""
 
-    await gateway.async_init()
-
-    if isinstance(gateway, Elasticsearch8Gateway):
-        gateway.client._verified_elasticsearch = MagicMock(return_value=True)
-
-    with suppress(Exception):
-        yield gateway
-
-    await gateway.stop()
-
-
-@contextmanager
-def mock_es_aiohttp_client():
-    """Context manager to mock aiohttp client."""
     mocker = AiohttpClientMocker()
 
     def create_session(*args, **kwargs):
@@ -149,20 +115,27 @@ def mock_es_aiohttp_client():
             side_effect=create_tcpconnector,
         ),
     ):
-        yield mocker
+        yield es_mocker(mocker)
 
 
 @pytest.fixture
-def es_aioclient_mock():
-    """Fixture to mock aioclient calls."""
-    with mock_es_aiohttp_client() as mock_session:
-        yield mock_session
+def freeze_time(freezer: FrozenDateTimeFactory):
+    """Freeze time so we can properly assert on payload contents."""
+
+    frozen_time = testconst.MOCK_NOON_APRIL_12TH_2023
+    if frozen_time is None:
+        msg = "Invalid date string"
+        raise ValueError(msg)
+
+    freezer.move_to(frozen_time)
+
+    return freezer
 
 
 # This fixture enables loading custom integrations in all tests.
 # Remove to enable selective use of this fixture
 @pytest.fixture(autouse=True)
-def auto_enable_custom_integrations(enable_custom_integrations) -> None:
+def _auto_enable_custom_integrations(enable_custom_integrations) -> None:
     """Auto enable custom integrations."""
     return
 
@@ -171,7 +144,7 @@ def auto_enable_custom_integrations(enable_custom_integrations) -> None:
 # notifications. These calls would fail without this fixture since the persistent_notification
 # integration is never loaded during a test.
 @pytest.fixture(name="skip_notifications", autouse=True)
-def skip_notifications_fixture() -> Generator[Any, Any, Any]:
+def _skip_notifications_fixture() -> Generator[Any, Any, Any]:
     """Skip notification calls."""
     with (
         patch("homeassistant.components.persistent_notification.async_create"),
@@ -180,16 +153,28 @@ def skip_notifications_fixture() -> Generator[Any, Any, Any]:
         yield
 
 
+@pytest.fixture(name="mock_logger")
+def mock_logger_fixture():
+    """Return a mock logger instance."""
+    return MagicMock(spec=Logger)
+
+
 @pytest.fixture
 async def data() -> dict:
     """Return a mock data dict."""
-    return const.TEST_CONFIG_ENTRY_BASE_DATA
+    return testconst.CONFIG_ENTRY_DEFAULT_DATA
+
+
+@pytest.fixture
+async def version() -> int:
+    """Return a mock options dict."""
+    return ElasticFlowHandler.VERSION
 
 
 @pytest.fixture
 async def options() -> dict:
     """Return a mock options dict."""
-    return const.TEST_CONFIG_ENTRY_BASE_OPTIONS
+    return testconst.CONFIG_ENTRY_BASE_OPTIONS
 
 
 @pytest.fixture
@@ -198,12 +183,40 @@ async def add_to_hass() -> bool:
     return True
 
 
+@pytest.fixture(name="mock_loop_handler")
+def mock_loop_handler_fixture():
+    """Return a mock loop handler that will return."""
+    with (
+        patch("custom_components.elasticsearch.es_publish_pipeline.LoopHandler") as loop_handler,
+    ):
+        loop_handler.start = AsyncMock()
+
+        yield loop_handler
+
+
+@pytest.fixture(autouse=True, name="fix_system_info")
+def fix_system_info_fixture():
+    """Return a mock system info."""
+    with mock.patch("custom_components.elasticsearch.es_publish_pipeline.SystemInfo") as system_info:
+        system_info_instance = system_info.return_value
+        system_info_instance.async_get_system_info = mock.AsyncMock(
+            return_value=mock.Mock(
+                version="1.0.0",
+                arch="x86",
+                os_name="Linux",
+                hostname="my_es_host",
+            ),
+        )
+
+        yield system_info_instance.async_get_system_info
+
+
 @pytest.fixture(autouse=True)
-async def fix_location(hass: HomeAssistant):
+async def _fix_location(hass: HomeAssistant):
     """Return whether to fix the location."""
 
-    hass.config.latitude = 1.0
-    hass.config.longitude = -1.0
+    hass.config.latitude = testconst.MOCK_LOCATION_SERVER_LAT
+    hass.config.longitude = testconst.MOCK_LOCATION_SERVER_LON
 
 
 @pytest.fixture
@@ -212,7 +225,7 @@ async def config_entry(
     data: dict,
     options: dict,
     add_to_hass: bool,
-    version: int = ElasticFlowHandler.VERSION,
+    version: int,
 ):
     """Create a mock config entry and add it to hass."""
 
@@ -251,15 +264,27 @@ async def device_floor(floor_registry: FloorRegistry, device_floor_name: str):
 
 
 @pytest.fixture
+async def device_area_id():
+    """Return an device area id."""
+    return testconst.DEVICE_AREA_ID
+
+
+@pytest.fixture
 async def device_area_name():
     """Return an device area name."""
-    return const.TEST_DEVICE_AREA_NAME
+    return testconst.DEVICE_AREA_NAME
+
+
+@pytest.fixture
+async def device_floor_id():
+    """Return an device floor name."""
+    return testconst.DEVICE_FLOOR_ID
 
 
 @pytest.fixture
 async def device_floor_name():
     """Return an device floor name."""
-    return const.TEST_DEVICE_FLOOR_NAME
+    return testconst.DEVICE_FLOOR_NAME
 
 
 @pytest.fixture
@@ -284,7 +309,36 @@ async def device_area(
     return area_registry.async_create(device_area_name, **extra_settings)
 
 
+@attr.s(frozen=True, slots=True)
+class MockDeviceEntry(DeviceEntry):
+    """Device Registry Entry with fixed ID."""
+
+    # Use @patch("homeassistant.helpers.device_registry.DeviceEntry", MockDeviceEntry)
+    # when creating a device to force the device_id to be the same each time
+
+    id: str = attr.ib(default=testconst.DEVICE_ID)
+
+
 @pytest.fixture
+async def device_labels():
+    """Mock device labels."""
+    return testconst.DEVICE_LABELS
+
+
+@pytest.fixture
+async def device_id():
+    """Return a device id."""
+    return testconst.DEVICE_ID
+
+
+@pytest.fixture
+async def device_name():
+    """Return a device name."""
+    return testconst.DEVICE_NAME
+
+
+@pytest.fixture
+@patch("homeassistant.helpers.device_registry.DeviceEntry", MockDeviceEntry)
 async def device(
     config_entry: MockConfigEntry,
     device_registry: DeviceRegistry,
@@ -318,54 +372,69 @@ async def device(
 
 
 @pytest.fixture
-async def device_labels():
-    """Mock device labels."""
-    return const.TEST_DEVICE_LABELS
-
-
-@pytest.fixture
-async def device_name():
-    """Return a device name."""
-    return const.TEST_DEVICE_NAME
-
-
-# Entity Fixtures
-
-
-@pytest.fixture
 async def entity_labels():
     """Mock entity labels."""
-    return const.TEST_ENTITY_LABELS
+    return testconst.ENTITY_LABELS
 
 
 @pytest.fixture
 async def entity_id(entity_domain: str, entity_object_id: str):
-    """Return an entity id."""
+    """Provide a sample entity id."""
     return f"{entity_domain}.{entity_object_id}"
 
 
 @pytest.fixture
+async def entity_unit_of_measurement():
+    """Provide a sample entity unit of measurement."""
+    return testconst.ENTITY_UNIT_OF_MEASUREMENT
+
+
+@pytest.fixture
 async def entity_domain():
-    """Return an entity domain."""
-    return const.TEST_ENTITY_DOMAIN
+    """Provide a sample entity domain."""
+    return testconst.ENTITY_DOMAIN
+
+
+@pytest.fixture
+async def entity_name():
+    """Return the entity name."""
+    return testconst.ENTITY_NAME
+
+
+@pytest.fixture
+async def entity_original_name():
+    """Return the original name for the entity."""
+    return testconst.ENTITY_ORIGINAL_NAME
 
 
 @pytest.fixture
 async def entity_object_id():
-    """Return an entity name."""
-    return const.TEST_ENTITY_OBJECT_ID_0
+    """Provide a sample entity name."""
+    return testconst.ENTITY_OBJECT_ID
+
+
+@pytest.fixture
+async def entity_area_id():
+    """Provide a sample entity area id."""
+    return testconst.ENTITY_AREA_ID
 
 
 @pytest.fixture
 async def entity_area_name():
-    """Return an entity area name."""
-    return const.TEST_ENTITY_AREA_NAME
+    """Provide a sample entity area name."""
+    return testconst.ENTITY_AREA_NAME
+
+
+@pytest.fixture
+async def entity_floor_id():
+    """Provide a sample entity floor id."""
+    return testconst.ENTITY_FLOOR_ID
 
 
 @pytest.fixture
 async def entity_floor_name():
-    """Return an entity floor name."""
-    return const.TEST_ENTITY_FLOOR_NAME
+    """Provide a sample entity floor name."""
+    return testconst.ENTITY_FLOOR_NAME
 
 
 @pytest.fixture
@@ -388,7 +457,7 @@ async def entity_floor(
 @pytest.fixture
 async def entity_platform():
     """Return an entity platform."""
-    return const.TEST_ENTITY_PLATFORM
+    return testconst.ENTITY_PLATFORM
 
 
 @pytest.fixture
@@ -414,6 +483,18 @@ async def entity_area(
 
 
 @pytest.fixture
+async def entity_original_device_class() -> str:
+    """Return an entity device class."""
+    return testconst.ENTITY_ORIGINAL_DEVICE_CLASS
+
+
+@pytest.fixture
+async def entity_device_class() -> str:
+    """Return an entity device class."""
+    return testconst.ENTITY_DEVICE_CLASS
+
+
+@pytest.fixture
 async def attach_device():
     """Return whether to attach a device to an entity."""
     return True
@@ -423,14 +504,19 @@ async def attach_device():
 async def entity(
     config_entry: MockConfigEntry,
     entity_registry: EntityRegistry,
+    entity_original_device_class: str,
+    entity_device_class: str,
     entity_domain: str,
     entity_id: str,
     entity_object_id: str,
     entity_area: AreaEntry,
     entity_labels: list[str],
     entity_platform: str,
-    device,
-    attach_device: bool,
+    entity_unit_of_measurement,
+    entity_original_name: str,
+    entity_name: str,
+    device_id: str,
+    request,
 ):
     """Mock an entity."""
     entity_registry.async_get_or_create(
@@ -439,8 +525,16 @@ async def entity(
         unique_id=entity_id,
         suggested_object_id=entity_object_id,
         platform=entity_platform,
-        original_device_class=const.TEST_ENTITY_DEVICE_CLASS,
+        original_device_class=entity_original_device_class,
+        original_name=entity_original_name,
+        unit_of_measurement=entity_unit_of_measurement,
     )
+
+    if entity_name is not None:
+        entity_registry.async_update_entity(entity_id=entity_id, name=entity_name)
+
+    if entity_device_class is not None:
+        entity_registry.async_update_entity(entity_id=entity_id, device_class=entity_device_class)
 
     if entity_labels is not None and len(entity_labels) > 0:
         entity_registry.async_update_entity(entity_id=entity_id, labels={*entity_labels})
@@ -448,31 +542,50 @@ async def entity(
     if entity_area is not None:
         entity_registry.async_update_entity(entity_id=entity_id, area_id=entity_area.id)
 
-    if device is not None and attach_device:
-        entity_registry.async_update_entity(entity_id=entity_id, device_id=device.id)
+    if device_id is not None:
+        entity_registry.async_update_entity(entity_id=entity_id, device_id=device_id)
 
     return entity_registry.async_get(entity_id)
 
 
-@pytest.fixture
-async def state() -> str:
-    """Return a state."""
-    return const.TEST_ENTITY_STATE
+@pytest.fixture(name="state_value")
+async def state_value_fixture() -> str:
+    """Return a state value."""
+    return testconst.ENTITY_STATE_STRING
+
+
+@pytest.fixture(name="entity_attributes")
+async def entity_attributes_fixture() -> dict:
+    """Return a mock attributes dict."""
+    return testconst.ENTITY_ATTRIBUTES
+
+
+@pytest.fixture(name="last_changed")
+async def last_changed_fixture() -> datetime:
+    """Return a mock last changed."""
+    return testconst.ENTITY_STATE_LAST_CHANGED
+
+
+@pytest.fixture(name="last_updated")
+async def last_updated_fixture() -> datetime:
+    """Return a mock last updated."""
+    return testconst.ENTITY_STATE_LAST_UPDATED
 
 
 @pytest.fixture
 async def entity_state(
     entity_id: str,
-    state: str,
-    attributes: dict[str, Any],
-    last_changed: str,
-    last_updated: str,
-) -> dict[str, Any]:
+    state_value: str,
+    entity_attributes: dict[str, Any],
+    last_changed: datetime,
+    last_updated: datetime,
+) -> State:
     """Return a state."""
-    return {
-        "entity_id": entity_id,
-        "state": state,
-        "attributes": attributes,
-        "last_changed": last_changed,
-        "last_updated": last_updated,
-    }
+
+    return State(
+        entity_id=entity_id,
+        state=state_value,
+        attributes=entity_attributes,
+        last_changed=last_changed,
+        last_updated=last_updated,
+    )

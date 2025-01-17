@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import re
 import unicodedata
 from collections.abc import AsyncGenerator
@@ -9,11 +10,10 @@ from datetime import UTC, datetime
 from functools import lru_cache
 from logging import Logger
 from math import isinf, isnan
-from queue import Queue
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.sun.const import STATE_ABOVE_HORIZON, STATE_BELOW_HORIZON
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.const import (
     EVENT_STATE_CHANGED,
     STATE_CLOSED,
@@ -32,39 +32,34 @@ from homeassistant.helpers import state as state_helper
 from homeassistant.util import dt as dt_util
 from homeassistant.util.logging import async_create_catching_coro
 
+from custom_components.elasticsearch import utils
 from custom_components.elasticsearch.const import (
-    CONF_CHANGE_DETECTION_TYPE,
-    CONF_POLLING_FREQUENCY,
-    CONF_PUBLISH_FREQUENCY,
     CONF_TAGS,
     DATASTREAM_DATASET_PREFIX,
     DATASTREAM_NAMESPACE,
     DATASTREAM_TYPE,
     StateChangeType,
 )
-from custom_components.elasticsearch.const import (
-    CONST_ENTITY_DETAILS_TO_ES_DOCUMENT as EXTENDED_DETAILS_TO_ES_DOCUMENT,
-)
-from custom_components.elasticsearch.const import (
-    CONST_ENTITY_DETAILS_TO_ES_DOCUMENT_KEYS as KEYS_TO_KEEP,
-)
 from custom_components.elasticsearch.encoder import convert_set_to_list
 from custom_components.elasticsearch.entity_details import (
     ExtendedEntityDetails,
-    ExtendedRegistryEntry,
 )
 from custom_components.elasticsearch.errors import (
     AuthenticationRequired,
     ESIntegrationConnectionException,
-    IndexingError,
 )
 from custom_components.elasticsearch.logger import LOGGER as BASE_LOGGER
-from custom_components.elasticsearch.logger import log_enter_exit_debug
+from custom_components.elasticsearch.logger import (
+    async_log_enter_exit_debug,
+    log_enter_exit_debug,
+    log_enter_exit_info,
+)
 from custom_components.elasticsearch.loop import LoopHandler
 from custom_components.elasticsearch.system_info import SystemInfo, SystemInfoResult
 
-if TYPE_CHECKING:
-    from asyncio import Task  # pragma: no cover
+if TYPE_CHECKING:  # pragma: no cover
+    from homeassistant.helpers.device_registry import DeviceEntry
+    from homeassistant.helpers.entity_registry import RegistryEntry
 
     from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 
@@ -79,7 +74,9 @@ SKIP_ATTRIBUTES = [
     "unit_of_measurement",
 ]
 
-type EventQueue = Queue[tuple[datetime, State, StateChangeType]]
+
+class EventQueue(asyncio.Queue[tuple[datetime, State, StateChangeType]]):
+    """Queue for storing events."""
 
 
 class PipelineSettings:
@@ -89,7 +86,7 @@ class PipelineSettings:
         self,
         include_targets: bool,
         exclude_targets: bool,
-        debug_filter: bool,
+        debug_attribute_filtering: bool,
         included_areas: list[str],
         excluded_areas: list[str],
         included_labels: list[str],
@@ -108,7 +105,7 @@ class PipelineSettings:
         self.polling_frequency: int = polling_frequency
         self.change_detection_type: list[StateChangeType] = change_detection_type
         self.tags: list[str] = tags
-        self.debug_filter: bool = debug_filter
+        self.debug_attribute_filtering: bool = debug_attribute_filtering
         self.include_targets: bool = include_targets
         self.exclude_targets: bool = exclude_targets
         self.included_labels: list[str] = included_labels
@@ -119,24 +116,6 @@ class PipelineSettings:
         self.excluded_devices: list[str] = excluded_devices
         self.included_entities: list[str] = included_entities
         self.excluded_entities: list[str] = excluded_entities
-
-    def to_dict(self) -> dict:
-        """Convert the settings to a dictionary."""
-        return {
-            CONF_PUBLISH_FREQUENCY: self.publish_frequency,
-            CONF_POLLING_FREQUENCY: self.polling_frequency,
-            CONF_CHANGE_DETECTION_TYPE: [i.value for i in self.change_detection_type],
-            CONF_TAGS: self.tags,
-            "debug_filter": self.debug_filter,
-            "included_areas": self.included_areas,
-            "excluded_areas": self.excluded_areas,
-            "included_labels": self.included_labels,
-            "excluded_labels": self.excluded_labels,
-            "included_devices": self.included_devices,
-            "excluded_devices": self.excluded_devices,
-            "included_entities": self.included_entities,
-            "excluded_entities": self.excluded_entities,
-        }
 
 
 class Pipeline:
@@ -157,14 +136,13 @@ class Pipeline:
             self._hass: HomeAssistant = hass
             self._gateway: ElasticsearchGateway = gateway
 
-            self._cancel_publisher: Task | None = None
             self._config_entry: ConfigEntry | None = None
 
             self._settings: PipelineSettings = settings
 
-            self._static_fields: dict[str, str | float | list[str] | dict[str, float]] = {}
+            self._static_fields: dict[str, str | float | list[str] | list[float]] = {}
 
-            self._queue: EventQueue = Queue[tuple[datetime, State, StateChangeType]]()
+            self._queue: EventQueue = EventQueue()
 
             self._filterer: Pipeline.Filterer = Pipeline.Filterer(
                 hass=self._hass,
@@ -187,29 +165,73 @@ class Pipeline:
                 settings=self._settings,
             )
 
-            self._filterer: Pipeline.Filterer = Pipeline.Filterer(
-                hass=self._hass,
-                log=self._logger,
-                settings=settings,
-            )
             self._formatter: Pipeline.Formatter = Pipeline.Formatter(
                 hass=self._hass, settings=self._settings, log=self._logger
             )
+
             self._publisher: Pipeline.Publisher = Pipeline.Publisher(
                 hass=self._hass,
                 settings=self._settings,
+                manager=self,
                 gateway=gateway,
                 log=self._logger,
             )
 
-        @log_enter_exit_debug
+        @async_log_enter_exit_debug
         async def async_init(self, config_entry: ConfigEntry) -> None:
             """Initialize the manager."""
 
-            if self._settings.publish_frequency is None or self._settings.publish_frequency == 0:
-                self._logger.warning("No publish frequency set. Disabling publishing.")
+            self._config_entry = config_entry
+
+            if self._settings.publish_frequency == 0:
+                self._logger.error("No publish frequency set. Disabling publishing.")
                 return
 
+            await self._populate_static_fields()
+
+            # Initialize listener if change detection type is configured
+            if len(self._settings.change_detection_type) != 0:
+                await self._listener.async_init()
+            else:
+                self._logger.warning("No change detection type set. Disabling change listener.")
+
+            # We only need to initialize the poller if the user has configured a polling frequency
+            if self._settings.polling_frequency > 0:
+                await self._poller.async_init(config_entry=config_entry)
+            else:
+                self._logger.warning("No polling frequency set. Disabling polling.")
+
+            # Initialize document sinks
+            await self._formatter.async_init(self._static_fields)
+            await self._publisher.async_init(config_entry=config_entry)
+
+        async def sip_queue(self) -> AsyncGenerator[dict[str, Any], Any]:
+            """Sip an event off of the queue."""
+
+            while not self._queue.empty():
+                timestamp: datetime | None = None
+                state: State | None = None
+                reason: StateChangeType | None = None
+
+                try:
+                    timestamp, state, reason = self._queue.get_nowait()
+
+                    yield self._formatter.format(timestamp, state, reason)
+                except asyncio.QueueEmpty:
+                    pass
+                except Exception:
+                    self._logger.exception(
+                        "Error formatting document for entity [%s]. Skipping document.",
+                        state.entity_id if state is not None else "Unknown",
+                    )
+
+        @property
+        def queue(self) -> EventQueue:
+            """Return the queue."""
+            return self._queue
+
+        async def _populate_static_fields(self) -> None:
+            """Populate the static fields for generated documents."""
             system_info: SystemInfo = SystemInfo(hass=self._hass)
             result: SystemInfoResult | None = await system_info.async_get_system_info()
 
@@ -224,98 +246,29 @@ class Pipeline:
                     self._static_fields["host.hostname"] = result.hostname
 
             if self._hass.config.latitude is not None and self._hass.config.longitude is not None:
-                self._static_fields["host.location"] = {
-                    "lat": self._hass.config.latitude,
-                    "lon": self._hass.config.longitude,
-                }
+                self._static_fields["host.location"] = [
+                    self._hass.config.longitude,
+                    self._hass.config.latitude,
+                ]
 
             if self._settings.tags != []:
                 self._static_fields[CONF_TAGS] = self._settings.tags
 
-            if len(self._settings.change_detection_type) != 0:
-                await self._listener.async_init()
+        @log_enter_exit_info
+        def reload_config_entry(self, msg) -> None:
+            """Reload the config entry."""
 
-            if self._settings.polling_frequency is not None and self._settings.polling_frequency > 0:
-                await self._poller.async_init(config_entry=config_entry)
+            if self._config_entry and self._config_entry.state == ConfigEntryState.LOADED:
+                self._logger.info("%s Reloading integration.", msg)
+                self._hass.config_entries.async_schedule_reload(self._config_entry.entry_id)
             else:
-                self._logger.debug("No polling frequency set. Disabling polling.")
-
-            # Initialize document sinks
-            await self._formatter.async_init(self._static_fields)
-            await self._publisher.async_init(config_entry=config_entry)
-
-            filter_format_publish = LoopHandler(
-                name="es_filter_format_publish_loop",
-                func=self._publish,
-                frequency=self._settings.publish_frequency,
-                log=self._logger,
-            )
-
-            self._cancel_publisher = config_entry.async_create_background_task(
-                self._hass,
-                async_create_catching_coro(filter_format_publish.start()),
-                "es_filter_format_publish_task",
-            )
-
-            self._config_entry = config_entry
-
-        async def _sip_queue(self) -> AsyncGenerator[dict[str, Any], Any]:
-            while not self._queue.empty():
-                timestamp, state, reason = self._queue.get()
-
-                try:
-                    yield self._formatter.format(timestamp, state, reason)
-                except Exception:
-                    self._logger.exception(
-                        "Error formatting document for entity [%s]. Skipping document.",
-                        state.entity_id,
-                    )
-
-        async def _publish(self) -> None:
-            """Publish the documents to Elasticsearch."""
-            try:
-                if not await self._gateway.check_connection():
-                    self._logger.debug("Skipping publishing as connection is not available.")
-                    return
-
-                await self._publisher.publish(iterable=self._sip_queue())
-
-            except AuthenticationRequired:
-                msg = "Authentication issue in publishing loop. Reloading integration."
-                self._logger.error(msg)
-                self._logger.debug(msg, exc_info=True)
-
-                if self._config_entry:
-                    self._hass.config_entries.async_schedule_reload(self._config_entry.entry_id)
-
-            except IndexingError:
-                msg = "Indexing error in publishing loop."
-                self._logger.debug(msg, exc_info=True)
-                self._logger.error(msg)
-
-            except ESIntegrationConnectionException:
-                msg = "Connection error in publishing loop. Reloading integration."
-                self._logger.debug(msg, exc_info=True)
-                self._logger.error(msg)
-
-            except Exception:  # noqa: BLE001
-                msg = "Unknown error while publishing documents."
-                self._logger.debug(msg, exc_info=True)
-                self._logger.error(msg)
+                self._logger.warning("%s Config entry not found or not loaded.", msg)
 
         @log_enter_exit_debug
         def stop(self) -> None:
             """Stop the manager."""
-            if self._cancel_publisher is not None:
-                self._cancel_publisher.cancel()
 
             self._listener.stop()
-            self._poller.stop()
-            self._publisher.stop()
-
-        def __del__(self) -> None:
-            """Clean up the manager."""
-            self.stop()
 
     class Filterer:
         """Filters state changes for processing."""
@@ -332,7 +285,7 @@ class Pipeline:
             self._include_targets: bool = settings.include_targets
             self._exclude_targets: bool = settings.exclude_targets
 
-            self._debug_filter: bool = settings.debug_filter
+            self._debug_attribute_filtering: bool = settings.debug_attribute_filtering
 
             self._included_areas: list[str] = settings.included_areas
             self._excluded_areas: list[str] = settings.excluded_areas
@@ -349,107 +302,104 @@ class Pipeline:
             self._area_registry = area_registry.async_get(hass)
             self._device_registry = device_registry.async_get(hass)
 
-        @log_enter_exit_debug
-        async def async_init(self) -> None:
-            """Initialize the filterer."""
+        def _reject(self, base_message, message: str) -> bool:
+            """Help handle logging for cases where a filter results in rejection of the entity state update."""
+
+            message = base_message + " Rejected: " + message
+            self._logger.debug(message)
+
+            return False
+
+        def _accept(self, base_message, message: str) -> bool:
+            """Help handle logging for cases where a filter results in inclusion of the entity state update."""
+
+            message = base_message + " Accepted: " + message
+            self._logger.debug(message)
+
+            return True
 
         def passes_filter(self, state: State, reason: StateChangeType) -> bool:
             """Filter state changes for processing."""
+            base_msg = f"Processing filters for entity [{state.entity_id}]: "
 
             if not self._passes_change_detection_type_filter(reason):
-                self._logger.debug(
-                    "Entity [%s} state change type [%s] failed filter.", state.entity_id, reason
-                )
                 return False
 
-            if not self._passes_entity_exists_filter(entity_id=state.entity_id):
-                self._logger.debug("Entity [%s] not found in registry.", state.entity_id)
+            entity: RegistryEntry | None = self._entity_registry.async_get(state.entity_id)
+
+            if not entity:
+                return self._reject(base_msg, "Entity not found in registry.")
+
+            device: DeviceEntry | None = (
+                self._device_registry.async_get(entity.device_id) if entity.device_id else None
+            )
+
+            if self._exclude_targets and not self._passes_exclude_targets(entity=entity, device=device):
                 return False
 
-            if self._exclude_targets and not self._passes_exclude_targets(entity_id=state.entity_id):
-                self._logger.debug("Entity [%s] failed exclude filter.", state.entity_id)
+            if self._include_targets and not self._passes_include_targets(entity=entity, device=device):
                 return False
 
-            if self._include_targets and not self._passes_include_targets(entity_id=state.entity_id):
-                self._logger.debug("Entity [%s] failed include filter.", state.entity_id)
-                return False
+            return self._accept(base_msg, "Entity passed all filters.")
 
-            return True
+        def _passes_exclude_targets(self, entity: RegistryEntry, device: DeviceEntry | None) -> bool:
+            base_msg = f"Processing exclusion filters for entity [{entity.entity_id}]: "
 
-        def _passes_exclude_targets(self, entity_id: str) -> bool:
-            if entity_id in self._excluded_entities:
-                return False
-
-            entity = self._entity_registry.async_get(entity_id)
-
-            # If the entity is not found, we can't check the other filters, so we return False
-            if entity is None:
-                return False
-
-            if entity.device_id in self._excluded_devices:
-                return False
+            if entity.entity_id in self._excluded_entities:
+                return self._reject(base_msg, "In the excluded entities list.")
 
             if entity.area_id in self._excluded_areas:
-                return False
+                return self._reject(base_msg, f"In an excluded area [{entity.area_id}].")
 
-            if any(label in self._excluded_labels for label in entity.labels):
-                return False
+            for label in entity.labels:
+                if label in self._excluded_labels:
+                    return self._reject(base_msg, f"Excluded entity label present: [{label}].")
 
-            # Check the device for labels
-            if entity.device_id is not None:
-                device = self._device_registry.async_get(entity.device_id)
-                if device is not None:
-                    if any(label in self._excluded_labels for label in device.labels):
-                        return False
+            if device is not None:
+                if device.id in self._excluded_devices:
+                    return self._reject(base_msg, f"Attached to an excluded device [{device.id}].")
 
-            return True
+                for label in device.labels:
+                    if label in self._excluded_labels:
+                        return self._reject(base_msg, f"Excluded device label present: [{label}].")
 
-        def _passes_include_targets(self, entity_id: str) -> bool:
-            if entity_id in self._included_entities:
-                return True
+            return self._accept(base_msg, "Entity was not excluded by filters.")
 
-            entity = self._entity_registry.async_get(entity_id)
+        def _passes_include_targets(self, entity: RegistryEntry, device: DeviceEntry | None) -> bool:
+            base_msg = f"Processing inclusion filters for entity [{entity.entity_id}]: "
 
-            # If the entity is not found, we can't check the other filters, so we return False
-            if entity is None:
-                return False
-
-            if entity.device_id in self._included_devices:
-                return True
+            if entity.entity_id in self._included_entities:
+                return self._accept(base_msg, "In the included entities list.")
 
             if entity.area_id in self._included_areas:
-                return True
+                return self._accept(base_msg, f"In an included area [{entity.area_id}].")
 
-            if any(label in self._included_labels for label in entity.labels):
-                return True
+            for label in entity.labels:
+                if label in self._included_labels:
+                    return self._accept(base_msg, f"Included entity label present: [{label}].")
 
-            # Check the device for labels
-            if entity.device_id is not None:
-                device = self._device_registry.async_get(entity.device_id)
-                if device is not None:
-                    if any(label in self._included_labels for label in device.labels):
-                        return True
+            if device is not None:
+                if device.id in self._included_devices:
+                    return self._accept(base_msg, f"Attached to an included device [{device.id}].")
+
+                for label in device.labels:
+                    if label in self._included_labels:
+                        return self._accept(base_msg, f"Included device label present: [{label}].")
 
             return False
 
         def _passes_change_detection_type_filter(self, reason: StateChangeType) -> bool:
             """Determine if a state change should be published."""
+            base_msg = f"Processing change detection type filter: Change type [{reason.value}]: "
 
             # If polling is enabled, we publish all polled events
             if reason.value == StateChangeType.NO_CHANGE.value:
                 return True
 
-            return reason.value in self._change_detection_type
+            if reason.value in self._change_detection_type:
+                return True
 
-        def _passes_entity_exists_filter(self, entity_id: str) -> bool:
-            """Check the entity registry and make sure we can see the entity before proceeding."""
-
-            entity = self._entity_registry.async_get(entity_id)
-
-            if entity is None:
-                return False
-
-            return True
+            return self._reject(base_msg, "is not in the change detection type list.")
 
     class Listener:
         """Listens for state changes and queues them for processing."""
@@ -468,7 +418,7 @@ class Pipeline:
             self._queue: EventQueue = queue
             self._cancel_listener = None
 
-        @log_enter_exit_debug
+        @async_log_enter_exit_debug
         async def async_init(self) -> None:
             """Initialize the listener."""
 
@@ -494,7 +444,7 @@ class Pipeline:
 
             # Ensure we only queue states that pass the filter
             if self._filterer.passes_filter(new_state, reason):
-                self._queue.put((event.time_fired, new_state, reason))
+                self._queue.put_nowait((event.time_fired, new_state, reason))
 
         @log_enter_exit_debug
         def stop(self) -> None:
@@ -502,10 +452,6 @@ class Pipeline:
             if self._cancel_listener:
                 self._cancel_listener()
                 self._cancel_listener = None
-
-        def __del__(self) -> None:
-            """Clean up the listener."""
-            self.stop()
 
     class Poller:
         """Polls for state changes and queues them for processing."""
@@ -521,14 +467,11 @@ class Pipeline:
             """Initialize the poller."""
             self._logger = log if log else BASE_LOGGER
             self._hass: HomeAssistant = hass
-            self._cancel_poller: Task | None = None
-
             self._queue: EventQueue = queue
             self._filterer: Pipeline.Filterer = filterer
-
             self._settings: PipelineSettings = settings
 
-        @log_enter_exit_debug
+        @async_log_enter_exit_debug
         async def async_init(self, config_entry: ConfigEntry) -> None:
             """Initialize the poller."""
             state_poll_loop = LoopHandler(
@@ -538,35 +481,24 @@ class Pipeline:
                 log=self._logger,
             )
 
-            self._cancel_poller = config_entry.async_create_background_task(
+            config_entry.async_create_background_task(
                 self._hass,
                 async_create_catching_coro(state_poll_loop.start()),
                 "es_state_poll_task",
             )
 
+            await state_poll_loop.wait_for_first_run()
+
         async def poll(self) -> None:
             """Poll for state changes and queue them for send."""
 
             now: datetime = datetime.now(tz=UTC)
-
-            all_states = self._hass.states.async_all()
-
             reason = StateChangeType.NO_CHANGE
 
-            # Ensure we only queue states that pass the filter
-            for state in all_states:
+            for state in self._hass.states.async_all():
+                # Ensure we only queue states that pass the filter
                 if self._filterer.passes_filter(state, reason):
-                    self._queue.put((now, state, reason))
-
-        @log_enter_exit_debug
-        def stop(self) -> None:
-            """Stop the poller."""
-            if self._cancel_poller:
-                self._cancel_poller.cancel()
-
-        def __del__(self) -> None:
-            """Clean up the poller."""
-            self.stop()
+                    self._queue.put_nowait((now, state, reason))
 
     class Formatter:
         """Formats state changes into documents."""
@@ -578,11 +510,11 @@ class Pipeline:
             self._logger = log if log else BASE_LOGGER
             self._static_fields: dict[str, Any] = {}
 
-            self._debug_filter: bool = settings.debug_filter
+            self._debug_attribute_filtering: bool = settings.debug_attribute_filtering
 
             self._extended_entity_details = ExtendedEntityDetails(hass, self._logger)
 
-        @log_enter_exit_debug
+        @async_log_enter_exit_debug
         async def async_init(self, static_fields: dict[str, Any]) -> None:
             """Initialize the formatter."""
             self._static_fields = static_fields
@@ -595,51 +527,29 @@ class Pipeline:
                 "event.action": reason.to_publish_reason(),
                 "event.kind": "event",
                 "event.type": "info" if reason == StateChangeType.NO_CHANGE else "change",
+                "hass.entity": {**self._state_to_extended_details(state)},
                 "hass.entity.attributes": self._state_to_attributes(state),
-                "hass.entity.domain": state.domain,
-                "hass.entity.id": state.entity_id,
                 "hass.entity.value": state.state,
-                "hass.entity.valueas": self.state_to_coerced_value(state),
+                "hass.entity.valueas": self._state_to_coerced_value(state),
                 "hass.entity.object.id": state.object_id,
                 **Pipeline.Formatter.domain_to_datastream(state.domain),
-                **self._state_to_extended_details(state),
                 **self._static_fields,
             }
 
-            # Return the document with null and [] values removed
-            return {k: v for k, v in document.items() if v is not None and len(v) != 0}
-
-        # Methods for assembling the document
+            return utils.prepare_dict(document)
 
         def _state_to_extended_details(self, state: State) -> dict:
             """Gather entity details from the state object and return a mapped dictionary ready to be put in an elasticsearch document."""
 
-            extended_registry_entry: ExtendedRegistryEntry = self._extended_entity_details.async_get(
-                state.entity_id,
-            )
-
-            entry_dict = extended_registry_entry.to_dict(flatten=True, keep_keys=KEYS_TO_KEEP)
+            document = self._extended_entity_details.async_get(state.entity_id).to_dict()
 
             # The logic for friendly name is in the state for some reason
-            entry_dict.update(
-                {
-                    "friendly_name": state.name,
-                },
-            )
-            if "latitude" in state.attributes and "longitude" in state.attributes:
-                entry_dict.update(
-                    {
-                        "location": {
-                            "lat": state.attributes["latitude"],
-                            "lon": state.attributes["longitude"],
-                        }
-                    }
-                )
-            return {
-                f"hass.entity.{k}": entry_dict.get(v)
-                for k, v in EXTENDED_DETAILS_TO_ES_DOCUMENT.items()
-                if (entry_dict.get(v) is not None and len(entry_dict.get(v, [])) != 0)
-            }
+            document["friendly_name"] = state.name
+
+            if state.attributes.get("longitude") and state.attributes.get("latitude"):
+                document["location"] = [state.attributes.get("longitude"), state.attributes.get("latitude")]
+
+            return document
 
         def _state_to_attributes(self, state: State) -> dict:
             """Convert the attributes of a State object into a dictionary compatible with Elasticsearch mappings."""
@@ -648,12 +558,6 @@ class Pipeline:
 
             for key, value in state.attributes.items():
                 if not self.filter_attribute(state.entity_id, key, value):
-                    if self._debug_filter:
-                        self._logger.debug(
-                            "Attribute [%s] failed filter for entity [%s].",
-                            key,
-                            state.entity_id,
-                        )
                     continue
 
                 new_key = self.normalize_attribute_name(key)
@@ -670,9 +574,9 @@ class Pipeline:
 
             return attributes
 
-        def state_to_coerced_value(self, state: State) -> dict:
+        def _state_to_coerced_value(self, state: State) -> dict:
             """Coerce the state value into a dictionary of possible types."""
-            value = state.state
+            value: str = state.state
 
             success, result = self.try_state_as_boolean(state)
             if success and result is not None:
@@ -714,25 +618,25 @@ class Pipeline:
 
         def filter_attribute(self, entity_id, key, value) -> bool:
             """Filter out attributes we don't want to publish."""
-            msg: str | None = None
 
-            if key in SKIP_ATTRIBUTES:
-                msg = f"Attribute {key} is a skippable attribute. It has value {value} and is from entity {entity_id}."
-
-            elif not isinstance(key, ALLOWED_ATTRIBUTE_KEY_TYPES):
-                msg = f"Attribute {key} has a disallowed key type {type(key)}. It has value {value} from entity {entity_id}."
-
-            elif not isinstance(value, ALLOWED_ATTRIBUTE_VALUE_TYPES):
-                msg = f"Attribute {key} has a disallowed value type {type(value)}. It has value {value} from entity {entity_id}."
-
-            elif key.strip() == "":
-                msg = f"Attribute {key} is whitespace or empty. It has value {value} from entity {entity_id}."
-
-            if msg is not None:
-                if self._debug_filter:
-                    self._logger.debug(msg)
+            def reject(msg: str) -> bool:
+                if self._debug_attribute_filtering:
+                    message = f"Filtering attributes for entity [{entity_id}]: Attribute [{key}] " + msg
+                    self._logger.debug(message)
 
                 return False
+
+            if key in SKIP_ATTRIBUTES:
+                return reject("is in the list of attributes to skip.")
+
+            if not isinstance(key, ALLOWED_ATTRIBUTE_KEY_TYPES):
+                return reject(f"has a disallowed key type [{type(key)}].")
+
+            if not isinstance(value, ALLOWED_ATTRIBUTE_VALUE_TYPES):
+                return reject(f"with value [{value}] has disallowed value type [{type(value)}].")
+
+            if key.strip() == "":
+                return reject("is empty after stripping leading and trailing whitespace.")
 
             return True
 
@@ -831,17 +735,34 @@ class Pipeline:
             hass: HomeAssistant,
             gateway: ElasticsearchGateway,
             settings: PipelineSettings,
+            manager: Pipeline.Manager,
             log: Logger = BASE_LOGGER,
         ) -> None:
             """Initialize the publisher."""
             self._logger = log
             self._gateway = gateway
+            self._manager = manager
             self._settings = settings
             self._hass = hass
+            self._queue: EventQueue = manager.queue
 
-        @log_enter_exit_debug
+        @async_log_enter_exit_debug
         async def async_init(self, config_entry: ConfigEntry) -> None:
             """Initialize the publisher."""
+            filter_format_publish = LoopHandler(
+                name="es_filter_format_publish_loop",
+                func=self.publish,
+                frequency=self._settings.publish_frequency,
+                log=self._logger,
+            )
+
+            config_entry.async_create_background_task(
+                self._hass,
+                async_create_catching_coro(filter_format_publish.start()),
+                "es_filter_format_publish_task",
+            )
+
+            await filter_format_publish.wait_for_first_run()
 
         @staticmethod
         @lru_cache(maxsize=128)
@@ -869,17 +790,33 @@ class Pipeline:
                     "_source": document,
                 }
 
-        async def publish(self, iterable: AsyncGenerator[dict[str, Any], Any]) -> None:
+        async def publish(self) -> None:
             """Publish the document to Elasticsearch."""
 
-            actions = self._add_action_and_meta_data(iterable)
+            try:
+                if not await self._gateway.check_connection():
+                    self._logger.debug("Skipping publishing as connection is not available.")
+                    return
 
-            await self._gateway.bulk(actions=actions)
+                actions = self._add_action_and_meta_data(iterable=self._manager.sip_queue())
 
-        @log_enter_exit_debug
-        def stop(self) -> None:
-            """Stop the publisher."""
+                await self._gateway.bulk(actions=actions)
 
-        def __del__(self) -> None:
-            """Clean up the publisher."""
-            self.stop()
+            except AuthenticationRequired:
+                msg = "Authentication issue in publishing loop."
+                self._manager.reload_config_entry(msg)
+
+                self._logger.error(msg)
+                self._logger.debug(msg, exc_info=True)
+
+            except ESIntegrationConnectionException:
+                msg = "Connection error in publishing loop."
+
+                self._logger.error(msg)
+                self._logger.debug(msg, exc_info=True)
+
+            except Exception:  # noqa: BLE001
+                msg = "Unknown error while publishing documents."
+
+                self._logger.error(msg)
+                self._logger.debug(msg, exc_info=True)

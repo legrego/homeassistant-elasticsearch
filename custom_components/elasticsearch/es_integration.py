@@ -16,7 +16,7 @@ from homeassistant.const import (
 
 from custom_components.elasticsearch.const import (
     CONF_CHANGE_DETECTION_TYPE,
-    CONF_DEBUG_FILTER,
+    CONF_DEBUG_ATTRIBUTE_FILTERING,
     CONF_EXCLUDE_TARGETS,
     CONF_INCLUDE_TARGETS,
     CONF_POLLING_FREQUENCY,
@@ -35,7 +35,7 @@ from custom_components.elasticsearch.es_publish_pipeline import Pipeline, Pipeli
 from custom_components.elasticsearch.logger import LOGGER as BASE_LOGGER
 from custom_components.elasticsearch.logger import async_log_enter_exit_debug, log_enter_exit_debug
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from logging import Logger
     from typing import Any
 
@@ -55,7 +55,7 @@ class ElasticIntegration:
         self._logger = log
         self._config_entry = config_entry
 
-        self._logger.info("Initializing integration.")
+        self._logger.info("Initializing integration components.")
 
         # Initialize our Elasticsearch Gateway
         gateway_settings: Gateway8Settings = self.build_gateway_parameters(
@@ -88,21 +88,16 @@ class ElasticIntegration:
 
             raise
 
-    async def async_shutdown(self) -> bool:
+    async def async_shutdown(self) -> None:
         """Async shutdown procedure."""
-        try:
-            self._pipeline_manager.stop()
-            await self._gateway.stop()
-        except Exception:
-            self._logger.exception("Error stopping pipeline manager")
-
-        return True
+        self._pipeline_manager.stop()
+        await self._gateway.stop()
 
     @classmethod
     def build_gateway_parameters(
         cls,
         config_entry: ConfigEntry,
-        minimum_privileges: MappingProxyType[str, Any] | None = ES_CHECK_PERMISSIONS_DATASTREAM,
+        minimum_privileges: MappingProxyType[str, Any] = ES_CHECK_PERMISSIONS_DATASTREAM,
     ) -> Gateway8Settings:
         """Build the parameters for the Elasticsearch gateway."""
         return Gateway8Settings(
@@ -121,16 +116,15 @@ class ElasticIntegration:
     def build_pipeline_manager_parameters(cls, hass, gateway, config_entry: ConfigEntry) -> dict:
         """Build the parameters for the Elasticsearch pipeline manager."""
 
-        if config_entry.options is None:
-            msg = "Config entry options are required for the pipeline manager."
-            raise ValueError(msg)
+        # Options are never none, but mypy doesn't know that
+        assert config_entry.options is not None
 
         settings = PipelineSettings(
             polling_frequency=config_entry.options[CONF_POLLING_FREQUENCY],
             publish_frequency=config_entry.options[CONF_PUBLISH_FREQUENCY],
             change_detection_type=config_entry.options[CONF_CHANGE_DETECTION_TYPE],
             tags=config_entry.options[CONF_TAGS],
-            debug_filter=config_entry.options.get(CONF_DEBUG_FILTER, False),
+            debug_attribute_filtering=config_entry.options.get(CONF_DEBUG_ATTRIBUTE_FILTERING, False),
             include_targets=config_entry.options[CONF_INCLUDE_TARGETS],
             exclude_targets=config_entry.options[CONF_EXCLUDE_TARGETS],
             included_areas=config_entry.options[CONF_TARGETS_TO_INCLUDE].get("area_id", []),
