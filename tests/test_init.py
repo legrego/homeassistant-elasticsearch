@@ -895,7 +895,7 @@ class Test_Common_e2e:
             """Test the full integration setup and execution."""
             integration = ElasticIntegration(hass, config_entry)
 
-            assert {
+            assert snapshot == {
                 "gateway": integration._gateway.settings.to_dict(),
                 "pipeline": integration._pipeline_manager._settings,
-            } == snapshot
+            }

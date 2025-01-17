@@ -72,10 +72,10 @@ class Test_Normal_Configuration:
         assert es_mock_builder.mocker.call_count == 11
         config_entry.runtime_data._gateway._logger.error.assert_not_called()
 
-        assert {
+        assert snapshot == {
             "request": es_mock_builder.get_calls(),
             "info": config_entry.runtime_data._gateway._logger.info.call_args.args,
-        } == snapshot
+        }
 
     async def test_setup_to_publish_ping_error(
         self,
@@ -169,10 +169,10 @@ class Test_Normal_Configuration:
         await config_entry.runtime_data._pipeline_manager._publisher.publish()
 
         config_entry.runtime_data._gateway._logger.info.assert_not_called()
-        assert {
+        assert snapshot == {
             "request": es_mock_builder.get_calls(),
             "error": config_entry.runtime_data._gateway._logger.error.call_args.args,
-        } == snapshot
+        }
 
     async def test_setup_missing_authentication(
         self, hass: HomeAssistant, integration_setup, es_mock_builder, config_entry
