@@ -15,8 +15,8 @@ from custom_components.elasticsearch import (
 )
 from custom_components.elasticsearch.config_flow import ElasticFlowHandler
 from custom_components.elasticsearch.const import DOMAIN as ELASTIC_DOMAIN
+from custom_components.elasticsearch.errors import ESIntegrationException
 from custom_components.elasticsearch.es_integration import ElasticIntegration
-from elasticsearch.errors import ESIntegrationException
 from freezegun.api import FrozenDateTimeFactory
 from homeassistant.config_entries import ConfigEntryState, ConfigFlow
 from homeassistant.setup import async_setup_component
@@ -653,7 +653,7 @@ class Test_Public_Methods:
             ),
             mock.patch(
                 f"{MODULE}.es_integration.ElasticIntegration.async_init",
-                side_effect=ESIntegrationException(),
+                side_effect=ESIntegrationException,
             ),
         ):
             assert config_entry.state is ConfigEntryState.NOT_LOADED
@@ -677,7 +677,7 @@ class Test_Public_Methods:
             ),
             mock.patch(
                 f"{MODULE}.es_integration.ElasticIntegration.async_init",
-                side_effect=Exception(),
+                side_effect=Exception,
             ),
         ):
             assert config_entry.state is ConfigEntryState.NOT_LOADED
