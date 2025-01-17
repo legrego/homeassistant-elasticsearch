@@ -16,6 +16,7 @@ from custom_components.elasticsearch import (
 from custom_components.elasticsearch.config_flow import ElasticFlowHandler
 from custom_components.elasticsearch.const import DOMAIN as ELASTIC_DOMAIN
 from custom_components.elasticsearch.es_integration import ElasticIntegration
+from elasticsearch.errors import ESIntegrationException
 from freezegun.api import FrozenDateTimeFactory
 from homeassistant.config_entries import ConfigEntryState, ConfigFlow
 from homeassistant.setup import async_setup_component
@@ -636,6 +637,54 @@ class Test_Public_Methods:
 
         assert await hass.config_entries.async_unload(config_entry.entry_id)
         await hass.async_block_till_done()
+
+    async def test_async_setup_entry_async_init_integration_exception(
+        self,
+        hass: HomeAssistant,
+        integration_setup: Callable[[], Awaitable[bool]],
+        config_entry: ConfigEntry,
+        _block_shutdown,
+    ) -> None:
+        """Test setting up the integration."""
+        with (
+            mock.patch(
+                f"{MODULE}.es_integration.ElasticIntegration.__init__",
+                return_value=None,
+            ),
+            mock.patch(
+                f"{MODULE}.es_integration.ElasticIntegration.async_init",
+                side_effect=ESIntegrationException(),
+            ),
+        ):
+            assert config_entry.state is ConfigEntryState.NOT_LOADED
+
+            assert await integration_setup() is False
+
+            assert config_entry.state is ConfigEntryState.SETUP_ERROR
+
+    async def test_async_setup_entry_async_init_exception(
+        self,
+        hass: HomeAssistant,
+        integration_setup: Callable[[], Awaitable[bool]],
+        config_entry: ConfigEntry,
+        _block_shutdown,
+    ) -> None:
+        """Test setting up the integration."""
+        with (
+            mock.patch(
+                f"{MODULE}.es_integration.ElasticIntegration.__init__",
+                return_value=None,
+            ),
+            mock.patch(
+                f"{MODULE}.es_integration.ElasticIntegration.async_init",
+                side_effect=Exception(),
+            ),
+        ):
+            assert config_entry.state is ConfigEntryState.NOT_LOADED
+
+            assert await integration_setup() is False
+
+            assert config_entry.state is ConfigEntryState.SETUP_ERROR
 
     async def test_isolate_async_unload_entry(
         self,

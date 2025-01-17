@@ -332,6 +332,7 @@ class Test_Filterer:
             or should_include_on_label
         )
 
+
     @pytest.mark.parametrize(
         ("include_targets", "matches_include_targets", "passes_include"),
         [(True, True, True), (True, False, False), (False, False, True), (False, True, True)],
@@ -544,6 +545,38 @@ class Test_Manager:
                 "hass.entity.valueas.boolean": True,
             }
         ]
+
+    async def test_sip_queue_and_format_queue_empty(self, manager, formatter):
+        """Test queue_empty errors in the sip_queue method of the Pipeline.Manager class."""
+
+        manager._queue.empty = MagicMock(side_effect=[False, True])
+
+        with pytest.raises(RuntimeError):
+            [doc async for doc in manager.sip_queue()]
+
+        assert manager._formatter.format.call_count == 0
+
+    async def test_sip_queue_and_format_error(self, manager, formatter):
+        """Test formatting errors in the sip_queue method of the Pipeline.Manager class."""
+
+        manager._formatter.format = MagicMock(side_effect=Exception)
+
+        # Build a bus event to put onto the queue
+        timestamp = testconst.MOCK_NOON_APRIL_12TH_2023
+        new_state = State("light.light_1", "on")
+        reason = StateChangeType.STATE
+
+        # Add the sample event to the queue
+        manager._queue.put_nowait((timestamp, new_state, reason))
+
+        # Sip queue and append to result using async list comprehension
+        result = []
+        [result.append(doc) async for doc in manager.sip_queue()]
+
+        # Assert that the formatter was called
+        manager._logger.exception.assert_called_with(
+            "Error formatting document for entity [%s]. Skipping document.", "light.light_1"
+        )
 
     async def test_reload_config_entry(self, hass, config_entry, manager, mock_loop_handler):
         """Test the reload_config_entry method of the Pipeline.Manager class."""
