@@ -5,8 +5,12 @@ from __future__ import annotations
 from logging import Logger
 from typing import TYPE_CHECKING
 
+from elasticsearch.const import ELASTIC_DOMAIN
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady, IntegrationError
+from homeassistant.loader import (
+    async_get_integration,
+)
 
 from custom_components.elasticsearch.config_flow import ElasticFlowHandler
 from custom_components.elasticsearch.errors import (
@@ -38,7 +42,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ElasticIntegratio
     # Create an specific logger for this config entry
     _logger: Logger = have_child(name=config_entry.title)
 
-    _logger.info("Initializing integration for %s", config_entry.title)
+    version = await get_integration_version(hass)
+
+    _logger.info("Initializing integration v%s for %s", version, config_entry.title)
 
     try:
         integration = ElasticIntegration(hass=hass, config_entry=config_entry, log=_logger)
@@ -105,6 +111,15 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ElasticIntegrat
     )
 
     return True
+
+async def get_integration_version(hass) -> str:
+    """Return the version of the integration."""
+    integration = await async_get_integration(hass, ELASTIC_DOMAIN)
+
+    if integration is None or integration.version is None:
+        return "Unknown"
+
+    return integration.version.string
 
 
 @log_enter_exit_debug

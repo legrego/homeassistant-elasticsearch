@@ -55,7 +55,7 @@ class ElasticIntegration:
         self._logger = log
         self._config_entry = config_entry
 
-        self._logger.info("Initializing integration.")
+        self._logger.info("Initializing integration components.")
 
         # Initialize our Elasticsearch Gateway
         gateway_settings: Gateway8Settings = self.build_gateway_parameters(
