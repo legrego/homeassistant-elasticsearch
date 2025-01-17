@@ -141,7 +141,7 @@ class ExtendedRegistryEntry:
 
     @property
     def floor(self) -> floor_registry.FloorEntry | None:
-        """Return the Hass FloorEntry for the area of the entity."""
+        """Return the Hass FloorEntry of the floor of the entity."""
 
         if self.area is not None and self.area.floor_id is not None:
             return self._details.floor_registry.async_get_floor(self.area.floor_id)
