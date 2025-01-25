@@ -6,7 +6,6 @@
         },
         "editor.formatOnSave": true,
         "editor.defaultFormatter": "charliermarsh.ruff",
-        "editor.formatOnSaveMode": "modifications",
         "editor.rulers": [
             110
         ]
@@ -48,12 +47,6 @@
     ],
     "python.testing.pytestEnabled": true,
     "python.testing.unittestEnabled": false,
-    "ruff.configuration": "./.ruff.toml",
-    "ruff.configurationPreference": "filesystemFirst",
-    "ruff.format.args": [
-        "--config=./.ruff.toml"
-    ],
-    "ruff.showNotifications": "onWarning",
     "python.analysis.autoImportCompletions": true,
     "python.analysis.autoFormatStrings": true,
     "python.analysis.inlayHints.functionReturnTypes": true,

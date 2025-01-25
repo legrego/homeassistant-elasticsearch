@@ -8,6 +8,7 @@
 
 You can customize the mappings, settings and define an [ingest pipeline](https://www.elastic.co/guide/en/elasticsearch/reference/current/ingest.html) by creating a [component template](https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-component-template.html) called `metrics-homeassistant@custom`
 
+### Custom Ingest Pipeline
 
 The following is an example on how to push your Home Assistant metrics into an ingest pipeline called `metrics-homeassistant-pipeline`:
 
@@ -71,3 +72,67 @@ The following is an example on how to push your Home Assistant metrics into an i
     4. Add your ingest pipeline processors to the `processors` array
 
 Component template changes apply when the datastream performs a rollover so the first time you modify the template you may need to manually initiate index/datastream rollover to start applying the pipeline.
+
+### Custom Attribute mappings
+
+The following is an example on how to provide custom mappings for any attributes you're interested in making available as other data types `metrics-homeassistant-pipeline`:
+
+=== "Dev Tools"
+    Run these commands using Kibana's [Dev Tools console](https://www.elastic.co/guide/en/kibana/current/console-kibana.html):
+
+    ```
+    PUT /_component_template/metrics-homeassistant@custom
+    {
+        "template": {
+            "mappings": {
+                "properties": {
+                    "hass.entity.attributes": {
+                        "type": "object",
+                        "properties": {
+                            "temperature": {
+                                "type": "float"
+                                "ignore_malformed": true
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    ```
+
+=== "curl"
+
+    ```bash
+    ES_URL=https://localhost:9200 # (1)
+    ES_USER=elastic # (2)
+    ES_PASSWORD=changeme # (3)
+
+    curl -X PUT "$ES_URL/_component_template/metrics-homeassistant@custom" \
+        -u "$ES_USER":"ES_PASSWORD" \
+        -H "Content-Type: application/json" \
+        -d'
+        {
+            "template": {
+                "mappings": {
+                    "properties": {
+                        "hass.entity.attributes": {
+                            "type": "object",
+                            "properties": {
+                                "temperature": {
+                                    "type": "float"
+                                    "ignore_malformed": true
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        '
+    ```
+
+    1. Replace `https://localhost:9200` with the URL of your Elasticsearch instance
+    2. Replace `elastic` with your Elasticsearch username
+    3. Replace `changeme` with your Elasticsearch password
+    4. Modify the body of the component template to include desired mappings

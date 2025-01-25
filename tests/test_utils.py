@@ -24,24 +24,6 @@ def test_flatten_dict():
     }
     assert flatten_dict(nested_dict) == expected_result
 
-    # Test case 2: Flattening a nested dictionary with specified keys to keep
-    nested_dict = {
-        "a": 1,
-        "b": {
-            "c": 2,
-            "d": {
-                "e": 3,
-            },
-        },
-        "f": 4,
-    }
-    expected_result = {
-        "a": 1,
-        "b.c": 2,
-        "f": 4,
-    }
-    assert flatten_dict(nested_dict, keep_keys=["a", "b.c", "f"]) == expected_result
-
     # Test case 3: Flattening a nested dictionary with lists, sets, and tuples in various locations
     nested_dict = {
         "a": 1,
