@@ -4,9 +4,9 @@
 from unittest.mock import AsyncMock
 
 import pytest
+from custom_components.elasticsearch.datastreams import index_template
 from custom_components.elasticsearch.es_datastream_manager import DatastreamManager
-from elasticsearch.datastreams import index_template
-from elasticsearch.es_gateway import ElasticsearchGateway
+from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 
 
 @pytest.fixture
