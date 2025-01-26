@@ -52,5 +52,6 @@ Run Elasticsearch 8.7.0 (HTTPS Port 9200) and Kibana 8.7.0 (HTTP Port 5601) | La
 Run Elasticsearch 8.11.0 (HTTPS Port 9200) and Kibana 8.11.0 (HTTP Port 5601) | Launch Elasticsearch 8.11.0 and Kibana 8.11.0.
 Run Elasticsearch 8.13.0 (HTTPS Port 9200) and Kibana 8.13.0 (HTTP Port 5601) | Launch Elasticsearch 8.13.0 and Kibana 8.13.0.
 Setup EDOT Auto-instrumentation | Setup Elastic Distributed Tracing (EDOT) Auto-instrumentation.
+Run HA with Elasticsearch Component and Austin Profiling | Launch Home Assistant and Austin CPU Profiling.
 
 
