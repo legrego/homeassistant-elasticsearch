@@ -42,5 +42,10 @@
             "type": "shell",
             "command": "/bin/bash ./scripts/run_ek_8_14_0"
         },
+        {
+            "label": "Setup EDOT Auto-instrumentation",
+            "type": "shell",
+            "command": "/bin/bash ./.devcontainer/setup-otel-profiling.sh"
+        }
     ]
 }

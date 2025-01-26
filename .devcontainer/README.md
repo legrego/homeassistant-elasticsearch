@@ -27,6 +27,12 @@ When you open this repository with Visual Studio code you are asked to "Reopen i
 
 _If you don't see this notification, open the command palette and select `Remote-Containers: Reopen Folder in Container`._
 
+### Debugging
+
+There are four tasks available for debugging. `Debug HA with Elasticsearch Component`, `Debug HA with Elasticsearch Component and OTel`, `Debug Tests`, and `Run Tests`.
+
+After running `Debug HA with Elasticsearch Component and OTel` the first time, you will have to manually populate `.otelenv` with an OTLP endpoint and authentication key.
+
 ### Tasks
 
 The devcontainer comes with some useful tasks to help you with development, you can start these tasks by opening the command palette and select `Tasks: Run Task` then select the task you want to run.
@@ -45,5 +51,6 @@ Run Elasticsearch 8.0.0 (HTTPS Port 9200) and Kibana 8.0.0 (HTTP Port 5601) | La
 Run Elasticsearch 8.7.0 (HTTPS Port 9200) and Kibana 8.7.0 (HTTP Port 5601) | Launch Elasticsearch 8.7.0 and Kibana 8.7.0.
 Run Elasticsearch 8.11.0 (HTTPS Port 9200) and Kibana 8.11.0 (HTTP Port 5601) | Launch Elasticsearch 8.11.0 and Kibana 8.11.0.
 Run Elasticsearch 8.13.0 (HTTPS Port 9200) and Kibana 8.13.0 (HTTP Port 5601) | Launch Elasticsearch 8.13.0 and Kibana 8.13.0.
+Setup EDOT Auto-instrumentation | Setup Elastic Distributed Tracing (EDOT) Auto-instrumentation.
 
 
