@@ -1,138 +1,99 @@
 """Tests for the index manager class."""
 # noqa: F401 # pylint: disable=redefined-outer-name
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
-from custom_components.elasticsearch.datastreams.index_template import index_template_definition
+from custom_components.elasticsearch.datastreams import index_template
 from custom_components.elasticsearch.es_datastream_manager import DatastreamManager
+from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 
 
 @pytest.fixture
-async def datastream_manager(initialized_gateway):
+async def mock_gateway() -> AsyncMock:
+    """Return an ElasticsearchGateway instance."""
+    gateway = AsyncMock(ElasticsearchGateway)
+
+    gateway.get_index_template = AsyncMock()
+    gateway.put_index_template = AsyncMock()
+    gateway.get_datastream = AsyncMock()
+    gateway.rollover_datastream = AsyncMock()
+
+    return gateway
+
+
+@pytest.fixture
+async def datastream_manager(mock_gateway) -> DatastreamManager:
     """Return an DatastreamManager instance."""
+    return DatastreamManager(mock_gateway)
 
-    return DatastreamManager(initialized_gateway)
 
-
-class Test_DatastreamManager_Sync:
+class Test_Initialization:
     """Test the DatastreamManager class sync methods."""
 
-    async def test_init(self, datastream_manager, hass, gateway):
+    def test_init(self, mock_gateway):
         """Test the __init__ method."""
-        assert datastream_manager._gateway == gateway
 
+        datastream_manager = DatastreamManager(mock_gateway)
 
-@pytest.mark.asyncio
-class Test_DatastreamManager_Async:
-    """Test the DatastreamManager class async methods."""
+        assert datastream_manager is not None
+        assert datastream_manager._gateway == mock_gateway
 
-    async def test_async_init(self, datastream_manager):
-        """Test the async_init method."""
-
-        with (
-            patch.object(datastream_manager, "_create_index_template", AsyncMock()),
-            patch.object(datastream_manager, "_needs_index_template", return_value=False),
-            patch.object(datastream_manager, "_needs_index_template_update", return_value=False),
-        ):
-            await datastream_manager.async_init()
-
-    async def test_needs_index_template(self, datastream_manager):
-        """Test the _needs_index_template method."""
+    async def test_async_init_first_run(self, datastream_manager):
+        """Test initialization of the DatastreamManager with a fresh ES cluster."""
 
         datastream_manager._gateway.get_index_template = AsyncMock(
             return_value={"index_templates": []},
         )
 
-        result = await datastream_manager._needs_index_template()
+        await datastream_manager.async_init()
 
-        assert result
+        datastream_manager._gateway.get_index_template.assert_called_once()
+        datastream_manager._gateway.put_index_template.assert_called_once()
+        datastream_manager._gateway.rollover_datastream.assert_not_called()
 
-    @pytest.mark.asyncio
-    async def test_create_index_template(self, datastream_manager, snapshot):
-        """Test the _create_index_template method."""
+    async def test_async_init_second_run(self, datastream_manager):
+        """Test initialization of the DatastreamManager on a cluster that already contains the required index template."""
+        datastream_manager._gateway.get_index_template = AsyncMock(
+            return_value={
+                "index_templates": [
+                    {
+                        "name": "datastream_metrics",
+                        "index_template": {"version": index_template.index_template_definition["version"]},
+                    }
+                ]
+            },
+        )
 
-        with patch.object(datastream_manager, "_needs_index_template", return_value=True):
-            datastream_manager._gateway.put_index_template = AsyncMock()
+        await datastream_manager.async_init()
 
-            await datastream_manager._create_index_template()
+        assert datastream_manager._gateway.get_index_template.call_count == 2
+        datastream_manager._gateway.put_index_template.assert_not_called()
+        datastream_manager._gateway.rollover_datastream.assert_not_called()
 
-            datastream_manager._gateway.put_index_template.assert_called_once()
+    async def test_async_init_update_required(self, datastream_manager):
+        """Test initialization of the DatastreamManager with an existing ES cluster that requires an index template update and rollover."""
+        datastream_manager._gateway.get_index_template = AsyncMock(
+            return_value={
+                "index_templates": [{"name": "datastream_metrics", "index_template": {"version": 1}}]
+            },
+        )
 
-            call_args = datastream_manager._gateway.put_index_template.call_args.kwargs
-
-            assert call_args == snapshot
-
-    async def test_datastream_rollover(self, datastream_manager):
-        """Test the datastream_rollover method."""
-
-        datastream_manager._gateway.rollover_datastream = AsyncMock()
-
-        datastream_manager._gateway.get_datastreams = AsyncMock(
+        datastream_manager._gateway.get_datastream = AsyncMock(
             return_value={
                 "data_streams": [
                     {
                         "name": "metrics-homeassistant.sensor-default",
-                        "indices": ["metrics-homeassistant.sensor-default"],
-                        "data_stream": {
-                            "name": "metrics-homeassistant.sensor-default",
-                            "timestamp_field": {"name": "@timestamp"},
-                        },
                     },
                     {
                         "name": "metrics-homeassistant.counter-default",
-                        "indices": ["metrics-homeassistant.counter-default"],
-                        "data_stream": {
-                            "name": "metrics-homeassistant.counter-default",
-                            "timestamp_field": {"name": "@timestamp"},
-                        },
                     },
                 ]
             }
         )
 
-        await datastream_manager._rollover_ha_datastreams()
+        await datastream_manager.async_init()
 
-        datastream_manager._gateway.get_datastreams.assert_called_once()
-
+        assert datastream_manager._gateway.get_index_template.call_count == 2
+        datastream_manager._gateway.put_index_template.assert_called_once()
         assert datastream_manager._gateway.rollover_datastream.call_count == 2
-
-        datastream_manager._gateway.rollover_datastream.assert_called_with(
-            datastream="metrics-homeassistant.counter-default"
-        )
-
-    async def test_needs_index_template_update(self, datastream_manager, snapshot):
-        """Test the _needs_index_template_update method."""
-
-        datastream_manager._gateway.get_index_template = AsyncMock(
-            return_value={
-                "index_templates": [
-                    {
-                        "name": "datastream_metrics",
-                        "index_template": {"version": 1},
-                    }
-                ]
-            },
-        )
-
-        result = await datastream_manager._needs_index_template_update()
-
-        assert result
-
-    async def test_needs_index_template_no_update(self, datastream_manager, snapshot):
-        """Test the _needs_index_template_update method."""
-
-        datastream_manager._gateway.get_index_template = AsyncMock(
-            return_value={
-                "index_templates": [
-                    {
-                        "name": "datastream_metrics",
-                        "index_template": {"version": index_template_definition["version"]},
-                    }
-                ]
-            },
-        )
-
-        result = await datastream_manager._needs_index_template_update()
-
-        assert not result

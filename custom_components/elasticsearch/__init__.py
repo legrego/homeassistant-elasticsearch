@@ -7,8 +7,12 @@ from typing import TYPE_CHECKING
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady, IntegrationError
+from homeassistant.loader import (
+    async_get_integration,
+)
 
 from custom_components.elasticsearch.config_flow import ElasticFlowHandler
+from custom_components.elasticsearch.const import ELASTIC_DOMAIN
 from custom_components.elasticsearch.errors import (
     AuthenticationRequired,
     CannotConnect,
@@ -25,7 +29,7 @@ from custom_components.elasticsearch.logger import (
 
 from .es_integration import ElasticIntegration
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from homeassistant.core import HomeAssistant
 
 type ElasticIntegrationConfigEntry = ConfigEntry[ElasticIntegration]
@@ -38,7 +42,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ElasticIntegratio
     # Create an specific logger for this config entry
     _logger: Logger = have_child(name=config_entry.title)
 
-    _logger.info("Initializing integration for %s", config_entry.title)
+    version = await get_integration_version(hass)
+
+    _logger.info("Initializing integration v%s for %s", version, config_entry.title)
 
     try:
         integration = ElasticIntegration(hass=hass, config_entry=config_entry, log=_logger)
@@ -89,9 +95,9 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ElasticIntegrat
             config_entry,
             ElasticFlowHandler.VERSION,
         )
-    except ValueError:
+    except Exception:  # noqa: BLE001
         LOGGER.exception(
-            "Migration failed attempting to migrate from version %s to version %s. Ended on %s.",
+            "Migration failed attempting to migrate from version %s to version %s.",
             config_entry.version,
             ElasticFlowHandler.VERSION,
         )
@@ -105,6 +111,16 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ElasticIntegrat
     )
 
     return True
+
+
+async def get_integration_version(hass) -> str:
+    """Return the version of the integration."""
+    integration = await async_get_integration(hass, ELASTIC_DOMAIN)
+
+    if integration is None or integration.version is None:
+        return "Unknown"
+
+    return integration.version.string
 
 
 @log_enter_exit_debug
