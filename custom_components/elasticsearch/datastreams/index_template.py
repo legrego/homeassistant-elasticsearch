@@ -88,7 +88,6 @@ index_template_definition: dict[str, Any] = {
                                     "properties": {
                                         "id": {"type": "keyword"},
                                         "name": {"type": "keyword"},
-                                        "class": {"type": "keyword"},
                                         "labels": {"type": "keyword"},
                                         "area": {
                                             "type": "object",
@@ -106,6 +105,7 @@ index_template_definition: dict[str, Any] = {
                                         },
                                     },
                                 },
+                                "device_class": {"type": "keyword"},
                             },
                         }
                     },
@@ -147,5 +147,5 @@ index_template_definition: dict[str, Any] = {
     "ignore_missing_component_templates": "metrics-homeassistant@custom",
     "priority": 500,
     "data_stream": {},
-    "version": 5,
+    "version": 6,
 }
