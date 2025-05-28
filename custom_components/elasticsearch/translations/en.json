@@ -1,99 +1,100 @@
 {
-    "config": {
-        "abort": {
-            "reauth_successful": "Re-authentication was successful"
-        },
-        "error": {
-            "cannot_connect": "Failed to connect to host on port. Is it reachable?",
-            "invalid_basic_auth": "Invalid username or password.",
-            "invalid_api_key": "Invalid API Key.",
-            "insufficient_privileges": "Insufficient privileges for specified user.",
-            "missing_credentials": "This cluster requires authentication. Please provide a username and password.",
-            "untrusted_certificate": "Elasticsearch's server certificate could not be verified. Either disable TLS verification, or specify a custom CA path below.",
-            "unsupported_version": "Unsupported version of Elasticsearch detected. The minimum supported version is 7.11.0."
-        },
-        "step": {
-            "user": {
-                "title": "Elasticsearch Cluster Information",
-                "description": "Please provide the URL to access your elasticsearch cluster in the format http(s)://my_elasticsearch_server:port (https://my_elasticsearch:9200).",
-                "data": {
-                    "url": "URL to access the Elasticsearch Cluster"
-                }
-            },
-            "certificate_issues": {
-                "title": "Untrusted Certificate with SSL/TLS",
-                "description": "Elasticsearch's server certificate could not be verified. Either disable TLS verification, or specify a custom CA path below.",
-                "data": {
-                    "verify_ssl": "Verify TLS certificate (recommended)",
-                    "ssl_verify_hostname": "Verify hostname matches server certificate",
-                    "ssl_ca_path": "Fully qualified path to custom certificate authority"
-                }
-            },
-            "authentication_issues": {
-                "title": "Select an Authentication Method",
-                "description": "Choose an authentication method to connect to your Elasticsearch cluster.",
-                "data": {
-                    "basic_auth": "Authenticate via username/password",
-                    "api_key": "Authenticate via API Key"
-                }
-            },
-            "basic_auth": {
-                "title": "Authenticate via username/password",
-                "data": {
-                    "username": "Username",
-                    "password": "Password"
-                }
-            },
-            "api_key": {
-                "title": "Authenticate via API Key",
-                "data": {
-                    "api_key": "API Key"
-                }
-            },
-            "reauth_confirm": {
-                "title": "Reauthenticate",
-                "data": {
-                    "api_key": "API Key",
-                    "username": "Username",
-                    "password": "Password"
-                }
-            }
-        }
+  "config": {
+    "abort": {
+      "reauth_successful": "Re-authentication was successful"
     },
-    "options": {
-        "step": {
-            "options": {
-                "title": "Elastic Integration Settings",
-                "description": "Configure the polling and publishing settings for the Elastic integration.",
-                "data": {
-                    "publish_frequency": "Send events to Elasticsearch at this interval",
-                    "polling_frequency": "Gather all entity states at this interval",
-                    "change_detection_type": "Choose what types of entity changes to listen for and publish",
-                    "tags": "Tags to apply to all published events",
-                    "include_targets": "Toggle to only publish the set of targets below",
-                    "exclude_targets": "Toggle to exclude publishing the set of targets below",
-                    "targets_to_include": "Select the targets to include",
-                    "targets_to_exclude": "Select the targets to exclude"
-                },
-                "data_description": {
-                    "publish_frequency": "Set to zero to disable publishing.",
-                    "polling_frequency": "Set to zero to only publish entity changes."
-                }
-            }
-        }
+    "error": {
+      "cannot_connect": "Failed to connect to host on port. Is it reachable?",
+      "invalid_basic_auth": "Invalid username or password.",
+      "invalid_api_key": "Invalid API Key.",
+      "insufficient_privileges": "Insufficient privileges for specified user.",
+      "missing_credentials": "This cluster requires authentication. Please provide a username and password.",
+      "untrusted_certificate": "Elasticsearch's server certificate could not be verified. Either disable TLS verification, or specify a custom CA path below.",
+      "unsupported_version": "Unsupported version of Elasticsearch detected. The minimum supported version is 7.11.0."
     },
-    "selector": {
-        "authentication_issues": {
-            "options": {
-                "api_key": "Authenticate using an API Key",
-                "basic_auth": "Authenticate using Username/Password"
-            }
-        },
-        "change_detection_type": {
-            "options": {
-                "state": "Track entities with state changes",
-                "attribute": "Track entities with attribute changes"
-            }
+    "step": {
+      "user": {
+        "title": "Elasticsearch Cluster Information",
+        "description": "Please provide the URL to access your elasticsearch cluster in the format http(s)://my_elasticsearch_server:port (https://my_elasticsearch:9200).",
+        "data": {
+          "url": "URL to access the Elasticsearch Cluster"
         }
+      },
+      "certificate_issues": {
+        "title": "Untrusted Certificate with SSL/TLS",
+        "description": "Elasticsearch's server certificate could not be verified. Either disable TLS verification, or specify a custom CA path below.",
+        "data": {
+          "verify_ssl": "Verify TLS certificate (recommended)",
+          "ssl_verify_hostname": "Verify hostname matches server certificate",
+          "ssl_ca_path": "Fully qualified path to custom certificate authority"
+        }
+      },
+      "authentication_issues": {
+        "title": "Select an Authentication Method",
+        "description": "Choose an authentication method to connect to your Elasticsearch cluster.",
+        "data": {
+          "basic_auth": "Authenticate via username/password",
+          "api_key": "Authenticate via API Key"
+        }
+      },
+      "basic_auth": {
+        "title": "Authenticate via username/password",
+        "data": {
+          "username": "Username",
+          "password": "Password"
+        }
+      },
+      "api_key": {
+        "title": "Authenticate via API Key",
+        "data": {
+          "api_key": "API Key"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Reauthenticate",
+        "data": {
+          "api_key": "API Key",
+          "username": "Username",
+          "password": "Password"
+        }
+      }
     }
+  },
+  "options": {
+    "step": {
+      "options": {
+        "title": "Elastic Integration Settings",
+        "description": "Configure the polling and publishing settings for the Elastic integration.",
+        "data": {
+          "publish_frequency": "Send events to Elasticsearch at this interval",
+          "polling_frequency": "Gather all entity states at this interval",
+          "change_detection_type": "Choose what types of entity changes to listen for and publish",
+          "tags": "Tags to apply to all published events",
+          "filter_out_zero_float": "Exlude events where numerical value is 0",
+          "include_targets": "Toggle to only publish the set of targets below",
+          "exclude_targets": "Toggle to exclude publishing the set of targets below",
+          "targets_to_include": "Select the targets to include",
+          "targets_to_exclude": "Select the targets to exclude"
+        },
+        "data_description": {
+          "publish_frequency": "Set to zero to disable publishing.",
+          "polling_frequency": "Set to zero to only publish entity changes."
+        }
+      }
+    }
+  },
+  "selector": {
+    "authentication_issues": {
+      "options": {
+        "api_key": "Authenticate using an API Key",
+        "basic_auth": "Authenticate using Username/Password"
+      }
+    },
+    "change_detection_type": {
+      "options": {
+        "state": "Track entities with state changes",
+        "attribute": "Track entities with attribute changes"
+      }
+    }
+  }
 }
