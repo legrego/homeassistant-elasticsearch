@@ -31,6 +31,7 @@ from homeassistant.helpers.selector import (
 from custom_components.elasticsearch.const import (
     CONF_AUTHENTICATION_TYPE,
     CONF_CHANGE_DETECTION_TYPE,
+    CONF_FILTER_OUT_ZERO_FLOAT,
     CONF_EXCLUDE_TARGETS,
     CONF_INCLUDE_TARGETS,
     CONF_POLLING_FREQUENCY,
@@ -361,6 +362,7 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
         CONF_PUBLISH_FREQUENCY: ONE_MINUTE,
         CONF_POLLING_FREQUENCY: ONE_MINUTE,
         CONF_CHANGE_DETECTION_TYPE: [StateChangeType.STATE.value, StateChangeType.ATTRIBUTE.value],
+        CONF_FILTER_OUT_ZERO_FLOAT: False,
         CONF_INCLUDE_TARGETS: False,
         CONF_EXCLUDE_TARGETS: False,
         CONF_TARGETS_TO_INCLUDE: {},
@@ -419,6 +421,10 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
             "schema": CONF_TAGS,
             "default": from_options(CONF_TAGS),
         }
+        SCHEMA_FILTER_OUT_ZERO_FLOAT = {
+            "schema": CONF_FILTER_OUT_ZERO_FLOAT,
+            "default": from_options(CONF_FILTER_OUT_ZERO_FLOAT),
+        }
         SCHEMA_INCLUDE_TARGETS = {
             "schema": CONF_INCLUDE_TARGETS,
             "default": from_options(CONF_INCLUDE_TARGETS),
@@ -464,6 +470,9 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
                 ),
                 vol.Optional(**SCHEMA_TAGS): SelectSelector(
                     SelectSelectorConfig(options=[], custom_value=True, multiple=True)
+                ),
+                vol.Optional(**SCHEMA_FILTER_OUT_ZERO_FLOAT): BooleanSelector(
+                    BooleanSelectorConfig(),
                 ),
                 vol.Optional(**SCHEMA_INCLUDE_TARGETS): BooleanSelector(
                     BooleanSelectorConfig(),
