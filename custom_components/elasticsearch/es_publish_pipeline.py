@@ -87,6 +87,7 @@ class PipelineSettings:
         include_targets: bool,
         exclude_targets: bool,
         debug_attribute_filtering: bool,
+        filter_out_zero_float: bool,
         included_areas: list[str],
         excluded_areas: list[str],
         included_labels: list[str],
@@ -106,6 +107,7 @@ class PipelineSettings:
         self.change_detection_type: list[StateChangeType] = change_detection_type
         self.tags: list[str] = tags
         self.debug_attribute_filtering: bool = debug_attribute_filtering
+        self.filter_out_zero_float: bool = filter_out_zero_float
         self.include_targets: bool = include_targets
         self.exclude_targets: bool = exclude_targets
         self.included_labels: list[str] = included_labels
@@ -281,7 +283,7 @@ class Pipeline:
         ) -> None:
             """Initialize the filterer."""
             self._logger = log if log else BASE_LOGGER
-
+            self._filter_out_zero_float: bool = settings.filter_out_zero_float
             self._include_targets: bool = settings.include_targets
             self._exclude_targets: bool = settings.exclude_targets
 
@@ -325,6 +327,18 @@ class Pipeline:
             if not self._passes_change_detection_type_filter(reason):
                 return False
 
+            if self._filter_out_zero_float:
+                succeeded_as_boolean, _ = Pipeline.Formatter.try_state_as_boolean(state)
+                if not succeeded_as_boolean:
+                    # If not a boolean, try as number
+                    succeeded_as_number, numeric_value = Pipeline.Formatter.try_state_as_number(state)
+                    if succeeded_as_number and numeric_value == 0.0:
+                        # This state would result in "hass.entity.valueas": {"float": 0.0} in Elasticsearch.
+                        return self._reject(
+                            base_msg, 
+                            "State value 0.0 is ignored according to configuration."
+                        )
+            
             entity: RegistryEntry | None = self._entity_registry.async_get(state.entity_id)
 
             if not entity:
