@@ -320,7 +320,7 @@ async def test_basic_auth_flow_missing_index_privilege(
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
     )
-    assert result["type"] == FlowResultType.FORM
+    assert result["type"] == FlowResultType.MENU
     assert result["step_id"] == "user"
 
     result = await hass.config_entries.flow.async_configure(
