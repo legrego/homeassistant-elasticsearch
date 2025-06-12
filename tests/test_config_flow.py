@@ -106,8 +106,7 @@ async def test_no_auth_flow_unsupported_version(
 
     es_url = "http://minimum-fields:9200"
 
-    mock_es_initialization(es_aioclient_mock, url=es_url,
-                           mock_unsupported_version=True)
+    mock_es_initialization(es_aioclient_mock, url=es_url, mock_unsupported_version=True)
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], user_input={"url": es_url}
@@ -328,7 +327,7 @@ async def test_basic_auth_flow_missing_index_privilege(
         result["flow_id"], user_input={"next_step_id": "basic_auth"}
     )
 
-    assert result["type"] == FlowResultType.FORM
+    assert result["type"] == FlowResultType.MENU
     assert result["step_id"] == "basic_auth"
 
     es_url = "http://basic-auth-flow:9200"
@@ -560,8 +559,7 @@ async def test_step_import_already_exist(
     result = await hass.config_entries.flow.async_init(
         DOMAIN,
         context={"source": "import"},
-        data={"url": "http://other-url:9200",
-              "username": "xyz321", "password": "123"},
+        data={"url": "http://other-url:9200", "username": "xyz321", "password": "123"},
     )
     assert result["type"] == FlowResultType.ABORT
     assert result["reason"] == "single_instance_allowed"
