@@ -327,7 +327,7 @@ async def test_basic_auth_flow_missing_index_privilege(
         result["flow_id"], user_input={"next_step_id": "basic_auth"}
     )
 
-    assert result["type"] == FlowResultType.MENU
+    assert result["type"] == FlowResultType.FORM
     assert result["step_id"] == "basic_auth"
 
     es_url = "http://basic-auth-flow:9200"
