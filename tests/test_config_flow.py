@@ -4,7 +4,6 @@ from unittest.mock import MagicMock
 
 import aiohttp
 import pytest
-from homeassistant import data_entry_flow
 from homeassistant.config_entries import SOURCE_REAUTH, SOURCE_USER
 from homeassistant.const import (
     CONF_ALIAS,
@@ -14,6 +13,7 @@ from homeassistant.const import (
     CONF_USERNAME,
 )
 from homeassistant.core import HomeAssistant
+from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
@@ -52,14 +52,14 @@ async def test_no_auth_flow_isolate(
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
     )
-    assert result["type"] == data_entry_flow.RESULT_TYPE_MENU
+    assert result["type"] == FlowResultType.MENU
     assert result["step_id"] == "user"
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], user_input={"next_step_id": "no_auth"}
     )
 
-    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["type"] == FlowResultType.FORM
     assert result["step_id"] == "no_auth"
 
     es_url = "http://minimum-fields:9200"
@@ -77,7 +77,7 @@ async def test_no_auth_flow_isolate(
         result["flow_id"], user_input={"url": es_url}
     )
 
-    assert result["type"] == data_entry_flow.RESULT_TYPE_CREATE_ENTRY
+    assert result["type"] == FlowResultType.CREATE_ENTRY
     assert result["title"] == es_url
     assert result["data"]["url"] == es_url
     assert result["data"].get("username") is None
@@ -97,7 +97,7 @@ async def test_no_auth_flow_unsupported_version(
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
     )
-    assert result["type"] == data_entry_flow.RESULT_TYPE_MENU
+    assert result["type"] == FlowResultType.MENU
     assert result["step_id"] == "user"
 
     result = await hass.config_entries.flow.async_configure(
@@ -112,7 +112,7 @@ async def test_no_auth_flow_unsupported_version(
         result["flow_id"], user_input={"url": es_url}
     )
 
-    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["type"] == FlowResultType.FORM
     assert result["step_id"] == "no_auth"
     assert result["errors"]["base"] == "unsupported_version"
 
@@ -125,7 +125,7 @@ async def test_no_auth_flow_with_tls_error(
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
     )
-    assert result["type"] == data_entry_flow.RESULT_TYPE_MENU
+    assert result["type"] == FlowResultType.MENU
     assert result["step_id"] == "user"
 
     result = await hass.config_entries.flow.async_configure(
@@ -153,7 +153,7 @@ async def test_no_auth_flow_with_tls_error(
         result["flow_id"], user_input={"url": es_url}
     )
 
-    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["type"] == FlowResultType.FORM
     assert result["errors"]["base"] == "untrusted_connection"
     assert result["step_id"] == "no_auth"
     assert "data" not in result
@@ -167,7 +167,7 @@ async def test_flow_fails_es_unavailable(
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
     )
-    assert result["type"] == data_entry_flow.RESULT_TYPE_MENU
+    assert result["type"] == FlowResultType.MENU
     assert result["step_id"] == "user"
 
     result = await hass.config_entries.flow.async_configure(
@@ -184,7 +184,7 @@ async def test_flow_fails_es_unavailable(
         result["flow_id"], user_input={"url": es_url}
     )
 
-    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["type"] == FlowResultType.FORM
     assert result["errors"]["base"] == "cannot_connect"
     assert result["step_id"] == "no_auth"
     assert "data" not in result
@@ -198,7 +198,7 @@ async def test_flow_fails_unauthorized(
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
     )
-    assert result["type"] == data_entry_flow.RESULT_TYPE_MENU
+    assert result["type"] == FlowResultType.MENU
     assert result["step_id"] == "user"
 
     result = await hass.config_entries.flow.async_configure(
@@ -215,7 +215,7 @@ async def test_flow_fails_unauthorized(
         result["flow_id"], user_input={"url": es_url}
     )
 
-    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["type"] == FlowResultType.FORM
     assert result["errors"]["base"] == "invalid_basic_auth"
     assert result["step_id"] == "no_auth"
     assert "data" not in result
@@ -230,14 +230,14 @@ async def test_basic_auth_flow(
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
     )
-    assert result["type"] == data_entry_flow.RESULT_TYPE_MENU
+    assert result["type"] == FlowResultType.MENU
     assert result["step_id"] == "user"
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], user_input={"next_step_id": "basic_auth"}
     )
 
-    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["type"] == FlowResultType.FORM
     assert result["step_id"] == "basic_auth"
 
     es_url = "http://basic-auth-flow:9200"
@@ -259,7 +259,7 @@ async def test_basic_auth_flow(
         },
     )
 
-    assert result["type"] == data_entry_flow.RESULT_TYPE_CREATE_ENTRY
+    assert result["type"] == FlowResultType.CREATE_ENTRY
     assert result["title"] == es_url
     assert result["data"]["url"] == es_url
     assert result["data"]["username"] == "hass_writer"
@@ -280,14 +280,14 @@ async def test_basic_auth_flow_unauthorized(
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
     )
-    assert result["type"] == data_entry_flow.RESULT_TYPE_MENU
+    assert result["type"] == FlowResultType.MENU
     assert result["step_id"] == "user"
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], user_input={"next_step_id": "basic_auth"}
     )
 
-    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["type"] == FlowResultType.FORM
     assert result["step_id"] == "basic_auth"
 
     es_url = "http://basic-auth-flow:9200"
@@ -305,7 +305,7 @@ async def test_basic_auth_flow_unauthorized(
         },
     )
 
-    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["type"] == FlowResultType.FORM
     assert result["errors"]["base"] == "invalid_basic_auth"
     assert result["step_id"] == "basic_auth"
     assert "data" not in result
@@ -320,14 +320,14 @@ async def test_basic_auth_flow_missing_index_privilege(
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
     )
-    assert result["type"] == data_entry_flow.RESULT_TYPE_MENU
+    assert result["type"] == FlowResultType.MENU
     assert result["step_id"] == "user"
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], user_input={"next_step_id": "basic_auth"}
     )
 
-    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["type"] == FlowResultType.FORM
     assert result["step_id"] == "basic_auth"
 
     es_url = "http://basic-auth-flow:9200"
@@ -345,7 +345,7 @@ async def test_basic_auth_flow_missing_index_privilege(
         },
     )
 
-    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["type"] == FlowResultType.FORM
     assert result["errors"]["base"] == "insufficient_privileges"
     assert result["step_id"] == "basic_auth"
     assert "data" not in result
@@ -561,7 +561,7 @@ async def test_step_import_already_exist(
         context={"source": "import"},
         data={"url": "http://other-url:9200", "username": "xyz321", "password": "123"},
     )
-    assert result["type"] == data_entry_flow.FlowResultType.ABORT
+    assert result["type"] == FlowResultType.ABORT
     assert result["reason"] == "single_instance_allowed"
 
 
@@ -594,7 +594,7 @@ async def test_step_import_update_existing(
             CONF_INDEX_MODE: "index",
         },
     )
-    assert result["type"] == data_entry_flow.FlowResultType.ABORT
+    assert result["type"] == FlowResultType.ABORT
     assert result["reason"] == "updated_entry"
 
 
@@ -607,14 +607,14 @@ async def test_api_key_flow(
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
     )
-    assert result["type"] == data_entry_flow.RESULT_TYPE_MENU
+    assert result["type"] == FlowResultType.MENU
     assert result["step_id"] == "user"
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], user_input={"next_step_id": "api_key"}
     )
 
-    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["type"] == FlowResultType.FORM
     assert result["step_id"] == "api_key"
 
     es_url = "http://api_key-flow:9200"
@@ -629,7 +629,7 @@ async def test_api_key_flow(
         },
     )
 
-    assert result["type"] == data_entry_flow.RESULT_TYPE_CREATE_ENTRY
+    assert result["type"] == FlowResultType.CREATE_ENTRY
     assert result["title"] == es_url
     assert result["data"]["url"] == es_url
     assert result["data"].get("username") is None
@@ -649,14 +649,14 @@ async def test_api_key_flow_fails_unauthorized(
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
     )
-    assert result["type"] == data_entry_flow.RESULT_TYPE_MENU
+    assert result["type"] == FlowResultType.MENU
     assert result["step_id"] == "user"
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], user_input={"next_step_id": "api_key"}
     )
 
-    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["type"] == FlowResultType.FORM
     assert result["step_id"] == "api_key"
 
     es_url = "http://api_key-unauthorized-flow:9200"
@@ -673,7 +673,7 @@ async def test_api_key_flow_fails_unauthorized(
         },
     )
 
-    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["type"] == FlowResultType.FORM
     assert result["errors"]["base"] == "invalid_api_key"
     assert result["step_id"] == "api_key"
     assert "data" not in result
@@ -691,28 +691,28 @@ async def test_modern_options_flow(hass: HomeAssistant, es_aioclient_mock) -> No
         DOMAIN, context={"source": SOURCE_USER}, data={}
     )
     await hass.async_block_till_done()
-    assert result["type"] == data_entry_flow.RESULT_TYPE_MENU
+    assert result["type"] == FlowResultType.MENU
     assert result["step_id"] == "user"
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], user_input={"next_step_id": "no_auth"}
     )
 
-    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert result["type"] == FlowResultType.FORM
     assert result["step_id"] == "no_auth"
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], user_input={"url": es_url}
     )
 
-    assert result["type"] == data_entry_flow.RESULT_TYPE_CREATE_ENTRY
+    assert result["type"] == FlowResultType.CREATE_ENTRY
     entry = result["result"]
 
     options_result = await hass.config_entries.options.async_init(
         entry.entry_id, data=None
     )
 
-    assert options_result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert options_result["type"] == FlowResultType.FORM
     assert options_result["step_id"] == "publish_options"
 
     # this last step *might* attempt to use a real connection instead of our mock...
@@ -721,7 +721,7 @@ async def test_modern_options_flow(hass: HomeAssistant, es_aioclient_mock) -> No
         options_result["flow_id"], user_input={}
     )
 
-    assert options_result["type"] == data_entry_flow.RESULT_TYPE_CREATE_ENTRY
+    assert options_result["type"] == FlowResultType.CREATE_ENTRY
 
 
 @pytest.mark.asyncio
@@ -754,14 +754,14 @@ async def test_legacy_options_flow(hass: HomeAssistant, es_aioclient_mock) -> No
         entry.entry_id, data={}
     )
 
-    assert options_result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert options_result["type"] == FlowResultType.FORM
     assert options_result["step_id"] == "publish_options"
 
     options_result = await hass.config_entries.options.async_configure(
         options_result["flow_id"], user_input={}
     )
 
-    assert options_result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    assert options_result["type"] == FlowResultType.FORM
     assert options_result["step_id"] == "ilm_options"
 
     # this last step *might* attempt to use a real connection instead of our mock...
@@ -770,4 +770,4 @@ async def test_legacy_options_flow(hass: HomeAssistant, es_aioclient_mock) -> No
         options_result["flow_id"], user_input={}
     )
 
-    assert options_result["type"] == data_entry_flow.RESULT_TYPE_CREATE_ENTRY
+    assert options_result["type"] == FlowResultType.CREATE_ENTRY
