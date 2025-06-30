@@ -70,6 +70,7 @@
                     "polling_frequency": "Gather all entity states at this interval",
                     "change_detection_type": "Choose what types of entity changes to listen for and publish",
                     "tags": "Tags to apply to all published events",
+                    "filter_out_zero_float": "Exlude events where numerical value is 0",
                     "include_targets": "Toggle to only publish the set of targets below",
                     "exclude_targets": "Toggle to exclude publishing the set of targets below",
                     "targets_to_include": "Select the targets to include",
