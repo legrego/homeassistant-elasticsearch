@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/vscode/devcontainers/python:3.12-bookworm
+FROM mcr.microsoft.com/vscode/devcontainers/python:3.13-bookworm
 
 RUN apt-get update && apt-get install -y apt-transport-https gnupg2 procps less curl
 
