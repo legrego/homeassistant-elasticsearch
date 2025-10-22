@@ -27,7 +27,9 @@ from pytest_homeassistant_custom_component.common import (
 from pytest_homeassistant_custom_component.common import (
     mock_config_flow as new_mock_config_flow,
 )
-from pytest_homeassistant_custom_component.common import mock_integration as new_mock_integration
+from pytest_homeassistant_custom_component.common import (
+    mock_integration as new_mock_integration,
+)
 from pytest_homeassistant_custom_component.common import (
     mock_platform as new_mock_platform,
 )
@@ -765,8 +767,7 @@ class Test_Public_Methods:
         component.async_unload_entry = AsyncMock(return_value=True)
 
         assert config_entry.state is ConfigEntryState.NOT_LOADED
-
-        config_entry.version = 5
+        hass.config_entries.async_update_entry(config_entry, version=5)
 
         # Mock migrate_data_and_options_to_version and make sure it wasn't called during setup
         with (
@@ -809,13 +810,17 @@ class Test_Public_Methods:
 
         assert config_entry.state is ConfigEntryState.NOT_LOADED
 
-        config_entry.version = ElasticFlowHandler.VERSION - 1
+        hass.config_entries.async_update_entry(config_entry, version=ElasticFlowHandler.VERSION - 1)
 
         # Mock migrate_data_and_options_to_version and make sure it wasn't called during setup
         with (
             mock.patch(
                 f"{MODULE}.migrate_data_and_options_to_version",
-                return_value=(config_entry.data, config_entry.options, ElasticFlowHandler.VERSION),
+                return_value=(
+                    config_entry.data,
+                    config_entry.options,
+                    ElasticFlowHandler.VERSION,
+                ),
             ) as mock_migrate_config,
             mock.patch.object(
                 hass.config_entries,

@@ -600,7 +600,23 @@
       'id': 'entity_area',
       'name': 'entity area',
     }),
-    'device': None,
+    'device': dict({
+      'area': dict({
+        'floor': dict({
+          'id': 'device_floor',
+          'name': 'device floor',
+        }),
+        'id': 'device_area',
+        'name': 'device area',
+      }),
+      'id': 'very_unique_device_id',
+      'labels': list([
+        'device label 1',
+        'device label 2',
+        'device label 3',
+      ]),
+      'name': 'device name',
+    }),
     'device_class': 'user-modified entity device class',
     'domain': 'counter',
     'friendly_name': 'entity object id',

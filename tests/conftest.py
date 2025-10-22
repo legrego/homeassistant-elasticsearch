@@ -515,8 +515,8 @@ async def entity(
     entity_unit_of_measurement,
     entity_original_name: str,
     entity_name: str,
-    device_id: str,
-    request,
+    attach_device: bool,
+    device: DeviceEntry,
 ):
     """Mock an entity."""
     entity_registry.async_get_or_create(
@@ -542,8 +542,9 @@ async def entity(
     if entity_area is not None:
         entity_registry.async_update_entity(entity_id=entity_id, area_id=entity_area.id)
 
-    if device_id is not None:
-        entity_registry.async_update_entity(entity_id=entity_id, device_id=device_id)
+    # Only attach device if requested and device is available
+    if attach_device and device is not None:
+        entity_registry.async_update_entity(entity_id=entity_id, device_id=device.id)
 
     return entity_registry.async_get(entity_id)
 

@@ -53,6 +53,7 @@ class Test_ExtendedEntityDetails:
         assert details.device_registry is not None
         assert details.entity_registry is not None
 
+    @pytest.mark.parametrize("attach_device", [False])
     async def test_get_entity(self, entity, entity_id, details, mock_extended_registry):
         """Test retrieving extended details on an entity with no device."""
         details.async_get(entity_id)
@@ -229,7 +230,13 @@ class Test_ExtendedRegistryEntry:
         ],
     )
     async def test_name_handling(
-        self, entity_registry, details, entity, entity_original_name, entity_name, expected_name
+        self,
+        entity_registry,
+        details,
+        entity,
+        entity_original_name,
+        entity_name,
+        expected_name,
     ):
         """Test our handling of the name and original_name properties."""
 
@@ -241,7 +248,11 @@ class Test_ExtendedRegistryEntry:
         assert extended_entity.name == expected_name
 
     @pytest.mark.parametrize(
-        ("entity_original_device_class", "entity_device_class", "expected_device_class"),
+        (
+            "entity_original_device_class",
+            "entity_device_class",
+            "expected_device_class",
+        ),
         [
             ("Original", "New", "New"),
             ("Original", None, "Original"),

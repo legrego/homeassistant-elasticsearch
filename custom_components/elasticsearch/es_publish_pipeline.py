@@ -12,22 +12,32 @@ from logging import Logger
 from math import isinf, isnan
 from typing import TYPE_CHECKING, Any
 
+from homeassistant.components.lock.const import LockState
 from homeassistant.components.sun.const import STATE_ABOVE_HORIZON, STATE_BELOW_HORIZON
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.const import (
     EVENT_STATE_CHANGED,
     STATE_CLOSED,
     STATE_HOME,
-    STATE_LOCKED,
     STATE_NOT_HOME,
     STATE_OFF,
     STATE_ON,
     STATE_OPEN,
     STATE_UNKNOWN,
-    STATE_UNLOCKED,
 )
-from homeassistant.core import Event, EventStateChangedData, HomeAssistant, State, callback
-from homeassistant.helpers import area_registry, device_registry, entity_registry, label_registry
+from homeassistant.core import (
+    Event,
+    EventStateChangedData,
+    HomeAssistant,
+    State,
+    callback,
+)
+from homeassistant.helpers import (
+    area_registry,
+    device_registry,
+    entity_registry,
+    label_registry,
+)
 from homeassistant.helpers import state as state_helper
 from homeassistant.util import dt as dt_util
 from homeassistant.util.logging import async_create_catching_coro
@@ -504,7 +514,10 @@ class Pipeline:
         """Formats state changes into documents."""
 
         def __init__(
-            self, hass: HomeAssistant, settings: PipelineSettings, log: Logger = BASE_LOGGER
+            self,
+            hass: HomeAssistant,
+            settings: PipelineSettings,
+            log: Logger = BASE_LOGGER,
         ) -> None:
             """Initialize the formatter."""
             self._logger = log if log else BASE_LOGGER
@@ -547,7 +560,10 @@ class Pipeline:
             document["friendly_name"] = state.name
 
             if state.attributes.get("longitude") and state.attributes.get("latitude"):
-                document["location"] = [state.attributes.get("longitude"), state.attributes.get("latitude")]
+                document["location"] = [
+                    state.attributes.get("longitude"),
+                    state.attributes.get("latitude"),
+                ]
 
             return document
 
@@ -692,7 +708,7 @@ class Pipeline:
             if state.state in (
                 "true",
                 STATE_ON,
-                STATE_LOCKED,
+                LockState.LOCKED,
                 STATE_ABOVE_HORIZON,
                 STATE_OPEN,
                 STATE_HOME,
@@ -701,7 +717,7 @@ class Pipeline:
             if state.state in (
                 "false",
                 STATE_OFF,
-                STATE_UNLOCKED,
+                LockState.UNLOCKED,
                 STATE_UNKNOWN,
                 STATE_BELOW_HORIZON,
                 STATE_CLOSED,
