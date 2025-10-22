@@ -1,4 +1,6 @@
 name: Pull actions
+permissions:
+  contents: read
 
 on:
   pull_request:
