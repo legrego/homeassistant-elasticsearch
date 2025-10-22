@@ -7,6 +7,16 @@ from unittest import mock
 from unittest.mock import AsyncMock
 
 import pytest
+from custom_components.elasticsearch import (
+    async_migrate_entry,
+    async_setup_entry,
+    async_unload_entry,
+    migrate_data_and_options_to_version,
+)
+from custom_components.elasticsearch.config_flow import ElasticFlowHandler
+from custom_components.elasticsearch.const import DOMAIN as ELASTIC_DOMAIN
+from custom_components.elasticsearch.errors import ESIntegrationException
+from custom_components.elasticsearch.es_integration import ElasticIntegration
 from freezegun.api import FrozenDateTimeFactory
 from homeassistant.config_entries import ConfigEntryState, ConfigFlow
 from homeassistant.setup import async_setup_component
@@ -25,16 +35,6 @@ from pytest_homeassistant_custom_component.common import (
 )
 from syrupy.assertion import SnapshotAssertion
 
-from custom_components.elasticsearch import (
-    async_migrate_entry,
-    async_setup_entry,
-    async_unload_entry,
-    migrate_data_and_options_to_version,
-)
-from custom_components.elasticsearch.config_flow import ElasticFlowHandler
-from custom_components.elasticsearch.const import DOMAIN as ELASTIC_DOMAIN
-from custom_components.elasticsearch.errors import ESIntegrationException
-from custom_components.elasticsearch.es_integration import ElasticIntegration
 from tests import const
 
 if TYPE_CHECKING:
@@ -85,9 +85,7 @@ def _config_flow(mock_platform, mock_flow):
 
 
 @pytest.fixture(name="mock_integration")
-async def mock_integration_fixture(
-    hass: HomeAssistant, _config_flow, mock_module: MockModule
-) -> Integration:
+async def mock_integration_fixture(hass: HomeAssistant, _config_flow, mock_module: MockModule) -> Integration:
     """Mock an integration which has the same root methods but does not have a config_flow.
 
     Use this to simplify mocking of the root methods of __init__.py.
@@ -119,11 +117,9 @@ class Test_Config_Migration:
             title="ES Config",
         )
 
-        migrated_data, migrated_options, end_version = (
-            migrate_data_and_options_to_version(
-                mock_entry,
-                desired_version=after_version,
-            )
+        migrated_data, migrated_options, end_version = migrate_data_and_options_to_version(
+            mock_entry,
+            desired_version=after_version,
         )
 
         assert mock_entry
@@ -790,9 +786,7 @@ class Test_Public_Methods:
             mock_async_update_entry.assert_not_called()
             assert mock_migrate_config_to_6.called
 
-            updated_config_entry = hass.config_entries.async_get_entry(
-                config_entry.entry_id
-            )
+            updated_config_entry = hass.config_entries.async_get_entry(config_entry.entry_id)
             assert updated_config_entry is not None
 
             assert updated_config_entry.state is ConfigEntryState.MIGRATION_ERROR
@@ -816,9 +810,7 @@ class Test_Public_Methods:
 
         assert config_entry.state is ConfigEntryState.NOT_LOADED
 
-        hass.config_entries.async_update_entry(
-            config_entry, version=ElasticFlowHandler.VERSION - 1
-        )
+        hass.config_entries.async_update_entry(config_entry, version=ElasticFlowHandler.VERSION - 1)
 
         # Mock migrate_data_and_options_to_version and make sure it wasn't called during setup
         with (
@@ -841,9 +833,7 @@ class Test_Public_Methods:
             assert mock_async_update_entry.called
             assert mock_migrate_config.called
 
-            updated_config_entry = hass.config_entries.async_get_entry(
-                config_entry.entry_id
-            )
+            updated_config_entry = hass.config_entries.async_get_entry(config_entry.entry_id)
             assert updated_config_entry is not None
 
             assert updated_config_entry.state is ConfigEntryState.LOADED
@@ -906,9 +896,7 @@ class Test_Common_e2e:
             }
 
         # We want to test config entry to pipeline settings without initializing the integration
-        async def test_config_entry_to_pipeline_settings(
-            self, hass, options, config_entry, snapshot
-        ):
+        async def test_config_entry_to_pipeline_settings(self, hass, options, config_entry, snapshot):
             """Test the full integration setup and execution."""
             integration = ElasticIntegration(hass, config_entry)
 

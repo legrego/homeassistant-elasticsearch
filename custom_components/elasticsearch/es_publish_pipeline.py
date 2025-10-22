@@ -74,9 +74,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 
 ALLOWED_ATTRIBUTE_KEY_TYPES = str
-ALLOWED_ATTRIBUTE_VALUE_TYPES = (
-    tuple | dict | set | list | int | float | bool | str | None
-)
+ALLOWED_ATTRIBUTE_VALUE_TYPES = tuple | dict | set | list | int | float | bool | str | None
 SKIP_ATTRIBUTES = [
     "friendly_name",
     "entity_picture",
@@ -205,9 +203,7 @@ class Pipeline:
             if len(self._settings.change_detection_type) != 0:
                 await self._listener.async_init()
             else:
-                self._logger.warning(
-                    "No change detection type set. Disabling change listener."
-                )
+                self._logger.warning("No change detection type set. Disabling change listener.")
 
             # We only need to initialize the poller if the user has configured a polling frequency
             if self._settings.polling_frequency > 0:
@@ -259,10 +255,7 @@ class Pipeline:
                 if result.hostname:
                     self._static_fields["host.hostname"] = result.hostname
 
-            if (
-                self._hass.config.latitude is not None
-                and self._hass.config.longitude is not None
-            ):
+            if self._hass.config.latitude is not None and self._hass.config.longitude is not None:
                 self._static_fields["host.location"] = [
                     self._hass.config.longitude,
                     self._hass.config.latitude,
@@ -275,14 +268,9 @@ class Pipeline:
         def reload_config_entry(self, msg) -> None:
             """Reload the config entry."""
 
-            if (
-                self._config_entry
-                and self._config_entry.state == ConfigEntryState.LOADED
-            ):
+            if self._config_entry and self._config_entry.state == ConfigEntryState.LOADED:
                 self._logger.info("%s Reloading integration.", msg)
-                self._hass.config_entries.async_schedule_reload(
-                    self._config_entry.entry_id
-                )
+                self._hass.config_entries.async_schedule_reload(self._config_entry.entry_id)
             else:
                 self._logger.warning("%s Config entry not found or not loaded.", msg)
 
@@ -317,9 +305,7 @@ class Pipeline:
             self._excluded_labels: list[str] = settings.excluded_labels
             self._included_entities: list[str] = settings.included_entities
             self._excluded_entities: list[str] = settings.excluded_entities
-            self._change_detection_type: list[StateChangeType] = (
-                settings.change_detection_type
-            )
+            self._change_detection_type: list[StateChangeType] = settings.change_detection_type
 
             self._entity_registry = entity_registry.async_get(hass)
             self._label_registry = label_registry.async_get(hass)
@@ -349,94 +335,66 @@ class Pipeline:
             if not self._passes_change_detection_type_filter(reason):
                 return False
 
-            entity: RegistryEntry | None = self._entity_registry.async_get(
-                state.entity_id
-            )
+            entity: RegistryEntry | None = self._entity_registry.async_get(state.entity_id)
 
             if not entity:
                 return self._reject(base_msg, "Entity not found in registry.")
 
             device: DeviceEntry | None = (
-                self._device_registry.async_get(entity.device_id)
-                if entity.device_id
-                else None
+                self._device_registry.async_get(entity.device_id) if entity.device_id else None
             )
 
-            if self._exclude_targets and not self._passes_exclude_targets(
-                entity=entity, device=device
-            ):
+            if self._exclude_targets and not self._passes_exclude_targets(entity=entity, device=device):
                 return False
 
-            if self._include_targets and not self._passes_include_targets(
-                entity=entity, device=device
-            ):
+            if self._include_targets and not self._passes_include_targets(entity=entity, device=device):
                 return False
 
             return self._accept(base_msg, "Entity passed all filters.")
 
-        def _passes_exclude_targets(
-            self, entity: RegistryEntry, device: DeviceEntry | None
-        ) -> bool:
+        def _passes_exclude_targets(self, entity: RegistryEntry, device: DeviceEntry | None) -> bool:
             base_msg = f"Processing exclusion filters for entity [{entity.entity_id}]: "
 
             if entity.entity_id in self._excluded_entities:
                 return self._reject(base_msg, "In the excluded entities list.")
 
             if entity.area_id in self._excluded_areas:
-                return self._reject(
-                    base_msg, f"In an excluded area [{entity.area_id}]."
-                )
+                return self._reject(base_msg, f"In an excluded area [{entity.area_id}].")
 
             for label in entity.labels:
                 if label in self._excluded_labels:
-                    return self._reject(
-                        base_msg, f"Excluded entity label present: [{label}]."
-                    )
+                    return self._reject(base_msg, f"Excluded entity label present: [{label}].")
 
             if device is not None:
                 if device.id in self._excluded_devices:
-                    return self._reject(
-                        base_msg, f"Attached to an excluded device [{device.id}]."
-                    )
+                    return self._reject(base_msg, f"Attached to an excluded device [{device.id}].")
 
                 for label in device.labels:
                     if label in self._excluded_labels:
-                        return self._reject(
-                            base_msg, f"Excluded device label present: [{label}]."
-                        )
+                        return self._reject(base_msg, f"Excluded device label present: [{label}].")
 
             return self._accept(base_msg, "Entity was not excluded by filters.")
 
-        def _passes_include_targets(
-            self, entity: RegistryEntry, device: DeviceEntry | None
-        ) -> bool:
+        def _passes_include_targets(self, entity: RegistryEntry, device: DeviceEntry | None) -> bool:
             base_msg = f"Processing inclusion filters for entity [{entity.entity_id}]: "
 
             if entity.entity_id in self._included_entities:
                 return self._accept(base_msg, "In the included entities list.")
 
             if entity.area_id in self._included_areas:
-                return self._accept(
-                    base_msg, f"In an included area [{entity.area_id}]."
-                )
+                return self._accept(base_msg, f"In an included area [{entity.area_id}].")
 
             for label in entity.labels:
                 if label in self._included_labels:
-                    return self._accept(
-                        base_msg, f"Included entity label present: [{label}]."
-                    )
+                    return self._accept(base_msg, f"Included entity label present: [{label}].")
 
             if device is not None:
                 if device.id in self._included_devices:
-                    return self._accept(
-                        base_msg, f"Attached to an included device [{device.id}]."
-                    )
+                    return self._accept(base_msg, f"Attached to an included device [{device.id}].")
 
                 for label in device.labels:
                     if label in self._included_labels:
-                        return self._accept(
-                            base_msg, f"Included device label present: [{label}]."
-                        )
+                        return self._accept(base_msg, f"Included device label present: [{label}].")
 
             return False
 
@@ -574,18 +532,14 @@ class Pipeline:
             """Initialize the formatter."""
             self._static_fields = static_fields
 
-        def format(
-            self, time: datetime, state: State, reason: StateChangeType
-        ) -> dict[str, Any]:
+        def format(self, time: datetime, state: State, reason: StateChangeType) -> dict[str, Any]:
             """Format the state change into a document."""
 
             document = {
                 "@timestamp": time.isoformat(),
                 "event.action": reason.to_publish_reason(),
                 "event.kind": "event",
-                "event.type": "info"
-                if reason == StateChangeType.NO_CHANGE
-                else "change",
+                "event.type": "info" if reason == StateChangeType.NO_CHANGE else "change",
                 "hass.entity": {**self._state_to_extended_details(state)},
                 "hass.entity.attributes": self._state_to_attributes(state),
                 "hass.entity.value": state.state,
@@ -600,9 +554,7 @@ class Pipeline:
         def _state_to_extended_details(self, state: State) -> dict:
             """Gather entity details from the state object and return a mapped dictionary ready to be put in an elasticsearch document."""
 
-            document = self._extended_entity_details.async_get(
-                state.entity_id
-            ).to_dict()
+            document = self._extended_entity_details.async_get(state.entity_id).to_dict()
 
             # The logic for friendly name is in the state for some reason
             document["friendly_name"] = state.name
@@ -685,10 +637,7 @@ class Pipeline:
 
             def reject(msg: str) -> bool:
                 if self._debug_attribute_filtering:
-                    message = (
-                        f"Filtering attributes for entity [{entity_id}]: Attribute [{key}] "
-                        + msg
-                    )
+                    message = f"Filtering attributes for entity [{entity_id}]: Attribute [{key}] " + msg
                     self._logger.debug(message)
 
                 return False
@@ -700,14 +649,10 @@ class Pipeline:
                 return reject(f"has a disallowed key type [{type(key)}].")
 
             if not isinstance(value, ALLOWED_ATTRIBUTE_VALUE_TYPES):
-                return reject(
-                    f"with value [{value}] has disallowed value type [{type(value)}]."
-                )
+                return reject(f"with value [{value}] has disallowed value type [{type(value)}].")
 
             if key.strip() == "":
-                return reject(
-                    "is empty after stripping leading and trailing whitespace."
-                )
+                return reject("is empty after stripping leading and trailing whitespace.")
 
             return True
 
@@ -717,9 +662,7 @@ class Pipeline:
             """Create an ECS-compliant version of the provided attribute name."""
             # Normalize to closest ASCII equivalent where possible
             normalized_string = (
-                unicodedata.normalize("NFKD", attribute_name)
-                .encode("ascii", "ignore")
-                .decode()
+                unicodedata.normalize("NFKD", attribute_name).encode("ascii", "ignore").decode()
             )
 
             # Replace all non-word characters with an underscore
@@ -868,14 +811,10 @@ class Pipeline:
 
             try:
                 if not await self._gateway.check_connection():
-                    self._logger.debug(
-                        "Skipping publishing as connection is not available."
-                    )
+                    self._logger.debug("Skipping publishing as connection is not available.")
                     return
 
-                actions = self._add_action_and_meta_data(
-                    iterable=self._manager.sip_queue()
-                )
+                actions = self._add_action_and_meta_data(iterable=self._manager.sip_queue())
 
                 await self._gateway.bulk(actions=actions)
 

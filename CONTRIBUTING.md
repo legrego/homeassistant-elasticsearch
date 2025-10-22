@@ -41,7 +41,7 @@ Report a bug by [opening a new issue](../../issues/new/choose); it's that easy!
 - What actually happens
 - Notes (possibly including why you think this might be happening, or stuff you tried that didn't work)
 
-People *love* thorough bug reports. I'm not even kidding.
+People _love_ thorough bug reports. I'm not even kidding.
 
 ## Use a Consistent Coding Style
 
@@ -53,14 +53,16 @@ Visual Studio Code is the recommended code editor for this project.
 This project includes a [devcontainer](./.devcontainer) configuration for an easy to use and consistent development environment. With this container you will have a stand alone Home Assistant instance running and already configured with the included [`configuration.yaml`](./config/configuration.yaml) file.
 
 ### Dependency management
+
 Dependencies are managed via [Poetry](https://python-poetry.org). This will be managed for you automatically if using the dev container. If you wish to run outside of a dev container, you will need to install your dependencies manually:
 
 ```sh
-pip install poetry~=1.8
+pip install poetry~=2.2.1
 poetry install
 ```
 
 ### Running tests
+
 Use `./scripts/test` to invoke the test runner.
 
 You must be within the virtual environment where project dependencies are installed:
@@ -78,11 +80,13 @@ poetry shell
 ```
 
 ### Updating snapshots
+
 If you've made a change to code that impacts a snapshot, your test will fail and the snapshot needs to be updated. To update snapshots run /bin/bash ./scripts/update_snapshots
 
 Or in vscode you can run one of the two update snapshot tasks by opening the command pallete with cmd + p (or ctrl + p), and type `task Update` to see the tasks related to updating snapshots.
 
 ### Linting
+
 In the devcontainer, linting and formatting runs on save and linting errors are showed as PROBLEMS in vscode.
 
 To invoke a full lint/format, in vscode open the command pallete with cmd + p (or ctrl + p), and type `task Lint`.
