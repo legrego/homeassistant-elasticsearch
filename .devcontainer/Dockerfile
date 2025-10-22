@@ -7,7 +7,7 @@ COPY ".devcontainer/install-docker-cli.sh" install-docker-cli.sh
 RUN /bin/bash install-docker-cli.sh
 
 # Install Poetry for dependency management
-RUN pip install poetry~=1.8
+RUN pip install poetry~=2.2.1
 
 # Install peek utility
 RUN pip install es-peek
