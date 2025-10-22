@@ -29,7 +29,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import attr
 import pytest
 from aiohttp import ClientSession, TCPConnector
-from custom_components.elasticsearch.config_flow import ElasticFlowHandler
 from freezegun.api import FrozenDateTimeFactory
 
 # import custom_components.elasticsearch  # noqa: F401
@@ -49,6 +48,7 @@ from pytest_homeassistant_custom_component.test_util.aiohttp import (
     AiohttpClientMocker,
 )
 
+from custom_components.elasticsearch.config_flow import ElasticFlowHandler
 from tests import const as testconst
 from tests.test_util.es_mocker import es_mocker
 
@@ -187,7 +187,9 @@ async def add_to_hass() -> bool:
 def mock_loop_handler_fixture():
     """Return a mock loop handler that will return."""
     with (
-        patch("custom_components.elasticsearch.es_publish_pipeline.LoopHandler") as loop_handler,
+        patch(
+            "custom_components.elasticsearch.es_publish_pipeline.LoopHandler"
+        ) as loop_handler,
     ):
         loop_handler.start = AsyncMock()
 
@@ -197,7 +199,9 @@ def mock_loop_handler_fixture():
 @pytest.fixture(autouse=True, name="fix_system_info")
 def fix_system_info_fixture():
     """Return a mock system info."""
-    with mock.patch("custom_components.elasticsearch.es_publish_pipeline.SystemInfo") as system_info:
+    with mock.patch(
+        "custom_components.elasticsearch.es_publish_pipeline.SystemInfo"
+    ) as system_info:
         system_info_instance = system_info.return_value
         system_info_instance.async_get_system_info = mock.AsyncMock(
             return_value=mock.Mock(
@@ -366,7 +370,9 @@ async def device(
         device_registry.async_update_device(device_id=device.id, area_id=device_area.id)
 
     if device_labels is not None and len(device_labels) > 0:
-        device_registry.async_update_device(device_id=device.id, labels={*device_labels})
+        device_registry.async_update_device(
+            device_id=device.id, labels={*device_labels}
+        )
 
     return device_registry.async_get(device.id)
 
@@ -515,8 +521,8 @@ async def entity(
     entity_unit_of_measurement,
     entity_original_name: str,
     entity_name: str,
-    device_id: str,
-    request,
+    attach_device: bool,
+    device: DeviceEntry,
 ):
     """Mock an entity."""
     entity_registry.async_get_or_create(
@@ -534,16 +540,21 @@ async def entity(
         entity_registry.async_update_entity(entity_id=entity_id, name=entity_name)
 
     if entity_device_class is not None:
-        entity_registry.async_update_entity(entity_id=entity_id, device_class=entity_device_class)
+        entity_registry.async_update_entity(
+            entity_id=entity_id, device_class=entity_device_class
+        )
 
     if entity_labels is not None and len(entity_labels) > 0:
-        entity_registry.async_update_entity(entity_id=entity_id, labels={*entity_labels})
+        entity_registry.async_update_entity(
+            entity_id=entity_id, labels={*entity_labels}
+        )
 
     if entity_area is not None:
         entity_registry.async_update_entity(entity_id=entity_id, area_id=entity_area.id)
 
-    if device_id is not None:
-        entity_registry.async_update_entity(entity_id=entity_id, device_id=device_id)
+    # Only attach device if requested and device is available
+    if attach_device and device is not None:
+        entity_registry.async_update_entity(entity_id=entity_id, device_id=device.id)
 
     return entity_registry.async_get(entity_id)
 
