@@ -1,6 +1,7 @@
 ---
 title: Introduction
 ---
+
 # Elasticsearch Component for Home-Assistant
 
 Publish Home Assistant events to your [Elasticsearch](https://elastic.co) cluster!
@@ -17,7 +18,7 @@ Publish Home Assistant events to your [Elasticsearch](https://elastic.co) cluste
 - Elasticsearch 8.14+ (Self, [Cloud](https://www.elastic.co/cloud), or [Serverless](https://www.elastic.co/docs/current/serverless)).
 - [Elastic Common Schema version 1.0.0](https://github.com/elastic/ecs/releases/tag/v1.0.0)
 - [Home Assistant Community Store](https://github.com/custom-components/hacs)
-- Home Assistant >= 2024.6
+- Home Assistant >= 2025.6
 
 ## Older versions
 
