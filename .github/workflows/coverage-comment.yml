@@ -1,5 +1,8 @@
 ---
     name: Comment coverage report on the pull request
+    permissions:
+      contents: read
+      pull-requests: write
     on:
       workflow_run:
         workflows: ["Pull actions"]
