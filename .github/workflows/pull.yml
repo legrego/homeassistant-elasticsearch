@@ -53,7 +53,7 @@ jobs:
           echo ${{ github.event.number }} > ./pr/PR-number.txt
           cp ./test_results/cov_xml/coverage.xml ./pr/coverage.xml
           cp ./test_results/pytest.xml ./pr/pytest.xml
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: pr
           path: pr/
