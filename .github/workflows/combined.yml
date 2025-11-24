@@ -7,7 +7,7 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         name: Download repo
         with:
           fetch-depth: 0
@@ -24,7 +24,7 @@ jobs:
         run: |
           python3 -m pip install poetry~=2.2.1
           poetry install
-      - uses: "actions/checkout@v5"
+      - uses: "actions/checkout@v6"
       - name: HACS validation
         uses: "hacs/action@main"
         with:
