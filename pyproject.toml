@@ -15,7 +15,7 @@ elasticsearch8 = "~=8.14.0"
 colorlog = "==6.9.0"
 homeassistant = "==2025.6.0"
 ruff = ">=0.9.1"
-pip = ">=21.0,<25.3"
+pip = ">=21.0,<26.1"
 pydantic = ">=1.10.4"
 mypy-dev = ">=1.15.0a2"
 
