@@ -5,7 +5,7 @@ This is a Home Assistant custom component that publishes Home Assistant events t
 ## Project Overview
 
 - **Purpose**: Publish Home Assistant events to Elasticsearch using the Bulk API
-- **Language**: Python 3.13+
+- **Language**: Python >=3.13.2
 - **Key Dependencies**: 
   - Home Assistant (homeassistant==2025.6.0)
   - Elasticsearch client (elasticsearch8~=8.14.0)
@@ -72,7 +72,7 @@ Linting uses:
 ### Python Style
 
 - **Line length**: 110 characters (configured in `.ruff.toml`)
-- **Target**: Python 3.12+ (`target-version = "py312"`)
+- **Target**: Python 3.13+ (note: `.ruff.toml` uses `target-version = "py312"` for compatibility)
 - **Type hints**: Always use type hints. Use `from __future__ import annotations` for modern syntax
 - **Imports**: Managed by ruff/isort - imports are auto-sorted
 - **Docstrings**: Required for public APIs (D-series rules enabled)
