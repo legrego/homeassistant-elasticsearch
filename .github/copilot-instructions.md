@@ -5,12 +5,12 @@ This is a Home Assistant custom component that publishes Home Assistant events t
 ## Project Overview
 
 - **Purpose**: Publish Home Assistant events to Elasticsearch using the Bulk API
-- **Language**: Python >=3.13.2
+- **Language**: Python (see `pyproject.toml` for version requirements)
 - **Key Dependencies**: 
-  - Home Assistant (homeassistant==2025.6.0)
-  - Elasticsearch client (elasticsearch8~=8.14.0)
+  - Home Assistant (see `pyproject.toml` for version)
+  - Elasticsearch client (see `pyproject.toml` and `custom_components/elasticsearch/manifest.json` for version)
 - **Architecture**: Home Assistant custom component with config flow support
-- **Quality**: Platinum quality scale (per manifest.json)
+- **Quality**: Platinum quality scale (per `manifest.json`)
 
 ## Repository Structure
 
@@ -35,7 +35,7 @@ scripts/                          - Development scripts
 This project uses Poetry for dependency management and includes a devcontainer for consistent development:
 
 ```bash
-pip install poetry~=2.2.1
+pip install poetry  # See project documentation for recommended version
 poetry install
 ```
 
@@ -72,7 +72,7 @@ Linting uses:
 ### Python Style
 
 - **Line length**: 110 characters (configured in `.ruff.toml`)
-- **Target**: Python 3.13+ (note: `.ruff.toml` uses `target-version = "py312"` for compatibility)
+- **Target**: Python version specified in `pyproject.toml` (note: `.ruff.toml` may use a different `target-version` for linter compatibility)
 - **Type hints**: Always use type hints. Use `from __future__ import annotations` for modern syntax
 - **Imports**: Managed by ruff/isort - imports are auto-sorted
 - **Docstrings**: Required for public APIs (D-series rules enabled)
@@ -261,8 +261,8 @@ Follow Home Assistant's integration quality checklist:
 
 ## Known Constraints
 
-- Python >=3.13.2 required (latest HA requirement)
+- Python version requirements defined in `pyproject.toml`
 - Must be compatible with Home Assistant's async event loop
 - Must not block the event loop (no sync I/O in main thread)
-- Elasticsearch 8.x API compatibility required
+- Elasticsearch API compatibility per `manifest.json` requirements
 - Quality scale is "platinum" - maintain high standards
