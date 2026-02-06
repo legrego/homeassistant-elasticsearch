@@ -1,0 +1,843 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../configure/">
+      
+      
+        <link rel="next" href="../ingest_advanced/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Using Kibana - Elasticsearch Component for Home Assistant</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#using-kibana" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Elasticsearch Component for Home Assistant" class="md-header__button md-logo" aria-label="Elasticsearch Component for Home Assistant" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Elasticsearch Component for Home Assistant
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Using Kibana
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Elasticsearch Component for Home Assistant" class="md-nav__button md-logo" aria-label="Elasticsearch Component for Home Assistant" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Elasticsearch Component for Home Assistant
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using Kibana
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using Kibana
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#create-a-data-view" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Create a data view
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#exploring-home-assistant-data-in-kibana" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exploring Home Assistant data in Kibana
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#viewing-home-assistant-data-in-kibana" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Viewing Home Assistant data in Kibana
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inspiration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inspiration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Inspiration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#hvac-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HVAC Usage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#weather-station" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Weather Station
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#additional-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Additional examples
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ingest_advanced/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Advanced ingest configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#create-a-data-view" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Create a data view
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#exploring-home-assistant-data-in-kibana" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exploring Home Assistant data in Kibana
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#viewing-home-assistant-data-in-kibana" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Viewing Home Assistant data in Kibana
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inspiration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inspiration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Inspiration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#hvac-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HVAC Usage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#weather-station" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Weather Station
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#additional-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Additional examples
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="using-kibana">Using Kibana<a class="headerlink" href="#using-kibana" title="Permanent link">#</a></h1>
+<p>The integration will put data into Elasticsearch under the <code>metrics-homeassistant.*</code> <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/data-streams.html">data stream</a>. To explore your data, create visualizations, or dashboards in Kibana you first need to create a <a href="https://www.elastic.co/guide/en/kibana/current/data-views.html">Data View</a>.</p>
+<h2 id="create-a-data-view">Create a data view<a class="headerlink" href="#create-a-data-view" title="Permanent link">#</a></h2>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Kibana UI</label><label for="__tabbed_1_2">curl</label><label for="__tabbed_1_3">Dev Tools</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>Create a Data View using Kibana's UI:</p>
+<ol>
+<li>Open Kibana</li>
+<li>Using the instructions in the <a href="https://www.elastic.co/guide/en/kibana/current/data-views.html#create-data-view">Kibana documentation</a>, navigate to the <code>Data views</code> page, and create a data view with the following values:<ul>
+<li><strong>Name</strong>: <code>Home Assistant Metrics</code></li>
+<li><strong>Index pattern</strong>: <code>metrics-homeassistant.*</code></li>
+<li><strong>Timestamp field</strong>: <code>@timestamp</code></li>
+</ul>
+</li>
+</ol>
+</div>
+<div class="tabbed-block">
+<p>Create a Data View using <code>curl</code> and Kibana's <a href="https://www.elastic.co/guide/en/kibana/current/data-views-api.html">Data views API</a>:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">KIBANA_URL</span><span class="o">=</span>http://localhost:5601<span class="w"> </span><span class="c1"># (1)</span>
+<span class="nv">KIBANA_USER</span><span class="o">=</span>elastic<span class="w"> </span><span class="c1"># (2)</span>
+<span class="nv">KIBANA_PASSWORD</span><span class="o">=</span>changeme<span class="w"> </span><span class="c1"># (3)</span>
+curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$KIBANA_URL</span><span class="s2">/api/data_views/data_view&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-u<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$KIBANA_USER</span><span class="s2">&quot;</span>:<span class="s2">&quot;KIBANA_PASSWORD&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-H<span class="w"> </span><span class="s2">&quot;kbn-xsrf: true&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-d<span class="s1">&#39;</span>
+<span class="s1">    {</span>
+<span class="s1">        &quot;data_view&quot;: {</span>
+<span class="s1">            &quot;title&quot;: &quot;metrics-homeassistant.*&quot;,</span>
+<span class="s1">            &quot;name&quot;: &quot;Home Assistant Metrics&quot;,</span>
+<span class="s1">            &quot;timeFieldName&quot;: &quot;@timestamp&quot;</span>
+<span class="s1">        }</span>
+<span class="s1">    }</span>
+<span class="s1">    &#39;</span>
+</code></pre></div>
+<ol>
+<li>Replace <code>http://localhost:5601</code> with the URL of your Kibana instance</li>
+<li>Replace <code>elastic</code> with your Kibana username</li>
+<li>Replace <code>changeme</code> with your Kibana password</li>
+</ol>
+</div>
+<div class="tabbed-block">
+<p>Create a Data View using Kibana's <a href="https://www.elastic.co/guide/en/kibana/current/console-kibana.html">Dev Tools console</a>:</p>
+<div class="highlight"><pre><span></span><code>POST kbn:/api/data_views/data_view
+{
+    &quot;data_view&quot;: {
+        &quot;title&quot;: &quot;metrics-homeassistant.*&quot;,
+        &quot;name&quot;: &quot;Home Assistant Metrics&quot;,
+        &quot;timeFieldName&quot;: &quot;@timestamp&quot;
+    }
+}
+</code></pre></div>
+</div>
+</div>
+</div>
+<h2 id="exploring-home-assistant-data-in-kibana">Exploring Home Assistant data in Kibana<a class="headerlink" href="#exploring-home-assistant-data-in-kibana" title="Permanent link">#</a></h2>
+<p>Once you have created a Data View, you can start exploring your Home Assistant data in Kibana using <code>Discover</code>:</p>
+<ol>
+<li>In Kibana select <code>Discover</code></li>
+<li>Select the <code>Home Assistant Metrics</code> Data View at the top left</li>
+<li>You can now see all the Home Assistant data that has been published to Elasticsearch</li>
+<li>You can filter the data using the filter bar at the top</li>
+<li>You can pull specific fields into the document table at the bottom by clicking on the <code>+</code> icon next to a field</li>
+<li>You can change the time range of the data you are viewing using the time picker in the top right</li>
+</ol>
+<p><img alt="img" src="../assets/kibana-discover.png" /></p>
+<h2 id="viewing-home-assistant-data-in-kibana">Viewing Home Assistant data in Kibana<a class="headerlink" href="#viewing-home-assistant-data-in-kibana" title="Permanent link">#</a></h2>
+<p>When creating new visualizations you may find the following fields useful:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>@timestamp</code></td>
+<td>The timestamp of the event (ex. <code>Apr 10, 2024 @ 16:23:25.878</code>)</td>
+</tr>
+<tr>
+<td><code>hass.entity.attributes.friendly_name</code></td>
+<td>The name of the entity in Home Assistant (ex. <code>Living Room EcoBee Temperature</code>)</td>
+</tr>
+<tr>
+<td><code>hass.entity.device.area.name</code></td>
+<td>The area of the device in Home Assistant (ex. <code>Living Room</code>)</td>
+</tr>
+<tr>
+<td><code>hass.entity.id</code></td>
+<td>The entity id of the entity in Home Assistant (ex. <code>sensor.living_room_ecobee_temperature</code>)</td>
+</tr>
+<tr>
+<td><code>hass.entity.value</code></td>
+<td>The state of the entity in Home Assistant (ex. <code>72.5</code>), as a string-typed value</td>
+</tr>
+<tr>
+<td><code>hass.entity.valueas.integer</code></td>
+<td>The state of the entity in Home Assistant (ex. <code>72</code>), as an integer-typed value</td>
+</tr>
+<tr>
+<td><code>hass.entity.valueas.float</code></td>
+<td>The state of the entity in Home Assistant (ex. <code>72.5</code>), as a float-typed value</td>
+</tr>
+<tr>
+<td><code>hass.entity.valueas.boolean</code></td>
+<td>The state of the entity in Home Assistant (ex. <code>true</code>), as a boolean-typed value</td>
+</tr>
+<tr>
+<td><code>hass.entity.valueas.date</code></td>
+<td>The state of the entity in Home Assistant (ex. <code>2024-04-10</code>), as a date-typed value</td>
+</tr>
+<tr>
+<td><code>hass.entity.valueas.datetime</code></td>
+<td>The state of the entity in Home Assistant (ex. <code>2024-04-10T16:23:25.878</code>), as a datetime-typed value</td>
+</tr>
+<tr>
+<td><code>hass.entity.valueas.time</code></td>
+<td>The state of the entity in Home Assistant (ex. <code>16:23:25.878</code>), as a time-typed value</td>
+</tr>
+</tbody>
+</table>
+<p>To build a visualization that shows the temperature of a specific entity over time, you can use the following steps:</p>
+<ol>
+<li>In Kibana select <code>Visualizations</code> and create a new Lens visualization</li>
+<li>Select <code>Home Assistant Metrics</code></li>
+<li>For the <code>Horizontal axis</code> select <code>@timestamp</code></li>
+<li>For the <code>Vertical axis</code> select <code>hass.entity.valueas.float</code></li>
+<li>In the filter bar at the top, add a filter for <code>hass.entity.id</code> and set the value to the entity id of the entity you want to visualize (ex. <code>sensor.living_room_ecobee_temperature</code>) or <code>hass.entity.attributes.friendly_name</code> and set the value to the friendly name of the entity you want to visualize (ex. <code>Living Room EcoBee Temperature</code>)</li>
+</ol>
+<p><img alt="img" src="../assets/kibana-lens-visualization.png" /></p>
+<h2 id="inspiration">Inspiration<a class="headerlink" href="#inspiration" title="Permanent link">#</a></h2>
+<h3 id="hvac-usage">HVAC Usage<a class="headerlink" href="#hvac-usage" title="Permanent link">#</a></h3>
+<p>Graph your home's climate and HVAC Usage:</p>
+<p><img alt="img" src="../assets/hvac-history.png" /></p>
+<h3 id="weather-station">Weather Station<a class="headerlink" href="#weather-station" title="Permanent link">#</a></h3>
+<p>Visualize and alert on data from your weather station:</p>
+<p><img alt="img" src="../assets/weather-station.png" /></p>
+<p><img alt="img" src="../assets/weather-station-wind-pressure.png" /></p>
+<h3 id="additional-examples">Additional examples<a class="headerlink" href="#additional-examples" title="Permanent link">#</a></h3>
+<p>Some usage examples inspired by <a href="https://github.com/legrego/homeassistant-elasticsearch/issues/203">real users</a>:</p>
+<ul>
+<li>Utilizing a Raspberry Pi in <a href="https://www.raspberrypi.com/tutorials/how-to-use-a-raspberry-pi-in-kiosk-mode/">kiosk mode</a> with a 15" display, the homeassistant-elasticsearch integration enables the creation of rotating fullscreen <a href="https://www.elastic.co/kibana/canvas">Elasticsearch Canvas</a>. Those canvas displays metrics collected from various Home Assistant integrations, offering visually dynamic and informative dashboards for monitoring smart home data.</li>
+<li>To address temperature maintenance issues in refrigerators and freezers, temperature sensors in each appliance report data to Home Assistant, which is then published to Elasticsearch. Kibana's <a href="https://www.elastic.co/kibana/alerting">alerting framework</a> is employed to set up rules that notify the user if temperatures deviate unfavorably for an extended period. The Elastic rule engine and aggregations simplify the monitoring process for this specific use case.</li>
+<li>Monitoring the humidity and temperature in a snake enclosure/habitat for a user's daughter, the integration facilitates the use of Elastic's Alerting framework. This choice is motivated by the framework's suitability for the monitoring requirements, providing a more intuitive solution compared to Home Assistant automations.</li>
+<li>The integration allows users to maintain a smaller subset of data, focusing on individual stats of interest, for an extended period. This capability contrasts with the limited retention achievable with Home Assistant and databases like MariaDB/MySQL. This extended data retention facilitates very long-term trend analysis, such as for weather data, enabling users to glean insights over an extended timeframe.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.annotate", "content.code.copy", "content.tabs.link", "navigation.path", "toc.follow"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
