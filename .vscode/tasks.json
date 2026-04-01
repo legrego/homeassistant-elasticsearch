@@ -7,6 +7,23 @@
             "command": "/bin/bash ./scripts/lint"
         },
         {
+            "label": "Run HA with Elasticsearch Component and Austin Profiling",
+            "type": "shell",
+            "command": [
+                "austin-web",
+            ],
+            "args": [
+                "python",
+                "-m",
+                "homeassistant",
+                "-c",
+                "config"
+            ],
+            "dependsOn": [
+                "Setup Austin Profiling"
+            ],
+        },
+        {
             "label": "Run all Tests",
             "type": "shell",
             "command": "/bin/bash ./scripts/test"
@@ -42,5 +59,15 @@
             "type": "shell",
             "command": "/bin/bash ./scripts/run_ek_8_14_0"
         },
+        {
+            "label": "Setup EDOT Auto-instrumentation",
+            "type": "shell",
+            "command": "/bin/bash ./.devcontainer/setup-otel-instrumentation.sh"
+        },
+        {
+            "label": "Setup Austin Profiling",
+            "type": "shell",
+            "command": "/bin/bash ./.devcontainer/setup-austin-profiling.sh"
+        }
     ]
 }
