@@ -120,10 +120,10 @@ class Test_SystemInfo:
     async def test_get_host_info_swallows_errors(self, sys_info):
         """Verify errors raised by HASS's get_host_info are handled gracefully.
 
-        Regression test for #563: newer Home Assistant versions raise
-        HassioNotReadyError instead of returning None when host info isn't
-        available yet, e.g. on non-Hassio installs or before the Supervisor
-        coordinator's first refresh.
+        Regression test for #563: newer Home Assistant versions may raise
+        (e.g. HassioNotReadyError) instead of returning None when host info
+        isn't available yet, e.g. on non-Hassio installs or before the
+        Supervisor coordinator's first refresh.
         """
         with mock.patch(
             "custom_components.elasticsearch.system_info.get_host_info",

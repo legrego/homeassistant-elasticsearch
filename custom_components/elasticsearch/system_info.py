@@ -39,8 +39,9 @@ class SystemInfo:
     def _get_host_info(self) -> dict | None:
         """Retrieve host information from HASS.
 
-        Only safe to call when running under Hassio, and even then the
+        Only expected to succeed when running under Hassio, and even then the
         Supervisor coordinator may not have completed its first refresh yet.
+        Errors are caught and swallowed so callers always get None instead.
         """
         try:
             return get_host_info(self._hass)
