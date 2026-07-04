@@ -37,20 +37,30 @@ class SystemInfo:
             raise ValueError(msg) from err
 
     def _get_host_info(self) -> dict | None:
-        """Retrieve host information from HASS."""
-        return get_host_info(self._hass)
+        """Retrieve host information from HASS.
+
+        Only expected to succeed when running under Hassio, and even then the
+        Supervisor coordinator may not have completed its first refresh yet.
+        Errors are caught and swallowed so callers always get None instead.
+        """
+        try:
+            return get_host_info(self._hass)
+        except Exception:  # noqa: BLE001
+            LOGGER.debug("Unable to retrieve host info from the Hassio supervisor", exc_info=True)
+            return None
 
     async def async_get_system_info(self) -> SystemInfoResult | None:
         """Retrieve system information from HASS."""
         system_info = await self._get_system_info()
 
-        host_info = self._get_host_info()
-
         hostname = None
 
-        if host_info is not None and system_info["hassio"] is True:
-            hostname = host_info.get("hostname", None)
-        else:
+        if system_info["hassio"] is True:
+            host_info = self._get_host_info()
+            if host_info is not None:
+                hostname = host_info.get("hostname", None)
+
+        if hostname is None:
             hostname = socket.gethostname()
 
         return SystemInfoResult(
