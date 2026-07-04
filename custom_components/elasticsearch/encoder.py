@@ -19,8 +19,6 @@ def convert_set_to_list(data: Any) -> Any:
         return json.dumps(
             {key: convert_set_to_list(value) for key, value in data.items()},
             default=json_encoder_default,
-            ensure_ascii=False,
-            separators=(",", ":"),
         )
 
     if isinstance(data, list):
