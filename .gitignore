@@ -24,3 +24,5 @@ test_results/*
 # Home Assistant configuration
 config/*
 !config/configuration.yaml
+
+.otelenv

@@ -17,6 +17,23 @@
             ]
         },
         {
+            "name": "Debug HA with Elasticsearch Component and OTel",
+            "type": "debugpy",
+            "request": "launch",
+            "program": ".venv/bin/opentelemetry-instrument",
+            "preLaunchTask": "Setup EDOT Auto-instrumentation",
+            "justMyCode": true,
+            "args": [
+                "python",
+                "-m",
+                "homeassistant",
+                "--debug",
+                "-c",
+                "config"
+            ],
+            "envFile": "${workspaceFolder}/.otelenv"
+        },
+        {
             "name": "Python: Debug Tests",
             "type": "debugpy",
             "request": "launch",

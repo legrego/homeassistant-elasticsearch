@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+WORKSPACE_DIR=$(dirname $(dirname $(realpath $0)))
+
+if [ -f $WORKSPACE_DIR/.otelenv ]; then
+edot-bootstrap --action=install
+fi
+
+poetry update
