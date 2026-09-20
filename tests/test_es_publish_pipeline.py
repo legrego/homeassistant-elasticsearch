@@ -1170,6 +1170,18 @@ class Test_Formatter:
 
         assert entity_details == snapshot
 
+    async def test_state_to_extended_details_with_zero_location(self, formatter, entity):
+        """Test that coordinates on the equator and prime meridian are retained."""
+        state = State(
+            entity_id=entity.entity_id,
+            state="on",
+            attributes={"latitude": 0.0, "longitude": 0.0},
+        )
+
+        entity_details = formatter._state_to_extended_details(state)
+
+        assert entity_details["location"] == [0.0, 0.0]
+
     async def test_state_to_extended_details_exception(
         self,
         formatter,
