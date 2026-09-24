@@ -25,7 +25,7 @@ jobs:
     name: Check style formatting
     steps:
       - uses: "actions/checkout@v7"
-      - uses: "actions/setup-python@v6"
+      - uses: "actions/setup-python@v7"
         with:
           python-version: "3.13"
       - run: python3 -m pip install poetry~=2.2.1
@@ -39,7 +39,7 @@ jobs:
       - name: Check out code from GitHub
         uses: "actions/checkout@v7"
       - name: Setup Python
-        uses: "actions/setup-python@v6"
+        uses: "actions/setup-python@v7"
         with:
           python-version: "3.13"
       - name: Install requirements
