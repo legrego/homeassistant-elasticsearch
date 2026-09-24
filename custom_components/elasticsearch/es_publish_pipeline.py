@@ -559,7 +559,7 @@ class Pipeline:
             # The logic for friendly name is in the state for some reason
             document["friendly_name"] = state.name
 
-            if state.attributes.get("longitude") and state.attributes.get("latitude"):
+            if state.attributes.get("longitude") is not None and state.attributes.get("latitude") is not None:
                 document["location"] = [
                     state.attributes.get("longitude"),
                     state.attributes.get("latitude"),
