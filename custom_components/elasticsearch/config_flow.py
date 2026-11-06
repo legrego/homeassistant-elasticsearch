@@ -189,7 +189,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                 return await self.async_step_user(errors={"base": "cannot_connect"})
 
             except AuthenticationRequired:
-                self._prospective_config.update(user_input)
+                self._update_certificate_config(user_input)
                 return await self.async_step_authentication_issues()
 
             except UnsupportedServer:
@@ -205,7 +205,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                 return await self.async_step_certificate_issues(errors={"base": "unknown"})
 
             # If we get here, we have a valid connection, so we can complete our flow
-            self._prospective_config.update(user_input)
+            self._update_certificate_config(user_input)
             return await self.async_step_complete()
 
         return self.async_show_form(
@@ -226,10 +226,15 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                         ),
                     },
                 ),
-                self._certificate_input,
+                self._certificate_input or self._prospective_config,
             ),
             errors=errors,
         )
+
+    def _update_certificate_config(self, user_input: dict[str, Any]) -> None:
+        """Save TLS settings, removing a CA path cleared from the optional field."""
+        self._prospective_config.pop(CONF_SSL_CA_PATH, None)
+        self._prospective_config.update(user_input)
 
     @async_log_enter_exit_info
     async def async_step_authentication_issues(self, user_input: dict | None = None) -> ConfigFlowResult:

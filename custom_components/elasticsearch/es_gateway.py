@@ -83,6 +83,7 @@ class ElasticsearchGateway(ABC):
 
         # Test the connection
         cluster_info = await self.info()
+        self._validate_cluster_info(cluster_info)
         self._previous_ping = True
 
         # Elasticsearch reports "_na_" until the cluster has formed
@@ -90,7 +91,7 @@ class ElasticsearchGateway(ABC):
         self._cluster_uuid = None if cluster_uuid == "_na_" else cluster_uuid
 
         # Minimum version check
-        if not await self._is_supported_version():
+        if not self._is_supported_version(cluster_info):
             msg = f"Elasticsearch version is not supported. Minimum version: {ELASTIC_MINIMUM_VERSION}"
             raise UnsupportedVersion(msg)
 
@@ -208,31 +209,37 @@ class ElasticsearchGateway(ABC):
 
     # Helper methods
 
-    async def _is_supported_version(self) -> bool:
-        """Check if the Elasticsearch version is supported."""
-        info: dict = await self.info()
-
-        return self._is_serverless(info) or self._meets_minimum_version(info, ELASTIC_MINIMUM_VERSION)
-
-    def _is_serverless(self, cluster_info: dict) -> bool:
-        """Check if the Elasticsearch instance is serverless."""
-
+    def _validate_cluster_info(self, cluster_info: dict) -> None:
+        """Check that server metadata can be used for capability and version checks."""
         version = cluster_info.get("version")
-        if not isinstance(version, dict) or version.get("build_flavor") not in ("default", "serverless"):
+        if not isinstance(version, dict):
             raise UnsupportedServer("The endpoint does not report supported Elasticsearch server metadata.")
 
-        return bool(version["build_flavor"] == "serverless")
+        build_flavor = version.get("build_flavor")
+        if not isinstance(build_flavor, str) or not build_flavor.strip():
+            raise UnsupportedServer("The endpoint does not report supported Elasticsearch server metadata.")
 
-    def _meets_minimum_version(self, cluster_info: dict, minimum_version: tuple[int, int]) -> bool:
-        """Check if the Elasticsearch version is supported."""
-
-        version_number = cluster_info["version"].get("number")
+        version_number = version.get("number")
         if not isinstance(version_number, str):
             raise UnsupportedServer("The endpoint does not report an Elasticsearch version number.")
 
         version_number_parts = version_number.split(".")
         if len(version_number_parts) < 2 or not all(part.isdecimal() for part in version_number_parts[:2]):
             raise UnsupportedServer("The endpoint reports an invalid Elasticsearch version number.")
+
+    def _is_supported_version(self, cluster_info: dict) -> bool:
+        """Check whether validated server metadata describes a supported version."""
+        return self._is_serverless(cluster_info) or self._meets_minimum_version(
+            cluster_info, ELASTIC_MINIMUM_VERSION
+        )
+
+    def _is_serverless(self, cluster_info: dict) -> bool:
+        """Check whether validated server metadata describes a serverless instance."""
+        return bool(cluster_info["version"]["build_flavor"] == "serverless")
+
+    def _meets_minimum_version(self, cluster_info: dict, minimum_version: tuple[int, int]) -> bool:
+        """Check whether a validated Elasticsearch version meets the minimum."""
+        version_number_parts = cluster_info["version"]["number"].split(".")
 
         current_major = int(version_number_parts[0])
         current_minor = int(version_number_parts[1])

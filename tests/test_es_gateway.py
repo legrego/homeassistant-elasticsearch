@@ -380,11 +380,15 @@ class Test_Initialization:
             {},
             {"version": None},
             {"version": []},
-            {"version": {"number": "8.14.0", "build_flavor": "other"}},
+            {"version": {"number": "8.14.0", "build_flavor": None}},
+            {"version": {"number": "8.14.0", "build_flavor": ""}},
+            {"version": {"number": "8.14.0", "build_flavor": " "}},
+            {"version": {"number": "8.14.0", "build_flavor": []}},
             {"version": {"build_flavor": "default"}},
             {"version": {"number": None, "build_flavor": "default"}},
             {"version": {"number": "8", "build_flavor": "default"}},
             {"version": {"number": "8.invalid.0", "build_flavor": "default"}},
+            {"version": {"build_flavor": "serverless"}},
         ],
     )
     async def test_async_init_incompatible_metadata(self, gateway_mock_stateful, cluster_info):
@@ -396,6 +400,21 @@ class Test_Initialization:
 
         gateway_mock_stateful._client.xpack.usage.assert_not_called()
         gateway_mock_stateful._client.security.has_privileges.assert_not_called()
+
+    async def test_unfamiliar_build_flavor_uses_version_check(self, gateway_mock_stateful):
+        """Accept new build flavors while retaining the minimum supported version."""
+        gateway_mock_stateful._client.info = mock_es_response(
+            {"version": {"number": "8.14.0", "build_flavor": "future"}}
+        )
+        await gateway_mock_stateful.async_init()
+
+        # Version validation reuses the first response; security detection fetches its own.
+        assert gateway_mock_stateful._client.info.await_count == 2
+        gateway_mock_stateful._client.info = mock_es_response(
+            {"version": {"number": "8.0.0", "build_flavor": "future"}}
+        )
+        with pytest.raises(UnsupportedVersion):
+            await gateway_mock_stateful.async_init()
 
     async def test_async_init_unauthenticated(self, gateway_mock_stateful) -> None:
         """Test the async_init method with an unauthenticated session."""

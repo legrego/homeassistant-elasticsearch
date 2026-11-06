@@ -210,6 +210,7 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
             # Check if the cluster is serverless, security is always enabled in serverless
             info: dict = await self.info()
 
+        self._validate_cluster_info(info)
         if self._is_serverless(info):
             return True
 

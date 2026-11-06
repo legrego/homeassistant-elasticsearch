@@ -17,11 +17,6 @@
       ),
       tuple(
         'GET',
-        URL('https://mock_es_integration:9200/'),
-        None,
-      ),
-      tuple(
-        'GET',
         URL('https://mock_es_integration:9200/_xpack/usage'),
         None,
       ),
@@ -104,11 +99,6 @@
     ),
     tuple(
       'GET',
-      URL('https://mock_es_integration:9200/'),
-      None,
-    ),
-    tuple(
-      'GET',
       URL('https://mock_es_integration:9200/_xpack/usage'),
       None,
     ),
@@ -146,11 +136,6 @@
       1,
     ),
     'request': list([
-      tuple(
-        'GET',
-        URL('https://mock_es_integration:9200/'),
-        None,
-      ),
       tuple(
         'GET',
         URL('https://mock_es_integration:9200/'),
@@ -218,11 +203,6 @@
     ),
     tuple(
       'GET',
-      URL('https://mock_es_integration:9200/'),
-      None,
-    ),
-    tuple(
-      'GET',
       URL('https://mock_es_integration:9200/_xpack/usage'),
       None,
     ),
@@ -255,11 +235,6 @@
 # ---
 # name: Test_Normal_Configuration.test_setup_to_publish_error[404]
   list([
-    tuple(
-      'GET',
-      URL('https://mock_es_integration:9200/'),
-      None,
-    ),
     tuple(
       'GET',
       URL('https://mock_es_integration:9200/'),
@@ -316,11 +291,6 @@
     ),
     tuple(
       'GET',
-      URL('https://mock_es_integration:9200/'),
-      None,
-    ),
-    tuple(
-      'GET',
       URL('https://mock_es_integration:9200/_xpack/usage'),
       None,
     ),
@@ -353,11 +323,6 @@
 # ---
 # name: Test_Normal_Configuration.test_setup_to_publish_ping_error
   list([
-    tuple(
-      'GET',
-      URL('https://mock_es_integration:9200/'),
-      None,
-    ),
     tuple(
       'GET',
       URL('https://mock_es_integration:9200/'),

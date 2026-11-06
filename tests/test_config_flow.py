@@ -556,6 +556,34 @@ class Test_Flow_Recovery:
         assert result["type"] == FlowResultType.CREATE_ENTRY
         assert result["data"][compconst.CONF_SSL_CA_PATH] == SETTINGS_CERTIFICATE[compconst.CONF_SSL_CA_PATH]
 
+    @pytest.mark.parametrize(
+        ("step_id", "credentials"), [("basic_auth", SETTINGS_BASIC_AUTH), ("api_key", SETTINGS_API_KEY)]
+    )
+    async def test_clear_ca_after_authentication_challenge(self, hass, step_id, credentials):
+        """Remove a previously saved CA path when returning from authentication."""
+        flow_id = await self.start_flow(hass, "certificate_issues")
+        with patch(gateway_async_init, side_effect=AuthenticationRequired):
+            await hass.config_entries.flow.async_configure(flow_id, SETTINGS_CERTIFICATE)
+
+        await hass.config_entries.flow.async_configure(flow_id, {compconst.CONF_AUTHENTICATION_TYPE: step_id})
+        with patch(gateway_async_init, side_effect=InvalidCACertificate):
+            result = await hass.config_entries.flow.async_configure(flow_id, credentials)
+
+        assert result["step_id"] == "certificate_issues"
+        settings = {
+            key: value for key, value in SETTINGS_CERTIFICATE.items() if key != compconst.CONF_SSL_CA_PATH
+        }
+        with patch(gateway_async_init, side_effect=AuthenticationRequired):
+            await hass.config_entries.flow.async_configure(flow_id, settings)
+
+        await hass.config_entries.flow.async_configure(flow_id, {compconst.CONF_AUTHENTICATION_TYPE: step_id})
+        with patch(gateway_async_init, return_value=testconst.CLUSTER_UUID) as gateway:
+            result = await hass.config_entries.flow.async_configure(flow_id, credentials)
+
+        assert gateway.call_args.kwargs["ca_certs"] is None
+        assert result["type"] == FlowResultType.CREATE_ENTRY
+        assert compconst.CONF_SSL_CA_PATH not in result["data"]
+
 
 class Test_Unique_Config_Entry:
     """Test that a cluster can only be set up once."""
@@ -814,6 +842,57 @@ class Test_Reauth_Flow:
             config_entry.data[compconst.CONF_SSL_CA_PATH] == SETTINGS_CERTIFICATE[compconst.CONF_SSL_CA_PATH]
         )
         assert other_auth_key not in config_entry.data
+
+    @pytest.mark.parametrize(
+        ("step_id", "credentials"), [("basic_auth", SETTINGS_BASIC_AUTH), ("api_key", SETTINGS_API_KEY)]
+    )
+    @pytest.mark.parametrize("needs_authentication", [True, False])
+    async def test_reauth_prefills_tls_and_clears_saved_ca(
+        self, hass, step_id, credentials, needs_authentication
+    ):
+        """Offer existing TLS settings and remove a cleared CA on both success paths."""
+        previous_tls = {
+            haconst.CONF_VERIFY_SSL: True,
+            compconst.CONF_SSL_VERIFY_HOSTNAME: False,
+            compconst.CONF_SSL_CA_PATH: "/config/removed-ca.pem",
+        }
+        entry = MockConfigEntry(
+            domain=compconst.DOMAIN,
+            unique_id=testconst.CLUSTER_UUID,
+            data={**testconst.CONFIG_ENTRY_BASE_DATA, **credentials, **previous_tls},
+            options=testconst.CONFIG_ENTRY_DEFAULT_OPTIONS,
+        )
+        await add_config_entry_to_hass(hass, entry)
+        with patch(gateway_async_init, side_effect=InvalidCACertificate):
+            entry.async_start_reauth(hass)
+            await hass.async_block_till_done()
+
+        flow_id = hass.config_entries.flow.async_progress()[0]["flow_id"]
+        result = await hass.config_entries.flow.async_configure(flow_id)
+        assert result["step_id"] == "certificate_issues"
+        fields = {key.schema: key for key in result["data_schema"].schema}
+        for field, value in previous_tls.items():
+            assert fields[field].description["suggested_value"] == value
+
+        submitted = {haconst.CONF_VERIFY_SSL: False, compconst.CONF_SSL_VERIFY_HOSTNAME: False}
+        with patch(
+            gateway_async_init,
+            side_effect=AuthenticationRequired if needs_authentication else None,
+            return_value=testconst.CLUSTER_UUID,
+        ):
+            result = await hass.config_entries.flow.async_configure(flow_id, submitted)
+
+        if needs_authentication:
+            assert result["step_id"] == step_id
+            with patch(gateway_async_init, return_value=testconst.CLUSTER_UUID) as gateway:
+                result = await hass.config_entries.flow.async_configure(flow_id, credentials)
+
+            assert gateway.call_args.kwargs["ca_certs"] is None
+
+        assert result["reason"] == "reauth_successful"
+        assert compconst.CONF_SSL_CA_PATH not in entry.data
+        for field, value in submitted.items():
+            assert entry.data[field] == value
 
     async def test_reauth_flow_no_auth(self, hass: HomeAssistant):
         """Test the reauth flow completes when the user provides new authentication details."""
