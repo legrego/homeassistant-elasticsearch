@@ -6,6 +6,8 @@ title: Introduction
 
 Publish Home Assistant events to your [Elasticsearch](https://elastic.co) cluster!
 
+Elasticsearch is a search and analytics engine for storing and exploring large amounts of data, and [Kibana](https://www.elastic.co/kibana) is its companion app for charts and dashboards. Sending your Home Assistant history there lets you keep it for as long as you choose, and analyze it across your whole home.
+
 ## Features
 
 - Efficiently publishes Home-Assistant events to Elasticsearch using the Bulk API

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import ssl
 from collections import OrderedDict
 from contextlib import contextmanager
@@ -13,7 +14,7 @@ import elasticsearch8
 from elastic_transport import ObjectApiResponse
 from elasticsearch8._async.client import AsyncElasticsearch
 from elasticsearch8.helpers import async_streaming_bulk
-from homeassistant.util.ssl import client_context
+from homeassistant.util.ssl import create_client_context, create_no_verify_ssl_context
 
 from custom_components.elasticsearch.const import ES_CHECK_PERMISSIONS_DATASTREAM
 from custom_components.elasticsearch.encoder import Serializer
@@ -21,6 +22,7 @@ from custom_components.elasticsearch.errors import (
     AuthenticationRequired,
     CannotConnect,
     InsufficientPrivileges,
+    InvalidCACertificate,
     ServerError,
     UntrustedCertificate,
 )
@@ -38,8 +40,31 @@ if TYPE_CHECKING:  # pragma: no cover
 class Gateway8Settings(GatewaySettings):
     """Elasticsearch Gateway settings object."""
 
+    def _build_ssl_context(self) -> ssl.SSLContext:
+        """Build a TLS context that belongs to this client alone.
+
+        Home Assistant's `client_context` is shared across the whole process, so our TLS
+        settings must never be applied to it. Building a context reads certificates from
+        disk, so this must not run on the event loop.
+        """
+
+        if not self.verify_certs:
+            return create_no_verify_ssl_context()
+
+        context = create_client_context()
+        context.check_hostname = self.verify_hostname
+
+        if self.ca_certs:
+            try:
+                context.load_verify_locations(cafile=self.ca_certs)
+            except OSError as err:  # Includes ssl.SSLError
+                msg = f"Unable to load certificate authority file [{self.ca_certs}]: {err}"
+                raise InvalidCACertificate(msg) from err
+
+        return context
+
     def to_client(self) -> AsyncElasticsearch:
-        """Create an Elasticsearch client from the settings."""
+        """Create an Elasticsearch client from the settings. This performs blocking I/O."""
 
         settings: dict[str, Any] = {
             "hosts": [self.url],
@@ -48,19 +73,7 @@ class Gateway8Settings(GatewaySettings):
         }
 
         if self.url.startswith("https"):
-            context: ssl.SSLContext = client_context()
-
-            if not self.verify_certs:
-                context.check_hostname = False
-                context.verify_mode = ssl.CERT_NONE
-            else:
-                context.check_hostname = self.verify_hostname
-                context.verify_mode = ssl.CERT_REQUIRED
-
-                if self.ca_certs:
-                    context.load_verify_locations(cafile=self.ca_certs)
-
-            settings["ssl_context"] = context
+            settings["ssl_context"] = self._build_ssl_context()
 
         if self.username:
             settings["basic_auth"] = (self.username, self.password)
@@ -75,7 +88,7 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
     """Encapsulates Elasticsearch operations."""
 
     _settings: Gateway8Settings
-    _client: AsyncElasticsearch
+    _client: AsyncElasticsearch | None
 
     def __init__(
         self,
@@ -90,10 +103,13 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
         )
 
         self._settings = gateway_settings
-        self._client = self._settings.to_client()
+        self._client = None
 
     async def async_init(self) -> None:
         """Initialize the Elasticsearch Gateway."""
+
+        if self._client is None:
+            self._client = await asyncio.to_thread(self._settings.to_client)
 
         await super().async_init()
 
@@ -110,8 +126,8 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
         request_timeout: int = 30,
         minimum_privileges: MappingProxyType[str, Any] = ES_CHECK_PERMISSIONS_DATASTREAM,
         log: Logger = BASE_LOGGER,
-    ) -> None:
-        """Initialize the gateway and then stop it."""
+    ) -> str | None:
+        """Initialize the gateway and then stop it, returning the UUID of the cluster."""
 
         gateway = cls(
             Gateway8Settings(
@@ -133,9 +149,14 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
         finally:
             await gateway.stop()
 
+        return gateway.cluster_uuid
+
     @property
     def client(self) -> AsyncElasticsearch:
         """Return the underlying ES Client."""
+
+        # The client exists once async_init has run, but mypy doesn't know that
+        assert self._client is not None
 
         return self._client
 

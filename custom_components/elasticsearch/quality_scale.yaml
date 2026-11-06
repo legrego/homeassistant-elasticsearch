@@ -1,0 +1,135 @@
+# Status of the Home Assistant Integration Quality Scale rules for this integration.
+# https://contributors.home-assistant.io/core/quality-scale/rules/
+#
+# Hassfest only validates this file for integrations in Home Assistant Core, so nothing
+# enforces it here. Keep it accurate by hand, and only raise `quality_scale` in
+# manifest.json once every rule in that tier and the tiers below it is done or exempt.
+rules:
+  # Bronze
+  action-setup:
+    status: exempt
+    comment: The integration does not register any actions.
+  appropriate-polling:
+    status: done
+    comment: Home Assistant's own state machine is polled, every 60 seconds by default.
+  brands: done
+  common-modules:
+    status: exempt
+    comment: The integration has no coordinator or base entity.
+  config-flow: done
+  config-flow-test-coverage: done
+  dependency-transparency:
+    status: todo
+    comment: >-
+      elasticsearch8 is Apache-2.0, on PyPI, and tagged in elastic/elasticsearch-py, but
+      Elastic has no public publish workflow for 8.x and no 8.x release has PyPI
+      provenance. The elasticsearch 9.x client does, so moving to it would meet this rule.
+  docs-actions:
+    status: exempt
+    comment: The integration does not register any actions.
+  docs-conditions:
+    status: exempt
+    comment: The integration does not provide any conditions.
+  docs-high-level-description: done
+  docs-installation-instructions: done
+  docs-removal-instructions: done
+  docs-triggers:
+    status: exempt
+    comment: The integration does not provide any triggers.
+  entity-event-setup:
+    status: exempt
+    comment: The integration does not create any entities.
+  entity-unique-id:
+    status: exempt
+    comment: The integration does not create any entities.
+  has-entity-name:
+    status: exempt
+    comment: The integration does not create any entities.
+  runtime-data: done
+  test-before-configure: done
+  test-before-setup: done
+  unique-config-entry: done
+
+  # Silver
+  action-exceptions:
+    status: exempt
+    comment: The integration does not register any actions.
+  config-entry-unloading: done
+  docs-configuration-parameters: done
+  docs-installation-parameters:
+    status: todo
+    comment: The TLS verification and hostname fields are not fully described.
+  entity-unavailable:
+    status: exempt
+    comment: The integration does not create any entities.
+  integration-owner: done
+  log-when-unavailable:
+    status: exempt
+    comment: The integration does not create any entities.
+  parallel-updates:
+    status: exempt
+    comment: The integration does not create any entities.
+  reauthentication-flow: done
+  test-coverage:
+    status: todo
+    comment: encoder.py, system_info.py, utils.py and loop.py are at or below 95%.
+
+  # Gold
+  devices:
+    status: exempt
+    comment: The integration does not create any devices.
+  diagnostics: done
+  discovery:
+    status: exempt
+    comment: Elasticsearch does not advertise itself on the network.
+  discovery-update-info:
+    status: exempt
+    comment: Elasticsearch does not advertise itself on the network.
+  docs-data-update:
+    status: todo
+    comment: Publish intervals are documented, but behavior during an outage is not.
+  docs-examples:
+    status: todo
+    comment: There are no automation examples.
+  docs-known-limitations: todo
+  docs-supported-devices: done
+  docs-supported-functions:
+    status: todo
+    comment: Field mappings are undocumented.
+  docs-troubleshooting:
+    status: todo
+    comment: TROUBLESHOOTING.md is dated and missing from the docs site.
+  docs-use-cases: done
+  dynamic-devices:
+    status: exempt
+    comment: The integration does not create any devices.
+  entity-category:
+    status: exempt
+    comment: The integration does not create any entities.
+  entity-device-class:
+    status: exempt
+    comment: The integration does not create any entities.
+  entity-disabled-by-default:
+    status: exempt
+    comment: The integration does not create any entities.
+  entity-translations:
+    status: exempt
+    comment: The integration does not create any entities.
+  exception-translations: todo
+  icon-translations:
+    status: exempt
+    comment: The integration does not create any entities.
+  reconfiguration-flow: todo
+  repair-issues: todo
+  stale-devices:
+    status: exempt
+    comment: The integration does not create any devices.
+
+  # Platinum
+  async-dependency: done
+  inject-websession:
+    status: todo
+    comment: elastic-transport creates its own aiohttp session.
+  strict-typing:
+    status: todo
+    comment: ElasticIntegrationConfigEntry is not used throughout.

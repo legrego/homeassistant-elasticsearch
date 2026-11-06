@@ -6,7 +6,7 @@ from logging import Logger
 from typing import TYPE_CHECKING
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady, IntegrationError
+from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryError, ConfigEntryNotReady
 from homeassistant.loader import (
     async_get_integration,
 )
@@ -17,6 +17,7 @@ from custom_components.elasticsearch.errors import (
     AuthenticationRequired,
     CannotConnect,
     ESIntegrationException,
+    InvalidCACertificate,
     UnsupportedVersion,
 )
 from custom_components.elasticsearch.logger import (
@@ -49,7 +50,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ElasticIntegratio
     try:
         integration = ElasticIntegration(hass=hass, config_entry=config_entry, log=_logger)
         await integration.async_init()
-    except (UnsupportedVersion, CannotConnect) as err:
+    except (UnsupportedVersion, InvalidCACertificate) as err:
+        raise ConfigEntryError(err) from err
+    except CannotConnect as err:
         raise ConfigEntryNotReady(err) from err
     except AuthenticationRequired as err:
         raise ConfigEntryAuthFailed(err) from err
@@ -58,7 +61,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ElasticIntegratio
     except Exception as err:
         msg = "Unknown error occurred"
         _logger.exception(msg)
-        raise IntegrationError(err) from err
+        raise ConfigEntryError(err) from err
 
     config_entry.runtime_data = integration
     return True

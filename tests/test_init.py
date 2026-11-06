@@ -15,7 +15,12 @@ from custom_components.elasticsearch import (
 )
 from custom_components.elasticsearch.config_flow import ElasticFlowHandler
 from custom_components.elasticsearch.const import DOMAIN as ELASTIC_DOMAIN
-from custom_components.elasticsearch.errors import ESIntegrationException
+from custom_components.elasticsearch.errors import (
+    CannotConnect,
+    ESIntegrationException,
+    InvalidCACertificate,
+    UnsupportedVersion,
+)
 from custom_components.elasticsearch.es_integration import ElasticIntegration
 from freezegun.api import FrozenDateTimeFactory
 from homeassistant.config_entries import ConfigEntryState, ConfigFlow
@@ -926,3 +931,109 @@ class Test_Common_e2e:
                 "gateway": integration._gateway.settings.to_dict(),
                 "pipeline": integration._pipeline_manager._settings,
             }
+
+
+class Test_Setup_Failures:
+    """Test how failures during setup are reported to Home Assistant."""
+
+    @pytest.fixture
+    def entry(self, hass):
+        """Return a config entry that is ready to be set up."""
+        entry = MockConfigEntry(
+            domain=ELASTIC_DOMAIN,
+            version=ElasticFlowHandler.VERSION,
+            data=const.CONFIG_ENTRY_BASE_DATA,
+            options=const.CONFIG_ENTRY_DEFAULT_OPTIONS,
+        )
+        entry.add_to_hass(hass)
+        return entry
+
+    @pytest.mark.parametrize(
+        ("exception", "expected_state"),
+        [
+            (CannotConnect, ConfigEntryState.SETUP_RETRY),
+            (ESIntegrationException, ConfigEntryState.SETUP_RETRY),
+            (UnsupportedVersion, ConfigEntryState.SETUP_ERROR),
+            (InvalidCACertificate, ConfigEntryState.SETUP_ERROR),
+            (RuntimeError, ConfigEntryState.SETUP_ERROR),
+        ],
+    )
+    async def test_setup_failure_state(self, hass, entry, exception, expected_state):
+        """Test that only temporary failures are retried."""
+        with mock.patch(f"{MODULE}.es_integration.ElasticIntegration.async_init", side_effect=exception):
+            await hass.config_entries.async_setup(entry.entry_id)
+
+        assert entry.state is expected_state
+
+    async def test_unexpected_failure_closes_the_gateway(self, hass, entry):
+        """Test that the client is closed when setup fails unexpectedly."""
+        integration = ElasticIntegration(hass, entry)
+        integration._gateway = mock.AsyncMock(spec=integration._gateway, cluster_uuid=None)
+        integration._datastream_manager = mock.AsyncMock(spec=integration._datastream_manager)
+        integration._datastream_manager.async_init.side_effect = RuntimeError
+
+        with pytest.raises(RuntimeError):
+            await integration.async_init()
+
+        integration._gateway.stop.assert_awaited_once()
+
+
+class Test_Unique_Id_Backfill:
+    """Test giving existing config entries a unique ID."""
+
+    @pytest.fixture
+    def entry(self, hass):
+        """Return a config entry created before unique IDs were assigned."""
+        entry = MockConfigEntry(
+            domain=ELASTIC_DOMAIN,
+            data=const.CONFIG_ENTRY_BASE_DATA,
+            options=const.CONFIG_ENTRY_DEFAULT_OPTIONS,
+            title="this entry",
+        )
+        entry.add_to_hass(hass)
+        return entry
+
+    @staticmethod
+    def backfill(hass, entry, cluster_uuid, log=None):
+        """Run the backfill against a gateway connected to the given cluster."""
+        integration = ElasticIntegration(hass, entry, log) if log else ElasticIntegration(hass, entry)
+        integration._gateway = mock.MagicMock(cluster_uuid=cluster_uuid)
+        integration._backfill_unique_id()
+
+    async def test_backfill(self, hass, entry):
+        """Test that an entry with no unique ID takes the UUID of its cluster."""
+        self.backfill(hass, entry, const.CLUSTER_UUID)
+
+        assert entry.unique_id == const.CLUSTER_UUID
+
+    async def test_backfill_unknown_uuid(self, hass, entry):
+        """Test that nothing changes when the cluster can't report a UUID."""
+        self.backfill(hass, entry, None)
+
+        assert entry.unique_id is None
+
+    async def test_backfill_keeps_existing_unique_id(self, hass):
+        """Test that an entry's unique ID is never replaced."""
+        entry = MockConfigEntry(
+            domain=ELASTIC_DOMAIN,
+            unique_id="existing",
+            data=const.CONFIG_ENTRY_BASE_DATA,
+            options=const.CONFIG_ENTRY_DEFAULT_OPTIONS,
+        )
+        entry.add_to_hass(hass)
+
+        self.backfill(hass, entry, const.CLUSTER_UUID)
+
+        assert entry.unique_id == "existing"
+
+    async def test_backfill_existing_duplicate_keeps_working(self, hass, entry):
+        """Test that the second entry for a cluster warns and is left without a unique ID."""
+        other = MockConfigEntry(domain=ELASTIC_DOMAIN, unique_id=const.CLUSTER_UUID, title="other entry")
+        other.add_to_hass(hass)
+        log = mock.MagicMock()
+
+        self.backfill(hass, entry, const.CLUSTER_UUID, log)
+
+        assert entry.unique_id is None
+        assert other.unique_id == const.CLUSTER_UUID
+        log.warning.assert_called_once()

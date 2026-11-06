@@ -1,6 +1,8 @@
 {
     "config": {
         "abort": {
+            "already_configured": "This Elasticsearch cluster is already configured.",
+            "no_auth": "This Elasticsearch cluster has no credentials to update.",
             "reauth_successful": "Re-authentication was successful"
         },
         "error": {
@@ -10,7 +12,9 @@
             "insufficient_privileges": "Insufficient privileges for specified user.",
             "missing_credentials": "This cluster requires authentication. Please provide a username and password.",
             "untrusted_certificate": "Elasticsearch's server certificate could not be verified. Either disable TLS verification, or specify a custom CA path below.",
-            "unsupported_version": "Unsupported version of Elasticsearch detected. The minimum supported version is 7.11.0."
+            "unsupported_version": "Unsupported version of Elasticsearch detected. The minimum supported version is 8.14.",
+            "invalid_ca_certificate": "The certificate authority file could not be loaded. Check that the path is correct, and that the file is a readable, PEM-encoded certificate.",
+            "unknown": "An unexpected error occurred. Check the Home Assistant logs for details."
         },
         "step": {
             "user": {
@@ -18,6 +22,9 @@
                 "description": "Please provide the URL to access your elasticsearch cluster in the format http(s)://my_elasticsearch_server:port (https://my_elasticsearch:9200).",
                 "data": {
                     "url": "URL to access the Elasticsearch Cluster"
+                },
+                "data_description": {
+                    "url": "The address of your cluster, including the scheme and port."
                 }
             },
             "certificate_issues": {
@@ -27,14 +34,21 @@
                     "verify_ssl": "Verify TLS certificate (recommended)",
                     "ssl_verify_hostname": "Verify hostname matches server certificate",
                     "ssl_ca_path": "Fully qualified path to custom certificate authority"
+                },
+                "data_description": {
+                    "verify_ssl": "Check that the server's certificate is signed by a trusted certificate authority. Turning this off leaves the connection open to interception.",
+                    "ssl_verify_hostname": "Check that the certificate was issued for the host in your URL. This only applies when the certificate is verified.",
+                    "ssl_ca_path": "Where to find the PEM-encoded certificate authority on the machine running Home Assistant. Leave empty to use the system's trusted certificates."
                 }
             },
             "authentication_issues": {
                 "title": "Select an Authentication Method",
                 "description": "Choose an authentication method to connect to your Elasticsearch cluster.",
                 "data": {
-                    "basic_auth": "Authenticate via username/password",
-                    "api_key": "Authenticate via API Key"
+                    "authentication_type": "Authentication method"
+                },
+                "data_description": {
+                    "authentication_type": "API keys are recommended, because they can be limited to what this integration needs."
                 }
             },
             "basic_auth": {
@@ -42,20 +56,19 @@
                 "data": {
                     "username": "Username",
                     "password": "Password"
+                },
+                "data_description": {
+                    "username": "An Elasticsearch user with permission to publish Home Assistant data.",
+                    "password": "The password for this user."
                 }
             },
             "api_key": {
                 "title": "Authenticate via API Key",
                 "data": {
                     "api_key": "API Key"
-                }
-            },
-            "reauth_confirm": {
-                "title": "Reauthenticate",
-                "data": {
-                    "api_key": "API Key",
-                    "username": "Username",
-                    "password": "Password"
+                },
+                "data_description": {
+                    "api_key": "The encoded value of an Elasticsearch API key."
                 }
             }
         }

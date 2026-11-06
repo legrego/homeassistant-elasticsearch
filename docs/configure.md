@@ -95,6 +95,8 @@ This component is configured interactively via Home Assistant's integration conf
 5. If your Elasticsearch instance is secured, you will be prompted to provide either a username and password or an API Key.
 5. Once the integration is setup, you may tweak all configuration options via the `Configure` button on the [integrations page](https://my.home-assistant.io/redirect/integration/?domain=elasticsearch){:target="_blank"}.
 
+Each Elasticsearch cluster can only be added once, even when it can be reached through more than one URL.
+
 ## Configuration options
 
 Select `Configure` from the integration's homepage to configure the following settings.

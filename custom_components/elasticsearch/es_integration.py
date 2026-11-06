@@ -26,9 +26,9 @@ from custom_components.elasticsearch.const import (
     CONF_TAGS,
     CONF_TARGETS_TO_EXCLUDE,
     CONF_TARGETS_TO_INCLUDE,
+    ELASTIC_DOMAIN,
     ES_CHECK_PERMISSIONS_DATASTREAM,
 )
-from custom_components.elasticsearch.errors import ESIntegrationException
 from custom_components.elasticsearch.es_datastream_manager import DatastreamManager
 from custom_components.elasticsearch.es_gateway_8 import Elasticsearch8Gateway, Gateway8Settings
 from custom_components.elasticsearch.es_publish_pipeline import Pipeline, PipelineSettings
@@ -80,15 +80,39 @@ class ElasticIntegration:
 
         try:
             await self._gateway.async_init()
+            self._backfill_unique_id()
             await self._datastream_manager.async_init()
             await self._pipeline_manager.async_init(config_entry=self._config_entry)
 
-        except ESIntegrationException as err:
+        except Exception as err:
             self._logger.error("Error initializing integration: %s", err)
             self._logger.debug("Error initializing integration", exc_info=True)
             await self.async_shutdown()
 
             raise
+
+    def _backfill_unique_id(self) -> None:
+        """Assign the cluster's UUID to entries created before they had a unique ID.
+
+        Entries that already share a cluster keep working. The first to load takes the
+        unique ID, and the others only warn, since removing one is the user's decision.
+        """
+
+        cluster_uuid = self._gateway.cluster_uuid
+
+        if self._config_entry.unique_id is not None or cluster_uuid is None:
+            return
+
+        for entry in self._hass.config_entries.async_entries(ELASTIC_DOMAIN):
+            if entry.unique_id == cluster_uuid:
+                self._logger.warning(
+                    "Config entries [%s] and [%s] publish to the same Elasticsearch cluster.",
+                    entry.title,
+                    self._config_entry.title,
+                )
+                return
+
+        self._hass.config_entries.async_update_entry(self._config_entry, unique_id=cluster_uuid)
 
     async def async_shutdown(self) -> None:
         """Async shutdown procedure."""
