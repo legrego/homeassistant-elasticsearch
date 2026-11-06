@@ -284,7 +284,7 @@ class Test_Normal_Configuration:
 
         assert config_entry.version == ElasticFlowHandler.VERSION
 
-        assert config_entry.state is ConfigEntryState.SETUP_RETRY
+        assert config_entry.state is ConfigEntryState.SETUP_ERROR
         assert config_entry.reason == "Elasticsearch version is not supported. Minimum version: (8, 14)"
 
 

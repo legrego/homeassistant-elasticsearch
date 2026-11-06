@@ -3,6 +3,7 @@
 
 import os
 import ssl
+import threading
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -17,6 +18,7 @@ from custom_components.elasticsearch.errors import (
     AuthenticationRequired,
     CannotConnect,
     InsufficientPrivileges,
+    InvalidCACertificate,
     ServerError,
     UnsupportedVersion,
     UntrustedCertificate,
@@ -27,8 +29,12 @@ from custom_components.elasticsearch.es_gateway import (
 from custom_components.elasticsearch.es_gateway_8 import Elasticsearch8Gateway, Gateway8Settings
 from elastic_transport import ApiResponseMeta, BaseNode, ObjectApiResponse
 from elasticsearch8._async.client import AsyncElasticsearch
+from homeassistant.util.ssl import client_context
 
 from tests import const as testconst
+
+CURRENT_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
+CUSTOM_CA_PATH = f"{CURRENT_DIRECTORY}/certs/http_ca.crt"
 
 
 def self_signed_tls_error():
@@ -95,6 +101,7 @@ async def gateway_mock_shared(gateway_settings) -> Elasticsearch8Gateway:
     gateway_settings.to_client = MagicMock(return_value=MagicMock(AsyncElasticsearch))
 
     gateway = Elasticsearch8Gateway(gateway_settings=gateway_settings)
+    gateway._client = gateway_settings.to_client()
 
     gateway._client.options = MagicMock(return_value=gateway._client)
 
@@ -147,9 +154,9 @@ async def gateway_mock_stateful(
 ) -> Elasticsearch8Gateway:
     """Return a mock Elasticsearch client for a Stateful ES Cluster."""
 
-    gateway_mock_shared._client.info = mock_es_response(testconst.CLUSTER_INFO_8DOT14_RESPONSE_BODY)
-    gateway_mock_shared._client.xpack = MagicMock()
-    gateway_mock_shared._client.xpack.usage = mock_es_response(
+    gateway_mock_shared.client.info = mock_es_response(testconst.CLUSTER_INFO_8DOT14_RESPONSE_BODY)
+    gateway_mock_shared.client.xpack = MagicMock()
+    gateway_mock_shared.client.xpack.usage = mock_es_response(
         {"security": {"available": True, "enabled": True}}
     )
 
@@ -162,10 +169,10 @@ async def gateway_mock_stateful(
 async def gateway_mock_serverless(gateway_mock_shared: Elasticsearch8Gateway) -> Elasticsearch8Gateway:
     """Return a mock Elasticsearch client for serverless ES."""
 
-    gateway_mock_shared._client.info = mock_es_response(testconst.CLUSTER_INFO_SERVERLESS_RESPONSE_BODY)
-    gateway_mock_shared._client.xpack = MagicMock()
+    gateway_mock_shared.client.info = mock_es_response(testconst.CLUSTER_INFO_SERVERLESS_RESPONSE_BODY)
+    gateway_mock_shared.client.xpack = MagicMock()
 
-    gateway_mock_shared._client.xpack.usage = mock_es_exception(
+    gateway_mock_shared.client.xpack.usage = mock_es_exception(
         elasticsearch8.ApiError, message="api_not_available_exception"
     )
 
@@ -177,36 +184,30 @@ class Test_Initialization:
 
     async def test_init_basic_auth(self) -> None:
         """Test initializing a gateway with basic authentication."""
-        gateway = Elasticsearch8Gateway(
-            gateway_settings=Gateway8Settings(
-                url=testconst.CONFIG_ENTRY_DATA_URL, username="username", password="password"
-            )
-        )
+        client = Gateway8Settings(
+            url=testconst.CONFIG_ENTRY_DATA_URL, username="username", password="password"
+        ).to_client()
 
-        assert gateway._client._headers["Authorization"].startswith("Basic")
+        assert client._headers["Authorization"].startswith("Basic")
 
     async def test_init_api_key_auth(self) -> None:
         """Test initializing a gateway with API Key authentication."""
 
         # API Key Authentication
-        gateway = Elasticsearch8Gateway(
-            gateway_settings=Gateway8Settings(
-                url=testconst.CONFIG_ENTRY_DATA_URL,
-                api_key="api",
-            )
-        )
+        client = Gateway8Settings(
+            url=testconst.CONFIG_ENTRY_DATA_URL,
+            api_key="api",
+        ).to_client()
 
-        assert gateway._client._headers["Authorization"].startswith("ApiKey")
+        assert client._headers["Authorization"].startswith("ApiKey")
 
     async def test_init_no_auth(self) -> None:
         """Test initializing a gateway with no authentication."""
-        gateway = Elasticsearch8Gateway(
-            gateway_settings=Gateway8Settings(
-                url=testconst.CONFIG_ENTRY_DATA_URL_INSECURE,
-            )
-        )
+        client = Gateway8Settings(
+            url=testconst.CONFIG_ENTRY_DATA_URL_INSECURE,
+        ).to_client()
 
-        assert gateway._client._headers.get("Authorization", None) is None
+        assert client._headers.get("Authorization", None) is None
 
     @pytest.mark.parametrize(
         ("verify_certs", "verify_hostname", "expected_verify_mode", "expected_verify_hostname"),
@@ -228,15 +229,13 @@ class Test_Initialization:
     ) -> None:
         """Test initializing a gateway with various TLS settings."""
 
-        gateway = Elasticsearch8Gateway(
-            gateway_settings=Gateway8Settings(
-                url=testconst.CONFIG_ENTRY_DATA_URL,
-                verify_certs=verify_certs,
-                verify_hostname=verify_hostname,
-            )
-        )
+        client = Gateway8Settings(
+            url=testconst.CONFIG_ENTRY_DATA_URL,
+            verify_certs=verify_certs,
+            verify_hostname=verify_hostname,
+        ).to_client()
 
-        node: BaseNode = gateway._client._transport.node_pool.get()
+        node: BaseNode = client._transport.node_pool.get()
         ssl_context = node._ssl_context  # type: ignore[attr-defined]
 
         assert ssl_context.check_hostname == expected_verify_hostname
@@ -248,16 +247,14 @@ class Test_Initialization:
         # cert is located in "certs/http_ca.crt" relative to this file, get the absolute path
         current_directory = os.path.dirname(os.path.abspath(__file__))
 
-        gateway = Elasticsearch8Gateway(
-            gateway_settings=Gateway8Settings(
-                url=testconst.CONFIG_ENTRY_DATA_URL,
-                verify_certs=True,
-                verify_hostname=True,
-                ca_certs=f"{current_directory}/certs/http_ca.crt",
-            )
-        )
+        client = Gateway8Settings(
+            url=testconst.CONFIG_ENTRY_DATA_URL,
+            verify_certs=True,
+            verify_hostname=True,
+            ca_certs=f"{current_directory}/certs/http_ca.crt",
+        ).to_client()
 
-        node: BaseNode = gateway._client._transport.node_pool.get()
+        node: BaseNode = client._transport.node_pool.get()
         ssl_context = node._ssl_context  # type: ignore[attr-defined]
 
         assert any(
@@ -265,10 +262,107 @@ class Test_Initialization:
             for cert in ssl_context.get_ca_certs()
         )
 
+    @pytest.mark.parametrize(
+        "settings",
+        [
+            {"verify_certs": False},
+            {"verify_certs": True, "verify_hostname": False},
+            {"ca_certs": CUSTOM_CA_PATH},
+        ],
+        ids=["No certificate verification", "No hostname verification", "Custom CA"],
+    )
+    async def test_shared_ssl_context_is_not_modified(self, settings) -> None:
+        """Test that TLS settings stay out of the context shared across Home Assistant."""
+
+        shared_context = client_context()
+        shared_ca_certs = shared_context.get_ca_certs()
+
+        Gateway8Settings(url=testconst.CONFIG_ENTRY_DATA_URL, **settings).to_client()
+
+        assert shared_context.verify_mode == ssl.CERT_REQUIRED
+        assert shared_context.check_hostname is True
+        assert shared_context.get_ca_certs() == shared_ca_certs
+
+    async def test_ssl_context_is_not_shared_between_clients(self) -> None:
+        """Test that each client gets its own TLS context."""
+
+        settings = Gateway8Settings(url=testconst.CONFIG_ENTRY_DATA_URL)
+
+        first: BaseNode = settings.to_client()._transport.node_pool.get()
+        second: BaseNode = settings.to_client()._transport.node_pool.get()
+
+        assert first._ssl_context is not second._ssl_context  # type: ignore[attr-defined]
+
+    @pytest.mark.parametrize(
+        "ca_certs",
+        [f"{CURRENT_DIRECTORY}/certs/missing.crt", __file__, CURRENT_DIRECTORY],
+        ids=["Missing file", "Not a certificate", "Directory"],
+    )
+    async def test_invalid_ca_certs(self, ca_certs) -> None:
+        """Test that a CA file that cannot be loaded raises our own error."""
+
+        settings = Gateway8Settings(url=testconst.CONFIG_ENTRY_DATA_URL, ca_certs=ca_certs)
+
+        with pytest.raises(InvalidCACertificate):
+            settings.to_client()
+
+    async def test_client_is_built_off_the_event_loop(self, gateway_settings) -> None:
+        """Test that the blocking client construction runs on a worker thread."""
+
+        client = MagicMock(AsyncElasticsearch)
+        threads = []
+
+        def to_client() -> MagicMock:
+            threads.append(threading.get_ident())
+            return client
+
+        gateway_settings.to_client = to_client
+        gateway = Elasticsearch8Gateway(gateway_settings=gateway_settings)
+
+        assert threads == []
+
+        with patch.object(ElasticsearchGateway, "async_init", AsyncMock()):
+            await gateway.async_init()
+
+        assert threads != [threading.get_ident()]
+        assert len(threads) == 1
+        assert gateway.client is client
+
+    async def test_stop_before_init(self, gateway_settings) -> None:
+        """Test that a gateway which never connected can still be stopped."""
+
+        await Elasticsearch8Gateway(gateway_settings=gateway_settings).stop()
+
     async def test_async_init(self, gateway_mock_stateful) -> None:
         """Test the async initialization with proper permissions on a supported version."""
 
         assert await gateway_mock_stateful.async_init() is None
+
+        assert (
+            gateway_mock_stateful.cluster_uuid == testconst.CLUSTER_INFO_8DOT14_RESPONSE_BODY["cluster_uuid"]
+        )
+
+    async def test_async_init_unformed_cluster(self, gateway_mock_stateful) -> None:
+        """Test that the placeholder UUID of an unformed cluster is not treated as its identity."""
+
+        gateway_mock_stateful._client.info = mock_es_response(
+            {**testconst.CLUSTER_INFO_8DOT14_RESPONSE_BODY, "cluster_uuid": "_na_"}
+        )
+
+        await gateway_mock_stateful.async_init()
+
+        assert gateway_mock_stateful.cluster_uuid is None
+
+    async def test_async_init_then_stop(self, es_mock_builder) -> None:
+        """Test that the UUID of the cluster is returned to the caller."""
+
+        es_mock_builder.as_elasticsearch_8_17().with_correct_permissions()
+
+        cluster_uuid = await Elasticsearch8Gateway.async_init_then_stop(
+            url=testconst.CONFIG_ENTRY_DATA_URL, verify_certs=False
+        )
+
+        assert cluster_uuid is not None
 
     async def test_async_init_unsupported_version(self, gateway_mock_stateful) -> None:
         """Test the async_init method when the target cluster is running an unsupported version."""
@@ -650,6 +744,7 @@ class Test_Errors_e2e:
 
         es_mock_builder.as_elasticsearch_8_17().with_correct_permissions()
         gateway = Elasticsearch8Gateway(gateway_settings=gateway_settings)
+        gateway._client = gateway_settings.to_client()
         es_mock_builder.reset()
 
         try:

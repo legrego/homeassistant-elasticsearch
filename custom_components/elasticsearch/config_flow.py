@@ -48,6 +48,8 @@ from custom_components.elasticsearch.errors import (
     AuthenticationRequired,
     CannotConnect,
     InsufficientPrivileges,
+    InvalidCACertificate,
+    UnsupportedVersion,
     UntrustedCertificate,
 )
 from custom_components.elasticsearch.es_gateway_8 import Elasticsearch8Gateway
@@ -57,7 +59,6 @@ from .logger import (
     async_log_enter_exit_debug,
     async_log_enter_exit_info,
     log_enter_exit_debug,
-    log_enter_exit_info,
 )
 
 CONFIG_TO_REDACT = {CONF_API_KEY, CONF_PASSWORD, CONF_USERNAME}
@@ -94,6 +95,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         """Initialize the Elastic flow."""
         self._reauth_entry: ConfigEntry | None = None
         self._prospective_config: dict[str, Any] = self.init_data or {}
+        self._cluster_uuid: str | None = None
 
     @async_log_enter_exit_info
     async def async_step_user(
@@ -113,7 +115,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             self._prospective_config.update(user_input)
 
             try:
-                await Elasticsearch8Gateway.async_init_then_stop(**prospective_settings)
+                self._cluster_uuid = await Elasticsearch8Gateway.async_init_then_stop(**prospective_settings)
 
             except UntrustedCertificate:
                 return await self.async_step_certificate_issues()
@@ -122,8 +124,14 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                 return await self.async_step_user(errors={CONF_URL: "cannot_connect"})
             except AuthenticationRequired:
                 return await self.async_step_authentication_issues()
+            except UnsupportedVersion:
+                BASE_LOGGER.debug("Unsupported version", exc_info=True)
+                return await self.async_step_user(errors={"base": "unsupported_version"})
+            except Exception:  # noqa: BLE001
+                BASE_LOGGER.exception("Unexpected error connecting to Elasticsearch")
+                return await self.async_step_user(errors={"base": "unknown"})
 
-            return self.async_step_complete()
+            return await self.async_step_complete()
 
         return self.async_show_form(
             step_id="user",
@@ -150,21 +158,20 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
         if user_input is not None:
             try:
-                await Elasticsearch8Gateway.async_init_then_stop(
+                self._cluster_uuid = await Elasticsearch8Gateway.async_init_then_stop(
                     url=self._prospective_config[CONF_URL],
                     verify_certs=user_input.get(CONF_VERIFY_SSL, True),
                     ca_certs=user_input.get(CONF_SSL_CA_PATH),
                     verify_hostname=user_input.get(CONF_SSL_VERIFY_HOSTNAME, True),
                 )
 
-                self._prospective_config.update(user_input)
-
-                # If we get here, we have a valid connection, so we can complete our flow
-                return self.async_step_complete()
-
             except UntrustedCertificate:
                 BASE_LOGGER.debug("Certificate issue", exc_info=True)
                 return await self.async_step_certificate_issues(errors={"base": "untrusted_certificate"})
+
+            except InvalidCACertificate:
+                BASE_LOGGER.debug("Invalid certificate authority", exc_info=True)
+                return await self.async_step_certificate_issues(errors={"base": "invalid_ca_certificate"})
 
             except CannotConnect:
                 BASE_LOGGER.debug("Cannot connect", exc_info=True)
@@ -173,6 +180,18 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             except AuthenticationRequired:
                 self._prospective_config.update(user_input)
                 return await self.async_step_authentication_issues()
+
+            except UnsupportedVersion:
+                BASE_LOGGER.debug("Unsupported version", exc_info=True)
+                return await self.async_step_certificate_issues(errors={"base": "unsupported_version"})
+
+            except Exception:  # noqa: BLE001
+                BASE_LOGGER.exception("Unexpected error connecting to Elasticsearch")
+                return await self.async_step_certificate_issues(errors={"base": "unknown"})
+
+            # If we get here, we have a valid connection, so we can complete our flow
+            self._prospective_config.update(user_input)
+            return await self.async_step_complete()
 
         return self.async_show_form(
             step_id="certificate_issues",
@@ -202,8 +221,8 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         if user_input is not None:
             if user_input[CONF_AUTHENTICATION_TYPE] == TRANSLATION_KEY_BASIC_AUTH:
                 return await self.async_step_basic_auth()
-            if user_input[CONF_AUTHENTICATION_TYPE] == TRANSLATION_KEY_API_KEY:
-                return await self.async_step_api_key()
+
+            return await self.async_step_api_key()
 
         # Show a form where we ask the user if they want to use API Key or Basic Auth
         return self.async_show_form(
@@ -231,7 +250,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
         if user_input is not None:
             try:
-                await Elasticsearch8Gateway.async_init_then_stop(
+                self._cluster_uuid = await Elasticsearch8Gateway.async_init_then_stop(
                     url=self._prospective_config[CONF_URL],
                     username=user_input.get(CONF_USERNAME),
                     password=user_input.get(CONF_PASSWORD),
@@ -245,10 +264,19 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             except AuthenticationRequired:
                 BASE_LOGGER.debug("Invalid basic authentication", exc_info=True)
                 return await self.async_step_basic_auth(errors={"base": "invalid_basic_auth"})
+            except CannotConnect:
+                BASE_LOGGER.debug("Cannot connect", exc_info=True)
+                return await self.async_step_basic_auth(errors={"base": "cannot_connect"})
+            except UnsupportedVersion:
+                BASE_LOGGER.debug("Unsupported version", exc_info=True)
+                return await self.async_step_basic_auth(errors={"base": "unsupported_version"})
+            except Exception:  # noqa: BLE001
+                BASE_LOGGER.exception("Unexpected error connecting to Elasticsearch")
+                return await self.async_step_basic_auth(errors={"base": "unknown"})
 
             # We are authenticated, update settings and complete flow
             self._prospective_config.update(user_input)
-            return self.async_step_complete()
+            return await self.async_step_complete()
 
         return self.async_show_form(
             step_id="basic_auth",
@@ -280,7 +308,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
         if user_input is not None:
             try:
-                await Elasticsearch8Gateway.async_init_then_stop(
+                self._cluster_uuid = await Elasticsearch8Gateway.async_init_then_stop(
                     url=self._prospective_config[CONF_URL],
                     api_key=user_input.get(CONF_API_KEY),
                     verify_certs=self._prospective_config.get(CONF_VERIFY_SSL, True),
@@ -293,10 +321,19 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             except AuthenticationRequired:
                 BASE_LOGGER.debug("Invalid API Key", exc_info=True)
                 return await self.async_step_api_key(errors={"base": "invalid_api_key"})
+            except CannotConnect:
+                BASE_LOGGER.debug("Cannot connect", exc_info=True)
+                return await self.async_step_api_key(errors={"base": "cannot_connect"})
+            except UnsupportedVersion:
+                BASE_LOGGER.debug("Unsupported version", exc_info=True)
+                return await self.async_step_api_key(errors={"base": "unsupported_version"})
+            except Exception:  # noqa: BLE001
+                BASE_LOGGER.exception("Unexpected error connecting to Elasticsearch")
+                return await self.async_step_api_key(errors={"base": "unknown"})
 
             # We are authenticated, update settings and complete flow
             self._prospective_config.update(user_input)
-            return self.async_step_complete()
+            return await self.async_step_complete()
 
         return self.async_show_form(
             step_id="api_key",
@@ -312,8 +349,8 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             errors=errors,
         )
 
-    @log_enter_exit_info
-    def async_step_complete(self) -> ConfigFlowResult:
+    @async_log_enter_exit_info
+    async def async_step_complete(self) -> ConfigFlowResult:
         """Handle the completion of the flow."""
         default_options = ElasticOptionsFlowHandler.default_options
 
@@ -325,6 +362,9 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                 data=self._prospective_config,
                 options={**self._reauth_entry.options},
             )
+
+        await self.async_set_unique_id(self._cluster_uuid)
+        self._abort_if_unique_id_configured()
 
         title: str = self._prospective_config[CONF_URL]
 

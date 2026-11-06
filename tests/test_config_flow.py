@@ -17,6 +17,8 @@ from custom_components.elasticsearch.errors import (
     AuthenticationRequired,
     CannotConnect,
     InsufficientPrivileges,
+    InvalidCACertificate,
+    UnsupportedVersion,
     UntrustedCertificate,
 )
 from homeassistant.data_entry_flow import (
@@ -105,7 +107,7 @@ class Test_Setup_Flows:
 
     async def test_full_flow(self, hass: HomeAssistant, initial_form):
         """Test the full config flow."""
-        with patch(gateway_async_init, return_value=True):
+        with patch(gateway_async_init, return_value=testconst.CLUSTER_UUID):
             result = await hass.config_entries.flow.async_configure(
                 initial_form, user_input={testconst.CONF_URL: testconst.CONFIG_ENTRY_DATA_URL}
             )
@@ -115,6 +117,7 @@ class Test_Setup_Flows:
         assert "title" in result and result["title"] == testconst.CONFIG_ENTRY_DATA_URL
         assert "data" in result and result["data"] == {testconst.CONF_URL: testconst.CONFIG_ENTRY_DATA_URL}
         assert "options" in result and result["options"] == ElasticOptionsFlowHandler.default_options
+        assert "result" in result and result["result"].unique_id == testconst.CLUSTER_UUID
 
     @pytest.mark.parametrize(
         ("exception", "step_id"),
@@ -136,7 +139,7 @@ class Test_Setup_Flows:
 
     async def test_url_to_certificate_issues_to_done(self, hass: HomeAssistant, certificate_form):
         """Test transitions from the ssl settings form to entry creation."""
-        with patch(gateway_async_init, return_value=True):
+        with patch(gateway_async_init, return_value=testconst.CLUSTER_UUID):
             result = await hass.config_entries.flow.async_configure(
                 certificate_form,
                 user_input={
@@ -212,7 +215,7 @@ class Test_Setup_Flows:
         assert "step_id" in result and result["step_id"] == authentication_type
 
         # Now proceed on the form for the specific auth method
-        with patch(gateway_async_init, return_value=True):
+        with patch(gateway_async_init, return_value=testconst.CLUSTER_UUID):
             result = await hass.config_entries.flow.async_configure(
                 authentication_form,
                 user_input=settings,
@@ -302,6 +305,191 @@ class Test_Setup_Flows:
         assert "errors" in result and result["errors"] == errors
 
 
+SETTINGS_BASIC_AUTH = {haconst.CONF_USERNAME: "username", haconst.CONF_PASSWORD: "password"}
+SETTINGS_API_KEY = {haconst.CONF_API_KEY: "api_key"}
+SETTINGS_CERTIFICATE = {
+    haconst.CONF_VERIFY_SSL: True,
+    compconst.CONF_SSL_VERIFY_HOSTNAME: True,
+    compconst.CONF_SSL_CA_PATH: "/config/ca.crt",
+}
+SETTINGS_URL = {testconst.CONF_URL: testconst.CONFIG_ENTRY_DATA_URL}
+
+
+class Test_Flow_Recovery:
+    """Test that the user can finish the flow after each error it can show."""
+
+    @staticmethod
+    async def start_flow(hass: HomeAssistant, step_id: str) -> str:
+        """Walk the flow to the given step, returning the flow id."""
+        result = await hass.config_entries.flow.async_init(compconst.DOMAIN, context={"source": "user"})
+
+        if step_id == "user":
+            return result["flow_id"]
+
+        if step_id == "certificate_issues":
+            with patch(gateway_async_init, side_effect=UntrustedCertificate):
+                result = await hass.config_entries.flow.async_configure(result["flow_id"], SETTINGS_URL)
+            return result["flow_id"]
+
+        with patch(gateway_async_init, side_effect=AuthenticationRequired):
+            result = await hass.config_entries.flow.async_configure(result["flow_id"], SETTINGS_URL)
+
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {compconst.CONF_AUTHENTICATION_TYPE: step_id}
+        )
+        return result["flow_id"]
+
+    @pytest.mark.parametrize(
+        ("step_id", "user_input", "exception", "errors"),
+        [
+            ("user", SETTINGS_URL, CannotConnect, {testconst.CONF_URL: "cannot_connect"}),
+            ("user", SETTINGS_URL, UnsupportedVersion, {"base": "unsupported_version"}),
+            ("user", SETTINGS_URL, RuntimeError, {"base": "unknown"}),
+            (
+                "certificate_issues",
+                SETTINGS_CERTIFICATE,
+                UntrustedCertificate,
+                {"base": "untrusted_certificate"},
+            ),
+            (
+                "certificate_issues",
+                SETTINGS_CERTIFICATE,
+                InvalidCACertificate,
+                {"base": "invalid_ca_certificate"},
+            ),
+            ("certificate_issues", SETTINGS_CERTIFICATE, UnsupportedVersion, {"base": "unsupported_version"}),
+            ("certificate_issues", SETTINGS_CERTIFICATE, RuntimeError, {"base": "unknown"}),
+            ("basic_auth", SETTINGS_BASIC_AUTH, AuthenticationRequired, {"base": "invalid_basic_auth"}),
+            ("basic_auth", SETTINGS_BASIC_AUTH, InsufficientPrivileges, {"base": "insufficient_privileges"}),
+            ("basic_auth", SETTINGS_BASIC_AUTH, CannotConnect, {"base": "cannot_connect"}),
+            ("basic_auth", SETTINGS_BASIC_AUTH, UnsupportedVersion, {"base": "unsupported_version"}),
+            ("basic_auth", SETTINGS_BASIC_AUTH, RuntimeError, {"base": "unknown"}),
+            ("api_key", SETTINGS_API_KEY, AuthenticationRequired, {"base": "invalid_api_key"}),
+            ("api_key", SETTINGS_API_KEY, InsufficientPrivileges, {"base": "insufficient_privileges"}),
+            ("api_key", SETTINGS_API_KEY, CannotConnect, {"base": "cannot_connect"}),
+            ("api_key", SETTINGS_API_KEY, UnsupportedVersion, {"base": "unsupported_version"}),
+            ("api_key", SETTINGS_API_KEY, RuntimeError, {"base": "unknown"}),
+        ],
+    )
+    async def test_recovers_on_the_same_step(
+        self, hass: HomeAssistant, step_id, user_input, exception, errors
+    ):
+        """Test that an error returns to the form, and that resubmitting it finishes the flow."""
+        flow_id = await self.start_flow(hass, step_id)
+
+        with patch(gateway_async_init, side_effect=exception):
+            result = await hass.config_entries.flow.async_configure(flow_id, user_input)
+
+        assert result["type"] == FlowResultType.FORM
+        assert "step_id" in result and result["step_id"] == step_id
+        assert "errors" in result and result["errors"] == errors
+
+        with patch(gateway_async_init, return_value=testconst.CLUSTER_UUID):
+            result = await hass.config_entries.flow.async_configure(flow_id, user_input)
+
+        assert result["type"] == FlowResultType.CREATE_ENTRY
+        assert "result" in result and result["result"].unique_id == testconst.CLUSTER_UUID
+
+        for key, value in user_input.items():
+            assert result["data"][key] == value
+
+    async def test_recovers_from_certificate_step_connection_failure(self, hass: HomeAssistant):
+        """Test that losing the connection on the certificate step can be resolved from the URL step."""
+        flow_id = await self.start_flow(hass, "certificate_issues")
+
+        with patch(gateway_async_init, side_effect=CannotConnect):
+            result = await hass.config_entries.flow.async_configure(flow_id, SETTINGS_CERTIFICATE)
+
+        assert "step_id" in result and result["step_id"] == "user"
+        assert "errors" in result and result["errors"] == {"base": "cannot_connect"}
+
+        with patch(gateway_async_init, return_value=testconst.CLUSTER_UUID):
+            result = await hass.config_entries.flow.async_configure(flow_id, SETTINGS_URL)
+
+        assert result["type"] == FlowResultType.CREATE_ENTRY
+
+    async def test_recovers_from_certificate_step_requiring_authentication(self, hass: HomeAssistant):
+        """Test that the certificate settings are kept when authentication is required next."""
+        flow_id = await self.start_flow(hass, "certificate_issues")
+
+        with patch(gateway_async_init, side_effect=AuthenticationRequired):
+            result = await hass.config_entries.flow.async_configure(flow_id, SETTINGS_CERTIFICATE)
+
+        assert "step_id" in result and result["step_id"] == "authentication_issues"
+
+        result = await hass.config_entries.flow.async_configure(
+            flow_id, {compconst.CONF_AUTHENTICATION_TYPE: "api_key"}
+        )
+
+        with patch(gateway_async_init, return_value=testconst.CLUSTER_UUID):
+            result = await hass.config_entries.flow.async_configure(flow_id, SETTINGS_API_KEY)
+
+        assert result["type"] == FlowResultType.CREATE_ENTRY
+        assert result["data"][compconst.CONF_SSL_CA_PATH] == SETTINGS_CERTIFICATE[compconst.CONF_SSL_CA_PATH]
+
+
+class Test_Unique_Config_Entry:
+    """Test that a cluster can only be set up once."""
+
+    @pytest.mark.parametrize(
+        ("step_id", "user_input"),
+        [
+            ("user", SETTINGS_URL),
+            ("certificate_issues", SETTINGS_CERTIFICATE),
+            ("basic_auth", SETTINGS_BASIC_AUTH),
+            ("api_key", SETTINGS_API_KEY),
+        ],
+    )
+    async def test_duplicate_cluster_is_rejected(self, hass: HomeAssistant, step_id, user_input):
+        """Test that the flow aborts on each path when the cluster is already configured."""
+        MockConfigEntry(domain=compconst.DOMAIN, unique_id=testconst.CLUSTER_UUID).add_to_hass(hass)
+
+        flow_id = await Test_Flow_Recovery.start_flow(hass, step_id)
+
+        with patch(gateway_async_init, return_value=testconst.CLUSTER_UUID):
+            result = await hass.config_entries.flow.async_configure(flow_id, user_input)
+
+        assert result["type"] == FlowResultType.ABORT
+        assert "reason" in result and result["reason"] == "already_configured"
+        assert len(hass.config_entries.async_entries(compconst.DOMAIN)) == 1
+
+    async def test_second_url_for_the_same_cluster_is_rejected(self, hass: HomeAssistant):
+        """Test that the check follows the cluster, not the URL it was reached through."""
+        MockConfigEntry(
+            domain=compconst.DOMAIN,
+            unique_id=testconst.CLUSTER_UUID,
+            data={testconst.CONF_URL: "https://another_name_for_this_cluster:9200"},
+        ).add_to_hass(hass)
+
+        flow_id = await Test_Flow_Recovery.start_flow(hass, "user")
+
+        with patch(gateway_async_init, return_value=testconst.CLUSTER_UUID):
+            result = await hass.config_entries.flow.async_configure(flow_id, SETTINGS_URL)
+
+        assert "reason" in result and result["reason"] == "already_configured"
+
+    async def test_different_cluster_is_allowed(self, hass: HomeAssistant):
+        """Test that another cluster can be added alongside an existing one."""
+        MockConfigEntry(domain=compconst.DOMAIN, unique_id="another_cluster").add_to_hass(hass)
+
+        flow_id = await Test_Flow_Recovery.start_flow(hass, "user")
+
+        with patch(gateway_async_init, return_value=testconst.CLUSTER_UUID):
+            result = await hass.config_entries.flow.async_configure(flow_id, SETTINGS_URL)
+
+        assert result["type"] == FlowResultType.CREATE_ENTRY
+
+    async def test_unknown_cluster_uuid(self, hass: HomeAssistant):
+        """Test that setup still succeeds when the cluster cannot report a UUID."""
+        flow_id = await Test_Flow_Recovery.start_flow(hass, "user")
+
+        with patch(gateway_async_init, return_value=None):
+            result = await hass.config_entries.flow.async_configure(flow_id, SETTINGS_URL)
+
+        assert result["type"] == FlowResultType.CREATE_ENTRY
+        assert "result" in result and result["result"].unique_id is None
+
+
 class Test_Reauth_Flow:
     """Test the reauth flow."""
 
@@ -376,11 +564,55 @@ class Test_Reauth_Flow:
         assert "step_id" in result and result["step_id"] == step_id
 
         # Simulate the user entering details, the authentication now being successful, and completion of reauth
-        with patch(gateway_async_init, return_value=True):
+        with patch(gateway_async_init, return_value=testconst.CLUSTER_UUID):
             result = await hass.config_entries.flow.async_configure(
                 result["flow_id"],
                 user_input,
             )
+
+        assert "reason" in result and result["reason"] == "reauth_successful"
+
+    @pytest.mark.parametrize(
+        ("exception", "errors"),
+        [
+            (CannotConnect, {"base": "cannot_connect"}),
+            (UnsupportedVersion, {"base": "unsupported_version"}),
+            (RuntimeError, {"base": "unknown"}),
+        ],
+    )
+    @pytest.mark.parametrize(
+        ("step_id", "existing_auth_settings"),
+        [("basic_auth", SETTINGS_BASIC_AUTH), ("api_key", SETTINGS_API_KEY)],
+    )
+    async def test_reauth_flow_recovers(
+        self, hass: HomeAssistant, exception, errors, step_id, existing_auth_settings
+    ):
+        """Test that reauth can be completed after a failure that isn't related to the credentials."""
+
+        config_entry = MockConfigEntry(
+            domain=compconst.DOMAIN,
+            unique_id=testconst.CLUSTER_UUID,
+            data={**testconst.CONFIG_ENTRY_BASE_DATA, **existing_auth_settings},
+            options=testconst.CONFIG_ENTRY_DEFAULT_OPTIONS,
+            title="config_entry_title",
+        )
+
+        await add_config_entry_to_hass(hass, config_entry)
+
+        with patch(gateway_async_init, side_effect=AuthenticationRequired):
+            config_entry.async_start_reauth(hass)
+            await hass.async_block_till_done()
+
+        flow_id = hass.config_entries.flow.async_progress()[0]["flow_id"]
+
+        with patch(gateway_async_init, side_effect=exception):
+            result = await hass.config_entries.flow.async_configure(flow_id, existing_auth_settings)
+
+        assert "step_id" in result and result["step_id"] == step_id
+        assert "errors" in result and result["errors"] == errors
+
+        with patch(gateway_async_init, return_value=testconst.CLUSTER_UUID):
+            result = await hass.config_entries.flow.async_configure(flow_id, existing_auth_settings)
 
         assert "reason" in result and result["reason"] == "reauth_successful"
 

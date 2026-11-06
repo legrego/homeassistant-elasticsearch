@@ -71,14 +71,19 @@ class ElasticsearchGateway(ABC):
         self._logger = log
 
         self._previous_ping: bool | None = None
+        self._cluster_uuid: str | None = None
 
     @log_enter_exit_debug
     async def async_init(self) -> None:
         """I/O bound init."""
 
         # Test the connection
-        await self.info()
+        cluster_info = await self.info()
         self._previous_ping = True
+
+        # Elasticsearch reports "_na_" until the cluster has formed
+        cluster_uuid = cluster_info.get("cluster_uuid")
+        self._cluster_uuid = None if cluster_uuid == "_na_" else cluster_uuid
 
         # Minimum version check
         if not await self._is_supported_version():
@@ -99,6 +104,12 @@ class ElasticsearchGateway(ABC):
     def settings(self) -> GatewaySettings:
         """Return the settings."""
 
+    @property
+    def cluster_uuid(self) -> str | None:
+        """Return the UUID of the connected cluster, if it is known."""
+
+        return self._cluster_uuid
+
     @classmethod
     @abstractmethod
     async def async_init_then_stop(
@@ -113,8 +124,8 @@ class ElasticsearchGateway(ABC):
         request_timeout: int = 30,
         minimum_privileges: MappingProxyType[str, Any] = ES_CHECK_PERMISSIONS_DATASTREAM,
         log: Logger = BASE_LOGGER,
-    ) -> None:
-        """Initialize the gateway and then stop it."""
+    ) -> str | None:
+        """Initialize the gateway and then stop it, returning the UUID of the cluster."""
 
     @abstractmethod
     async def info(self) -> dict:

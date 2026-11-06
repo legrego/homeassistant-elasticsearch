@@ -7,6 +7,10 @@ class ESIntegrationException(HomeAssistantError):  # noqa: N818
     """Base class for Elastic exceptions."""
 
 
+class InvalidCACertificate(ESIntegrationException):
+    """The configured certificate authority file could not be loaded."""
+
+
 class ESIntegrationConnectionException(ESIntegrationException):
     """Base class for Elasticsearch exceptions."""
 
