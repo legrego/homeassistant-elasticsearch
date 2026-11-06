@@ -175,6 +175,11 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
             except CannotConnect:
                 BASE_LOGGER.debug("Cannot connect", exc_info=True)
+
+                # Reauth keeps the entry's URL, so the URL form has nothing to offer
+                if self._reauth_entry is not None:
+                    return await self.async_step_certificate_issues(errors={"base": "cannot_connect"})
+
                 return await self.async_step_user(errors={"base": "cannot_connect"})
 
             except AuthenticationRequired:
@@ -217,6 +222,10 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
     @async_log_enter_exit_info
     async def async_step_authentication_issues(self, user_input: dict | None = None) -> ConfigFlowResult:
         """We require Authentication information to connect to Elasticsearch."""
+
+        # Reauth updates the credentials the entry already has, it doesn't add another kind
+        if self._reauth_entry is not None:
+            return await self._async_step_reauth_credentials()
 
         if user_input is not None:
             if user_input[CONF_AUTHENTICATION_TYPE] == TRANSLATION_KEY_BASIC_AUTH:
@@ -264,6 +273,9 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             except AuthenticationRequired:
                 BASE_LOGGER.debug("Invalid basic authentication", exc_info=True)
                 return await self.async_step_basic_auth(errors={"base": "invalid_basic_auth"})
+            except InvalidCACertificate:
+                BASE_LOGGER.debug("Invalid certificate authority", exc_info=True)
+                return await self.async_step_certificate_issues(errors={"base": "invalid_ca_certificate"})
             except CannotConnect:
                 BASE_LOGGER.debug("Cannot connect", exc_info=True)
                 return await self.async_step_basic_auth(errors={"base": "cannot_connect"})
@@ -321,6 +333,9 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             except AuthenticationRequired:
                 BASE_LOGGER.debug("Invalid API Key", exc_info=True)
                 return await self.async_step_api_key(errors={"base": "invalid_api_key"})
+            except InvalidCACertificate:
+                BASE_LOGGER.debug("Invalid certificate authority", exc_info=True)
+                return await self.async_step_certificate_issues(errors={"base": "invalid_ca_certificate"})
             except CannotConnect:
                 BASE_LOGGER.debug("Cannot connect", exc_info=True)
                 return await self.async_step_api_key(errors={"base": "cannot_connect"})
@@ -385,6 +400,11 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         self._reauth_entry = entry
 
         self._prospective_config = dict(entry.data)
+
+        return await self._async_step_reauth_credentials(user_input)
+
+    async def _async_step_reauth_credentials(self, user_input: dict | None = None) -> ConfigFlowResult:
+        """Continue with the authentication method that the entry being reauthenticated uses."""
 
         if self._prospective_config.get(CONF_USERNAME, None) is not None:
             return await self.async_step_basic_auth(user_input=user_input)

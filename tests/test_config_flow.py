@@ -393,6 +393,27 @@ class Test_Flow_Recovery:
         for key, value in user_input.items():
             assert result["data"][key] == value
 
+    @pytest.mark.parametrize(
+        ("step_id", "user_input"),
+        [("basic_auth", SETTINGS_BASIC_AUTH), ("api_key", SETTINGS_API_KEY)],
+    )
+    async def test_recovers_from_invalid_ca_on_authentication_step(
+        self, hass: HomeAssistant, step_id, user_input
+    ):
+        """Test that a CA file which stops loading can be corrected from the certificate step."""
+        flow_id = await self.start_flow(hass, step_id)
+
+        with patch(gateway_async_init, side_effect=InvalidCACertificate):
+            result = await hass.config_entries.flow.async_configure(flow_id, user_input)
+
+        assert "step_id" in result and result["step_id"] == "certificate_issues"
+        assert "errors" in result and result["errors"] == {"base": "invalid_ca_certificate"}
+
+        with patch(gateway_async_init, return_value=testconst.CLUSTER_UUID):
+            result = await hass.config_entries.flow.async_configure(flow_id, SETTINGS_CERTIFICATE)
+
+        assert result["type"] == FlowResultType.CREATE_ENTRY
+
     async def test_recovers_from_certificate_step_connection_failure(self, hass: HomeAssistant):
         """Test that losing the connection on the certificate step can be resolved from the URL step."""
         flow_id = await self.start_flow(hass, "certificate_issues")
@@ -452,6 +473,20 @@ class Test_Unique_Config_Entry:
         assert result["type"] == FlowResultType.ABORT
         assert "reason" in result and result["reason"] == "already_configured"
         assert len(hass.config_entries.async_entries(compconst.DOMAIN)) == 1
+
+    async def test_concurrent_flow_for_the_same_cluster_is_rejected(self, hass: HomeAssistant):
+        """Test that two flows for one cluster can't both create an entry."""
+        first_flow_id = await Test_Flow_Recovery.start_flow(hass, "user")
+        hass.config_entries.flow._progress[first_flow_id].context["unique_id"] = testconst.CLUSTER_UUID
+
+        flow_id = await Test_Flow_Recovery.start_flow(hass, "user")
+
+        with patch(gateway_async_init, return_value=testconst.CLUSTER_UUID):
+            result = await hass.config_entries.flow.async_configure(flow_id, SETTINGS_URL)
+
+        assert result["type"] == FlowResultType.ABORT
+        assert "reason" in result and result["reason"] == "already_in_progress"
+        assert hass.config_entries.async_entries(compconst.DOMAIN) == []
 
     async def test_second_url_for_the_same_cluster_is_rejected(self, hass: HomeAssistant):
         """Test that the check follows the cluster, not the URL it was reached through."""
@@ -615,6 +650,62 @@ class Test_Reauth_Flow:
             result = await hass.config_entries.flow.async_configure(flow_id, existing_auth_settings)
 
         assert "reason" in result and result["reason"] == "reauth_successful"
+
+    @pytest.mark.parametrize(
+        ("step_id", "existing_auth_settings", "other_auth_key"),
+        [
+            ("basic_auth", SETTINGS_BASIC_AUTH, haconst.CONF_API_KEY),
+            ("api_key", SETTINGS_API_KEY, haconst.CONF_USERNAME),
+        ],
+    )
+    async def test_reauth_flow_recovers_from_invalid_ca(
+        self, hass: HomeAssistant, step_id, existing_auth_settings, other_auth_key
+    ):
+        """Test that a CA file which stops loading can be corrected during reauth."""
+
+        config_entry = MockConfigEntry(
+            domain=compconst.DOMAIN,
+            unique_id=testconst.CLUSTER_UUID,
+            data={
+                **testconst.CONFIG_ENTRY_BASE_DATA,
+                **existing_auth_settings,
+                compconst.CONF_SSL_CA_PATH: "/config/missing.crt",
+            },
+            options=testconst.CONFIG_ENTRY_DEFAULT_OPTIONS,
+            title="config_entry_title",
+        )
+
+        await add_config_entry_to_hass(hass, config_entry)
+
+        with patch(gateway_async_init, side_effect=InvalidCACertificate):
+            config_entry.async_start_reauth(hass)
+            await hass.async_block_till_done()
+
+        flow = hass.config_entries.flow.async_progress()[0]
+        flow_id = flow["flow_id"]
+        assert "step_id" in flow and flow["step_id"] == "certificate_issues"
+
+        # The connection can fail while the certificate is being corrected, without leaving this step
+        with patch(gateway_async_init, side_effect=CannotConnect):
+            result = await hass.config_entries.flow.async_configure(flow_id, SETTINGS_CERTIFICATE)
+
+        assert "step_id" in result and result["step_id"] == "certificate_issues"
+        assert "errors" in result and result["errors"] == {"base": "cannot_connect"}
+
+        # The certificate step has no credentials, which goes back to the entry's own auth method
+        with patch(gateway_async_init, side_effect=AuthenticationRequired):
+            result = await hass.config_entries.flow.async_configure(flow_id, SETTINGS_CERTIFICATE)
+
+        assert "step_id" in result and result["step_id"] == step_id
+
+        with patch(gateway_async_init, return_value=testconst.CLUSTER_UUID):
+            result = await hass.config_entries.flow.async_configure(flow_id, existing_auth_settings)
+
+        assert "reason" in result and result["reason"] == "reauth_successful"
+        assert (
+            config_entry.data[compconst.CONF_SSL_CA_PATH] == SETTINGS_CERTIFICATE[compconst.CONF_SSL_CA_PATH]
+        )
+        assert other_auth_key not in config_entry.data
 
     async def test_reauth_flow_no_auth(self, hass: HomeAssistant):
         """Test the reauth flow completes when the user provides new authentication details."""

@@ -2,7 +2,6 @@
     "config": {
         "abort": {
             "already_configured": "This Elasticsearch cluster is already configured.",
-            "already_in_progress": "Configuration of this Elasticsearch cluster is already in progress.",
             "no_auth": "This Elasticsearch cluster has no credentials to update.",
             "reauth_successful": "Re-authentication was successful"
         },
