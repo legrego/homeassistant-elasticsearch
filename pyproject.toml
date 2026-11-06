@@ -20,7 +20,7 @@ pydantic = ">=1.10.4"
 mypy-dev = ">=1.15.0a2"
 
 [tool.poetry.group.docs.dependencies]
-mkdocs-material = ">=9.5.17"
+zensical = ">=0.1.0,<0.2.0"
 
 [tool.poetry.group.test.dependencies]
 syrupy = ">=4.6.0"

@@ -1,0 +1,49 @@
+[project]
+site_name = "Elasticsearch Component for Home Assistant"
+site_url = "https://legrego.github.io/homeassistant-elasticsearch/"
+nav = [
+    "index.md",
+    "install.md",
+    "configure.md",
+    "using_kibana.md",
+    "ingest_advanced.md",
+]
+
+[project.theme]
+variant = "classic"
+features = [
+    "content.code.annotate",
+    "content.code.copy",
+    "content.tabs.link",
+    "navigation.path",
+    "toc.follow",
+]
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme)"
+toggle.icon = "material/brightness-auto"
+toggle.name = "Switch to light mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+toggle.icon = "material/brightness-7"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+toggle.icon = "material/brightness-4"
+toggle.name = "Switch to system preference"
+
+[project.markdown_extensions]
+admonition = {}
+"pymdownx.details" = {}
+toc.permalink = "#"
+attr_list = {}
+"pymdownx.superfences".custom_fences = [
+    { name = "mermaid", class = "mermaid", format = "pymdownx.superfences.fence_code_format" },
+]
+"pymdownx.tabbed".alternate_style = true
+"pymdownx.emoji".emoji_index = "zensical.extensions.emoji.twemoji"
+"pymdownx.emoji".emoji_generator = "zensical.extensions.emoji.to_svg"
