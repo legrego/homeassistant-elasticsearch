@@ -17,8 +17,9 @@ Pull requests are the best way to propose changes to the codebase.
 2. If you've changed something, update the documentation.
 3. Make sure your code lints (using `scripts/lint`).
 4. Make sure tests pass (using `scripts/test`).
-5. Test your contribution.
-6. Issue that pull request!
+5. Make sure types check (using `poetry run mypy`).
+6. Test your contribution.
+7. Issue that pull request!
 
 ## Any contributions you make will be under the MIT Software License
 

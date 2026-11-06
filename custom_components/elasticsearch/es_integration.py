@@ -42,6 +42,8 @@ if TYPE_CHECKING:  # pragma: no cover
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
 
+    from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
+
 
 class ElasticIntegration:
     """Integration for publishing entity state change events to Elasticsearch."""
@@ -113,7 +115,9 @@ class ElasticIntegration:
         )
 
     @classmethod
-    def build_pipeline_manager_parameters(cls, hass, gateway, config_entry: ConfigEntry) -> dict:
+    def build_pipeline_manager_parameters(
+        cls, hass: HomeAssistant, gateway: ElasticsearchGateway, config_entry: ConfigEntry
+    ) -> dict:
         """Build the parameters for the Elasticsearch pipeline manager."""
 
         # Options are never none, but mypy doesn't know that

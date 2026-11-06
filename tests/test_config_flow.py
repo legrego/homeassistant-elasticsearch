@@ -7,8 +7,8 @@ from unittest.mock import patch
 
 import custom_components.elasticsearch.const as compconst
 import homeassistant.const as haconst
+import probatio
 import pytest
-import voluptuous as vol
 from custom_components.elasticsearch.config_flow import (
     ElasticFlowHandler,
     ElasticOptionsFlowHandler,
@@ -484,7 +484,7 @@ class Test_Options_Flow:
         fields = {key.schema: key for key in result["data_schema"].schema}
         for field in (compconst.CONF_TARGETS_TO_INCLUDE, compconst.CONF_TARGETS_TO_EXCLUDE):
             assert fields[field].description == {"suggested_value": {"label_id": ["previous"]}}
-            assert fields[field].default is vol.UNDEFINED
+            assert fields[field].default is probatio.UNDEFINED
 
         user_input = {
             key: value

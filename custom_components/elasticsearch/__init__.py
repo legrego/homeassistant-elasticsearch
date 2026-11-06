@@ -113,7 +113,7 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ElasticIntegrat
     return True
 
 
-async def get_integration_version(hass) -> str:
+async def get_integration_version(hass: HomeAssistant) -> str:
     """Return the version of the integration."""
     integration = await async_get_integration(hass, ELASTIC_DOMAIN)
 

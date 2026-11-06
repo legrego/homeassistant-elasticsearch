@@ -237,7 +237,7 @@ class Test_Initialization:
         )
 
         node: BaseNode = gateway._client._transport.node_pool.get()
-        ssl_context = node._ssl_context  # type: ignore[reportAttributeAccessIssue]
+        ssl_context = node._ssl_context  # type: ignore[attr-defined]
 
         assert ssl_context.check_hostname == expected_verify_hostname
         assert ssl_context.verify_mode == expected_verify_mode
@@ -258,7 +258,7 @@ class Test_Initialization:
         )
 
         node: BaseNode = gateway._client._transport.node_pool.get()
-        ssl_context = node._ssl_context  # type: ignore[reportAttributeAccessIssue]
+        ssl_context = node._ssl_context  # type: ignore[attr-defined]
 
         assert any(
             cert["serialNumber"] == "25813FA4F725F5566FCF014C0B8B0973E710DF90"
@@ -606,7 +606,7 @@ class Test_Exception_Conversion:
             (
                 elasticsearch8.ApiError(
                     message="Test Case",
-                    meta=mock_api_response_meta(status_code=None),  # type: ignore [arg-type]
+                    meta=mock_api_response_meta(status_code=None),
                     body=None,
                 ),
                 ServerError,

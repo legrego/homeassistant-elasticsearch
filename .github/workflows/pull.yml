@@ -32,6 +32,18 @@ jobs:
       - run: poetry install
       - run: poetry run ./scripts/lint --no-fix
 
+  mypy:
+    runs-on: "ubuntu-latest"
+    name: Check types
+    steps:
+      - uses: "actions/checkout@v7"
+      - uses: "actions/setup-python@v7"
+        with:
+          python-version: "3.14"
+      - run: python3 -m pip install poetry~=2.2.1
+      - run: poetry install
+      - run: poetry run mypy
+
   tests:
     runs-on: "ubuntu-latest"
     name: Run tests
