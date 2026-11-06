@@ -8,7 +8,9 @@ from unittest.mock import patch
 import custom_components.elasticsearch.const as compconst
 import homeassistant.const as haconst
 import pytest
+import voluptuous as vol
 from custom_components.elasticsearch.config_flow import (
+    ElasticFlowHandler,
     ElasticOptionsFlowHandler,
 )
 from custom_components.elasticsearch.errors import (
@@ -441,3 +443,60 @@ class Test_Options_Flow:
 
         # The options should be updated, but they are stored under data
         assert "data" in result and result["data"] == {**testconst.CONFIG_ENTRY_DEFAULT_OPTIONS}
+
+    @pytest.mark.parametrize(
+        ("submitted", "expected"),
+        [
+            ({}, {}),
+            ({compconst.CONF_TARGETS_TO_INCLUDE: {}, compconst.CONF_TARGETS_TO_EXCLUDE: {}}, {}),
+            (
+                {
+                    compconst.CONF_TARGETS_TO_INCLUDE: {"label_id": ["kept"]},
+                    compconst.CONF_TARGETS_TO_EXCLUDE: {"label_id": ["kept"]},
+                },
+                {"label_id": ["kept"]},
+            ),
+        ],
+        ids=["left out of the form", "submitted empty", "still selected"],
+    )
+    async def test_options_flow_targets(self, hass: HomeAssistant, submitted: dict, expected: dict):
+        """Test that the saved targets are exactly what the form submits, so they can be cleared."""
+
+        config_entry = MockConfigEntry(
+            domain=compconst.DOMAIN,
+            unique_id="config_entry_id",
+            version=ElasticFlowHandler.VERSION,
+            data={**testconst.CONFIG_ENTRY_DEFAULT_DATA},
+            options={
+                **testconst.CONFIG_ENTRY_BASE_OPTIONS,
+                compconst.CONF_TARGETS_TO_INCLUDE: {"label_id": ["previous"]},
+                compconst.CONF_TARGETS_TO_EXCLUDE: {"label_id": ["previous"]},
+            },
+            title="config_entry_title",
+        )
+
+        await add_config_entry_to_hass(hass, config_entry)
+
+        result = await hass.config_entries.options.async_init(config_entry.entry_id)
+
+        # The current targets should be offered in the form without acting as a default
+        assert "data_schema" in result and result["data_schema"] is not None
+        fields = {key.schema: key for key in result["data_schema"].schema}
+        for field in (compconst.CONF_TARGETS_TO_INCLUDE, compconst.CONF_TARGETS_TO_EXCLUDE):
+            assert fields[field].description == {"suggested_value": {"label_id": ["previous"]}}
+            assert fields[field].default is vol.UNDEFINED
+
+        user_input = {
+            key: value
+            for key, value in testconst.CONFIG_ENTRY_DEFAULT_OPTIONS.items()
+            if key not in (compconst.CONF_TARGETS_TO_INCLUDE, compconst.CONF_TARGETS_TO_EXCLUDE)
+        }
+
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"], user_input={**user_input, **submitted}
+        )
+
+        assert "type" in result and result["type"] is FlowResultType.CREATE_ENTRY
+        assert "data" in result
+        assert result["data"][compconst.CONF_TARGETS_TO_INCLUDE] == expected
+        assert result["data"][compconst.CONF_TARGETS_TO_EXCLUDE] == expected

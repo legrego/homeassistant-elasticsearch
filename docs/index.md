@@ -11,7 +11,7 @@ Publish Home Assistant events to your [Elasticsearch](https://elastic.co) cluste
 - Efficiently publishes Home-Assistant events to Elasticsearch using the Bulk API
 - Automatically sets up Datastreams using Time Series Data Streams ("TSDS") and Datastream Lifecycle Management ("DLM")
 - Supports Elastic's [stack security features](https://www.elastic.co/elastic-stack/security) via optional username, password, and API keys
-- Selectively publish events based on labels, entities, devices, or areas
+- Selectively publish events based on labels, entities, devices, areas, or floors
 
 ## Compatibility
 

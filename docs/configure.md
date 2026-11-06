@@ -119,11 +119,13 @@ Tags are values that can be used to filter events in Elasticsearch. You can use 
 
 ### Toggle to only publish the set of targets below
 
-Pick area, device, entity, or labels and only publish events from one of these targets. If you select multiple targets, events that match any of the targets will be published. If you select no targets, all events will be published.
+Pick floor, area, device, entity, or labels and only publish events from one of these targets. If you select multiple targets, events that match any of the targets will be published. If you select no targets, no events will be published.
+
+An entity without an area of its own uses the area of its device, and belongs to the floor of that area.
 
 ### Toggle to exclude publishing the set of targets below
 
-Pick area, device, entity, or labels and exclude events from one of these targets. If you select multiple targets, events that match any of the targets will be excluded. If you also configure `Toggle to only publish the set of targets below`, the exclusion will be applied after the inclusion.
+Pick floor, area, device, entity, or labels and exclude events from one of these targets. If you select multiple targets, events that match any of the targets will be excluded. If you also configure `Toggle to only publish the set of targets below`, the exclusion will be applied after the inclusion.
 
 ## Advanced configuration
 

@@ -36,6 +36,8 @@ def pipeline_settings_fixture():
         exclude_targets=False,
         included_areas=[],
         excluded_areas=[],
+        included_floors=[],
+        excluded_floors=[],
         included_labels=[],
         excluded_labels=[],
         included_devices=[],
@@ -261,8 +263,6 @@ class Test_Filterer:
         should_exclude_on_label,
     ):
         """Test filtering entities with various exclude targets."""
-        assert True
-        return
         filterer._change_detection_type = [StateChangeType.STATE.value]
 
         filterer._exclude_targets = exclude_targets
@@ -408,6 +408,99 @@ class Test_Filterer:
         should_pass = passes_include and passes_exclude
 
         assert filterer.passes_filter(State(entity_id, "on"), StateChangeType.STATE) == should_pass
+
+    @staticmethod
+    def _set_targets(filterer, kind: str, target: str, value: str) -> None:
+        """Enable a single include or exclude target on the filterer."""
+        setattr(filterer, f"_{kind}_targets", True)
+        setattr(filterer, f"_{kind}d_{target}", [value])
+
+    @pytest.mark.parametrize("entity_area_name", [None])
+    @pytest.mark.parametrize(
+        ("target", "attribute"),
+        [("areas", "id"), ("floors", "floor_id")],
+        ids=["area", "floor"],
+    )
+    @pytest.mark.parametrize(
+        ("kind", "should_pass"),
+        [("include", True), ("exclude", False)],
+        ids=["include", "exclude"],
+    )
+    async def test_entity_without_area_uses_device_area(
+        self, entity, entity_state, device_area, filterer, target, attribute, kind, should_pass
+    ):
+        """Test that an entity with no area of its own is matched by the area and floor of its device."""
+        filterer._change_detection_type = [StateChangeType.STATE.value]
+        assert entity.area_id is None
+
+        self._set_targets(filterer, kind, target, getattr(device_area, attribute))
+
+        assert filterer.passes_filter(entity_state, StateChangeType.STATE) is should_pass
+
+    @pytest.mark.parametrize(
+        ("target", "attribute"),
+        [("areas", "id"), ("floors", "floor_id")],
+        ids=["area", "floor"],
+    )
+    @pytest.mark.parametrize(
+        ("kind", "should_pass"),
+        [("include", False), ("exclude", True)],
+        ids=["include", "exclude"],
+    )
+    async def test_entity_area_takes_priority_over_device_area(
+        self, entity, entity_state, device_area, filterer, target, attribute, kind, should_pass
+    ):
+        """Test that the area and floor of the device are ignored when the entity has its own area."""
+        filterer._change_detection_type = [StateChangeType.STATE.value]
+        assert entity.area_id is not None
+        assert entity.area_id != device_area.id
+
+        self._set_targets(filterer, kind, target, getattr(device_area, attribute))
+
+        assert filterer.passes_filter(entity_state, StateChangeType.STATE) is should_pass
+
+    @pytest.mark.parametrize(
+        ("kind", "should_pass"),
+        [("include", True), ("exclude", False)],
+        ids=["include", "exclude"],
+    )
+    async def test_floor_of_entity_area(
+        self, area_registry, entity, entity_state, entity_floor, filterer, kind, should_pass
+    ):
+        """Test that an entity is matched by the floor of its own area."""
+        filterer._change_detection_type = [StateChangeType.STATE.value]
+        area_registry.async_update(entity.area_id, floor_id=entity_floor.floor_id)
+
+        self._set_targets(filterer, kind, "floors", entity_floor.floor_id)
+
+        assert filterer.passes_filter(entity_state, StateChangeType.STATE) is should_pass
+
+    @pytest.mark.parametrize("entity_area_name", [None])
+    @pytest.mark.parametrize("attach_device", [False])
+    async def test_entity_without_any_area(self, entity, entity_state, filterer):
+        """Test that an entity with no area is not matched by area or floor targets."""
+        filterer._change_detection_type = [StateChangeType.STATE.value]
+        filterer._included_areas = ["some_area"]
+        filterer._included_floors = ["some_floor"]
+        filterer._excluded_areas = ["other_area"]
+        filterer._excluded_floors = ["other_floor"]
+
+        filterer._exclude_targets = True
+        assert filterer.passes_filter(entity_state, StateChangeType.STATE) is True
+
+        filterer._include_targets = True
+        assert filterer.passes_filter(entity_state, StateChangeType.STATE) is False
+
+    async def test_include_filter_logs_rejection(self, entity, entity_state, filterer):
+        """Test that an entity dropped by the include filter says why in the debug logs."""
+        filterer._change_detection_type = [StateChangeType.STATE.value]
+        filterer._include_targets = True
+        filterer._logger = MagicMock()
+
+        assert filterer.passes_filter(entity_state, StateChangeType.STATE) is False
+
+        filterer._logger.debug.assert_called_once()
+        assert "Did not match any included target." in filterer._logger.debug.call_args.args[0]
 
     async def test_change_detection_type_filter(self, filterer):
         """Test that a state changes are properly filtered according to the change detection type setting."""

@@ -48,6 +48,8 @@
         'sensor.exclude_100b_baker_st_2g',
         'sensor.exclude_u6_enterprise_entryway_memory_utilization',
       ]),
+      excluded_floors=list([
+      ]),
       excluded_labels=list([
         'exclude_test_label',
       ]),
@@ -61,6 +63,8 @@
       included_entities=list([
         'sensor.include_100b_baker_st_2g',
         'sensor.include_u6_enterprise_entryway_memory_utilization',
+      ]),
+      included_floors=list([
       ]),
       included_labels=list([
         'include_test_label',

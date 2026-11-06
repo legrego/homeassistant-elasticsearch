@@ -99,6 +99,8 @@ class PipelineSettings:
         debug_attribute_filtering: bool,
         included_areas: list[str],
         excluded_areas: list[str],
+        included_floors: list[str],
+        excluded_floors: list[str],
         included_labels: list[str],
         excluded_labels: list[str],
         included_devices: list[str],
@@ -122,6 +124,8 @@ class PipelineSettings:
         self.excluded_labels: list[str] = excluded_labels
         self.included_areas: list[str] = included_areas
         self.excluded_areas: list[str] = excluded_areas
+        self.included_floors: list[str] = included_floors
+        self.excluded_floors: list[str] = excluded_floors
         self.included_devices: list[str] = included_devices
         self.excluded_devices: list[str] = excluded_devices
         self.included_entities: list[str] = included_entities
@@ -299,6 +303,8 @@ class Pipeline:
 
             self._included_areas: list[str] = settings.included_areas
             self._excluded_areas: list[str] = settings.excluded_areas
+            self._included_floors: list[str] = settings.included_floors
+            self._excluded_floors: list[str] = settings.excluded_floors
             self._included_devices: list[str] = settings.included_devices
             self._excluded_devices: list[str] = settings.excluded_devices
             self._included_labels: list[str] = settings.included_labels
@@ -352,14 +358,37 @@ class Pipeline:
 
             return self._accept(base_msg, "Entity passed all filters.")
 
+        def _get_area_id(self, entity: RegistryEntry, device: DeviceEntry | None) -> str | None:
+            """Return the entity's area, falling back to its device's area when it has none of its own."""
+            if entity.area_id is not None:
+                return entity.area_id
+
+            return device.area_id if device is not None else None
+
+        def _get_floor_id(self, area_id: str | None) -> str | None:
+            """Return the floor of the given area, if any."""
+            if area_id is None:
+                return None
+
+            area = self._area_registry.async_get_area(area_id)
+
+            return area.floor_id if area is not None else None
+
         def _passes_exclude_targets(self, entity: RegistryEntry, device: DeviceEntry | None) -> bool:
             base_msg = f"Processing exclusion filters for entity [{entity.entity_id}]: "
 
             if entity.entity_id in self._excluded_entities:
                 return self._reject(base_msg, "In the excluded entities list.")
 
-            if entity.area_id in self._excluded_areas:
-                return self._reject(base_msg, f"In an excluded area [{entity.area_id}].")
+            area_id = self._get_area_id(entity, device)
+
+            if area_id in self._excluded_areas:
+                return self._reject(base_msg, f"In an excluded area [{area_id}].")
+
+            floor_id = self._get_floor_id(area_id)
+
+            if floor_id in self._excluded_floors:
+                return self._reject(base_msg, f"On an excluded floor [{floor_id}].")
 
             for label in entity.labels:
                 if label in self._excluded_labels:
@@ -381,8 +410,15 @@ class Pipeline:
             if entity.entity_id in self._included_entities:
                 return self._accept(base_msg, "In the included entities list.")
 
-            if entity.area_id in self._included_areas:
-                return self._accept(base_msg, f"In an included area [{entity.area_id}].")
+            area_id = self._get_area_id(entity, device)
+
+            if area_id in self._included_areas:
+                return self._accept(base_msg, f"In an included area [{area_id}].")
+
+            floor_id = self._get_floor_id(area_id)
+
+            if floor_id in self._included_floors:
+                return self._accept(base_msg, f"On an included floor [{floor_id}].")
 
             for label in entity.labels:
                 if label in self._included_labels:
@@ -396,7 +432,7 @@ class Pipeline:
                     if label in self._included_labels:
                         return self._accept(base_msg, f"Included device label present: [{label}].")
 
-            return False
+            return self._reject(base_msg, "Did not match any included target.")
 
         def _passes_change_detection_type_filter(self, reason: StateChangeType) -> bool:
             """Determine if a state change should be published."""
