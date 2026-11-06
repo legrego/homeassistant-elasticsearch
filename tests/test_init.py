@@ -54,6 +54,9 @@ async def flow_fixture():
     class MockFlow(ConfigFlow):
         """Test flow."""
 
+        # Home Assistant refuses to set up entries newer than the handler's version.
+        VERSION = ElasticFlowHandler.VERSION
+
     return MockFlow
 
 
@@ -515,6 +518,25 @@ class Test_Setup:
         assert ELASTIC_DOMAIN in hass.config.components
 
         await hass.async_block_till_done()
+
+
+async def test_floor_targets_reach_pipeline_settings(hass: HomeAssistant) -> None:
+    """Test that floor targets from the config entry end up in the pipeline settings."""
+    config_entry = MockConfigEntry(
+        domain=ELASTIC_DOMAIN,
+        options={
+            **const.CONFIG_ENTRY_DEFAULT_OPTIONS,
+            "targets_to_include": {"floor_id": ["included_floor"]},
+            "targets_to_exclude": {"floor_id": ["excluded_floor"]},
+        },
+    )
+
+    parameters = ElasticIntegration.build_pipeline_manager_parameters(
+        hass=hass, gateway=mock.MagicMock(), config_entry=config_entry
+    )
+
+    assert parameters["settings"].included_floors == ["included_floor"]
+    assert parameters["settings"].excluded_floors == ["excluded_floor"]
 
 
 class Test_Public_Methods:

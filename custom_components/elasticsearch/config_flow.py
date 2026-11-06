@@ -386,6 +386,10 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             self.options.update(user_input)
 
+            # The form leaves out a target selector that has been cleared
+            self.options[CONF_TARGETS_TO_INCLUDE] = user_input.get(CONF_TARGETS_TO_INCLUDE, {})
+            self.options[CONF_TARGETS_TO_EXCLUDE] = user_input.get(CONF_TARGETS_TO_EXCLUDE, {})
+
             self.hass.config_entries.async_schedule_reload(self.config_entry.entry_id)
 
             return self.async_create_entry(title="", data=self.options)
@@ -424,7 +428,7 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
         }
         SCHEMA_TARGETS_TO_INCLUDE = {
             "schema": CONF_TARGETS_TO_INCLUDE,
-            "default": from_options(CONF_TARGETS_TO_INCLUDE),
+            "description": {"suggested_value": from_options(CONF_TARGETS_TO_INCLUDE)},
         }
 
         SCHEMA_EXCLUDE_TARGETS = {
@@ -433,7 +437,7 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
         }
         SCHEMA_TARGETS_TO_EXCLUDE = {
             "schema": CONF_TARGETS_TO_EXCLUDE,
-            "default": from_options(CONF_TARGETS_TO_EXCLUDE),
+            "description": {"suggested_value": from_options(CONF_TARGETS_TO_EXCLUDE)},
         }
 
         return vol.Schema(
