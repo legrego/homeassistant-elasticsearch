@@ -29,7 +29,7 @@ CONF_SSL_CA_PATH: str = "ssl_ca_path"
 CONF_TAGS: str = "tags"
 
 # For trimming keys with values that are None, empty lists, or empty objects
-SKIP_VALUES = [None, [], {}]
+SKIP_VALUES: list[Any] = [None, [], {}]
 
 ONE_MINUTE: int = 60
 ONE_HOUR: int = 60 * 60

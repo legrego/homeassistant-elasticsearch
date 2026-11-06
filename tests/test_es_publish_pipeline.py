@@ -5,13 +5,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from custom_components.elasticsearch import utils
+from custom_components.elasticsearch.const import StateChangeType
 from custom_components.elasticsearch.errors import AuthenticationRequired, CannotConnect
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 from custom_components.elasticsearch.es_publish_pipeline import (
     EventQueue,
     Pipeline,
     PipelineSettings,
-    StateChangeType,
 )
 from elastic_transport import ApiResponseMeta
 from freezegun.api import FrozenDateTimeFactory
@@ -29,7 +29,7 @@ def pipeline_settings_fixture():
     return PipelineSettings(
         polling_frequency=60,
         publish_frequency=60,
-        change_detection_type=[StateChangeType.STATE],
+        change_detection_type=[StateChangeType.STATE.value],
         tags=[],
         debug_attribute_filtering=True,
         include_targets=False,

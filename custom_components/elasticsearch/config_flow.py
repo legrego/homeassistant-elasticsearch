@@ -2,7 +2,7 @@
 
 from typing import Any
 
-import voluptuous as vol
+import probatio
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry, ConfigFlowResult
 from homeassistant.const import (
@@ -68,13 +68,13 @@ SCHEMA_AUTHENTICATION_TYPE: dict[Any, Any] = {
     "schema": CONF_AUTHENTICATION_TYPE,
     "default": CONF_API_KEY,
 }
-SCHEMA_USERNAME = {"schema": CONF_USERNAME, "default": None}
-SCHEMA_PASSWORD = {"schema": CONF_PASSWORD, "default": None}
-SCHEMA_VERIFY_SSL = {"schema": CONF_VERIFY_SSL, "default": True}
-SCHEMA_SSL_VERIFY_HOSTNAME = {"schema": CONF_SSL_VERIFY_HOSTNAME, "default": True}
+SCHEMA_USERNAME: dict[str, Any] = {"schema": CONF_USERNAME, "default": None}
+SCHEMA_PASSWORD: dict[str, Any] = {"schema": CONF_PASSWORD, "default": None}
+SCHEMA_VERIFY_SSL: dict[str, Any] = {"schema": CONF_VERIFY_SSL, "default": True}
+SCHEMA_SSL_VERIFY_HOSTNAME: dict[str, Any] = {"schema": CONF_SSL_VERIFY_HOSTNAME, "default": True}
 SCHEMA_SSL_CA_PATH: dict[str, Any] = {"schema": CONF_SSL_CA_PATH}
-SCHEMA_API_KEY = {"schema": CONF_API_KEY, "default": None}
-SCHEMA_TIMEOUT = {"schema": CONF_TIMEOUT, "default": 30}
+SCHEMA_API_KEY: dict[str, Any] = {"schema": CONF_API_KEY, "default": None}
+SCHEMA_TIMEOUT: dict[str, Any] = {"schema": CONF_TIMEOUT, "default": 30}
 
 
 TRANSLATION_KEY_STATE = "state"
@@ -127,9 +127,9 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
         return self.async_show_form(
             step_id="user",
-            data_schema=vol.Schema(
+            data_schema=probatio.Schema(
                 {
-                    vol.Required(**SCHEMA_URL): TextSelector(
+                    probatio.Required(**SCHEMA_URL): TextSelector(
                         TextSelectorConfig(
                             type=TextSelectorType.URL,
                         )
@@ -176,20 +176,20 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
         return self.async_show_form(
             step_id="certificate_issues",
-            data_schema=vol.Schema(
+            data_schema=probatio.Schema(
                 {
-                    vol.Required(**SCHEMA_VERIFY_SSL): BooleanSelector(
+                    probatio.Required(**SCHEMA_VERIFY_SSL): BooleanSelector(
                         BooleanSelectorConfig(),
                     ),
-                    vol.Required(**SCHEMA_SSL_VERIFY_HOSTNAME): BooleanSelector(
+                    probatio.Required(**SCHEMA_SSL_VERIFY_HOSTNAME): BooleanSelector(
                         BooleanSelectorConfig(),
                     ),
-                    vol.Optional(**SCHEMA_SSL_CA_PATH): TextSelector(
+                    probatio.Optional(**SCHEMA_SSL_CA_PATH): TextSelector(
                         TextSelectorConfig(
                             type=TextSelectorType.TEXT,
                         )
                     ),
-                    # To do: consider switching to a file selector to upload the ca cert vol.Optional(**SCHEMA_SSL_CA_PATH): FileSelector(FileSelectorConfig(accept=".pem,.crt")),
+                    # To do: consider switching to a file selector to upload the ca cert probatio.Optional(**SCHEMA_SSL_CA_PATH): FileSelector(FileSelectorConfig(accept=".pem,.crt")),
                 },
             ),
             errors=errors,
@@ -208,9 +208,9 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         # Show a form where we ask the user if they want to use API Key or Basic Auth
         return self.async_show_form(
             step_id="authentication_issues",
-            data_schema=vol.Schema(
+            data_schema=probatio.Schema(
                 {
-                    vol.Required(**SCHEMA_AUTHENTICATION_TYPE): SelectSelector(
+                    probatio.Required(**SCHEMA_AUTHENTICATION_TYPE): SelectSelector(
                         SelectSelectorConfig(
                             translation_key="authentication_issues",
                             options=[TRANSLATION_KEY_API_KEY, TRANSLATION_KEY_BASIC_AUTH],
@@ -252,14 +252,14 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
         return self.async_show_form(
             step_id="basic_auth",
-            data_schema=vol.Schema(
+            data_schema=probatio.Schema(
                 {
-                    vol.Required(**SCHEMA_USERNAME): TextSelector(
+                    probatio.Required(**SCHEMA_USERNAME): TextSelector(
                         TextSelectorConfig(
                             type=TextSelectorType.TEXT,
                         )
                     ),
-                    vol.Required(**SCHEMA_PASSWORD): TextSelector(
+                    probatio.Required(**SCHEMA_PASSWORD): TextSelector(
                         TextSelectorConfig(
                             type=TextSelectorType.PASSWORD,
                         )
@@ -300,9 +300,9 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
         return self.async_show_form(
             step_id="api_key",
-            data_schema=vol.Schema(
+            data_schema=probatio.Schema(
                 {
-                    vol.Required(**SCHEMA_API_KEY): TextSelector(
+                    probatio.Required(**SCHEMA_API_KEY): TextSelector(
                         TextSelectorConfig(
                             type=TextSelectorType.PASSWORD,
                         )
@@ -400,49 +400,49 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
         )
 
     @log_enter_exit_debug
-    def _build_options_schema(self) -> vol.Schema:
+    def _build_options_schema(self) -> probatio.Schema:
         """Build the options schema."""
 
         from_options = self.config_entry.options.get
 
-        SCHEMA_PUBLISH_FREQUENCY = {
+        SCHEMA_PUBLISH_FREQUENCY: dict[str, Any] = {
             "schema": CONF_PUBLISH_FREQUENCY,
             "default": from_options(CONF_PUBLISH_FREQUENCY),
         }
-        SCHEMA_POLLING_FREQUENCY = {
+        SCHEMA_POLLING_FREQUENCY: dict[str, Any] = {
             "schema": CONF_POLLING_FREQUENCY,
             "default": from_options(CONF_POLLING_FREQUENCY),
         }
 
-        SCHEMA_CHANGE_DETECTION_TYPE = {
+        SCHEMA_CHANGE_DETECTION_TYPE: dict[str, Any] = {
             "schema": CONF_CHANGE_DETECTION_TYPE,
             "default": from_options(CONF_CHANGE_DETECTION_TYPE),
         }
-        SCHEMA_TAGS = {
+        SCHEMA_TAGS: dict[str, Any] = {
             "schema": CONF_TAGS,
             "default": from_options(CONF_TAGS),
         }
-        SCHEMA_INCLUDE_TARGETS = {
+        SCHEMA_INCLUDE_TARGETS: dict[str, Any] = {
             "schema": CONF_INCLUDE_TARGETS,
             "default": from_options(CONF_INCLUDE_TARGETS),
         }
-        SCHEMA_TARGETS_TO_INCLUDE = {
+        SCHEMA_TARGETS_TO_INCLUDE: dict[str, Any] = {
             "schema": CONF_TARGETS_TO_INCLUDE,
             "description": {"suggested_value": from_options(CONF_TARGETS_TO_INCLUDE)},
         }
 
-        SCHEMA_EXCLUDE_TARGETS = {
+        SCHEMA_EXCLUDE_TARGETS: dict[str, Any] = {
             "schema": CONF_EXCLUDE_TARGETS,
             "default": from_options(CONF_EXCLUDE_TARGETS),
         }
-        SCHEMA_TARGETS_TO_EXCLUDE = {
+        SCHEMA_TARGETS_TO_EXCLUDE: dict[str, Any] = {
             "schema": CONF_TARGETS_TO_EXCLUDE,
             "description": {"suggested_value": from_options(CONF_TARGETS_TO_EXCLUDE)},
         }
 
-        return vol.Schema(
+        return probatio.Schema(
             {
-                vol.Optional(**SCHEMA_PUBLISH_FREQUENCY): NumberSelector(
+                probatio.Optional(**SCHEMA_PUBLISH_FREQUENCY): NumberSelector(
                     NumberSelectorConfig(
                         min=0,
                         max=600,
@@ -450,7 +450,7 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
                         unit_of_measurement="seconds",
                     )
                 ),
-                vol.Optional(**SCHEMA_POLLING_FREQUENCY): NumberSelector(
+                probatio.Optional(**SCHEMA_POLLING_FREQUENCY): NumberSelector(
                     NumberSelectorConfig(
                         min=0,
                         max=3600,
@@ -458,26 +458,26 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
                         unit_of_measurement="seconds",
                     )
                 ),
-                vol.Optional(**SCHEMA_CHANGE_DETECTION_TYPE): SelectSelector(
+                probatio.Optional(**SCHEMA_CHANGE_DETECTION_TYPE): SelectSelector(
                     SelectSelectorConfig(
                         translation_key="change_detection_type",
                         options=[TRANSLATION_KEY_STATE, TRANSLATION_KEY_ATTRIBUTE],
                         multiple=True,
                     )
                 ),
-                vol.Optional(**SCHEMA_TAGS): SelectSelector(
+                probatio.Optional(**SCHEMA_TAGS): SelectSelector(
                     SelectSelectorConfig(options=[], custom_value=True, multiple=True)
                 ),
-                vol.Optional(**SCHEMA_INCLUDE_TARGETS): BooleanSelector(
+                probatio.Optional(**SCHEMA_INCLUDE_TARGETS): BooleanSelector(
                     BooleanSelectorConfig(),
                 ),
-                vol.Optional(**SCHEMA_TARGETS_TO_INCLUDE): TargetSelector(
+                probatio.Optional(**SCHEMA_TARGETS_TO_INCLUDE): TargetSelector(
                     TargetSelectorConfig(),
                 ),
-                vol.Optional(**SCHEMA_EXCLUDE_TARGETS): BooleanSelector(
+                probatio.Optional(**SCHEMA_EXCLUDE_TARGETS): BooleanSelector(
                     BooleanSelectorConfig(),
                 ),
-                vol.Optional(**SCHEMA_TARGETS_TO_EXCLUDE): TargetSelector(
+                probatio.Optional(**SCHEMA_TARGETS_TO_EXCLUDE): TargetSelector(
                     TargetSelectorConfig(),
                 ),
             }

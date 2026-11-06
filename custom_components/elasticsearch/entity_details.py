@@ -10,7 +10,7 @@ from homeassistant.helpers import (
     entity_registry,
     floor_registry,
 )
-from homeassistant.helpers.device_registry import DeviceEntry
+from homeassistant.helpers.device_registry import AnyDeviceEntry
 from homeassistant.helpers.entity_registry import RegistryEntry
 
 from .logger import LOGGER as BASE_LOGGER
@@ -28,14 +28,14 @@ class ExtendedDeviceEntry:
     def __init__(
         self,
         details: ExtendedEntityDetails,
-        device: DeviceEntry,
+        device: AnyDeviceEntry,
         logger: Logger = BASE_LOGGER,
     ) -> None:
         """Init ExtendedDevice."""
         self._logger: Logger = logger
         self._details: ExtendedEntityDetails = details
 
-        self._device: DeviceEntry = device
+        self._device: AnyDeviceEntry = device
 
     @property
     def id(self) -> str:
@@ -106,7 +106,7 @@ class ExtendedRegistryEntry:
         self,
         details: ExtendedEntityDetails,
         entity: RegistryEntry,
-        device: DeviceEntry | None = None,
+        device: AnyDeviceEntry | None = None,
         logger: Logger = BASE_LOGGER,
     ) -> None:
         """Initialize an ExtendedRegistryEntry."""
@@ -115,7 +115,7 @@ class ExtendedRegistryEntry:
         self._details: ExtendedEntityDetails = details
 
         self._entity: RegistryEntry = entity
-        self._device: DeviceEntry | None = device
+        self._device: AnyDeviceEntry | None = device
 
     # @property
     # def entity(self) -> RegistryEntry:
@@ -232,7 +232,7 @@ class ExtendedEntityDetails:
 
     def async_get(self, entity_id: str) -> ExtendedRegistryEntry:
         """Retrieve extended entity details."""
-        device: DeviceEntry | None = None
+        device: AnyDeviceEntry | None = None
         entity: RegistryEntry | None = None
 
         entity = self.entity_registry.async_get(entity_id)
