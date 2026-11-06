@@ -129,6 +129,8 @@ class ElasticIntegration:
             exclude_targets=config_entry.options[CONF_EXCLUDE_TARGETS],
             included_areas=config_entry.options[CONF_TARGETS_TO_INCLUDE].get("area_id", []),
             excluded_areas=config_entry.options[CONF_TARGETS_TO_EXCLUDE].get("area_id", []),
+            included_floors=config_entry.options[CONF_TARGETS_TO_INCLUDE].get("floor_id", []),
+            excluded_floors=config_entry.options[CONF_TARGETS_TO_EXCLUDE].get("floor_id", []),
             included_labels=config_entry.options[CONF_TARGETS_TO_INCLUDE].get("label_id", []),
             excluded_labels=config_entry.options[CONF_TARGETS_TO_EXCLUDE].get("label_id", []),
             included_devices=config_entry.options[CONF_TARGETS_TO_INCLUDE].get("device_id", []),
