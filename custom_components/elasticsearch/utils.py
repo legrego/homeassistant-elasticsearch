@@ -9,9 +9,6 @@ from custom_components.elasticsearch import const as compconst
 
 def skip_dict_values(d: dict, skip_values: list[Any]) -> dict:
     """Trim keys with values that match skip_values. Works best on a flattened dict."""
-    if skip_values == ():
-        return d
-
     return {k: v for k, v in d.items() if v not in skip_values}
 
 

@@ -35,53 +35,58 @@ def have_child(name: str) -> logging.Logger:
 
 
 # Returns a function
-def log_enter_exit_info(func: Callable) -> Callable:
+def log_enter_exit_info[**P, R](func: Callable[P, R]) -> Callable[P, R]:
     """Log function start and end."""
 
-    def decorated_func(*args, **kwargs):  # noqa: ANN202
+    def decorated_func(*args: P.args, **kwargs: P.kwargs) -> R:
         logger = getattr(args[0], "_logger", LOGGER) if args and len(args) > 0 else LOGGER
         return call_and_log_enter_exit(func, logger, logging.INFO, *args, **kwargs)
 
     return decorated_func
 
 
-def async_log_enter_exit_info(func: Callable[..., Coroutine]):  # noqa: ANN201
+def async_log_enter_exit_info[**P, R](
+    func: Callable[P, Coroutine[Any, Any, R]],
+) -> Callable[P, Coroutine[Any, Any, R]]:
     """Log function start and end."""
 
-    async def decorated_func(*args, **kwargs):  # noqa: ANN202
+    async def decorated_func(*args: P.args, **kwargs: P.kwargs) -> R:
         logger = getattr(args[0], "_logger", LOGGER) if args and len(args) > 0 else LOGGER
         return await call_and_log_enter_exit(func, logger, logging.INFO, *args, **kwargs)
 
     return decorated_func
 
 
-def log_enter_exit_debug(func: Callable) -> Callable:
+def log_enter_exit_debug[**P, R](func: Callable[P, R]) -> Callable[P, R]:
     """Log function start and end."""
 
-    def decorated_func(*args, **kwargs):  # noqa: ANN202
+    def decorated_func(*args: P.args, **kwargs: P.kwargs) -> R:
         logger = getattr(args[0], "_logger", LOGGER) if args and len(args) > 0 else LOGGER
         return call_and_log_enter_exit(func, logger, logging.DEBUG, *args, **kwargs)
 
     return decorated_func
 
 
-def async_log_enter_exit_debug(func: Callable[..., Coroutine]):  # noqa: ANN201
+def async_log_enter_exit_debug[**P, R](
+    func: Callable[P, Coroutine[Any, Any, R]],
+) -> Callable[P, Coroutine[Any, Any, R]]:
     """Log function start and end."""
 
-    async def decorated_func(*args, **kwargs):  # noqa: ANN202
+    async def decorated_func(*args: P.args, **kwargs: P.kwargs) -> R:
         logger = getattr(args[0], "_logger", LOGGER) if args and len(args) > 0 else LOGGER
         return await async_call_and_log_enter_exit(func, logger, logging.DEBUG, *args, **kwargs)
 
     return decorated_func
 
 
-def call_and_log_enter_exit(
-    func: Callable,
+def call_and_log_enter_exit[**P, R](
+    func: Callable[P, R],
     logger: logging.Logger,
-    level: int = logging.DEBUG,
-    *args,
-    **kwargs,
-) -> Any:  # noqa: ANN401
+    level: int,
+    /,
+    *args: P.args,
+    **kwargs: P.kwargs,
+) -> R:
     """Log function start and end."""
 
     module = func.__module__
@@ -97,13 +102,14 @@ def call_and_log_enter_exit(
     return result
 
 
-async def async_call_and_log_enter_exit(
-    func: Callable,
+async def async_call_and_log_enter_exit[**P, R](
+    func: Callable[P, Coroutine[Any, Any, R]],
     logger: logging.Logger,
-    level: int = logging.DEBUG,
-    *args,
-    **kwargs,
-) -> Any:  # noqa: ANN401
+    level: int,
+    /,
+    *args: P.args,
+    **kwargs: P.kwargs,
+) -> R:
     """Log function start and end."""
 
     module = func.__module__

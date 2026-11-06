@@ -26,6 +26,7 @@ from homeassistant.const import (
     STATE_UNKNOWN,
 )
 from homeassistant.core import (
+    CALLBACK_TYPE,
     Event,
     EventStateChangedData,
     HomeAssistant,
@@ -68,7 +69,7 @@ from custom_components.elasticsearch.loop import LoopHandler
 from custom_components.elasticsearch.system_info import SystemInfo, SystemInfoResult
 
 if TYPE_CHECKING:  # pragma: no cover
-    from homeassistant.helpers.device_registry import DeviceEntry
+    from homeassistant.helpers.device_registry import AnyDeviceEntry
     from homeassistant.helpers.entity_registry import RegistryEntry
 
     from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
@@ -107,7 +108,7 @@ class PipelineSettings:
         excluded_devices: list[str],
         included_entities: list[str],
         excluded_entities: list[str],
-        change_detection_type: list[StateChangeType],
+        change_detection_type: list[str],
         tags: list[str],
         polling_frequency: int,
         publish_frequency: int,
@@ -115,7 +116,7 @@ class PipelineSettings:
         """Initialize the settings."""
         self.publish_frequency: int = publish_frequency
         self.polling_frequency: int = polling_frequency
-        self.change_detection_type: list[StateChangeType] = change_detection_type
+        self.change_detection_type: list[str] = change_detection_type
         self.tags: list[str] = tags
         self.debug_attribute_filtering: bool = debug_attribute_filtering
         self.include_targets: bool = include_targets
@@ -269,7 +270,7 @@ class Pipeline:
                 self._static_fields[CONF_TAGS] = self._settings.tags
 
         @log_enter_exit_info
-        def reload_config_entry(self, msg) -> None:
+        def reload_config_entry(self, msg: str) -> None:
             """Reload the config entry."""
 
             if self._config_entry and self._config_entry.state == ConfigEntryState.LOADED:
@@ -311,14 +312,14 @@ class Pipeline:
             self._excluded_labels: list[str] = settings.excluded_labels
             self._included_entities: list[str] = settings.included_entities
             self._excluded_entities: list[str] = settings.excluded_entities
-            self._change_detection_type: list[StateChangeType] = settings.change_detection_type
+            self._change_detection_type: list[str] = settings.change_detection_type
 
             self._entity_registry = entity_registry.async_get(hass)
             self._label_registry = label_registry.async_get(hass)
             self._area_registry = area_registry.async_get(hass)
             self._device_registry = device_registry.async_get(hass)
 
-        def _reject(self, base_message, message: str) -> bool:
+        def _reject(self, base_message: str, message: str) -> bool:
             """Help handle logging for cases where a filter results in rejection of the entity state update."""
 
             message = base_message + " Rejected: " + message
@@ -326,7 +327,7 @@ class Pipeline:
 
             return False
 
-        def _accept(self, base_message, message: str) -> bool:
+        def _accept(self, base_message: str, message: str) -> bool:
             """Help handle logging for cases where a filter results in inclusion of the entity state update."""
 
             message = base_message + " Accepted: " + message
@@ -346,7 +347,7 @@ class Pipeline:
             if not entity:
                 return self._reject(base_msg, "Entity not found in registry.")
 
-            device: DeviceEntry | None = (
+            device: AnyDeviceEntry | None = (
                 self._device_registry.async_get(entity.device_id) if entity.device_id else None
             )
 
@@ -358,7 +359,7 @@ class Pipeline:
 
             return self._accept(base_msg, "Entity passed all filters.")
 
-        def _get_area_id(self, entity: RegistryEntry, device: DeviceEntry | None) -> str | None:
+        def _get_area_id(self, entity: RegistryEntry, device: AnyDeviceEntry | None) -> str | None:
             """Return the entity's area, falling back to its device's area when it has none of its own."""
             if entity.area_id is not None:
                 return entity.area_id
@@ -374,7 +375,7 @@ class Pipeline:
 
             return area.floor_id if area is not None else None
 
-        def _passes_exclude_targets(self, entity: RegistryEntry, device: DeviceEntry | None) -> bool:
+        def _passes_exclude_targets(self, entity: RegistryEntry, device: AnyDeviceEntry | None) -> bool:
             base_msg = f"Processing exclusion filters for entity [{entity.entity_id}]: "
 
             if entity.entity_id in self._excluded_entities:
@@ -404,7 +405,7 @@ class Pipeline:
 
             return self._accept(base_msg, "Entity was not excluded by filters.")
 
-        def _passes_include_targets(self, entity: RegistryEntry, device: DeviceEntry | None) -> bool:
+        def _passes_include_targets(self, entity: RegistryEntry, device: AnyDeviceEntry | None) -> bool:
             base_msg = f"Processing inclusion filters for entity [{entity.entity_id}]: "
 
             if entity.entity_id in self._included_entities:
@@ -462,7 +463,7 @@ class Pipeline:
             self._hass: HomeAssistant = hass
             self._filterer: Pipeline.Filterer = filterer
             self._queue: EventQueue = queue
-            self._cancel_listener = None
+            self._cancel_listener: CALLBACK_TYPE | None = None
 
         @async_log_enter_exit_debug
         async def async_init(self) -> None:
@@ -630,20 +631,20 @@ class Pipeline:
             """Coerce the state value into a dictionary of possible types."""
             value: str = state.state
 
-            success, result = self.try_state_as_boolean(state)
-            if success and result is not None:
-                return {"boolean": result}
+            success, boolean = self.try_state_as_boolean(state)
+            if success and boolean is not None:
+                return {"boolean": boolean}
 
-            success, result = self.try_state_as_number(state)
-            if success and result is not None:
-                return {"float": result}
+            success, number = self.try_state_as_number(state)
+            if success and number is not None:
+                return {"float": number}
 
-            success, result = self.try_state_as_datetime(state)
-            if success and result is not None:
+            success, parsed_datetime = self.try_state_as_datetime(state)
+            if success and parsed_datetime is not None:
                 return {
-                    "datetime": result.isoformat(),
-                    "date": result.date().isoformat(),
-                    "time": result.time().isoformat(),
+                    "datetime": parsed_datetime.isoformat(),
+                    "date": parsed_datetime.date().isoformat(),
+                    "time": parsed_datetime.time().isoformat(),
                 }
 
             return {"string": value}
@@ -668,7 +669,7 @@ class Pipeline:
                 "data_stream.namespace": DATASTREAM_NAMESPACE,
             }
 
-        def filter_attribute(self, entity_id, key, value) -> bool:
+        def filter_attribute(self, entity_id: str, key: object, value: object) -> bool:
             """Filter out attributes we don't want to publish."""
 
             def reject(msg: str) -> bool:
