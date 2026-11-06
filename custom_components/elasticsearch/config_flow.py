@@ -49,6 +49,7 @@ from custom_components.elasticsearch.errors import (
     CannotConnect,
     InsufficientPrivileges,
     InvalidCACertificate,
+    UnsupportedServer,
     UnsupportedVersion,
     UntrustedCertificate,
 )
@@ -96,6 +97,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         self._reauth_entry: ConfigEntry | None = None
         self._prospective_config: dict[str, Any] = self.init_data or {}
         self._cluster_uuid: str | None = None
+        self._certificate_input: dict[str, Any] = {}
 
     @async_log_enter_exit_info
     async def async_step_user(
@@ -124,6 +126,9 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                 return await self.async_step_user(errors={CONF_URL: "cannot_connect"})
             except AuthenticationRequired:
                 return await self.async_step_authentication_issues()
+            except UnsupportedServer:
+                BASE_LOGGER.debug("Unsupported server", exc_info=True)
+                return await self.async_step_user(errors={"base": "unsupported_server"})
             except UnsupportedVersion:
                 BASE_LOGGER.debug("Unsupported version", exc_info=True)
                 return await self.async_step_user(errors={"base": "unsupported_version"})
@@ -157,6 +162,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             BASE_LOGGER.debug("async_step_certificate_issues errors: %s", errors)
 
         if user_input is not None:
+            self._certificate_input = dict(user_input)
             try:
                 self._cluster_uuid = await Elasticsearch8Gateway.async_init_then_stop(
                     url=self._prospective_config[CONF_URL],
@@ -186,6 +192,10 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                 self._prospective_config.update(user_input)
                 return await self.async_step_authentication_issues()
 
+            except UnsupportedServer:
+                BASE_LOGGER.debug("Unsupported server", exc_info=True)
+                return await self.async_step_certificate_issues(errors={"base": "unsupported_server"})
+
             except UnsupportedVersion:
                 BASE_LOGGER.debug("Unsupported version", exc_info=True)
                 return await self.async_step_certificate_issues(errors={"base": "unsupported_version"})
@@ -200,21 +210,23 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
         return self.async_show_form(
             step_id="certificate_issues",
-            data_schema=probatio.Schema(
-                {
-                    probatio.Required(**SCHEMA_VERIFY_SSL): BooleanSelector(
-                        BooleanSelectorConfig(),
-                    ),
-                    probatio.Required(**SCHEMA_SSL_VERIFY_HOSTNAME): BooleanSelector(
-                        BooleanSelectorConfig(),
-                    ),
-                    probatio.Optional(**SCHEMA_SSL_CA_PATH): TextSelector(
-                        TextSelectorConfig(
-                            type=TextSelectorType.TEXT,
-                        )
-                    ),
-                    # To do: consider switching to a file selector to upload the ca cert probatio.Optional(**SCHEMA_SSL_CA_PATH): FileSelector(FileSelectorConfig(accept=".pem,.crt")),
-                },
+            data_schema=self.add_suggested_values_to_schema(
+                probatio.Schema(
+                    {
+                        probatio.Required(**SCHEMA_VERIFY_SSL): BooleanSelector(
+                            BooleanSelectorConfig(),
+                        ),
+                        probatio.Required(**SCHEMA_SSL_VERIFY_HOSTNAME): BooleanSelector(
+                            BooleanSelectorConfig(),
+                        ),
+                        probatio.Optional(**SCHEMA_SSL_CA_PATH): TextSelector(
+                            TextSelectorConfig(
+                                type=TextSelectorType.TEXT,
+                            )
+                        ),
+                    },
+                ),
+                self._certificate_input,
             ),
             errors=errors,
         )
@@ -279,6 +291,9 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             except CannotConnect:
                 BASE_LOGGER.debug("Cannot connect", exc_info=True)
                 return await self.async_step_basic_auth(errors={"base": "cannot_connect"})
+            except UnsupportedServer:
+                BASE_LOGGER.debug("Unsupported server", exc_info=True)
+                return await self.async_step_basic_auth(errors={"base": "unsupported_server"})
             except UnsupportedVersion:
                 BASE_LOGGER.debug("Unsupported version", exc_info=True)
                 return await self.async_step_basic_auth(errors={"base": "unsupported_version"})
@@ -339,6 +354,9 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             except CannotConnect:
                 BASE_LOGGER.debug("Cannot connect", exc_info=True)
                 return await self.async_step_api_key(errors={"base": "cannot_connect"})
+            except UnsupportedServer:
+                BASE_LOGGER.debug("Unsupported server", exc_info=True)
+                return await self.async_step_api_key(errors={"base": "unsupported_server"})
             except UnsupportedVersion:
                 BASE_LOGGER.debug("Unsupported version", exc_info=True)
                 return await self.async_step_api_key(errors={"base": "unsupported_version"})

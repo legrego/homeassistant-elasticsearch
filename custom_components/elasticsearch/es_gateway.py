@@ -6,7 +6,11 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import TYPE_CHECKING
-from custom_components.elasticsearch.errors import InsufficientPrivileges, UnsupportedVersion
+from custom_components.elasticsearch.errors import (
+    InsufficientPrivileges,
+    UnsupportedServer,
+    UnsupportedVersion,
+)
 from custom_components.elasticsearch.const import ES_CHECK_PERMISSIONS_DATASTREAM, ELASTIC_MINIMUM_VERSION
 
 from .logger import LOGGER as BASE_LOGGER
@@ -213,12 +217,22 @@ class ElasticsearchGateway(ABC):
     def _is_serverless(self, cluster_info: dict) -> bool:
         """Check if the Elasticsearch instance is serverless."""
 
-        return bool(cluster_info["version"]["build_flavor"] == "serverless")
+        version = cluster_info.get("version")
+        if not isinstance(version, dict) or version.get("build_flavor") not in ("default", "serverless"):
+            raise UnsupportedServer("The endpoint does not report supported Elasticsearch server metadata.")
+
+        return bool(version["build_flavor"] == "serverless")
 
     def _meets_minimum_version(self, cluster_info: dict, minimum_version: tuple[int, int]) -> bool:
         """Check if the Elasticsearch version is supported."""
 
-        version_number_parts = cluster_info["version"]["number"].split(".")
+        version_number = cluster_info["version"].get("number")
+        if not isinstance(version_number, str):
+            raise UnsupportedServer("The endpoint does not report an Elasticsearch version number.")
+
+        version_number_parts = version_number.split(".")
+        if len(version_number_parts) < 2 or not all(part.isdecimal() for part in version_number_parts[:2]):
+            raise UnsupportedServer("The endpoint reports an invalid Elasticsearch version number.")
 
         current_major = int(version_number_parts[0])
         current_minor = int(version_number_parts[1])

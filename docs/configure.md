@@ -8,6 +8,12 @@ You will need the following details to configure the Elasticsearch integration:
 2. Credentials to access the Elasticsearch instance (if required)
 3. The SSL certificate authority (CA) file, if you are using a custom CA not trusted by the host system
 
+Use the URL of a supported Elasticsearch cluster. An Elasticsearch-compatible
+ingestion endpoint, such as VictoriaLogs' `/insert/elasticsearch/`, is not
+sufficient: this integration also requires Elasticsearch cluster metadata,
+security APIs, index templates, and data streams. Incompatible server metadata
+is reported as an unsupported server during setup.
+
 ### Credentials
 
 You must provide credentials if your Elasticsearch instance is secured. While we support authenticating via username/password, we recommend using API Keys for simplicity and compatibility with all versions of Elasticsearch.

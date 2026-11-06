@@ -18,6 +18,7 @@ from custom_components.elasticsearch.errors import (
     CannotConnect,
     ESIntegrationException,
     InvalidCACertificate,
+    UnsupportedServer,
     UnsupportedVersion,
 )
 from custom_components.elasticsearch.logger import (
@@ -50,7 +51,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ElasticIntegratio
     try:
         integration = ElasticIntegration(hass=hass, config_entry=config_entry, log=_logger)
         await integration.async_init()
-    except (UnsupportedVersion, InvalidCACertificate) as err:
+    except (UnsupportedVersion, InvalidCACertificate, UnsupportedServer) as err:
         raise ConfigEntryError(err) from err
     except CannotConnect as err:
         raise ConfigEntryNotReady(err) from err

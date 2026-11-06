@@ -216,11 +216,23 @@ class Test_Normal_Configuration:
 
         assert config_entry.version == ElasticFlowHandler.VERSION
 
-        assert config_entry.state is ConfigEntryState.SETUP_RETRY
+        assert config_entry.state is ConfigEntryState.SETUP_ERROR
         assert (
             config_entry.reason
             == "Error retrieving cluster info from Elasticsearch. Unsupported product error connecting to Elasticsearch"
         )
+
+    async def test_setup_ingestion_only_endpoint(self, integration_setup, es_mock_builder, config_entry):
+        """An incompatible server should fail setup without scheduling retries."""
+        es_mock_builder.mocker.get(
+            testconst.CONFIG_ENTRY_DATA_URL,
+            json={"version": {"number": "8.9.0"}},
+            headers={"X-Elastic-Product": "Elasticsearch"},
+        )
+
+        assert await integration_setup() is False
+        assert config_entry.state is ConfigEntryState.SETUP_ERROR
+        assert config_entry.reason == "The endpoint does not report supported Elasticsearch server metadata."
 
     async def test_setup_server_error(
         self, hass: HomeAssistant, integration_setup, es_mock_builder, config_entry
