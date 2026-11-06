@@ -332,6 +332,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#removing-the-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Removing the integration
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -468,6 +479,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#removing-the-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Removing the integration
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -511,6 +533,27 @@
 </ol>
 <p>You must restart Home Assistant after installation.</p>
 <p>Next: <a href=".././configure/">Configuration</a></p>
+<h2 id="removing-the-integration">Removing the integration<a class="headerlink" href="#removing-the-integration" title="Permanent link">#</a></h2>
+<ol>
+<li>From the <a href="https://my.home-assistant.io/redirect/integrations/"><code>Integrations</code> configuration menu</a>, select <code>Elasticsearch</code>, then delete each of its entries.</li>
+<li>If you installed with HACS, remove <code>Elasticsearch</code> from HACS. Otherwise, delete the <code>custom_components/elasticsearch</code> directory.</li>
+<li>Restart Home Assistant.</li>
+</ol>
+<p>Home Assistant stops publishing at this point, but nothing is removed from Elasticsearch. Your existing data stays where it is, along with the following:</p>
+<ul>
+<li>The <code>metrics-homeassistant.*</code> data streams, which hold your data</li>
+<li>The <code>metrics-homeassistant</code> index template</li>
+<li>Any API key or user you created for this integration</li>
+</ul>
+<p>If you no longer need them, you can delete the data streams and then the index template, in that order, from Dev Tools in Kibana:</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>This permanently deletes all of the data published by Home Assistant.</p>
+</div>
+<div class="highlight"><pre><span></span><code>DELETE _data_stream/metrics-homeassistant.*
+DELETE _index_template/metrics-homeassistant
+</code></pre></div>
+<p>Then invalidate the API key, which you can do from <code>Stack Management</code> &gt; <code>API keys</code> in Kibana.</p>
 
 
 
