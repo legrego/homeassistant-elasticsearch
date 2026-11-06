@@ -22,7 +22,7 @@ custom_components/elasticsearch/  - Main integration code
   es_publish_pipeline.py          - Event publishing pipeline
   datastreams/                    - Datastream management
 tests/                            - Test suite
-docs/                             - Documentation (MkDocs)
+docs/                             - Documentation (Zensical)
 scripts/                          - Development scripts
   lint                            - Run linting/formatting
   test                            - Run test suite
@@ -224,7 +224,7 @@ Update `pyproject.toml` and regenerate `poetry.lock`.
 
 ## Documentation
 
-- User documentation is in `docs/` using MkDocs
+- User documentation is in `docs/` using Zensical
 - Update documentation for user-facing changes
 - API documentation via docstrings
 - Keep README.md updated for quick reference

@@ -62,6 +62,24 @@ pip install poetry~=2.2.1
 poetry install
 ```
 
+### Documentation
+
+The documentation site is built with [Zensical](https://zensical.org/) and configured in `zensical.toml`. Page content lives in `docs/`.
+
+After installing dependencies, preview the site locally with:
+
+```sh
+poetry run zensical serve
+```
+
+To check the production build, including warnings:
+
+```sh
+poetry run zensical build --clean --strict
+```
+
+For documentation-only work, install just the documentation dependencies with `poetry install --only docs --no-root`. Pull requests build the documentation, and pushes to `main` publish the generated site to the `gh-pages` branch used by GitHub Pages.
+
 ### Running tests
 
 Use `./scripts/test` to invoke the test runner.
