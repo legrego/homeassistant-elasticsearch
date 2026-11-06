@@ -54,6 +54,9 @@ async def flow_fixture():
     class MockFlow(ConfigFlow):
         """Test flow."""
 
+        # Home Assistant refuses to set up entries newer than the handler's version.
+        VERSION = ElasticFlowHandler.VERSION
+
     return MockFlow
 
 

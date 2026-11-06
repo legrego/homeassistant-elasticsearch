@@ -27,7 +27,7 @@ jobs:
       - uses: "actions/checkout@v7"
       - uses: "actions/setup-python@v7"
         with:
-          python-version: "3.13"
+          python-version: "3.14"
       - run: python3 -m pip install poetry~=2.2.1
       - run: poetry install
       - run: poetry run ./scripts/lint --no-fix
@@ -41,7 +41,7 @@ jobs:
       - name: Setup Python
         uses: "actions/setup-python@v7"
         with:
-          python-version: "3.13"
+          python-version: "3.14"
       - name: Install requirements
         run: python3 -m pip install poetry~=2.2.1 && poetry install
       - name: Run tests
