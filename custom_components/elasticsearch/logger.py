@@ -52,7 +52,7 @@ def async_log_enter_exit_info[**P, R](
 
     async def decorated_func(*args: P.args, **kwargs: P.kwargs) -> R:
         logger = getattr(args[0], "_logger", LOGGER) if args and len(args) > 0 else LOGGER
-        return await call_and_log_enter_exit(func, logger, logging.INFO, *args, **kwargs)
+        return await async_call_and_log_enter_exit(func, logger, logging.INFO, *args, **kwargs)
 
     return decorated_func
 
