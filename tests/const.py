@@ -1,6 +1,7 @@
 """Test Constants."""
 
 from datetime import UTC, datetime
+from typing import Any
 
 from custom_components.elasticsearch.const import (
     CONF_CHANGE_DETECTION_TYPE,
@@ -27,7 +28,7 @@ DEVICE_AREA_NAME = "device area"
 DEVICE_FLOOR_ID = "device_floor"
 DEVICE_FLOOR_NAME = "device floor"
 DEVICE_LABELS = ["device label 1", "device label 2", "device label 3"]
-DEVICE_NO_LABELS = []
+DEVICE_NO_LABELS: list[str] = []
 DEVICE_ID = "very_unique_device_id"
 DEVICE_NAME = "device name"
 
@@ -40,7 +41,7 @@ ENTITY_AREA_NAME = "entity area"
 ENTITY_FLOOR_ID = "entity_floor"
 ENTITY_FLOOR_NAME = "entity floor"
 ENTITY_LABELS = ["entity label 1", "entity label 2", "entity label 3"]
-ENTITY_NO_LABELS = []
+ENTITY_NO_LABELS: list[str] = []
 ENTITY_PLATFORM = "entity platform"
 ENTITY_ORIGINAL_DEVICE_CLASS = "original entity device class"
 ENTITY_DEVICE_CLASS = "user-modified entity device class"
@@ -62,7 +63,7 @@ ENTITY_STATE_BOOLEAN = "True"
 ENTITY_STATE_BOOLEAN_ON = "on"
 ENTITY_STATE_BOOLEAN_OFF = "off"
 
-ENTITY_ATTRIBUTES_EMPTY = {}
+ENTITY_ATTRIBUTES_EMPTY: dict[str, Any] = {}
 
 ENTITY_ATTRIBUTES = {
     "string": "abc123",
@@ -100,7 +101,7 @@ ENTITY_ATTRIBUTES_COMPREHENSIVE = {
     "bool": True,
 }
 
-ENTITY_ATTRIBUTES_INVALID = {
+ENTITY_ATTRIBUTES_INVALID: dict[Any, Any] = {
     "": "Key is empty, and should be excluded",
     "naughty": object(),
     datetime(year=2024, month=4, day=12): "Key is a datetime, and should be excluded",
@@ -197,7 +198,7 @@ def join_testing_matrix(first_matrix, second_matrix):
     return [argnames, argvalues, False, ids]
 
 
-DEVICE_MATRIX_SIMPLE = [
+DEVICE_MATRIX_SIMPLE: list[Any] = [
     ("device_name", "device_area_name", "device_floor_name", "device_labels"),
     [
         (DEVICE_NAME, DEVICE_AREA_NAME, DEVICE_FLOOR_NAME, DEVICE_LABELS),
@@ -210,7 +211,7 @@ DEVICE_MATRIX_SIMPLE = [
     ],
 ]
 
-DEVICE_MATRIX_EXTRA = [
+DEVICE_MATRIX_EXTRA: list[Any] = [
     ("device_name", "device_area_name", "device_floor_name", "device_labels"),
     [
         (DEVICE_NAME, None, None, DEVICE_LABELS),
@@ -225,7 +226,7 @@ DEVICE_MATRIX_EXTRA = [
 
 DEVICE_MATRIX_COMPREHENSIVE = join_testing_matrix(DEVICE_MATRIX_SIMPLE, DEVICE_MATRIX_EXTRA)
 
-ENTITY_MATRIX_SIMPLE = [
+ENTITY_MATRIX_SIMPLE: list[Any] = [
     ("entity_area_name", "entity_floor_name", "entity_labels"),
     [
         (ENTITY_AREA_NAME, ENTITY_FLOOR_NAME, ENTITY_LABELS),
@@ -238,7 +239,7 @@ ENTITY_MATRIX_SIMPLE = [
     ],
 ]
 
-ENTITY_MATRIX_EXTRA = [
+ENTITY_MATRIX_EXTRA: list[Any] = [
     ("entity_area_name", "entity_floor_name", "entity_labels"),
     [
         (None, None, ENTITY_LABELS),
@@ -253,7 +254,7 @@ ENTITY_MATRIX_EXTRA = [
 
 ENTITY_MATRIX_COMPREHENSIVE = join_testing_matrix(ENTITY_MATRIX_SIMPLE, ENTITY_MATRIX_EXTRA)
 
-ENTITY_STATE_MATRIX_SIMPLE = [
+ENTITY_STATE_MATRIX_SIMPLE: list[Any] = [
     (
         "entity_state_value",
         "entity_state_change_type",
@@ -270,7 +271,7 @@ ENTITY_STATE_MATRIX_SIMPLE = [
     ],
 ]
 
-ENTITY_STATE_MATRIX_EXTRA = [
+ENTITY_STATE_MATRIX_EXTRA: list[Any] = [
     (
         "entity_state_value",
         "entity_state_change_type",

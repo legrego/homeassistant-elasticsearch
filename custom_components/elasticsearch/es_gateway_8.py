@@ -30,7 +30,7 @@ from .logger import LOGGER as BASE_LOGGER
 from .logger import async_log_enter_exit_debug
 
 if TYPE_CHECKING:  # pragma: no cover
-    from collections.abc import AsyncGenerator
+    from collections.abc import AsyncGenerator, Iterator, Mapping
     from logging import Logger
 
 
@@ -41,7 +41,7 @@ class Gateway8Settings(GatewaySettings):
     def to_client(self) -> AsyncElasticsearch:
         """Create an Elasticsearch client from the settings."""
 
-        settings = {
+        settings: dict[str, Any] = {
             "hosts": [self.url],
             "serializer": Serializer(),
             "request_timeout": self.request_timeout,
@@ -195,23 +195,23 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
         xpack_features = self._convert_response(response)
 
         if "security" in xpack_features:
-            return xpack_features["security"].get("enabled", False)
+            return bool(xpack_features["security"].get("enabled", False))
 
         return False
 
     @async_log_enter_exit_debug
-    async def has_privileges(self, privileges) -> bool:
+    async def has_privileges(self, privileges: Mapping[str, Any]) -> bool:
         """Check if the user has the required privileges."""
         with self._error_converter(msg="Error checking user privileges"):
             response = await self.client.security.has_privileges(**privileges)
 
-        return self._convert_response(response).get("has_all_requested", False)
+        return bool(self._convert_response(response).get("has_all_requested", False))
 
     @async_log_enter_exit_debug
-    async def get_index_template(self, name, ignore: list[int] | None = None) -> dict:
+    async def get_index_template(self, name: str, ignore: list[int] | None = None) -> dict:
         """Retrieve an index template."""
         with self._error_converter(msg="Error retrieving index template"):
-            options = {}
+            options: dict[str, Any] = {}
             if ignore:
                 options["ignore_status"] = ignore
             response = await self.client.options(**options).indices.get_index_template(name=name)
@@ -219,7 +219,7 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
         return self._convert_response(response)
 
     @async_log_enter_exit_debug
-    async def put_index_template(self, name, body) -> dict:
+    async def put_index_template(self, name: str, body: dict[str, Any]) -> dict:
         """Create an index template."""
         with self._error_converter(msg="Error creating index template"):
             response = await self.client.indices.put_index_template(name=name, **body)
@@ -289,7 +289,7 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
         return dict(response.body)
 
     @contextmanager
-    def _error_converter(self, msg: str | None = None):
+    def _error_converter(self, msg: str | None = None) -> Iterator[None]:
         """Convert an internal error from the elasticsearch package into one of our own."""
 
         def append_msg(append_msg: str) -> str:

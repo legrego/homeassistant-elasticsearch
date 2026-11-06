@@ -471,7 +471,7 @@ async def entity_area(
     if entity_area_name is None:
         return None
 
-    extra_settings = {}
+    extra_settings: dict[str, Any] = {}
     if entity_floor is not None:
         extra_settings["floor_id"] = entity_floor.floor_id
 

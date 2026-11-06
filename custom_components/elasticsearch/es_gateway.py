@@ -14,7 +14,7 @@ from .logger import log_enter_exit_debug
 from typing import Any
 
 if TYPE_CHECKING:  # pragma: no cover
-    from collections.abc import AsyncGenerator
+    from collections.abc import AsyncGenerator, Mapping
     from logging import Logger
 
     from elasticsearch8._async.client import AsyncElasticsearch as AsyncElasticsearch8
@@ -59,7 +59,7 @@ class GatewaySettings(ABC):
 class ElasticsearchGateway(ABC):
     """Encapsulates Elasticsearch operations."""
 
-    _logger = BASE_LOGGER
+    _logger: Logger = BASE_LOGGER
 
     def __init__(
         self,
@@ -68,7 +68,7 @@ class ElasticsearchGateway(ABC):
     ) -> None:
         """Non-I/O bound init."""
 
-        self._logger: Logger = log
+        self._logger = log
 
         self._previous_ping: bool | None = None
 
@@ -164,15 +164,15 @@ class ElasticsearchGateway(ABC):
         """Check if the cluster has security enabled."""
 
     @abstractmethod
-    async def has_privileges(self, privileges) -> bool:
+    async def has_privileges(self, privileges: Mapping[str, Any]) -> bool:
         """Check if the user has the specified privileges."""
 
     @abstractmethod
-    async def get_index_template(self, name, ignore=None) -> dict:
+    async def get_index_template(self, name: str, ignore: list[int] | None = None) -> dict:
         """Retrieve an index template."""
 
     @abstractmethod
-    async def put_index_template(self, name, body) -> dict:
+    async def put_index_template(self, name: str, body: dict[str, Any]) -> dict:
         """Update an index template."""
 
     @abstractmethod
@@ -202,7 +202,7 @@ class ElasticsearchGateway(ABC):
     def _is_serverless(self, cluster_info: dict) -> bool:
         """Check if the Elasticsearch instance is serverless."""
 
-        return cluster_info["version"]["build_flavor"] == "serverless"
+        return bool(cluster_info["version"]["build_flavor"] == "serverless")
 
     def _meets_minimum_version(self, cluster_info: dict, minimum_version: tuple[int, int]) -> bool:
         """Check if the Elasticsearch version is supported."""
