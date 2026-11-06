@@ -1,3 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+      <url>
+        <loc>https://legrego.github.io/homeassistant-elasticsearch/</loc>
+      </url>
+      <url>
+        <loc>https://legrego.github.io/homeassistant-elasticsearch/configure/</loc>
+      </url>
+      <url>
+        <loc>https://legrego.github.io/homeassistant-elasticsearch/ingest_advanced/</loc>
+      </url>
+      <url>
+        <loc>https://legrego.github.io/homeassistant-elasticsearch/install/</loc>
+      </url>
+      <url>
+        <loc>https://legrego.github.io/homeassistant-elasticsearch/using_kibana/</loc>
+      </url>
 </urlset>
