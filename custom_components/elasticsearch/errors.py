@@ -45,3 +45,7 @@ class UntrustedCertificate(SSLError):
 
 class UnsupportedVersion(ESIntegrationConnectionException):
     """Connected to an unsupported version of Elasticsearch."""
+
+
+class UnsupportedServer(ESIntegrationConnectionException):
+    """The endpoint does not provide the required Elasticsearch server metadata."""

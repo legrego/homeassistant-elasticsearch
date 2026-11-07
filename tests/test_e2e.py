@@ -59,7 +59,7 @@ class Test_Normal_Configuration:
         assert await integration_setup() is True
         assert config_entry.state is ConfigEntryState.LOADED
 
-        assert es_mock_builder.mocker.call_count == 9
+        assert es_mock_builder.mocker.call_count == 8
         assert es_mock_builder.get_calls() == snapshot
 
         # Queue an entity state change and check that it is published with item level reporting
@@ -69,7 +69,7 @@ class Test_Normal_Configuration:
         config_entry.runtime_data._gateway._logger.info = MagicMock()
         await config_entry.runtime_data._pipeline_manager._publisher.publish()
 
-        assert es_mock_builder.mocker.call_count == 11
+        assert es_mock_builder.mocker.call_count == 10
         config_entry.runtime_data._gateway._logger.error.assert_not_called()
 
         assert snapshot == {
@@ -89,7 +89,7 @@ class Test_Normal_Configuration:
     ):
         """Test the full integration setup and execution with an error during the check connection step of publishing."""
         es_mock_builder.as_elasticsearch_8_17(
-            fail_after=5
+            fail_after=4
         ).with_correct_permissions().without_index_template().respond_to_bulk(status=200)
 
         # Queue an entity state change
@@ -99,13 +99,13 @@ class Test_Normal_Configuration:
         assert await integration_setup() is True
         assert config_entry.state is ConfigEntryState.LOADED
 
-        assert es_mock_builder.mocker.call_count == 9
+        assert es_mock_builder.mocker.call_count == 8
 
         await config_entry.runtime_data._pipeline_manager._publisher.publish()
 
         # We check the connection while publishing and if the ping fails we do not
-        # perform the bulk request, so this stays at 10
-        assert es_mock_builder.mocker.call_count == 10
+        # perform the bulk request, so this stays at 9
+        assert es_mock_builder.mocker.call_count == 9
 
         assert es_mock_builder.get_calls() == snapshot
 
@@ -133,7 +133,7 @@ class Test_Normal_Configuration:
         assert await integration_setup() is True
         assert config_entry.state is ConfigEntryState.LOADED
 
-        assert es_mock_builder.mocker.call_count == 9
+        assert es_mock_builder.mocker.call_count == 8
         assert es_mock_builder.get_calls() == snapshot
 
     async def test_setup_to_bulk_item_level_error(
@@ -216,11 +216,23 @@ class Test_Normal_Configuration:
 
         assert config_entry.version == ElasticFlowHandler.VERSION
 
-        assert config_entry.state is ConfigEntryState.SETUP_RETRY
+        assert config_entry.state is ConfigEntryState.SETUP_ERROR
         assert (
             config_entry.reason
             == "Error retrieving cluster info from Elasticsearch. Unsupported product error connecting to Elasticsearch"
         )
+
+    async def test_setup_ingestion_only_endpoint(self, integration_setup, es_mock_builder, config_entry):
+        """An incompatible server should fail setup without scheduling retries."""
+        es_mock_builder.mocker.get(
+            testconst.CONFIG_ENTRY_DATA_URL,
+            json={"version": {"number": "8.9.0"}},
+            headers={"X-Elastic-Product": "Elasticsearch"},
+        )
+
+        assert await integration_setup() is False
+        assert config_entry.state is ConfigEntryState.SETUP_ERROR
+        assert config_entry.reason == "The endpoint does not report supported Elasticsearch server metadata."
 
     async def test_setup_server_error(
         self, hass: HomeAssistant, integration_setup, es_mock_builder, config_entry
@@ -319,7 +331,7 @@ class Test_Publish_Disabled:
         assert await integration_setup() is True
         assert config_entry.state is ConfigEntryState.LOADED
 
-        assert es_mock_builder.mocker.call_count == 7
+        assert es_mock_builder.mocker.call_count == 6
 
 
 class Test_Legacy_To_Current:
@@ -371,7 +383,7 @@ class Test_Legacy_To_Current:
         assert await integration_setup() is True
         assert config_entry.state is ConfigEntryState.LOADED
 
-        assert es_mock_builder.mocker.call_count == 9
+        assert es_mock_builder.mocker.call_count == 8
 
         assert snapshot == {
             "data": config_entry.data,

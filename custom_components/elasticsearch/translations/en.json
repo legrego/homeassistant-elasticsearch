@@ -12,6 +12,7 @@
             "insufficient_privileges": "Insufficient privileges for specified user.",
             "missing_credentials": "This cluster requires authentication. Please provide a username and password.",
             "untrusted_certificate": "Elasticsearch's server certificate could not be verified. Either disable TLS verification, or specify a custom CA path below.",
+            "unsupported_server": "This endpoint does not provide the required Elasticsearch server information. Connect to a supported Elasticsearch cluster. Ingestion-only endpoints such as VictoriaLogs are not supported.",
             "unsupported_version": "Unsupported version of Elasticsearch detected. The minimum supported version is 8.14.",
             "invalid_ca_certificate": "The certificate authority file could not be loaded. Check that the path is correct, and that the file is a readable, PEM-encoded certificate.",
             "unknown": "An unexpected error occurred. Check the Home Assistant logs for details."

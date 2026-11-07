@@ -24,6 +24,7 @@ from custom_components.elasticsearch.errors import (
     InsufficientPrivileges,
     InvalidCACertificate,
     ServerError,
+    UnsupportedServer,
     UntrustedCertificate,
 )
 from custom_components.elasticsearch.es_gateway import ElasticsearchGateway, GatewaySettings
@@ -173,6 +174,9 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
         with self._error_converter(msg="Error retrieving cluster info from Elasticsearch"):
             response = await self.client.info()
 
+        if not isinstance(response.body, dict):
+            raise UnsupportedServer("The endpoint does not return Elasticsearch server information.")
+
         return self._convert_response(response)
 
     @async_log_enter_exit_debug
@@ -206,6 +210,7 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
             # Check if the cluster is serverless, security is always enabled in serverless
             info: dict = await self.info()
 
+        self._validate_cluster_info(info)
         if self._is_serverless(info):
             return True
 
@@ -344,7 +349,9 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
 
         except elasticsearch8.UnsupportedProductError as err:
             # The HTTP response didn't include headers={"x-elastic-product": "Elasticsearch"}
-            raise CannotConnect(append_msg("Unsupported product error connecting to Elasticsearch")) from err
+            raise UnsupportedServer(
+                append_msg("Unsupported product error connecting to Elasticsearch")
+            ) from err
 
         except elasticsearch8.AuthenticationException as err:
             raise AuthenticationRequired(
