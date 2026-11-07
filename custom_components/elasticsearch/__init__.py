@@ -24,6 +24,7 @@ from custom_components.elasticsearch.errors import (
 from custom_components.elasticsearch.issues import (
     MINIMUM_VERSION,
     async_create_unsupported_version_issue,
+    async_delete_duplicate_cluster_issues_naming,
     async_delete_issues,
     async_delete_unsupported_version_issue,
 )
@@ -124,8 +125,12 @@ async def async_remove_entry(hass: HomeAssistant, config_entry: ElasticIntegrati
 
     async_delete_issues(hass, config_entry)
 
-    # An entry that shares a cluster with the removed one can now take the cluster's UUID,
-    # which also clears its duplicate cluster issue
+    # Entries that shared a cluster with the removed one no longer have a duplicate, whether or
+    # not they're loaded. One that isn't loaded takes the cluster's UUID when it next loads.
+    async_delete_duplicate_cluster_issues_naming(hass, config_entry)
+
+    # A loaded entry can take the cluster's UUID now. If yet another entry still shares its
+    # cluster, this raises its issue again, naming that entry.
     for entry in hass.config_entries.async_loaded_entries(ELASTIC_DOMAIN):
         if isinstance(getattr(entry, "runtime_data", None), ElasticIntegration):
             entry.runtime_data.backfill_unique_id()

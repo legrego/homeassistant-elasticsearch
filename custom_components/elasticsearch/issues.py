@@ -38,12 +38,30 @@ def async_create_duplicate_cluster_issue(
         translation_key=ISSUE_DUPLICATE_CLUSTER,
         translation_placeholders={"entry_title": config_entry.title, "other_title": other_entry.title},
         learn_more_url=f"{TROUBLESHOOTING_URL}#two-entries-publish-to-the-same-cluster",
+        data={"other_entry_id": other_entry.entry_id},
     )
 
 
 def async_delete_duplicate_cluster_issue(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
     """Remove the duplicate cluster issue for a config entry, if there is one."""
     ir.async_delete_issue(hass, DOMAIN, issue_id(ISSUE_DUPLICATE_CLUSTER, config_entry))
+
+
+def async_delete_duplicate_cluster_issues_naming(hass: HomeAssistant, other_entry: ConfigEntry) -> None:
+    """Remove the duplicate cluster issues of every entry that shared a cluster with `other_entry`.
+
+    This doesn't depend on those entries being loaded: a disabled entry still has its issue.
+    """
+    registry = ir.async_get(hass)
+
+    for (domain, existing_issue_id), issue in list(registry.issues.items()):
+        if (
+            domain == DOMAIN
+            and issue.translation_key == ISSUE_DUPLICATE_CLUSTER
+            and issue.data is not None
+            and issue.data.get("other_entry_id") == other_entry.entry_id
+        ):
+            ir.async_delete_issue(hass, DOMAIN, existing_issue_id)
 
 
 def async_create_unsupported_version_issue(

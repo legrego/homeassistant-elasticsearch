@@ -26,7 +26,7 @@ from custom_components.elasticsearch.errors import (
 )
 from custom_components.elasticsearch.es_integration import ElasticIntegration
 from freezegun.api import FrozenDateTimeFactory
-from homeassistant.config_entries import SOURCE_REAUTH, ConfigEntryState, ConfigFlow
+from homeassistant.config_entries import SOURCE_REAUTH, ConfigEntryDisabler, ConfigEntryState, ConfigFlow
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import (
@@ -1147,6 +1147,7 @@ class Test_Unique_Id_Backfill:
         assert issue.is_fixable is False
         assert issue.translation_key == "duplicate_cluster"
         assert issue.translation_placeholders == {"entry_title": "this entry", "other_title": "other entry"}
+        assert issue.data == {"other_entry_id": other.entry_id}
 
     async def test_duplicate_cluster_issue_cleared_by_backfill(self, hass, entry):
         """Test that the issue clears when the entry is the only one left for its cluster."""
@@ -1180,6 +1181,53 @@ class Test_Unique_Id_Backfill:
 
         assert entry.unique_id == const.CLUSTER_UUID
         assert issue_registry.async_get_issue(ELASTIC_DOMAIN, issue_id) is None
+
+    async def test_removing_the_other_entry_clears_the_issue_of_a_disabled_entry(self, hass, entry):
+        """Test that the duplicate is resolved even when the remaining entry isn't loaded."""
+        other = MockConfigEntry(
+            domain=ELASTIC_DOMAIN,
+            version=ElasticFlowHandler.VERSION,
+            unique_id=const.CLUSTER_UUID,
+            title="other entry",
+        )
+        other.add_to_hass(hass)
+        hass.config_entries.async_update_entry(entry, version=ElasticFlowHandler.VERSION)
+        issue_registry = ir.async_get(hass)
+        issue_id = f"duplicate_cluster_{entry.entry_id}"
+
+        async def connect_to_cluster(integration: ElasticIntegration) -> None:
+            integration._gateway = mock.MagicMock(cluster_uuid=const.CLUSTER_UUID)
+            integration.backfill_unique_id()
+
+        with (
+            mock.patch(
+                f"{MODULE}.es_integration.ElasticIntegration.async_init",
+                autospec=True,
+                side_effect=connect_to_cluster,
+            ),
+            mock.patch(f"{MODULE}.es_integration.ElasticIntegration.async_shutdown"),
+        ):
+            await hass.config_entries.async_setup(entry.entry_id)
+            assert entry.state is ConfigEntryState.LOADED
+            assert issue_registry.async_get_issue(ELASTIC_DOMAIN, issue_id) is not None
+
+            await hass.config_entries.async_set_disabled_by(entry.entry_id, ConfigEntryDisabler.USER)
+            assert entry.state is ConfigEntryState.NOT_LOADED
+
+            await hass.config_entries.async_remove(other.entry_id)
+
+            assert issue_registry.async_get_issue(ELASTIC_DOMAIN, issue_id) is None
+            assert entry.unique_id is None
+
+            # Once enabled again, the entry takes the cluster's UUID and raises no issue
+            await hass.config_entries.async_set_disabled_by(entry.entry_id, None)
+            await hass.async_block_till_done()
+
+            assert entry.state is ConfigEntryState.LOADED
+            assert entry.unique_id == const.CLUSTER_UUID
+            assert issue_registry.async_get_issue(ELASTIC_DOMAIN, issue_id) is None
+
+            await hass.config_entries.async_unload(entry.entry_id)
 
     async def test_removing_an_entry_clears_its_issues(self, hass, entry):
         """Test that removing an entry removes the issues raised for it."""
