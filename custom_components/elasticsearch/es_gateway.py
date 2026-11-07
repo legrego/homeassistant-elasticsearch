@@ -76,6 +76,8 @@ class ElasticsearchGateway(ABC):
 
         self._previous_ping: bool | None = None
         self._cluster_uuid: str | None = None
+        self._cluster_version: str | None = None
+        self._build_flavor: str | None = None
 
     @log_enter_exit_debug
     async def async_init(self) -> None:
@@ -90,10 +92,13 @@ class ElasticsearchGateway(ABC):
         cluster_uuid = cluster_info.get("cluster_uuid")
         self._cluster_uuid = None if cluster_uuid == "_na_" else cluster_uuid
 
+        self._cluster_version = cluster_info["version"]["number"]
+        self._build_flavor = cluster_info["version"]["build_flavor"]
+
         # Minimum version check
         if not self._is_supported_version(cluster_info):
             msg = f"Elasticsearch version is not supported. Minimum version: {ELASTIC_MINIMUM_VERSION}"
-            raise UnsupportedVersion(msg)
+            raise UnsupportedVersion(msg, version=cluster_info["version"]["number"])
 
         # Check minimum privileges
         if await self.has_security() and not await self.has_privileges(self.settings.minimum_privileges):
@@ -114,6 +119,24 @@ class ElasticsearchGateway(ABC):
         """Return the UUID of the connected cluster, if it is known."""
 
         return self._cluster_uuid
+
+    @property
+    def cluster_version(self) -> str | None:
+        """Return the version number the cluster reported, if it is known."""
+
+        return self._cluster_version
+
+    @property
+    def build_flavor(self) -> str | None:
+        """Return the build flavor the cluster reported, such as `default` or `serverless`."""
+
+        return self._build_flavor
+
+    @property
+    def connected(self) -> bool | None:
+        """Return the result of the last connection check, or None before the first one."""
+
+        return self._previous_ping
 
     @classmethod
     @abstractmethod

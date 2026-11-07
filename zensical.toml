@@ -5,9 +5,11 @@ nav = [
     "index.md",
     "install.md",
     "configure.md",
+    "publishing.md",
     "using_kibana.md",
     "published_fields.md",
     "ingest_advanced.md",
+    "troubleshooting.md",
 ]
 
 [project.theme]

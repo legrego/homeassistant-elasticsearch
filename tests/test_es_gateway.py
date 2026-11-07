@@ -339,6 +339,15 @@ class Test_Initialization:
 
         await Elasticsearch8Gateway(gateway_settings=gateway_settings).stop()
 
+    async def test_cluster_details_before_init(self, gateway_settings) -> None:
+        """Test that nothing is known about the cluster before the gateway connects."""
+
+        gateway = Elasticsearch8Gateway(gateway_settings=gateway_settings)
+
+        assert gateway.cluster_version is None
+        assert gateway.build_flavor is None
+        assert gateway.connected is None
+
     async def test_async_init(self, gateway_mock_stateful) -> None:
         """Test the async initialization with proper permissions on a supported version."""
 
@@ -347,6 +356,9 @@ class Test_Initialization:
         assert (
             gateway_mock_stateful.cluster_uuid == testconst.CLUSTER_INFO_8DOT14_RESPONSE_BODY["cluster_uuid"]
         )
+        assert gateway_mock_stateful.cluster_version == "8.14.0"
+        assert gateway_mock_stateful.build_flavor == "default"
+        assert gateway_mock_stateful.connected is True
 
     async def test_async_init_unformed_cluster(self, gateway_mock_stateful) -> None:
         """Test that the placeholder UUID of an unformed cluster is not treated as its identity."""
@@ -375,8 +387,10 @@ class Test_Initialization:
 
         gateway_mock_stateful._client.info = mock_es_response(testconst.CLUSTER_INFO_8DOT0_RESPONSE_BODY)
 
-        with pytest.raises(UnsupportedVersion):
+        with pytest.raises(UnsupportedVersion) as err:
             assert await gateway_mock_stateful.async_init() is None
+
+        assert err.value.version == "8.0.0"
 
     @pytest.mark.parametrize(
         "cluster_info",

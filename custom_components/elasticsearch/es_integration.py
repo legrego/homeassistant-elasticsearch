@@ -32,6 +32,10 @@ from custom_components.elasticsearch.const import (
 from custom_components.elasticsearch.es_datastream_manager import DatastreamManager
 from custom_components.elasticsearch.es_gateway_8 import Elasticsearch8Gateway, Gateway8Settings
 from custom_components.elasticsearch.es_publish_pipeline import Pipeline, PipelineSettings
+from custom_components.elasticsearch.issues import (
+    async_create_duplicate_cluster_issue,
+    async_delete_duplicate_cluster_issue,
+)
 from custom_components.elasticsearch.logger import LOGGER as BASE_LOGGER
 from custom_components.elasticsearch.logger import async_log_enter_exit_debug, log_enter_exit_debug
 
@@ -80,7 +84,7 @@ class ElasticIntegration:
 
         try:
             await self._gateway.async_init()
-            self._backfill_unique_id()
+            self.backfill_unique_id()
             await self._datastream_manager.async_init()
             await self._pipeline_manager.async_init(config_entry=self._config_entry)
 
@@ -91,28 +95,41 @@ class ElasticIntegration:
 
             raise
 
-    def _backfill_unique_id(self) -> None:
+    def backfill_unique_id(self) -> None:
         """Assign the cluster's UUID to entries created before they had a unique ID.
 
         Entries that already share a cluster keep working. The first to load takes the
-        unique ID, and the others only warn, since removing one is the user's decision.
+        unique ID, and the others warn and raise a repair issue, since removing one is the
+        user's decision. The issue is removed once this entry is the only one left.
         """
 
         cluster_uuid = self._gateway.cluster_uuid
 
-        if self._config_entry.unique_id is not None or cluster_uuid is None:
-            return
+        if self._config_entry.unique_id is None and cluster_uuid is not None:
+            for entry in self._hass.config_entries.async_entries(ELASTIC_DOMAIN):
+                if entry.unique_id == cluster_uuid:
+                    self._logger.warning(
+                        "Config entries [%s] and [%s] publish to the same Elasticsearch cluster.",
+                        entry.title,
+                        self._config_entry.title,
+                    )
+                    async_create_duplicate_cluster_issue(self._hass, self._config_entry, entry)
+                    return
 
-        for entry in self._hass.config_entries.async_entries(ELASTIC_DOMAIN):
-            if entry.unique_id == cluster_uuid:
-                self._logger.warning(
-                    "Config entries [%s] and [%s] publish to the same Elasticsearch cluster.",
-                    entry.title,
-                    self._config_entry.title,
-                )
-                return
+            self._hass.config_entries.async_update_entry(self._config_entry, unique_id=cluster_uuid)
 
-        self._hass.config_entries.async_update_entry(self._config_entry, unique_id=cluster_uuid)
+        async_delete_duplicate_cluster_issue(self._hass, self._config_entry)
+
+    def diagnostics(self) -> dict[str, Any]:
+        """Return the runtime state of the integration, for diagnostics."""
+        return {
+            "cluster": {
+                "version": self._gateway.cluster_version,
+                "build_flavor": self._gateway.build_flavor,
+            },
+            "connected": self._gateway.connected,
+            "queue_size": self._pipeline_manager.queue.qsize(),
+        }
 
     async def async_shutdown(self) -> None:
         """Async shutdown procedure."""
