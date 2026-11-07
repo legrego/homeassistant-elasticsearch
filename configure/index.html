@@ -893,16 +893,55 @@ curl<span class="w"> </span><span class="s2">"</span><span class="nv">$ES_URL</s
 </div>
 <p>The API Key will be returned in the response. Save the <code>encoded</code> field for use in the configuration.</p>
 <p>Read the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-api-key.html">Elasticsearch documentation</a> for more information on creating API Keys.</p>
+<p>To use a username and password instead, the user needs the same privileges. Create a role with them, then a user with that role:</p>
+<div class="highlight"><pre><span></span><code>PUT /_security/role/hass_writer
+{
+  "cluster": [
+    "manage_index_templates",
+    "monitor"
+  ],
+  "indices": [
+    {
+      "names": [
+        "metrics-homeassistant.*"
+      ],
+      "privileges": [
+        "manage",
+        "index",
+        "create_index",
+        "create"
+      ]
+    }
+  ]
+}
+
+POST /_security/user/home_assistant
+{
+  "password": "&lt;a strong password&gt;",
+  "roles": ["hass_writer"]
+}
+</code></pre></div>
+<p>The integration checks these privileges when you add it, and shows an error if any are missing. If an existing entry loses them, Home Assistant asks you to reauthenticate.</p>
 <h2 id="add-the-integration">Add the integration<a class="headerlink" href="#add-the-integration" title="Permanent link">#</a></h2>
 <p>This component is configured interactively via Home Assistant's integration configuration page.</p>
 <ol>
 <li>Verify you have restarted Home Assistant after installing the component.</li>
 <li>From the <a href="https://my.home-assistant.io/redirect/integrations/"><code>Integrations</code> configuration menu</a>, add a new <code>Elasticsearch</code> integration.</li>
 <li>Provide the URL of your elasticsearch server in the format <code>https://&lt;host&gt;:&lt;port&gt;</code>. For example, <code>https://localhost:9200</code>.</li>
-<li>If your Elasticsearch instance is untrusted, you will be prompted to provide the path to the CA file or disable certificate verification.</li>
-<li>If your Elasticsearch instance is secured, you will be prompted to provide either a username and password or an API Key.</li>
+<li>If the server's certificate is not trusted, you will be prompted for TLS settings.</li>
+<li>If your Elasticsearch instance is secured, you will be prompted to choose an authentication method, then for its credentials.</li>
 <li>Once the integration is setup, you may tweak all configuration options via the <code>Configure</code> button on the <a href="https://my.home-assistant.io/redirect/integration/?domain=elasticsearch" target="_blank">integrations page</a>.</li>
 </ol>
+<p>The setup asks for the following, depending on your cluster:</p>
+<ul>
+<li><code>URL to access the Elasticsearch Cluster</code> - The address of your cluster, including the scheme and port.</li>
+<li><code>Verify TLS certificate</code> - Check that the server's certificate is signed by a trusted certificate authority. Only asked when the certificate is not trusted. Turning this off leaves the connection open to interception.</li>
+<li><code>Verify hostname matches server certificate</code> - Check that the certificate was issued for the host in the URL. This only applies when the certificate is verified.</li>
+<li><code>Fully qualified path to custom certificate authority</code> - The path to a PEM-encoded CA file on the machine running Home Assistant. Leave empty to use the system's trusted certificates. See <a href="#custom-certificate-authority-ca">Custom certificate authority (CA)</a>.</li>
+<li><code>Authentication method</code> - <code>Authenticate using an API Key</code> or <code>Authenticate using Username/Password</code>. Only asked when the cluster requires authentication.</li>
+<li><code>Username</code> and <code>Password</code> - An Elasticsearch user with the <a href="#credentials">privileges listed above</a>.</li>
+<li><code>API Key</code> - The <code>encoded</code> value of an API key created as <a href="#credentials">shown above</a>.</li>
+</ul>
 <p>Each Elasticsearch cluster can only be added once, even when it can be reached through more than one URL.</p>
 <h2 id="change-connection-settings">Change connection settings<a class="headerlink" href="#change-connection-settings" title="Permanent link">#</a></h2>
 <p>To change the URL or TLS settings of an existing integration entry, open the entry's menu on the <a href="https://my.home-assistant.io/redirect/integration/?domain=elasticsearch" target="_blank">integrations page</a> and select <code>Reconfigure</code>. Your credentials and configuration options are kept.</p>
@@ -923,9 +962,9 @@ curl<span class="w"> </span><span class="s2">"</span><span class="nv">$ES_URL</s
 <p>Select <code>Configure</code> from the integration's homepage to configure the following settings.</p>
 <p><a href="https://my.home-assistant.io/redirect/integration/?domain=elasticsearch" target="_blank"><img alt="Open your Home Assistant instance and show the Elasticsearch integration." src="https://my.home-assistant.io/badges/integration.svg" /></a></p>
 <h3 id="send-events-to-elasticsearch-at-this-interval">Send events to Elasticsearch at this interval<a class="headerlink" href="#send-events-to-elasticsearch-at-this-interval" title="Permanent link">#</a></h3>
-<p>The frequency at which events are published to Elasticsearch, in seconds. The default is <code>60</code>.</p>
+<p>The frequency at which events are published to Elasticsearch, in seconds, from <code>0</code> to <code>600</code>. The default is <code>60</code>. Setting it to <code>0</code> stops publishing entirely.</p>
 <h3 id="gather-all-entity-states-at-this-interval">Gather all entity states at this interval<a class="headerlink" href="#gather-all-entity-states-at-this-interval" title="Permanent link">#</a></h3>
-<p>The frequency at which all entity states are gathered, in seconds. The default is <code>60</code>.</p>
+<p>The frequency at which all entity states are gathered, in seconds, from <code>0</code> to <code>3600</code>. The default is <code>60</code>. Setting it to <code>0</code> turns off gathering, so only changes are published.</p>
 <h3 id="choose-what-types-of-entity-changes-to-listen-for-and-publish">Choose what types of entity changes to listen for and publish<a class="headerlink" href="#choose-what-types-of-entity-changes-to-listen-for-and-publish" title="Permanent link">#</a></h3>
 <p>There are two types of entity changes that can be published to Elasticsearch:
 - <code>Track entities with state changes</code> - Publish entities when their state changes
