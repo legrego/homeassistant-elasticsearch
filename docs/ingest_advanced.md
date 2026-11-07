@@ -27,9 +27,9 @@ The following is an example on how to push your Home Assistant metrics into an i
     PUT _component_template/metrics-homeassistant@custom
     {
         "template": {
-            "mappings": {}
+            "mappings": {},
             "settings": {
-                "index.default_pipeline": "metrics-homeassistant-pipeline",
+                "index.default_pipeline": "metrics-homeassistant-pipeline"
             }
         }
     }
@@ -42,7 +42,7 @@ The following is an example on how to push your Home Assistant metrics into an i
     ES_USER=elastic # (2)
     ES_PASSWORD=changeme # (3)
     curl -X PUT "$ES_URL/_ingest/pipeline/metrics-homeassistant-pipeline" \
-        -u "$ES_USER":"ES_PASSWORD" \
+        -u "$ES_USER":"$ES_PASSWORD" \
         -H "Content-Type: application/json" \
         -d'
         {
@@ -52,14 +52,14 @@ The following is an example on how to push your Home Assistant metrics into an i
         ' # (4)
 
     curl -X PUT "$ES_URL/_component_template/metrics-homeassistant@custom" \
-        -u "$ES_USER":"ES_PASSWORD" \
+        -u "$ES_USER":"$ES_PASSWORD" \
         -H "Content-Type: application/json" \
         -d'
         {
             "template": {
-                "mappings": {}
+                "mappings": {},
                 "settings": {
-                    "index.default_pipeline": "metrics-homeassistant-pipeline",
+                    "index.default_pipeline": "metrics-homeassistant-pipeline"
                 }
             }
         }
@@ -75,7 +75,7 @@ Component template changes apply when the datastream performs a rollover so the 
 
 ### Custom Attribute mappings
 
-The following is an example on how to provide custom mappings for any attributes you're interested in making available as other data types `metrics-homeassistant-pipeline`:
+Attributes are mapped as text with a `.keyword` subfield by default. To use an attribute in numeric aggregations, define a custom mapping. The following example maps `hass.entity.attributes.temperature` as a float:
 
 === "Dev Tools"
     Run these commands using Kibana's [Dev Tools console](https://www.elastic.co/guide/en/kibana/current/console-kibana.html):
@@ -90,7 +90,7 @@ The following is an example on how to provide custom mappings for any attributes
                         "type": "object",
                         "properties": {
                             "temperature": {
-                                "type": "float"
+                                "type": "float",
                                 "ignore_malformed": true
                             }
                         }
@@ -109,7 +109,7 @@ The following is an example on how to provide custom mappings for any attributes
     ES_PASSWORD=changeme # (3)
 
     curl -X PUT "$ES_URL/_component_template/metrics-homeassistant@custom" \
-        -u "$ES_USER":"ES_PASSWORD" \
+        -u "$ES_USER":"$ES_PASSWORD" \
         -H "Content-Type: application/json" \
         -d'
         {
@@ -120,7 +120,7 @@ The following is an example on how to provide custom mappings for any attributes
                             "type": "object",
                             "properties": {
                                 "temperature": {
-                                    "type": "float"
+                                    "type": "float",
                                     "ignore_malformed": true
                                 }
                             }
