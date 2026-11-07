@@ -844,6 +844,7 @@
 </table>
 <p>When updating older dashboards, use <code>hass.entity.friendly_name</code> instead of <code>hass.entity.attributes.friendly_name</code>. Device class and unit of measurement also have dedicated fields rather than copies under <code>attributes</code>.</p>
 <p>Attributes are dynamically mapped as text with a <code>.keyword</code> subfield by default. Numeric state attributes therefore need a <a href="../ingest_advanced/#custom-attribute-mappings">custom attribute mapping</a> if you want numeric aggregations. Dictionary-valued attributes are serialized as JSON strings; sets are converted to sorted lists. Attributes with unsupported value types or non-string or blank keys are skipped.</p>
+<p>Date and time values nested inside list or dictionary attributes are serialized as ISO 8601 strings.</p>
 <p>Outside the attributes object, extra fields without an explicit mapping are kept in the stored document but are not indexed for searching or aggregations. Add a custom mapping if you need to query those fields.</p>
 <p>To reduce storage, you can <a href="../ingest_advanced/#drop-attributes-to-reduce-storage">drop attributes with an ingest pipeline</a> while keeping entity states and metadata.</p>
 <h2 id="event-data-stream-and-host-details">Event, data stream, and host details<a class="headerlink" href="#event-data-stream-and-host-details" title="Permanent link">#</a></h2>
