@@ -757,6 +757,16 @@
 <li>Credentials to access the Elasticsearch instance (if required)</li>
 <li>The SSL certificate authority (CA) file, if you are using a custom CA not trusted by the host system</li>
 </ol>
+<p>Use the URL of a supported Elasticsearch cluster. An Elasticsearch-compatible
+ingestion endpoint, such as VictoriaLogs' <code>/insert/elasticsearch/</code>, is not
+sufficient: this integration also requires Elasticsearch cluster metadata,
+security APIs, index templates, and data streams. Incompatible server metadata
+is reported as an unsupported server during setup.</p>
+<p>Existing entries stop retrying setup when the server metadata is incompatible or
+a successful response is missing the <code>X-Elastic-Product: Elasticsearch</code> header.
+This includes a reverse proxy temporarily returning a success page while
+Elasticsearch starts. Once the endpoint is ready or its configuration is corrected,
+reload the integration to try again.</p>
 <h3 id="credentials">Credentials<a class="headerlink" href="#credentials" title="Permanent link">#</a></h3>
 <p>You must provide credentials if your Elasticsearch instance is secured. While we support authenticating via username/password, we recommend using API Keys for simplicity and compatibility with all versions of Elasticsearch.</p>
 <p>Use the following command to create an API Key for the Home Assistant component.:</p>
