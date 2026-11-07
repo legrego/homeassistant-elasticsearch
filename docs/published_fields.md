@@ -76,6 +76,8 @@ Attributes are dynamically mapped as text with a `.keyword` subfield by default.
 
 Outside the attributes object, extra fields without an explicit mapping are kept in the stored document but are not indexed for searching or aggregations. Add a custom mapping if you need to query those fields.
 
+To reduce storage, you can [drop attributes with an ingest pipeline](ingest_advanced.md#drop-attributes-to-reduce-storage) while keeping entity states and metadata.
+
 ## Event, data stream, and host details
 
 | Field | Type | Description |
