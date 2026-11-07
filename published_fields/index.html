@@ -1,0 +1,1035 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://legrego.github.io/homeassistant-elasticsearch/published_fields/">
+      
+      
+      
+        <link rel="prev" href="../using_kibana/">
+      
+      
+        <link rel="next" href="../ingest_advanced/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.1.0">
+    
+    
+      
+        <title>Published fields - Elasticsearch Component for Home Assistant</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../assets/stylesheets/classic/main.94dd801d.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../assets/stylesheets/classic/palette.813d4b3f.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,500,500i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-hidden="true"></label>
+    <div data-md-component="skip">
+      <a href="#__skip" class="md-skip">
+        Skip to content
+      </a>
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="./.." title="Elasticsearch Component for Home Assistant" class="md-header__button md-logo" aria-label="Elasticsearch Component for Home Assistant" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+      <span class="md-visually-hidden">Navigation</span>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Elasticsearch Component for Home Assistant
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Published fields
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+          <span class="md-visually-hidden">Search</span>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="./.." title="Elasticsearch Component for Home Assistant" class="md-nav__button md-logo" aria-label="Elasticsearch Component for Home Assistant" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Elasticsearch Component for Home Assistant
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Introduction
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Installation
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Configuration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../using_kibana/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Using Kibana
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+        <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Published fields
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Published fields
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#entity-identity-and-metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Entity identity and metadata
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#areas-floors-and-coordinates" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Areas, floors, and coordinates
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#state-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        State values
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#state-attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        State attributes
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#event-data-stream-and-host-details" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Event, data stream, and host details
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-document" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Example document
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#filter-by-floor-or-label-in-kibana" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Filter by floor or label in Kibana
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ingest_advanced/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Advanced ingest configuration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#entity-identity-and-metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Entity identity and metadata
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#areas-floors-and-coordinates" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Areas, floors, and coordinates
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#state-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        State values
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#state-attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        State attributes
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#event-data-stream-and-host-details" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Event, data stream, and host details
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-document" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Example document
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#filter-by-floor-or-label-in-kibana" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Filter by floor or label in Kibana
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+              
+              <article class="md-content__inner md-typeset">
+                <a id="__skip" tabindex="-1"></a>
+                
+                  
+
+
+<h1 id="published-fields">Published fields<a class="headerlink" href="#published-fields" title="Permanent link">#</a></h1>
+<p>Each published document contains an entity's state, its Home Assistant registry metadata, and details about how it was collected. Use these fields to filter documents in Discover and build visualizations in Lens. See <a href="../using_kibana/">Using Kibana</a> to create a data view first.</p>
+<p>Fields whose values are unavailable, <code>null</code>, or empty lists or objects are omitted. For example, an entity without a device has no <code>hass.entity.device.*</code> fields, and an entity without labels has no <code>hass.entity.labels</code> field.</p>
+<h2 id="entity-identity-and-metadata">Entity identity and metadata<a class="headerlink" href="#entity-identity-and-metadata" title="Permanent link">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>hass.entity.id</code></td>
+<td>Keyword</td>
+<td>Full entity ID, such as <code>sensor.living_room_temperature</code>.</td>
+</tr>
+<tr>
+<td><code>hass.entity.object.id</code></td>
+<td>Keyword</td>
+<td>Entity ID without its domain, such as <code>living_room_temperature</code>.</td>
+</tr>
+<tr>
+<td><code>hass.entity.domain</code></td>
+<td>Keyword</td>
+<td>Entity domain, such as <code>sensor</code> or <code>climate</code>.</td>
+</tr>
+<tr>
+<td><code>hass.entity.friendly_name</code></td>
+<td>Keyword</td>
+<td>Display name from the entity's state, falling back to its object ID with underscores replaced by spaces. Use this for a human-readable name in Kibana.</td>
+</tr>
+<tr>
+<td><code>hass.entity.name</code></td>
+<td>Keyword</td>
+<td>Name from the entity registry: the user-provided name, or the integration's original name. This can differ from the friendly name.</td>
+</tr>
+<tr>
+<td><code>hass.entity.platform</code></td>
+<td>Keyword</td>
+<td>Integration platform that provides the entity, such as <code>esphome</code>.</td>
+</tr>
+<tr>
+<td><code>hass.entity.device_class</code></td>
+<td>Keyword</td>
+<td>Entity's device class from the registry, preferring a user override to the original class, such as <code>temperature</code>.</td>
+</tr>
+<tr>
+<td><code>hass.entity.unit_of_measurement</code></td>
+<td>Keyword</td>
+<td>Unit recorded in the entity registry, such as <code>°C</code> or <code>kWh</code>.</td>
+</tr>
+<tr>
+<td><code>hass.entity.labels</code></td>
+<td>Keyword array</td>
+<td>IDs of labels assigned directly to the entity.</td>
+</tr>
+<tr>
+<td><code>hass.entity.device.id</code></td>
+<td>Keyword</td>
+<td>ID of the entity's device in the Home Assistant device registry.</td>
+</tr>
+<tr>
+<td><code>hass.entity.device.name</code></td>
+<td>Keyword</td>
+<td>Device's user-provided name, or its original name.</td>
+</tr>
+<tr>
+<td><code>hass.entity.device.labels</code></td>
+<td>Keyword array</td>
+<td>IDs of labels assigned directly to the device.</td>
+</tr>
+</tbody>
+</table>
+<p>Label values are registry IDs, such as <code>energy_monitoring</code>, rather than display names such as <code>Energy monitoring</code>. Entity labels and device labels are published separately; neither list includes the other's labels or labels assigned to an area.</p>
+<h2 id="areas-floors-and-coordinates">Areas, floors, and coordinates<a class="headerlink" href="#areas-floors-and-coordinates" title="Permanent link">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>hass.entity.area.id</code></td>
+<td>Keyword</td>
+<td>ID of the area assigned directly to the entity.</td>
+</tr>
+<tr>
+<td><code>hass.entity.area.name</code></td>
+<td>Keyword</td>
+<td>Name of the area assigned directly to the entity.</td>
+</tr>
+<tr>
+<td><code>hass.entity.area.floor.id</code></td>
+<td>Keyword</td>
+<td>ID of the floor containing the entity's directly assigned area.</td>
+</tr>
+<tr>
+<td><code>hass.entity.area.floor.name</code></td>
+<td>Keyword</td>
+<td>Name of that floor.</td>
+</tr>
+<tr>
+<td><code>hass.entity.device.area.id</code></td>
+<td>Keyword</td>
+<td>ID of the area assigned to the device.</td>
+</tr>
+<tr>
+<td><code>hass.entity.device.area.name</code></td>
+<td>Keyword</td>
+<td>Name of the area assigned to the device.</td>
+</tr>
+<tr>
+<td><code>hass.entity.device.area.floor.id</code></td>
+<td>Keyword</td>
+<td>ID of the floor containing the device's area.</td>
+</tr>
+<tr>
+<td><code>hass.entity.device.area.floor.name</code></td>
+<td>Keyword</td>
+<td>Name of that floor.</td>
+</tr>
+<tr>
+<td><code>hass.entity.location</code></td>
+<td>Geo point</td>
+<td>Entity's coordinates as <code>[longitude, latitude]</code>, when both state attributes are available.</td>
+</tr>
+</tbody>
+</table>
+<p>The published entity area and floor describe only the entity's own area assignment. If the entity has no directly assigned area, those fields are omitted even when its device has an area. The device's area and floor remain available under <code>hass.entity.device.area.*</code>.</p>
+<p>The <a href="../configure/#toggle-to-only-publish-the-set-of-targets-below">publish target filters</a> use the device's area and floor when the entity has no area of its own. This fallback determines which events are published; it does not copy device metadata into the entity's fields.</p>
+<h2 id="state-values">State values<a class="headerlink" href="#state-values" title="Permanent link">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>hass.entity.value</code></td>
+<td>Text</td>
+<td>Original state as a string, such as <code>"72.5"</code> or <code>"on"</code>. Use its <code>.keyword</code> subfield for exact matching or grouping.</td>
+</tr>
+<tr>
+<td><code>hass.entity.valueas.float</code></td>
+<td>Float</td>
+<td>Numeric state, including whole numbers, such as <code>72.5</code> or <code>72.0</code>. Use this for numeric charts and aggregations.</td>
+</tr>
+<tr>
+<td><code>hass.entity.valueas.boolean</code></td>
+<td>Boolean</td>
+<td>State converted to <code>true</code> or <code>false</code>.</td>
+</tr>
+<tr>
+<td><code>hass.entity.valueas.datetime</code></td>
+<td>Date</td>
+<td>Parsed date and time, such as <code>2024-04-10T16:23:25.878000+00:00</code>.</td>
+</tr>
+<tr>
+<td><code>hass.entity.valueas.date</code></td>
+<td>Date</td>
+<td>Date portion of a parsed datetime, such as <code>2024-04-10</code>.</td>
+</tr>
+<tr>
+<td><code>hass.entity.valueas.time</code></td>
+<td>Date</td>
+<td>Time portion of a parsed datetime, such as <code>16:23:25.878000</code>.</td>
+</tr>
+<tr>
+<td><code>hass.entity.valueas.string</code></td>
+<td>Text</td>
+<td>State when no boolean, numeric, or datetime conversion succeeds. Also has a <code>.keyword</code> subfield.</td>
+</tr>
+</tbody>
+</table>
+<p>The original <code>value</code> is always published. The integration attempts conversions in this order: boolean, number, then datetime. The first successful conversion determines which <code>valueas.*</code> fields appear. A datetime conversion produces all three of <code>datetime</code>, <code>date</code>, and <code>time</code>; otherwise, only one converted field is published.</p>
+<p>Boolean conversion recognizes <code>true</code>, <code>on</code>, <code>locked</code>, <code>above_horizon</code>, <code>open</code>, and <code>home</code> as <code>true</code>; <code>false</code>, <code>off</code>, <code>unlocked</code>, <code>unknown</code>, <code>below_horizon</code>, <code>closed</code>, and <code>not_home</code> as <code>false</code>. Other states are tried as numbers and datetimes before falling back to a string.</p>
+<h2 id="state-attributes">State attributes<a class="headerlink" href="#state-attributes" title="Permanent link">#</a></h2>
+<p>Other supported state attributes appear under <code>hass.entity.attributes.*</code>. Attribute names are normalized to lowercase ASCII, with punctuation and whitespace replaced by underscores. For example, <code>Fan Speed</code> becomes <code>hass.entity.attributes.fan_speed</code>. If two names normalize to the same key, the later attribute replaces the earlier one.</p>
+<p>The following attributes are excluded from this object:</p>
+<table>
+<thead>
+<tr>
+<th>State attribute</th>
+<th>Published representation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>friendly_name</code></td>
+<td><code>hass.entity.friendly_name</code></td>
+</tr>
+<tr>
+<td><code>device_class</code></td>
+<td><code>hass.entity.device_class</code>, sourced from the entity registry</td>
+</tr>
+<tr>
+<td><code>unit_of_measurement</code></td>
+<td><code>hass.entity.unit_of_measurement</code>, sourced from the entity registry</td>
+</tr>
+<tr>
+<td><code>entity_picture</code>, <code>icon</code>, <code>state_class</code></td>
+<td>Omitted.</td>
+</tr>
+</tbody>
+</table>
+<p>When updating older dashboards, use <code>hass.entity.friendly_name</code> instead of <code>hass.entity.attributes.friendly_name</code>. Device class and unit of measurement also have dedicated fields rather than copies under <code>attributes</code>.</p>
+<p>Attributes are dynamically mapped as text with a <code>.keyword</code> subfield by default. Numeric state attributes therefore need a <a href="../ingest_advanced/#custom-attribute-mappings">custom attribute mapping</a> if you want numeric aggregations. Dictionary-valued attributes are serialized as JSON strings; sets are converted to sorted lists. Attributes with unsupported value types or non-string or blank keys are skipped.</p>
+<p>Outside the attributes object, extra fields without an explicit mapping are kept in the stored document but are not indexed for searching or aggregations. Add a custom mapping if you need to query those fields.</p>
+<h2 id="event-data-stream-and-host-details">Event, data stream, and host details<a class="headerlink" href="#event-data-stream-and-host-details" title="Permanent link">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>@timestamp</code></td>
+<td>Date with nanosecond precision</td>
+<td>Time the state change was collected, or the time of the polling pass, rather than the time the batch reached Elasticsearch.</td>
+</tr>
+<tr>
+<td><code>event.action</code></td>
+<td>Keyword</td>
+<td>Collection reason: <code>Polling</code>, <code>State change</code>, or <code>Attribute change</code>.</td>
+</tr>
+<tr>
+<td><code>event.kind</code></td>
+<td>Keyword</td>
+<td>Always <code>event</code>.</td>
+</tr>
+<tr>
+<td><code>event.type</code></td>
+<td>Keyword</td>
+<td><code>info</code> for polling; <code>change</code> for state or attribute changes.</td>
+</tr>
+<tr>
+<td><code>data_stream.type</code></td>
+<td>Constant keyword</td>
+<td>Always <code>metrics</code>.</td>
+</tr>
+<tr>
+<td><code>data_stream.dataset</code></td>
+<td>Constant keyword</td>
+<td><code>homeassistant.&lt;domain&gt;</code>, such as <code>homeassistant.sensor</code>.</td>
+</tr>
+<tr>
+<td><code>data_stream.namespace</code></td>
+<td>Constant keyword</td>
+<td>Always <code>default</code>.</td>
+</tr>
+<tr>
+<td><code>tags</code></td>
+<td>Keyword array</td>
+<td>Tags configured for all events. These are separate from Home Assistant labels.</td>
+</tr>
+<tr>
+<td><code>agent.version</code></td>
+<td>Keyword</td>
+<td>Home Assistant version.</td>
+</tr>
+<tr>
+<td><code>host.architecture</code></td>
+<td>Keyword</td>
+<td>Architecture reported by Home Assistant.</td>
+</tr>
+<tr>
+<td><code>host.os.name</code></td>
+<td>Keyword</td>
+<td>Operating system name reported by Home Assistant.</td>
+</tr>
+<tr>
+<td><code>host.hostname</code></td>
+<td>Keyword</td>
+<td>Supervisor-reported hostname when available, otherwise the runtime's hostname.</td>
+</tr>
+<tr>
+<td><code>host.location</code></td>
+<td>Geo point</td>
+<td>Home Assistant's configured home coordinates as <code>[longitude, latitude]</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Host details and tags are gathered when the integration starts. Data stream fields determine the destination, such as <code>metrics-homeassistant.sensor-default</code>.</p>
+<h2 id="example-document">Example document<a class="headerlink" href="#example-document" title="Permanent link">#</a></h2>
+<p>This example shows a temperature entity assigned directly to the Living Room area, with an associated device in the same area. The area belongs to the Ground Floor. Host details are left out for brevity. Documents use dotted field names:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">"@timestamp"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2026-11-06T18:00:00+00:00"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"event.action"</span><span class="p">:</span><span class="w"> </span><span class="s2">"State change"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"event.kind"</span><span class="p">:</span><span class="w"> </span><span class="s2">"event"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"event.type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"change"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"data_stream.type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"metrics"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"data_stream.dataset"</span><span class="p">:</span><span class="w"> </span><span class="s2">"homeassistant.sensor"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"data_stream.namespace"</span><span class="p">:</span><span class="w"> </span><span class="s2">"default"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"hass.entity.id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"sensor.living_room_temperature"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"hass.entity.object.id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"living_room_temperature"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"hass.entity.domain"</span><span class="p">:</span><span class="w"> </span><span class="s2">"sensor"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"hass.entity.friendly_name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Living Room Temperature"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"hass.entity.name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Temperature"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"hass.entity.platform"</span><span class="p">:</span><span class="w"> </span><span class="s2">"esphome"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"hass.entity.device_class"</span><span class="p">:</span><span class="w"> </span><span class="s2">"temperature"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"hass.entity.unit_of_measurement"</span><span class="p">:</span><span class="w"> </span><span class="s2">"°C"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"hass.entity.labels"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"indoor"</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">"hass.entity.area.id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"living_room"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"hass.entity.area.name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Living Room"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"hass.entity.area.floor.id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"ground_floor"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"hass.entity.area.floor.name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Ground Floor"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"hass.entity.device.id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"abc123"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"hass.entity.device.name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Living Room Sensor"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"hass.entity.device.labels"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"environment"</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">"hass.entity.device.area.id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"living_room"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"hass.entity.device.area.name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Living Room"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"hass.entity.device.area.floor.id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"ground_floor"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"hass.entity.device.area.floor.name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Ground Floor"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"hass.entity.attributes.battery_level"</span><span class="p">:</span><span class="w"> </span><span class="mi">95</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"hass.entity.value"</span><span class="p">:</span><span class="w"> </span><span class="s2">"21.5"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"hass.entity.valueas.float"</span><span class="p">:</span><span class="w"> </span><span class="mf">21.5</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"tags"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"home"</span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<h2 id="filter-by-floor-or-label-in-kibana">Filter by floor or label in Kibana<a class="headerlink" href="#filter-by-floor-or-label-in-kibana" title="Permanent link">#</a></h2>
+<p>Use these examples in Discover's KQL search bar, replacing IDs with values from your documents.</p>
+<p>To find entities on the Ground Floor, using the entity's own floor when assigned and otherwise the device's floor:</p>
+<div class="highlight"><pre><span></span><code>hass.entity.area.floor.id: "ground_floor" or
+(not hass.entity.area.id: * and hass.entity.device.area.floor.id: "ground_floor")
+</code></pre></div>
+<p>To find entities labeled <code>indoor</code> either directly or through their device:</p>
+<div class="highlight"><pre><span></span><code>hass.entity.labels: "indoor" or hass.entity.device.labels: "indoor"
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog" role="status" aria-atomic="true">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      
+      
+        
+        
+      <script id="__config" type="application/json">{"annotate":null,"base":"..","features":["content.code.annotate","content.code.copy","content.tabs.link","navigation.path","toc.follow"],"redirect":null,"search":"../assets/javascripts/workers/search.719e0d91.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","clipboard.error":"Could not copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d31f0ffa.min.js"></script>
+      
+    
+  </body>
+</html>

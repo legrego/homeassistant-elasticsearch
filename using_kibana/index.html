@@ -15,7 +15,7 @@
         <link rel="prev" href="../configure/">
       
       
-        <link rel="next" href="../ingest_advanced/">
+        <link rel="next" href="../published_fields/">
       
       
         
@@ -460,6 +460,32 @@
   
   
     <li class="md-nav__item">
+      <a href="../published_fields/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Published fields
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../ingest_advanced/" class="md-nav__link">
         
   
@@ -638,7 +664,7 @@
 <span class="nv">KIBANA_USER</span><span class="o">=</span>elastic<span class="w"> </span><span class="c1"># (2)</span>
 <span class="nv">KIBANA_PASSWORD</span><span class="o">=</span>changeme<span class="w"> </span><span class="c1"># (3)</span>
 curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="s2">"</span><span class="nv">$KIBANA_URL</span><span class="s2">/api/data_views/data_view"</span><span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>-u<span class="w"> </span><span class="s2">"</span><span class="nv">$KIBANA_USER</span><span class="s2">"</span>:<span class="s2">"KIBANA_PASSWORD"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-u<span class="w"> </span><span class="s2">"</span><span class="nv">$KIBANA_USER</span><span class="s2">"</span>:<span class="s2">"</span><span class="nv">$KIBANA_PASSWORD</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>-H<span class="w"> </span><span class="s2">"Content-Type: application/json"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>-H<span class="w"> </span><span class="s2">"kbn-xsrf: true"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>-d<span class="s1">'</span>
@@ -683,7 +709,7 @@ curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </spa
 </ol>
 <p><img alt="img" src="../assets/kibana-discover.png" /></p>
 <h2 id="viewing-home-assistant-data-in-kibana">Viewing Home Assistant data in Kibana<a class="headerlink" href="#viewing-home-assistant-data-in-kibana" title="Permanent link">#</a></h2>
-<p>When creating new visualizations you may find the following fields useful:</p>
+<p>When creating new visualizations you may find the following fields useful. See <a href="../published_fields/">Published fields</a> for the full reference, including device names, labels, areas, floors, and attribute handling.</p>
 <table>
 <thead>
 <tr>
@@ -697,8 +723,12 @@ curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </spa
 <td>The timestamp of the event (ex. <code>Apr 10, 2024 @ 16:23:25.878</code>)</td>
 </tr>
 <tr>
-<td><code>hass.entity.attributes.friendly_name</code></td>
-<td>The name of the entity in Home Assistant (ex. <code>Living Room EcoBee Temperature</code>)</td>
+<td><code>hass.entity.friendly_name</code></td>
+<td>The display name of the entity in Home Assistant (ex. <code>Living Room EcoBee Temperature</code>)</td>
+</tr>
+<tr>
+<td><code>hass.entity.device.name</code></td>
+<td>The name of the entity's device in Home Assistant (ex. <code>Living Room EcoBee</code>)</td>
 </tr>
 <tr>
 <td><code>hass.entity.device.area.name</code></td>
@@ -711,10 +741,6 @@ curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </spa
 <tr>
 <td><code>hass.entity.value</code></td>
 <td>The state of the entity in Home Assistant (ex. <code>72.5</code>), as a string-typed value</td>
-</tr>
-<tr>
-<td><code>hass.entity.valueas.integer</code></td>
-<td>The state of the entity in Home Assistant (ex. <code>72</code>), as an integer-typed value</td>
 </tr>
 <tr>
 <td><code>hass.entity.valueas.float</code></td>
@@ -744,7 +770,7 @@ curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </spa
 <li>Select <code>Home Assistant Metrics</code></li>
 <li>For the <code>Horizontal axis</code> select <code>@timestamp</code></li>
 <li>For the <code>Vertical axis</code> select <code>hass.entity.valueas.float</code></li>
-<li>In the filter bar at the top, add a filter for <code>hass.entity.id</code> and set the value to the entity id of the entity you want to visualize (ex. <code>sensor.living_room_ecobee_temperature</code>) or <code>hass.entity.attributes.friendly_name</code> and set the value to the friendly name of the entity you want to visualize (ex. <code>Living Room EcoBee Temperature</code>)</li>
+<li>In the filter bar at the top, add a filter for <code>hass.entity.id</code> and set the value to the entity id of the entity you want to visualize (ex. <code>sensor.living_room_ecobee_temperature</code>) or <code>hass.entity.friendly_name</code> and set the value to the friendly name of the entity you want to visualize (ex. <code>Living Room EcoBee Temperature</code>)</li>
 </ol>
 <p><img alt="img" src="../assets/kibana-lens-visualization.png" /></p>
 <h2 id="inspiration">Inspiration<a class="headerlink" href="#inspiration" title="Permanent link">#</a></h2>

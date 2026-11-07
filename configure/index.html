@@ -538,6 +538,32 @@
   
   
     <li class="md-nav__item">
+      <a href="../published_fields/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Published fields
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../ingest_advanced/" class="md-nav__link">
         
   
@@ -795,10 +821,13 @@ reload the integration to try again.</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">curl</label><label for="__tabbed_1_2">Dev Tools</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>https://localhost:9200/_security/api_key<span class="w"> </span><span class="se">\ </span><span class="c1"># (1)</span>
+<div class="highlight"><pre><span></span><code><span class="nv">ES_URL</span><span class="o">=</span>https://localhost:9200<span class="w"> </span><span class="c1"># (1)</span>
+<span class="nv">ES_USER</span><span class="o">=</span>elastic<span class="w"> </span><span class="c1"># (2)</span>
+<span class="nv">ES_PASSWORD</span><span class="o">=</span>changeme<span class="w"> </span><span class="c1"># (3)</span>
+curl<span class="w"> </span><span class="s2">"</span><span class="nv">$ES_URL</span><span class="s2">/_security/api_key"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-H<span class="w"> </span><span class="s2">"Content-Type: application/json"</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-u<span class="w"> </span>elastic:changeme<span class="w"> </span><span class="se">\ </span><span class="c1"># (2)</span>
+<span class="w">  </span>-u<span class="w"> </span><span class="s2">"</span><span class="nv">$ES_USER</span><span class="s2">"</span>:<span class="s2">"</span><span class="nv">$ES_PASSWORD</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-d<span class="s1">'</span>
 <span class="s1">  {</span>
 <span class="s1">    "name": "home_assistant_component",</span>
@@ -828,7 +857,8 @@ reload the integration to try again.</p>
 </code></pre></div>
 <ol>
 <li>Replace <code>https://localhost:9200</code> with the URL of your Elasticsearch instance.</li>
-<li>Replace <code>elastic:changeme</code> with your Elasticsearch credentials.</li>
+<li>Replace <code>elastic</code> with your Elasticsearch username.</li>
+<li>Replace <code>changeme</code> with your Elasticsearch password.</li>
 </ol>
 </div>
 <div class="tabbed-block">
@@ -906,6 +936,7 @@ reload the integration to try again.</p>
 <h3 id="toggle-to-only-publish-the-set-of-targets-below">Toggle to only publish the set of targets below<a class="headerlink" href="#toggle-to-only-publish-the-set-of-targets-below" title="Permanent link">#</a></h3>
 <p>Pick floor, area, device, entity, or labels and only publish events from one of these targets. If you select multiple targets, events that match any of the targets will be published. If you select no targets, no events will be published.</p>
 <p>An entity without an area of its own uses the area of its device, and belongs to the floor of that area.</p>
+<p>Label targets match labels assigned directly to either the entity or its device. See <a href="../published_fields/">Published fields</a> for how labels, areas, and floors appear in Elasticsearch documents.</p>
 <h3 id="toggle-to-exclude-publishing-the-set-of-targets-below">Toggle to exclude publishing the set of targets below<a class="headerlink" href="#toggle-to-exclude-publishing-the-set-of-targets-below" title="Permanent link">#</a></h3>
 <p>Pick floor, area, device, entity, or labels and exclude events from one of these targets. If you select multiple targets, events that match any of the targets will be excluded. If you also configure <code>Toggle to only publish the set of targets below</code>, the exclusion will be applied after the inclusion.</p>
 <h2 id="advanced-configuration">Advanced configuration<a class="headerlink" href="#advanced-configuration" title="Permanent link">#</a></h2>

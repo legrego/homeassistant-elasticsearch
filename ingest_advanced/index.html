@@ -12,7 +12,7 @@
       
       
       
-        <link rel="prev" href="../using_kibana/">
+        <link rel="prev" href="../published_fields/">
       
       
       
@@ -323,6 +323,32 @@
       
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../published_fields/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Published fields
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
     
   
   
@@ -547,9 +573,9 @@
 <div class="highlight"><pre><span></span><code>PUT _component_template/metrics-homeassistant@custom
 {
     "template": {
-        "mappings": {}
+        "mappings": {},
         "settings": {
-            "index.default_pipeline": "metrics-homeassistant-pipeline",
+            "index.default_pipeline": "metrics-homeassistant-pipeline"
         }
     }
 }
@@ -560,7 +586,7 @@
 <span class="nv">ES_USER</span><span class="o">=</span>elastic<span class="w"> </span><span class="c1"># (2)</span>
 <span class="nv">ES_PASSWORD</span><span class="o">=</span>changeme<span class="w"> </span><span class="c1"># (3)</span>
 curl<span class="w"> </span>-X<span class="w"> </span>PUT<span class="w"> </span><span class="s2">"</span><span class="nv">$ES_URL</span><span class="s2">/_ingest/pipeline/metrics-homeassistant-pipeline"</span><span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>-u<span class="w"> </span><span class="s2">"</span><span class="nv">$ES_USER</span><span class="s2">"</span>:<span class="s2">"ES_PASSWORD"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-u<span class="w"> </span><span class="s2">"</span><span class="nv">$ES_USER</span><span class="s2">"</span>:<span class="s2">"</span><span class="nv">$ES_PASSWORD</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>-H<span class="w"> </span><span class="s2">"Content-Type: application/json"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>-d<span class="s1">'</span>
 <span class="s1">    {</span>
@@ -570,14 +596,14 @@ curl<span class="w"> </span>-X<span class="w"> </span>PUT<span class="w"> </span
 <span class="s1">    '</span><span class="w"> </span><span class="c1"># (4)</span>
 
 curl<span class="w"> </span>-X<span class="w"> </span>PUT<span class="w"> </span><span class="s2">"</span><span class="nv">$ES_URL</span><span class="s2">/_component_template/metrics-homeassistant@custom"</span><span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>-u<span class="w"> </span><span class="s2">"</span><span class="nv">$ES_USER</span><span class="s2">"</span>:<span class="s2">"ES_PASSWORD"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-u<span class="w"> </span><span class="s2">"</span><span class="nv">$ES_USER</span><span class="s2">"</span>:<span class="s2">"</span><span class="nv">$ES_PASSWORD</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>-H<span class="w"> </span><span class="s2">"Content-Type: application/json"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>-d<span class="s1">'</span>
 <span class="s1">    {</span>
 <span class="s1">        "template": {</span>
-<span class="s1">            "mappings": {}</span>
+<span class="s1">            "mappings": {},</span>
 <span class="s1">            "settings": {</span>
-<span class="s1">                "index.default_pipeline": "metrics-homeassistant-pipeline",</span>
+<span class="s1">                "index.default_pipeline": "metrics-homeassistant-pipeline"</span>
 <span class="s1">            }</span>
 <span class="s1">        }</span>
 <span class="s1">    }</span>
@@ -594,7 +620,7 @@ curl<span class="w"> </span>-X<span class="w"> </span>PUT<span class="w"> </span
 </div>
 <p>Component template changes apply when the datastream performs a rollover so the first time you modify the template you may need to manually initiate index/datastream rollover to start applying the pipeline.</p>
 <h3 id="custom-attribute-mappings">Custom Attribute mappings<a class="headerlink" href="#custom-attribute-mappings" title="Permanent link">#</a></h3>
-<p>The following is an example on how to provide custom mappings for any attributes you're interested in making available as other data types <code>metrics-homeassistant-pipeline</code>:</p>
+<p>Attributes are mapped as text with a <code>.keyword</code> subfield by default. To use an attribute in numeric aggregations, define a custom mapping. The following example maps <code>hass.entity.attributes.temperature</code> as a float:</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">Dev Tools</label><label for="__tabbed_2_2">curl</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
@@ -608,7 +634,7 @@ curl<span class="w"> </span>-X<span class="w"> </span>PUT<span class="w"> </span
                     "type": "object",
                     "properties": {
                         "temperature": {
-                            "type": "float"
+                            "type": "float",
                             "ignore_malformed": true
                         }
                     }
@@ -625,7 +651,7 @@ curl<span class="w"> </span>-X<span class="w"> </span>PUT<span class="w"> </span
 <span class="nv">ES_PASSWORD</span><span class="o">=</span>changeme<span class="w"> </span><span class="c1"># (3)</span>
 
 curl<span class="w"> </span>-X<span class="w"> </span>PUT<span class="w"> </span><span class="s2">"</span><span class="nv">$ES_URL</span><span class="s2">/_component_template/metrics-homeassistant@custom"</span><span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>-u<span class="w"> </span><span class="s2">"</span><span class="nv">$ES_USER</span><span class="s2">"</span>:<span class="s2">"ES_PASSWORD"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-u<span class="w"> </span><span class="s2">"</span><span class="nv">$ES_USER</span><span class="s2">"</span>:<span class="s2">"</span><span class="nv">$ES_PASSWORD</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>-H<span class="w"> </span><span class="s2">"Content-Type: application/json"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>-d<span class="s1">'</span>
 <span class="s1">    {</span>
@@ -636,7 +662,7 @@ curl<span class="w"> </span>-X<span class="w"> </span>PUT<span class="w"> </span
 <span class="s1">                        "type": "object",</span>
 <span class="s1">                        "properties": {</span>
 <span class="s1">                            "temperature": {</span>
-<span class="s1">                                "type": "float"</span>
+<span class="s1">                                "type": "float",</span>
 <span class="s1">                                "ignore_malformed": true</span>
 <span class="s1">                            }</span>
 <span class="s1">                        }</span>

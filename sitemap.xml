@@ -13,6 +13,9 @@
         <loc>https://legrego.github.io/homeassistant-elasticsearch/install/</loc>
       </url>
       <url>
+        <loc>https://legrego.github.io/homeassistant-elasticsearch/published_fields/</loc>
+      </url>
+      <url>
         <loc>https://legrego.github.io/homeassistant-elasticsearch/using_kibana/</loc>
       </url>
 </urlset>
