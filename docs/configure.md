@@ -100,6 +100,39 @@ The API Key will be returned in the response. Save the `encoded` field for use i
 
 Read the [Elasticsearch documentation](https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-api-key.html) for more information on creating API Keys.
 
+To use a username and password instead, the user needs the same privileges. Create a role with them, then a user with that role:
+
+```
+PUT /_security/role/hass_writer
+{
+  "cluster": [
+    "manage_index_templates",
+    "monitor"
+  ],
+  "indices": [
+    {
+      "names": [
+        "metrics-homeassistant.*"
+      ],
+      "privileges": [
+        "manage",
+        "index",
+        "create_index",
+        "create"
+      ]
+    }
+  ]
+}
+
+POST /_security/user/home_assistant
+{
+  "password": "<a strong password>",
+  "roles": ["hass_writer"]
+}
+```
+
+The integration checks these privileges when you add it, and shows an error if any are missing. If an existing entry loses them, Home Assistant asks you to reauthenticate.
+
 ## Add the integration
 
 This component is configured interactively via Home Assistant's integration configuration page.
@@ -107,9 +140,19 @@ This component is configured interactively via Home Assistant's integration conf
 1. Verify you have restarted Home Assistant after installing the component.
 2. From the [`Integrations` configuration menu](https://my.home-assistant.io/redirect/integrations/), add a new `Elasticsearch` integration.
 3. Provide the URL of your elasticsearch server in the format `https://<host>:<port>`. For example, `https://localhost:9200`.
-4. If your Elasticsearch instance is untrusted, you will be prompted to provide the path to the CA file or disable certificate verification.
-5. If your Elasticsearch instance is secured, you will be prompted to provide either a username and password or an API Key.
-5. Once the integration is setup, you may tweak all configuration options via the `Configure` button on the [integrations page](https://my.home-assistant.io/redirect/integration/?domain=elasticsearch){:target="_blank"}.
+4. If the server's certificate is not trusted, you will be prompted for TLS settings.
+5. If your Elasticsearch instance is secured, you will be prompted to choose an authentication method, then for its credentials.
+6. Once the integration is setup, you may tweak all configuration options via the `Configure` button on the [integrations page](https://my.home-assistant.io/redirect/integration/?domain=elasticsearch){:target="_blank"}.
+
+The setup asks for the following, depending on your cluster:
+
+- `URL to access the Elasticsearch Cluster` - The address of your cluster, including the scheme and port.
+- `Verify TLS certificate` - Check that the server's certificate is signed by a trusted certificate authority. Only asked when the certificate is not trusted. Turning this off leaves the connection open to interception.
+- `Verify hostname matches server certificate` - Check that the certificate was issued for the host in the URL. This only applies when the certificate is verified.
+- `Fully qualified path to custom certificate authority` - The path to a PEM-encoded CA file on the machine running Home Assistant. Leave empty to use the system's trusted certificates. See [Custom certificate authority (CA)](#custom-certificate-authority-ca).
+- `Authentication method` - `Authenticate using an API Key` or `Authenticate using Username/Password`. Only asked when the cluster requires authentication.
+- `Username` and `Password` - An Elasticsearch user with the [privileges listed above](#credentials).
+- `API Key` - The `encoded` value of an API key created as [shown above](#credentials).
 
 Each Elasticsearch cluster can only be added once, even when it can be reached through more than one URL.
 
@@ -138,10 +181,10 @@ Select `Configure` from the integration's homepage to configure the following se
 [![Open your Home Assistant instance and show the Elasticsearch integration.](https://my.home-assistant.io/badges/integration.svg)](https://my.home-assistant.io/redirect/integration/?domain=elasticsearch){:target="_blank"}
 
 ### Send events to Elasticsearch at this interval
-The frequency at which events are published to Elasticsearch, in seconds. The default is `60`.
+The frequency at which events are published to Elasticsearch, in seconds, from `0` to `600`. The default is `60`. Setting it to `0` stops publishing entirely.
 
 ### Gather all entity states at this interval
-The frequency at which all entity states are gathered, in seconds. The default is `60`.
+The frequency at which all entity states are gathered, in seconds, from `0` to `3600`. The default is `60`. Setting it to `0` turns off gathering, so only changes are published.
 
 ### Choose what types of entity changes to listen for and publish
 There are two types of entity changes that can be published to Elasticsearch:

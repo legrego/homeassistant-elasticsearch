@@ -1062,6 +1062,55 @@ class Test_Publisher:
                 await publisher.publish()
                 publisher._logger.error.assert_called_once_with("Connection error in publishing loop.")
 
+        @pytest.fixture
+        def publish_repeatedly(self, publisher, populate_documents):
+            """Allow publishing more than once."""
+            publisher._add_action_and_meta_data = MagicMock(return_value=populate_documents)
+
+        @pytest.mark.usefixtures("publish_repeatedly")
+        async def test_publish_outage_is_logged_once(self, publisher):
+            """Ensure a publishing outage is logged once when it starts and once when it ends."""
+            publisher._gateway.check_connection.return_value = True
+            publisher._gateway.bulk.side_effect = [
+                CannotConnect(),
+                CannotConnect(),
+                CannotConnect(),
+                None,
+                None,
+            ]
+
+            for _ in range(5):
+                await publisher.publish()
+
+            publisher._logger.error.assert_called_once_with("Connection error in publishing loop.")
+            publisher._logger.info.assert_called_once_with("Publishing to Elasticsearch has recovered.")
+            assert publisher._gateway.bulk.call_count == 5
+
+        @pytest.mark.usefixtures("publish_repeatedly")
+        async def test_publish_outage_logged_again_after_recovery(self, publisher):
+            """Ensure a second outage is logged after publishing recovers."""
+            publisher._gateway.check_connection.return_value = True
+            publisher._gateway.bulk.side_effect = [CannotConnect(), None, CannotConnect()]
+
+            for _ in range(3):
+                await publisher.publish()
+
+            assert publisher._logger.error.call_count == 2
+            publisher._logger.info.assert_called_once_with("Publishing to Elasticsearch has recovered.")
+
+        @pytest.mark.usefixtures("publish_repeatedly")
+        async def test_publish_outage_handed_to_connection_check(self, publisher):
+            """Ensure the publisher stays quiet when the connection check reports the outage."""
+            publisher._gateway.check_connection.side_effect = [True, False, True]
+            publisher._gateway.bulk.side_effect = [CannotConnect(), None]
+
+            for _ in range(3):
+                await publisher.publish()
+
+            # The gateway logs that the connection came back, so the publisher doesn't repeat it
+            publisher._logger.error.assert_called_once_with("Connection error in publishing loop.")
+            publisher._logger.info.assert_not_called()
+
         async def test_publish_unknown_error(self, publisher):
             """Ensure we gracefully handle unknown errors."""
             with patch.object(publisher._gateway, "bulk", side_effect=Exception):

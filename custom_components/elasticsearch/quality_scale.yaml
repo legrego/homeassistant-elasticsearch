@@ -56,23 +56,21 @@ rules:
     comment: The integration does not register any actions.
   config-entry-unloading: done
   docs-configuration-parameters: done
-  docs-installation-parameters:
-    status: todo
-    comment: The TLS verification and hostname fields are not fully described.
+  docs-installation-parameters: done
   entity-unavailable:
     status: exempt
     comment: The integration does not create any entities.
   integration-owner: done
   log-when-unavailable:
-    status: exempt
-    comment: The integration does not create any entities.
+    status: done
+    comment: >-
+      The integration has no entities, so this applies to the Elasticsearch connection. Losing
+      it, and failing to publish while it is up, are each logged once, as is recovering.
   parallel-updates:
     status: exempt
     comment: The integration does not create any entities.
   reauthentication-flow: done
-  test-coverage:
-    status: todo
-    comment: encoder.py, system_info.py, utils.py and loop.py are at or below 95%.
+  test-coverage: done
 
   # Gold
   devices:

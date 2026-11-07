@@ -16,14 +16,16 @@ from custom_components.elasticsearch import (
 from custom_components.elasticsearch.config_flow import ElasticFlowHandler
 from custom_components.elasticsearch.const import DOMAIN as ELASTIC_DOMAIN
 from custom_components.elasticsearch.errors import (
+    AuthenticationRequired,
     CannotConnect,
     ESIntegrationException,
+    InsufficientPrivileges,
     InvalidCACertificate,
     UnsupportedVersion,
 )
 from custom_components.elasticsearch.es_integration import ElasticIntegration
 from freezegun.api import FrozenDateTimeFactory
-from homeassistant.config_entries import ConfigEntryState, ConfigFlow
+from homeassistant.config_entries import SOURCE_REAUTH, ConfigEntryState, ConfigFlow
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import (
     MockConfigEntry,  # noqa: F401
@@ -995,6 +997,28 @@ class Test_Setup_Failures:
             await hass.config_entries.async_setup(entry.entry_id)
 
         assert entry.state is expected_state
+
+    @pytest.mark.parametrize("exception", [AuthenticationRequired, InsufficientPrivileges])
+    async def test_authentication_failure_starts_reauth(self, hass, exception):
+        """Test that rejected credentials ask the user to reauthenticate."""
+        entry = MockConfigEntry(
+            domain=ELASTIC_DOMAIN,
+            version=ElasticFlowHandler.VERSION,
+            data=const.CONFIG_ENTRY_DEFAULT_DATA,
+            options=const.CONFIG_ENTRY_DEFAULT_OPTIONS,
+        )
+        entry.add_to_hass(hass)
+
+        with mock.patch(f"{MODULE}.es_integration.ElasticIntegration.async_init", side_effect=exception):
+            await hass.config_entries.async_setup(entry.entry_id)
+            await hass.async_block_till_done()
+
+        assert entry.state is ConfigEntryState.SETUP_ERROR
+
+        flows = hass.config_entries.flow.async_progress_by_handler(ELASTIC_DOMAIN)
+        assert len(flows) == 1
+        assert flows[0]["context"]["source"] == SOURCE_REAUTH
+        assert flows[0]["context"]["entry_id"] == entry.entry_id
 
     async def test_unexpected_failure_closes_the_gateway(self, hass, entry):
         """Test that the client is closed when setup fails unexpectedly."""

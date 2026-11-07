@@ -15,7 +15,7 @@
   "loggers": [
     "custom_components.elasticsearch"
   ],
-  "quality_scale": "bronze",
+  "quality_scale": "silver",
   "requirements": [
     "elasticsearch==9.5.1"
   ],
