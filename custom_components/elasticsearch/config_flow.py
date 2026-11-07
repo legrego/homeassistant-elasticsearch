@@ -4,7 +4,7 @@ from typing import Any
 
 import probatio
 from homeassistant import config_entries
-from homeassistant.config_entries import ConfigEntry, ConfigFlowResult
+from homeassistant.config_entries import SOURCE_REAUTH, SOURCE_RECONFIGURE, ConfigEntry, ConfigFlowResult
 from homeassistant.const import (
     CONF_API_KEY,
     CONF_PASSWORD,
@@ -64,6 +64,9 @@ from .logger import (
 
 CONFIG_TO_REDACT = {CONF_API_KEY, CONF_PASSWORD, CONF_USERNAME}
 
+# The settings that reconfigure replaces, everything else in the entry's data is kept
+CONNECTION_SETTINGS = {CONF_URL, CONF_VERIFY_SSL, CONF_SSL_VERIFY_HOSTNAME, CONF_SSL_CA_PATH}
+
 # Data Flow values
 SCHEMA_URL: dict[Any, Any] = {"schema": CONF_URL, "default": "https://localhost:9200"}
 SCHEMA_AUTHENTICATION_TYPE: dict[Any, Any] = {
@@ -94,7 +97,6 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
     def __init__(self) -> None:
         """Initialize the Elastic flow."""
-        self._reauth_entry: ConfigEntry | None = None
         self._prospective_config: dict[str, Any] = self.init_data or {}
         self._cluster_uuid: str | None = None
         self._certificate_input: dict[str, Any] = {}
@@ -183,7 +185,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                 BASE_LOGGER.debug("Cannot connect", exc_info=True)
 
                 # Reauth keeps the entry's URL, so the URL form has nothing to offer
-                if self._reauth_entry is not None:
+                if self.source == SOURCE_REAUTH:
                     return await self.async_step_certificate_issues(errors={"base": "cannot_connect"})
 
                 return await self.async_step_user(errors={"base": "cannot_connect"})
@@ -241,8 +243,8 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         """We require Authentication information to connect to Elasticsearch."""
 
         # Reauth updates the credentials the entry already has, it doesn't add another kind
-        if self._reauth_entry is not None:
-            return await self._async_step_reauth_credentials()
+        if self.source == SOURCE_REAUTH:
+            return await self._async_step_entry_credentials()
 
         if user_input is not None:
             if user_input[CONF_AUTHENTICATION_TYPE] == TRANSLATION_KEY_BASIC_AUTH:
@@ -292,7 +294,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                 return await self.async_step_basic_auth(errors={"base": "invalid_basic_auth"})
             except InvalidCACertificate:
                 BASE_LOGGER.debug("Invalid certificate authority", exc_info=True)
-                return await self.async_step_certificate_issues(errors={"base": "invalid_ca_certificate"})
+                return await self._async_step_tls_settings(errors={"base": "invalid_ca_certificate"})
             except CannotConnect:
                 BASE_LOGGER.debug("Cannot connect", exc_info=True)
                 return await self.async_step_basic_auth(errors={"base": "cannot_connect"})
@@ -355,7 +357,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
                 return await self.async_step_api_key(errors={"base": "invalid_api_key"})
             except InvalidCACertificate:
                 BASE_LOGGER.debug("Invalid certificate authority", exc_info=True)
-                return await self.async_step_certificate_issues(errors={"base": "invalid_ca_certificate"})
+                return await self._async_step_tls_settings(errors={"base": "invalid_ca_certificate"})
             except CannotConnect:
                 BASE_LOGGER.debug("Cannot connect", exc_info=True)
                 return await self.async_step_api_key(errors={"base": "cannot_connect"})
@@ -397,14 +399,11 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         self._prospective_config.setdefault(CONF_VERIFY_SSL, True)
         self._prospective_config.setdefault(CONF_SSL_VERIFY_HOSTNAME, True)
 
-        if self._reauth_entry is not None:
-            return self.async_update_reload_and_abort(
-                self._reauth_entry,
-                unique_id=self._reauth_entry.unique_id,
-                title=self._reauth_entry.title,
-                data=self._prospective_config,
-                options={**self._reauth_entry.options},
-            )
+        if self.source == SOURCE_REAUTH:
+            return self.async_update_reload_and_abort(self._get_reauth_entry(), data=self._prospective_config)
+
+        if self.source == SOURCE_RECONFIGURE:
+            return self._async_finish_reconfigure()
 
         await self.async_set_unique_id(self._cluster_uuid)
         self._abort_if_unique_id_configured()
@@ -421,25 +420,145 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
 
     async def async_step_reauth(self, user_input: dict | None = None) -> ConfigFlowResult:
         """Handle reauthorization."""
-        entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
-        # Entry is never None, but mypy doesn't know that
-        assert entry is not None
+        self._prospective_config = dict(self._get_reauth_entry().data)
 
-        self._reauth_entry = entry
+        return await self._async_step_entry_credentials(user_input)
 
-        self._prospective_config = dict(entry.data)
-
-        return await self._async_step_reauth_credentials(user_input)
-
-    async def _async_step_reauth_credentials(self, user_input: dict | None = None) -> ConfigFlowResult:
-        """Continue with the authentication method that the entry being reauthenticated uses."""
+    async def _async_step_entry_credentials(
+        self, user_input: dict | None = None, errors: dict | None = None
+    ) -> ConfigFlowResult:
+        """Continue with the authentication method that the entry being updated uses."""
 
         if self._prospective_config.get(CONF_USERNAME, None) is not None:
-            return await self.async_step_basic_auth(user_input=user_input)
+            return await self.async_step_basic_auth(user_input=user_input, errors=errors)
         if self._prospective_config.get(CONF_API_KEY, None) is not None:
-            return await self.async_step_api_key(user_input=user_input)
+            return await self.async_step_api_key(user_input=user_input, errors=errors)
 
-        return self.async_abort(reason="no_auth")
+        if self.source == SOURCE_REAUTH:
+            return self.async_abort(reason="no_auth")
+
+        # An entry reconfigured to a URL that needs credentials it doesn't have picks a method, as in setup
+        return await self.async_step_authentication_issues()
+
+    async def _async_step_tls_settings(self, errors: dict) -> ConfigFlowResult:
+        """Return to the form that holds the TLS settings, to correct them."""
+
+        if self.source == SOURCE_RECONFIGURE:
+            return await self.async_step_reconfigure(errors=errors)
+
+        return await self.async_step_certificate_issues(errors=errors)
+
+    @async_log_enter_exit_info
+    async def async_step_reconfigure(
+        self, user_input: dict | None = None, errors: dict | None = None
+    ) -> ConfigFlowResult:
+        """Change the URL and TLS settings of an existing entry, keeping its credentials and options."""
+
+        entry = self._get_reconfigure_entry()
+
+        if errors is not None:
+            BASE_LOGGER.debug("async_step_reconfigure errors: %s", errors)
+
+        if user_input is not None:
+            self._prospective_config = {
+                key: value for key, value in entry.data.items() if key not in CONNECTION_SETTINGS
+            }
+            self._prospective_config.update(user_input)
+
+            # The form leaves out a CA path that has been cleared
+            if not self._prospective_config.get(CONF_SSL_CA_PATH):
+                self._prospective_config.pop(CONF_SSL_CA_PATH, None)
+
+            try:
+                self._cluster_uuid = await Elasticsearch8Gateway.async_init_then_stop(
+                    url=self._prospective_config[CONF_URL],
+                    username=self._prospective_config.get(CONF_USERNAME),
+                    password=self._prospective_config.get(CONF_PASSWORD),
+                    api_key=self._prospective_config.get(CONF_API_KEY),
+                    verify_certs=self._prospective_config.get(CONF_VERIFY_SSL, True),
+                    verify_hostname=self._prospective_config.get(CONF_SSL_VERIFY_HOSTNAME, True),
+                    ca_certs=self._prospective_config.get(CONF_SSL_CA_PATH),
+                )
+            except UntrustedCertificate:
+                BASE_LOGGER.debug("Certificate issue", exc_info=True)
+                return await self.async_step_reconfigure(errors={"base": "untrusted_certificate"})
+            except InvalidCACertificate:
+                BASE_LOGGER.debug("Invalid certificate authority", exc_info=True)
+                return await self.async_step_reconfigure(errors={"base": "invalid_ca_certificate"})
+            except CannotConnect:
+                BASE_LOGGER.debug("Cannot connect", exc_info=True)
+                return await self.async_step_reconfigure(errors={CONF_URL: "cannot_connect"})
+            except InsufficientPrivileges:
+                BASE_LOGGER.debug("Insufficient Privileges", exc_info=True)
+                return await self._async_step_entry_credentials(errors={"base": "insufficient_privileges"})
+            except AuthenticationRequired:
+                BASE_LOGGER.debug("Credentials rejected", exc_info=True)
+                rejected = (
+                    "invalid_basic_auth"
+                    if self._prospective_config.get(CONF_USERNAME) is not None
+                    else "invalid_api_key"
+                )
+                return await self._async_step_entry_credentials(errors={"base": rejected})
+            except UnsupportedServer:
+                BASE_LOGGER.debug("Unsupported server", exc_info=True)
+                return await self.async_step_reconfigure(errors={"base": "unsupported_server"})
+            except UnsupportedVersion:
+                BASE_LOGGER.debug("Unsupported version", exc_info=True)
+                return await self.async_step_reconfigure(errors={"base": "unsupported_version"})
+            except Exception:  # noqa: BLE001
+                BASE_LOGGER.exception("Unexpected error connecting to Elasticsearch")
+                return await self.async_step_reconfigure(errors={"base": "unknown"})
+
+            return await self.async_step_complete()
+
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=self.add_suggested_values_to_schema(
+                probatio.Schema(
+                    {
+                        probatio.Required(**SCHEMA_URL): TextSelector(
+                            TextSelectorConfig(
+                                type=TextSelectorType.URL,
+                            )
+                        ),
+                        probatio.Required(**SCHEMA_VERIFY_SSL): BooleanSelector(
+                            BooleanSelectorConfig(),
+                        ),
+                        probatio.Required(**SCHEMA_SSL_VERIFY_HOSTNAME): BooleanSelector(
+                            BooleanSelectorConfig(),
+                        ),
+                        probatio.Optional(**SCHEMA_SSL_CA_PATH): TextSelector(
+                            TextSelectorConfig(
+                                type=TextSelectorType.TEXT,
+                            )
+                        ),
+                    },
+                ),
+                self._prospective_config or entry.data,
+            ),
+            errors=errors,
+        )
+
+    @callback
+    def _async_finish_reconfigure(self) -> ConfigFlowResult:
+        """Save the new connection settings, unless they reach a different cluster."""
+
+        entry = self._get_reconfigure_entry()
+
+        # Moving to another cluster means adding it as a new entry
+        if (
+            entry.unique_id is not None
+            and self._cluster_uuid is not None
+            and entry.unique_id != self._cluster_uuid
+        ):
+            return self.async_abort(reason="wrong_cluster")
+
+        # Entries are named after their URL, so follow a new URL unless the entry was renamed
+        title = entry.title
+        if title == entry.data.get(CONF_URL):
+            title = self._prospective_config[CONF_URL]
+
+        return self.async_update_reload_and_abort(entry, title=title, data=self._prospective_config)
 
 
 class ElasticOptionsFlowHandler(config_entries.OptionsFlow):

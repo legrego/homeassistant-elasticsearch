@@ -3,7 +3,9 @@
         "abort": {
             "already_configured": "This Elasticsearch cluster is already configured.",
             "no_auth": "This Elasticsearch cluster has no credentials to update.",
-            "reauth_successful": "Re-authentication was successful"
+            "reauth_successful": "Re-authentication was successful",
+            "reconfigure_successful": "The connection settings were updated.",
+            "wrong_cluster": "This URL reaches a different Elasticsearch cluster. To publish to another cluster, add it as a new integration entry."
         },
         "error": {
             "cannot_connect": "Failed to connect to host on port. Is it reachable?",
@@ -26,6 +28,22 @@
                 },
                 "data_description": {
                     "url": "The address of your cluster, including the scheme and port."
+                }
+            },
+            "reconfigure": {
+                "title": "Change connection settings",
+                "description": "Update how Home Assistant connects to this Elasticsearch cluster. Your credentials and integration options are kept.",
+                "data": {
+                    "url": "URL to access the Elasticsearch Cluster",
+                    "verify_ssl": "Verify TLS certificate (recommended)",
+                    "ssl_verify_hostname": "Verify hostname matches server certificate",
+                    "ssl_ca_path": "Fully qualified path to custom certificate authority"
+                },
+                "data_description": {
+                    "url": "The address of your cluster, including the scheme and port. It must reach the same cluster this entry was set up with.",
+                    "verify_ssl": "Check that the server's certificate is signed by a trusted certificate authority. Turning this off leaves the connection open to interception.",
+                    "ssl_verify_hostname": "Check that the certificate was issued for the host in your URL. This only applies when the certificate is verified.",
+                    "ssl_ca_path": "Where to find the PEM-encoded certificate authority on the machine running Home Assistant. Leave empty to use the system's trusted certificates."
                 }
             },
             "certificate_issues": {

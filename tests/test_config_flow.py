@@ -924,6 +924,332 @@ class Test_Reauth_Flow:
         assert len(flows) == 0
 
 
+NEW_URL = "https://new_es_host:9200"
+NEW_TLS = {
+    haconst.CONF_VERIFY_SSL: True,
+    compconst.CONF_SSL_VERIFY_HOSTNAME: False,
+    compconst.CONF_SSL_CA_PATH: "/config/new-ca.pem",
+}
+
+
+class Test_Reconfigure_Flow:
+    """Test the reconfigure flow."""
+
+    @pytest.fixture
+    async def entry(self, hass: HomeAssistant, request) -> MockConfigEntry:
+        """Add an entry that uses Basic Auth, or the data given by indirect parametrization."""
+        data = getattr(request, "param", {**testconst.CONFIG_ENTRY_BASE_DATA, **SETTINGS_BASIC_AUTH})
+        entry = MockConfigEntry(
+            domain=compconst.DOMAIN,
+            unique_id=testconst.CLUSTER_UUID,
+            title=data[testconst.CONF_URL],
+            data=data,
+            options=testconst.CONFIG_ENTRY_DEFAULT_OPTIONS,
+        )
+        return await add_config_entry_to_hass(hass, entry)
+
+    @staticmethod
+    def submission(**changes) -> dict:
+        """Return the reconfigure form's input with a new URL and TLS settings."""
+        return {testconst.CONF_URL: NEW_URL, **NEW_TLS, **changes}
+
+    @staticmethod
+    def suggested_values(result) -> dict:
+        """Return the values a form suggests, by field."""
+        return {
+            key.schema: key.description["suggested_value"]
+            for key in result["data_schema"].schema
+            if key.description and "suggested_value" in key.description
+        }
+
+    async def test_form_is_prefilled(self, hass: HomeAssistant, entry):
+        """Test that the form offers the entry's current connection settings, and no credentials."""
+        result = await entry.start_reconfigure_flow(hass)
+
+        assert result["type"] == FlowResultType.FORM
+        assert result["step_id"] == "reconfigure"
+        assert result["errors"] is None
+        assert self.suggested_values(result) == {
+            testconst.CONF_URL: testconst.CONFIG_ENTRY_DATA_URL,
+            haconst.CONF_VERIFY_SSL: False,
+        }
+        fields = {key.schema for key in result["data_schema"].schema}
+        assert fields == {
+            testconst.CONF_URL,
+            haconst.CONF_VERIFY_SSL,
+            compconst.CONF_SSL_VERIFY_HOSTNAME,
+            compconst.CONF_SSL_CA_PATH,
+        }
+
+    @pytest.mark.parametrize(
+        "entry",
+        [{testconst.CONF_URL: testconst.CONFIG_ENTRY_DATA_URL, **SETTINGS_API_KEY}],
+        indirect=True,
+    )
+    async def test_verification_defaults_to_on(self, hass: HomeAssistant, entry):
+        """Test that an entry without saved TLS settings is offered verification turned on."""
+        result = await entry.start_reconfigure_flow(hass)
+
+        fields = {key.schema: key for key in result["data_schema"].schema}
+        for field in (haconst.CONF_VERIFY_SSL, compconst.CONF_SSL_VERIFY_HOSTNAME):
+            assert fields[field].default() is True
+            assert "suggested_value" not in (fields[field].description or {})
+
+    @pytest.mark.parametrize(
+        ("credentials", "expected_credentials"),
+        [
+            (SETTINGS_BASIC_AUTH, {"username": "username", "password": "password", "api_key": None}),
+            (SETTINGS_API_KEY, {"username": None, "password": None, "api_key": "api_key"}),
+            ({}, {"username": None, "password": None, "api_key": None}),
+        ],
+        ids=["Basic Auth", "API Key", "No Auth"],
+    )
+    async def test_reconfigure(self, hass: HomeAssistant, credentials, expected_credentials):
+        """Test that the new settings are tested with the entry's credentials, then saved."""
+        entry = MockConfigEntry(
+            domain=compconst.DOMAIN,
+            unique_id=testconst.CLUSTER_UUID,
+            title=testconst.CONFIG_ENTRY_DATA_URL,
+            data={**testconst.CONFIG_ENTRY_BASE_DATA, **credentials},
+            options=testconst.CONFIG_ENTRY_DEFAULT_OPTIONS,
+        )
+        await add_config_entry_to_hass(hass, entry)
+        result = await entry.start_reconfigure_flow(hass)
+
+        with (
+            patch(gateway_async_init, return_value=testconst.CLUSTER_UUID) as gateway,
+            patch.object(hass.config_entries, "async_schedule_reload") as reload,
+        ):
+            result = await hass.config_entries.flow.async_configure(result["flow_id"], self.submission())
+
+        assert result["type"] == FlowResultType.ABORT
+        assert result["reason"] == "reconfigure_successful"
+        assert gateway.call_args.kwargs == {
+            "url": NEW_URL,
+            "verify_certs": True,
+            "verify_hostname": False,
+            "ca_certs": "/config/new-ca.pem",
+            **expected_credentials,
+        }
+        assert dict(entry.data) == {
+            testconst.CONF_URL: NEW_URL,
+            haconst.CONF_TIMEOUT: 30,
+            **NEW_TLS,
+            **credentials,
+        }
+        assert entry.options == testconst.CONFIG_ENTRY_DEFAULT_OPTIONS
+        assert entry.unique_id == testconst.CLUSTER_UUID
+        assert entry.title == NEW_URL
+        reload.assert_called_once_with(entry.entry_id)
+
+    async def test_renamed_entry_keeps_its_title(self, hass: HomeAssistant, entry):
+        """Test that only a title that is the old URL follows the new URL."""
+        hass.config_entries.async_update_entry(entry, title="My cluster")
+        result = await entry.start_reconfigure_flow(hass)
+
+        with patch(gateway_async_init, return_value=testconst.CLUSTER_UUID):
+            result = await hass.config_entries.flow.async_configure(result["flow_id"], self.submission())
+
+        assert result["reason"] == "reconfigure_successful"
+        assert entry.title == "My cluster"
+
+    @pytest.mark.parametrize(
+        "entry",
+        [{**testconst.CONFIG_ENTRY_BASE_DATA, **SETTINGS_API_KEY, **NEW_TLS}],
+        indirect=True,
+    )
+    async def test_cleared_ca_path_is_removed(self, hass: HomeAssistant, entry):
+        """Test that a CA path cleared from the form is removed from the entry."""
+        result = await entry.start_reconfigure_flow(hass)
+        assert self.suggested_values(result)[compconst.CONF_SSL_CA_PATH] == "/config/new-ca.pem"
+
+        submitted = self.submission()
+        del submitted[compconst.CONF_SSL_CA_PATH]
+        with patch(gateway_async_init, return_value=testconst.CLUSTER_UUID) as gateway:
+            result = await hass.config_entries.flow.async_configure(result["flow_id"], submitted)
+
+        assert result["reason"] == "reconfigure_successful"
+        assert gateway.call_args.kwargs["ca_certs"] is None
+        assert compconst.CONF_SSL_CA_PATH not in entry.data
+
+    @pytest.mark.parametrize(
+        ("exception", "errors"),
+        [
+            (UntrustedCertificate, {"base": "untrusted_certificate"}),
+            (InvalidCACertificate, {"base": "invalid_ca_certificate"}),
+            (CannotConnect, {testconst.CONF_URL: "cannot_connect"}),
+            (UnsupportedServer, {"base": "unsupported_server"}),
+            (UnsupportedVersion, {"base": "unsupported_version"}),
+            (RuntimeError, {"base": "unknown"}),
+        ],
+    )
+    async def test_recovers_on_the_same_form(self, hass: HomeAssistant, entry, exception, errors):
+        """Test that a failed connection keeps the submitted settings, and can then succeed."""
+        original_data = dict(entry.data)
+        result = await entry.start_reconfigure_flow(hass)
+
+        with patch(gateway_async_init, side_effect=exception):
+            result = await hass.config_entries.flow.async_configure(result["flow_id"], self.submission())
+
+        assert result["type"] == FlowResultType.FORM
+        assert result["step_id"] == "reconfigure"
+        assert result["errors"] == errors
+        assert self.suggested_values(result) == self.submission()
+        assert dict(entry.data) == original_data
+
+        with patch(gateway_async_init, return_value=testconst.CLUSTER_UUID):
+            result = await hass.config_entries.flow.async_configure(result["flow_id"], self.submission())
+
+        assert result["reason"] == "reconfigure_successful"
+        assert entry.data[testconst.CONF_URL] == NEW_URL
+
+    @pytest.mark.parametrize(
+        ("credentials", "step_id", "exception", "errors", "new_credentials"),
+        [
+            (
+                SETTINGS_BASIC_AUTH,
+                "basic_auth",
+                AuthenticationRequired,
+                {"base": "invalid_basic_auth"},
+                {haconst.CONF_USERNAME: "new_user", haconst.CONF_PASSWORD: "new_password"},
+            ),
+            (
+                SETTINGS_BASIC_AUTH,
+                "basic_auth",
+                InsufficientPrivileges,
+                {"base": "insufficient_privileges"},
+                {haconst.CONF_USERNAME: "new_user", haconst.CONF_PASSWORD: "new_password"},
+            ),
+            (
+                SETTINGS_API_KEY,
+                "api_key",
+                AuthenticationRequired,
+                {"base": "invalid_api_key"},
+                {haconst.CONF_API_KEY: "new_api_key"},
+            ),
+            (
+                SETTINGS_API_KEY,
+                "api_key",
+                InsufficientPrivileges,
+                {"base": "insufficient_privileges"},
+                {haconst.CONF_API_KEY: "new_api_key"},
+            ),
+        ],
+    )
+    async def test_rejected_credentials(
+        self, hass: HomeAssistant, credentials, step_id, exception, errors, new_credentials
+    ):
+        """Test that credentials the new URL rejects are asked for again, with the same method."""
+        entry = MockConfigEntry(
+            domain=compconst.DOMAIN,
+            unique_id=testconst.CLUSTER_UUID,
+            data={**testconst.CONFIG_ENTRY_BASE_DATA, **credentials},
+            options=testconst.CONFIG_ENTRY_DEFAULT_OPTIONS,
+        )
+        await add_config_entry_to_hass(hass, entry)
+        result = await entry.start_reconfigure_flow(hass)
+
+        with patch(gateway_async_init, side_effect=exception):
+            result = await hass.config_entries.flow.async_configure(result["flow_id"], self.submission())
+
+        assert result["type"] == FlowResultType.FORM
+        assert result["step_id"] == step_id
+        assert result["errors"] == errors
+
+        with patch(gateway_async_init, return_value=testconst.CLUSTER_UUID) as gateway:
+            result = await hass.config_entries.flow.async_configure(result["flow_id"], new_credentials)
+
+        assert result["reason"] == "reconfigure_successful"
+        assert gateway.call_args.kwargs["url"] == NEW_URL
+        assert gateway.call_args.kwargs["ca_certs"] == "/config/new-ca.pem"
+        assert dict(entry.data) == {
+            **testconst.CONFIG_ENTRY_BASE_DATA,
+            testconst.CONF_URL: NEW_URL,
+            **NEW_TLS,
+            **new_credentials,
+        }
+
+    @pytest.mark.parametrize(
+        ("step_id", "credentials"), [("basic_auth", SETTINGS_BASIC_AUTH), ("api_key", SETTINGS_API_KEY)]
+    )
+    @pytest.mark.parametrize("entry", [testconst.CONFIG_ENTRY_BASE_DATA], indirect=True)
+    async def test_entry_without_credentials(self, hass: HomeAssistant, entry, step_id, credentials):
+        """Test that an entry without credentials picks a method when the new URL needs one."""
+        result = await entry.start_reconfigure_flow(hass)
+
+        with patch(gateway_async_init, side_effect=AuthenticationRequired):
+            result = await hass.config_entries.flow.async_configure(result["flow_id"], self.submission())
+
+        assert result["step_id"] == "authentication_issues"
+
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {compconst.CONF_AUTHENTICATION_TYPE: step_id}
+        )
+        assert result["step_id"] == step_id
+
+        with patch(gateway_async_init, return_value=testconst.CLUSTER_UUID):
+            result = await hass.config_entries.flow.async_configure(result["flow_id"], credentials)
+
+        assert result["reason"] == "reconfigure_successful"
+        assert dict(entry.data) == {
+            **testconst.CONFIG_ENTRY_BASE_DATA,
+            testconst.CONF_URL: NEW_URL,
+            **NEW_TLS,
+            **credentials,
+        }
+
+    async def test_invalid_ca_on_credentials_step(self, hass: HomeAssistant, entry):
+        """Test that a CA that fails to load after new credentials returns to the reconfigure form."""
+        result = await entry.start_reconfigure_flow(hass)
+
+        with patch(gateway_async_init, side_effect=AuthenticationRequired):
+            result = await hass.config_entries.flow.async_configure(result["flow_id"], self.submission())
+        assert result["step_id"] == "basic_auth"
+
+        with patch(gateway_async_init, side_effect=InvalidCACertificate):
+            result = await hass.config_entries.flow.async_configure(result["flow_id"], SETTINGS_BASIC_AUTH)
+
+        assert result["step_id"] == "reconfigure"
+        assert result["errors"] == {"base": "invalid_ca_certificate"}
+        assert self.suggested_values(result) == self.submission()
+
+    async def test_different_cluster_is_rejected(self, hass: HomeAssistant, entry):
+        """Test that a URL reaching another cluster is rejected, and the entry is unchanged."""
+        original_data = dict(entry.data)
+        result = await entry.start_reconfigure_flow(hass)
+
+        with patch(gateway_async_init, return_value="another_cluster_uuid"):
+            result = await hass.config_entries.flow.async_configure(result["flow_id"], self.submission())
+
+        assert result["type"] == FlowResultType.ABORT
+        assert result["reason"] == "wrong_cluster"
+        assert dict(entry.data) == original_data
+        assert entry.unique_id == testconst.CLUSTER_UUID
+
+    @pytest.mark.parametrize(
+        ("entry_unique_id", "cluster_uuid"),
+        [(testconst.CLUSTER_UUID, None), (None, testconst.CLUSTER_UUID)],
+        ids=["Cluster has no UUID", "Entry has no unique ID"],
+    )
+    async def test_unknown_cluster_identity(self, hass: HomeAssistant, entry_unique_id, cluster_uuid):
+        """Test that the cluster check is skipped when either UUID is unknown."""
+        entry = MockConfigEntry(
+            domain=compconst.DOMAIN,
+            unique_id=entry_unique_id,
+            data={**testconst.CONFIG_ENTRY_BASE_DATA, **SETTINGS_API_KEY},
+            options=testconst.CONFIG_ENTRY_DEFAULT_OPTIONS,
+        )
+        await add_config_entry_to_hass(hass, entry)
+        result = await entry.start_reconfigure_flow(hass)
+
+        with patch(gateway_async_init, return_value=cluster_uuid):
+            result = await hass.config_entries.flow.async_configure(result["flow_id"], self.submission())
+
+        assert result["reason"] == "reconfigure_successful"
+        assert entry.unique_id == entry_unique_id
+        assert entry.data[testconst.CONF_URL] == NEW_URL
+
+
 class Test_Options_Flow:
     """Test the options flow."""
 
