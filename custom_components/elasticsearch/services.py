@@ -20,6 +20,7 @@ from custom_components.elasticsearch.errors import (
     InsufficientPrivileges,
     InvalidQueryResponse,
     PartialQueryResult,
+    QueryCancelled,
     QueryNotSupported,
     QueryResultTooLarge,
     RequestTimeout,
@@ -136,6 +137,9 @@ async def _async_query(call: ServiceCall) -> ServiceResponse:
 
     except PartialQueryResult as err:
         raise HomeAssistantError(translation_domain=DOMAIN, translation_key="query_partial_result") from err
+
+    except QueryCancelled as err:
+        raise HomeAssistantError(translation_domain=DOMAIN, translation_key="query_cancelled") from err
 
     except InvalidQueryResponse as err:
         raise HomeAssistantError(translation_domain=DOMAIN, translation_key="query_invalid_response") from err

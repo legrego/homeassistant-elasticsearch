@@ -91,6 +91,10 @@ class QueryNotSupported(QueryError):
         self.version = version
 
 
+class QueryCancelled(QueryError):
+    """A query was cancelled, or never started, because its entry was unloaded."""
+
+
 class InvalidQueryResponse(QueryError):
     """Elasticsearch returned a response to a query that couldn't be read."""
 

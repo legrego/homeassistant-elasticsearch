@@ -11,6 +11,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
+from urllib.parse import unquote
 
 import aiohttp
 import elasticsearch
@@ -19,6 +20,7 @@ from elastic_transport import (
     AsyncTransport,
     HttpHeaders,
     ObjectApiResponse,
+    SerializationError,
     TransportApiResponse,
 )
 from elastic_transport.client_utils import DEFAULT, DefaultType
@@ -63,8 +65,32 @@ _COMPATIBILITY_HEADERS = ("accept", "content-type")
 ESQL_WARNING_HEADER = "x-homeassistant-esql-warning"
 _ESQL_TARGET = "/_query"
 
-# The pattern the Elasticsearch client uses to split a `Warning` header into messages
-_WARNING_MESSAGE = re.compile(r"\"([^\"]*)\"")
+# One warning in a `Warning` header: a code, an agent, the quoted text, and an optional quoted date.
+# The text is an HTTP quoted string, in which a backslash escapes the next character.
+_WARNING_VALUE = re.compile(r'\d{3} \S+ "((?:[^"\\]|\\.)*)"(?: "[^"]*")?')
+_ESCAPED_CHARACTER = re.compile(r"\\(.)")
+
+# aiohttp decodes headers as UTF-8, and keeps bytes that aren't valid UTF-8 as lone surrogates.
+# Elasticsearch sends non-ASCII characters in warnings as ISO-8859-1 bytes, which become these.
+_ESCAPED_BYTE = re.compile("[\udc80-\udcff]")
+
+
+def parse_warning_header(header: str) -> list[str]:
+    """Return the text of each warning in a `Warning` header, decoded as Elasticsearch encodes it.
+
+    Elasticsearch escapes quotes and backslashes in the text, then percent-encodes `%`.
+    """
+
+    header = _ESCAPED_BYTE.sub(lambda match: chr(ord(match.group()) - 0xDC00), header).strip()
+    if not header:
+        return []
+
+    texts = [match.group(1) for match in _WARNING_VALUE.finditer(header)]
+    if not texts:
+        # Not a header Elasticsearch formatted, so it's returned as it is
+        return [header]
+
+    return [_ESCAPED_CHARACTER.sub(r"\1", unquote(text, errors="replace")) for text in texts]
 
 
 class JoinedWarningsResponse(aiohttp.ClientResponse):
@@ -402,17 +428,26 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
     @async_log_enter_exit_debug
     async def esql_query(self, query: str, params: list[Any]) -> EsqlResponse:
         """Run an ES|QL query, never accepting partial results."""
-        with self._error_converter(msg="Error running ES|QL query"):
-            response = await self.client.esql.query(query=query, params=params, allow_partial_results=False)
+        try:
+            with self._error_converter(msg="Error running ES|QL query"):
+                response = await self.client.esql.query(
+                    query=query, params=params, allow_partial_results=False
+                )
+        except CannotConnect as err:
+            # The client's error for a response it can't parse includes the whole response, which
+            # can hold query results. It's replaced, and not chained, so the results aren't logged.
+            if isinstance(err.__cause__, SerializationError):
+                msg = "Elasticsearch returned a query response that couldn't be parsed."
+                raise InvalidQueryResponse(msg) from None
+            raise
 
         if not isinstance(response.body, dict):
             msg = "Elasticsearch returned a query response that isn't an object."
             raise InvalidQueryResponse(msg)
 
-        header = (response.meta.headers.get(ESQL_WARNING_HEADER) or "").strip()
-        messages = (_WARNING_MESSAGE.findall(header) or [header]) if header else []
+        warnings = parse_warning_header(response.meta.headers.get(ESQL_WARNING_HEADER) or "")
 
-        return EsqlResponse(body=dict(response.body), warnings=messages)
+        return EsqlResponse(body=dict(response.body), warnings=warnings)
 
     async def stop(self) -> None:
         """Stop the gateway."""

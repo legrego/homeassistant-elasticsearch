@@ -163,7 +163,7 @@ Each query is bounded, and a result that goes past a limit is an error rather th
 | Elasticsearch's default limit | Usually 1,000 | Without a `LIMIT`, Elasticsearch stops at its default and says so in a warning. If the result reaches that default, it may be incomplete, so the action fails. Add an explicit `LIMIT`. |
 | Result size | 1 MiB of JSON | A larger result fails, even within the row limit. Return fewer rows or columns, for example with `KEEP`. |
 | Time | The entry's request timeout, 30 seconds by default | A slower query fails with `Elasticsearch didn't answer the query within 30 seconds`. |
-| Queries at once | 4 per entry | Further queries wait for one to finish, so queries can't starve publishing. |
+| Queries at once | 4 per entry | Further queries wait for one to finish, so queries can't starve publishing. Unloading or reloading the entry cancels running and waiting queries. |
 
 The size limit is checked once the response has arrived, so it bounds what reaches your automations, not what Elasticsearch sends. Elasticsearch has its own limits too: by default, it never returns more than 10,000 rows, however high the `LIMIT`.
 
@@ -183,6 +183,7 @@ The action fails with an error that says what went wrong. Errors caused by the q
 | `The query returned … rows`, `… may be incomplete`, or `The query's result is …` | The result went past a [limit](#limits). |
 | `Elasticsearch could only return partial results for the query` | Part of the data couldn't be read, for example because a shard is unavailable. Check the cluster's health. |
 | `Elasticsearch didn't answer the query within … seconds.` | Make the query cheaper, for example by narrowing its time range. |
+| `The query was cancelled because its Elasticsearch entry was unloaded or reloaded.` | The entry was reloaded, for example after changing its options, while the query was running or waiting its turn. Run it again once the entry has loaded. |
 | `The query couldn't be run: …` | The cluster couldn't be reached, or failed. The message describes the problem. |
 | The config entry wasn't found, or isn't loaded | Check the entry ID, and that the entry is loaded on the [integration page](https://my.home-assistant.io/redirect/integration/?domain=elasticsearch){:target="_blank"}. |
 

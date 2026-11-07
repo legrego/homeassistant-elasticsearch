@@ -52,6 +52,11 @@ def self_signed_tls_error():
     )
 
 
+def encode_warning(message: str) -> str:
+    """Encode a warning's text as Elasticsearch does, escaping quotes and backslashes and encoding `%`."""
+    return message.replace("\\", "\\\\").replace('"', '\\"').replace("%", "%25")
+
+
 class es_mocker:
     """Mock builder for Elasticsearch integration tests."""
 
@@ -385,12 +390,24 @@ class es_mocker:
         json: Any = None,
         warnings: list[str] | None = None,
         exc: Exception | None = None,
+        text: str | None = None,
     ) -> es_mocker:
-        """Mock a response to an ES|QL query."""
+        """Mock a response to an ES|QL query.
+
+        Warnings are encoded as Elasticsearch encodes them, and joined as if they'd been sent in
+        separate headers. `text` is sent as a raw JSON body, for responses that can't be parsed.
+        """
 
         headers = {"x-elastic-product": "Elasticsearch"}
         if warnings:
-            headers["Warning"] = ", ".join(f'299 Elasticsearch-9.1.0-abc "{message}"' for message in warnings)
+            headers["Warning"] = ", ".join(
+                f'299 Elasticsearch-9.1.0-abc "{encode_warning(message)}"' for message in warnings
+            )
+
+        if text is not None:
+            headers["Content-Type"] = "application/vnd.elasticsearch+json; compatible-with=8"
+            self.mocker.post(f"{self.base_url}/_query", status=status, headers=headers, text=text)
+            return self
 
         self.mocker.post(
             f"{self.base_url}/_query",

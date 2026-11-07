@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
+import logging
+import traceback
 from http import HTTPStatus
 from typing import TYPE_CHECKING, Any
 from unittest import mock
@@ -11,13 +14,14 @@ import probatio
 import pytest
 from aiohttp import client_exceptions
 from custom_components.elasticsearch.const import DOMAIN
-from custom_components.elasticsearch.esql import MAX_RESULT_BYTES, MAX_ROWS
+from custom_components.elasticsearch.esql import MAX_CONCURRENT_QUERIES, MAX_RESULT_BYTES, MAX_ROWS
 from custom_components.elasticsearch.services import ATTR_PARAMS, ATTR_QUERY, MAX_REASON_LENGTH, SERVICE_QUERY
 from homeassistant.config_entries import SOURCE_REAUTH, ConfigEntryState
 from homeassistant.const import ATTR_CONFIG_ENTRY_ID
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMockResponse
 
 from tests import const as testconst
 
@@ -469,3 +473,70 @@ class Test_Errors:
         assert err.value.translation_key == "unexpected_error"
         assert "Unexpected error running a query" in caplog.text
         assert QUERY not in caplog.text
+
+    async def test_unparseable_response(
+        self,
+        hass: HomeAssistant,
+        loaded_entry: MockConfigEntry,
+        cluster: es_mocker,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Test a response that can't be parsed doesn't expose its contents in the error or logs."""
+        caplog.set_level(logging.DEBUG, logger="custom_components.elasticsearch")
+        cluster.respond_to_esql(text='{"columns": [], "values": [["PRIVATE_RESULT"]')
+
+        with pytest.raises(HomeAssistantError) as err:
+            await call_query(hass, loaded_entry.entry_id)
+
+        assert err.value.translation_key == "query_invalid_response"
+        assert "PRIVATE_RESULT" not in "".join(traceback.format_exception(err.value))
+        assert "PRIVATE_RESULT" not in caplog.text
+
+
+class Test_Unload:
+    """Test queries don't outlive their entry."""
+
+    async def test_unload_cancels_queries(
+        self, hass: HomeAssistant, loaded_entry: MockConfigEntry, cluster: es_mocker
+    ) -> None:
+        """Test unloading cancels running queries, and queued ones never send a request."""
+        release = asyncio.Event()
+
+        async def blocked(method: str, url: Any, data: Any) -> AiohttpClientMockResponse:
+            await release.wait()
+            return AiohttpClientMockResponse(  # pragma: no cover
+                method,
+                url,
+                json=testconst.ESQL_QUERY_RESPONSE_BODY,
+                headers={"x-elastic-product": "Elasticsearch"},
+            )
+
+        cluster.mocker.post(f"{cluster.base_url}/_query", side_effect=blocked)
+        integration = loaded_entry.runtime_data
+        nodes = integration._gateway.client.transport.node_pool.all()
+
+        # Fill every slot, and queue one more query behind them
+        calls = [
+            asyncio.create_task(call_query(hass, loaded_entry.entry_id))
+            for _ in range(MAX_CONCURRENT_QUERIES + 1)
+        ]
+        for _ in range(50):
+            if len(esql_calls(cluster)) == MAX_CONCURRENT_QUERIES:
+                break
+            await asyncio.sleep(0)
+        assert len(esql_calls(cluster)) == MAX_CONCURRENT_QUERIES
+
+        assert await hass.config_entries.async_unload(loaded_entry.entry_id)
+        release.set()
+        results = await asyncio.gather(*calls, return_exceptions=True)
+
+        assert all(isinstance(result, HomeAssistantError) for result in results)
+        assert {result.translation_key for result in results if isinstance(result, HomeAssistantError)} == {
+            "query_cancelled"
+        }
+
+        # Nothing more was sent, and no closed session was reopened
+        for _ in range(10):
+            await asyncio.sleep(0)
+        assert len(esql_calls(cluster)) == MAX_CONCURRENT_QUERIES
+        assert all(node.session is None for node in nodes)

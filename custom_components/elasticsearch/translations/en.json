@@ -171,6 +171,9 @@
         "query_partial_result": {
             "message": "Elasticsearch could only return partial results for the query, so they were discarded. Check the cluster's health, then try again."
         },
+        "query_cancelled": {
+            "message": "The query was cancelled because its Elasticsearch entry was unloaded or reloaded. Try again once the entry has loaded."
+        },
         "query_invalid_response": {
             "message": "Elasticsearch returned a query response that couldn't be read."
         },

@@ -4,18 +4,22 @@ from __future__ import annotations
 
 import asyncio
 import json
+import traceback
 import warnings
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, MagicMock, patch
+from urllib.parse import urlencode
 
 import pytest
 from aiohttp import web
 from aiohttp.test_utils import TestServer
 from custom_components.elasticsearch.errors import (
     AmbiguousQueryColumns,
+    CannotConnect,
     InvalidQueryResponse,
     PartialQueryResult,
+    QueryCancelled,
     QueryNotSupported,
     QueryResultTooLarge,
     TooManyQueryRows,
@@ -29,6 +33,7 @@ from custom_components.elasticsearch.es_gateway_8 import (
     Gateway8Settings,
     JoinedWarningsNode,
     JoinedWarningsResponse,
+    parse_warning_header,
 )
 from custom_components.elasticsearch.esql import (
     MAX_CONCURRENT_QUERIES,
@@ -62,6 +67,12 @@ def mock_gateway(version: str | None = "9.1.0", build_flavor: str = "default") -
     gateway.build_flavor = build_flavor
     gateway.esql_query = AsyncMock(return_value=response([["sensor.temp", 21.5]]))
     return gateway
+
+
+async def settle() -> None:
+    """Let tasks that are ready run, including the ones they start."""
+    for _ in range(5):
+        await asyncio.sleep(0)
 
 
 class Test_Version_Support:
@@ -280,12 +291,98 @@ class Test_Query_Runner:
         tasks = [
             asyncio.create_task(runner.async_query("ROW a = 1")) for _ in range(MAX_CONCURRENT_QUERIES + 3)
         ]
-        await asyncio.sleep(0)
+        await settle()
         assert running == MAX_CONCURRENT_QUERIES
 
         release.set()
         await asyncio.gather(*tasks)
         assert most_running == MAX_CONCURRENT_QUERIES
+
+    async def test_shutdown(self) -> None:
+        """Test shutting down cancels running queries, and queued ones never reach the gateway."""
+        gateway = mock_gateway()
+        started: list[asyncio.Event] = []
+        cancelled = 0
+
+        async def esql_query(query: str, params: list[Any]) -> EsqlResponse:
+            nonlocal cancelled
+            started.append(asyncio.Event())
+            try:
+                await asyncio.Event().wait()
+            except asyncio.CancelledError:
+                cancelled += 1
+                raise
+            return response([])  # pragma: no cover
+
+        gateway.esql_query = esql_query
+        runner = QueryRunner(gateway)
+
+        tasks = [
+            asyncio.create_task(runner.async_query("ROW a = 1")) for _ in range(MAX_CONCURRENT_QUERIES + 2)
+        ]
+        await settle()
+        assert len(started) == MAX_CONCURRENT_QUERIES
+
+        await runner.async_shutdown()
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        assert all(isinstance(result, QueryCancelled) for result in results)
+        assert cancelled == MAX_CONCURRENT_QUERIES
+        assert len(started) == MAX_CONCURRENT_QUERIES
+
+    async def test_query_after_shutdown(self) -> None:
+        """Test a query after shutting down never reaches the gateway."""
+        gateway = mock_gateway()
+        runner = QueryRunner(gateway)
+        await runner.async_shutdown()
+
+        with pytest.raises(QueryCancelled):
+            await runner.async_query("ROW a = 1")
+
+        gateway.esql_query.assert_not_awaited()
+
+    async def test_caller_cancelled(self) -> None:
+        """Test cancelling the caller cancels its request, and isn't turned into QueryCancelled."""
+        gateway = mock_gateway()
+        request_cancelled = asyncio.Event()
+
+        async def esql_query(query: str, params: list[Any]) -> EsqlResponse:
+            try:
+                await asyncio.Event().wait()
+            except asyncio.CancelledError:
+                request_cancelled.set()
+                raise
+            return response([])  # pragma: no cover
+
+        gateway.esql_query = esql_query
+        runner = QueryRunner(gateway)
+
+        task = asyncio.create_task(runner.async_query("ROW a = 1"))
+        await settle()
+        task.cancel()
+
+        with pytest.raises(asyncio.CancelledError):
+            await task
+        assert request_cancelled.is_set()
+
+    async def test_caller_cancelled_during_shutdown(self) -> None:
+        """Test a caller that's cancelled itself still gets its cancellation, even while shutting down."""
+        gateway = mock_gateway()
+
+        async def esql_query(query: str, params: list[Any]) -> EsqlResponse:
+            await asyncio.Event().wait()
+            return response([])  # pragma: no cover
+
+        gateway.esql_query = esql_query
+        runner = QueryRunner(gateway)
+
+        task = asyncio.create_task(runner.async_query("ROW a = 1"))
+        await settle()
+        task.cancel()
+        await runner.async_shutdown()
+
+        with pytest.raises(asyncio.CancelledError):
+            await task
 
 
 class Test_Gateway_Query:
@@ -329,11 +426,39 @@ class Test_Gateway_Query:
         assert result.warnings == ["No limit defined", "Line 1:2: evaluation failed"]
         assert caught == []
 
+    async def test_encoded_warnings(self, gateway: Elasticsearch8Gateway, es_mock_builder: es_mocker) -> None:
+        """Test warnings with quotes, backslashes, percent signs, and commas are decoded intact."""
+        messages = [
+            'Line 1:22: evaluation of [TO_DOUBLE("abc")] failed, treating result as null.',
+            'Cannot parse number [a"b\\c 100%, really]',
+        ]
+        es_mock_builder.respond_to_esql(warnings=messages)
+
+        result = await gateway.esql_query("ROW a = 1", [])
+
+        assert result.warnings == messages
+
     async def test_not_an_object(self, gateway: Elasticsearch8Gateway, es_mock_builder: es_mocker) -> None:
         """Test a response body that isn't an object."""
         es_mock_builder.respond_to_esql(json=["not", "an", "object"])
 
         with pytest.raises(InvalidQueryResponse):
+            await gateway.esql_query("ROW a = 1", [])
+
+    async def test_unparseable(self, gateway: Elasticsearch8Gateway, es_mock_builder: es_mocker) -> None:
+        """Test a response that can't be parsed is an invalid response, without its contents."""
+        es_mock_builder.respond_to_esql(text='{"columns": [], "values": [["PRIVATE_RESULT"]')
+
+        with pytest.raises(InvalidQueryResponse) as err:
+            await gateway.esql_query("ROW a = 1", [])
+
+        assert "PRIVATE_RESULT" not in "".join(traceback.format_exception(err.value))
+
+    async def test_connection_error(self, gateway: Elasticsearch8Gateway, es_mock_builder: es_mocker) -> None:
+        """Test other connection errors are raised as they are."""
+        es_mock_builder.respond_to_esql(status=500, json={})
+
+        with pytest.raises(CannotConnect):
             await gateway.esql_query("ROW a = 1", [])
 
 
@@ -373,6 +498,43 @@ class Test_Transport_Warnings:
         assert ESQL_WARNING_HEADER not in received.meta.headers
 
 
+class Test_Parse_Warning_Header:
+    """Test decoding warnings as Elasticsearch encodes them."""
+
+    @pytest.mark.parametrize(
+        ("header", "expected"),
+        [
+            ("", []),
+            ("   ", []),
+            ('299 Elasticsearch-9.1.0-abc "a"', ["a"]),
+            ('299 Elasticsearch-9.1.0-abc "a", 299 Elasticsearch-9.1.0-abc "b, c"', ["a", "b, c"]),
+            ('299 Elasticsearch-9.1.0-abc "TO_DOUBLE(\\"abc\\")"', ['TO_DOUBLE("abc")']),
+            ('299 Elasticsearch-9.1.0-abc "a\\\\b"', ["a\\b"]),
+            ('299 Elasticsearch-9.1.0-abc "a\\\\"', ["a\\"]),
+            ('299 Elasticsearch-9.1.0-abc "100%25"', ["100%"]),
+            ('299 Elasticsearch-9.1.0-abc "caf\udce9"', ["café"]),
+            ('299 Elasticsearch-9.1.0-abc "a" "Sat, 07 Nov 2026 22:00:00 GMT"', ["a"]),
+            ("not formatted by Elasticsearch", ["not formatted by Elasticsearch"]),
+        ],
+        ids=[
+            "empty",
+            "blank",
+            "one",
+            "several",
+            "escaped quotes",
+            "escaped backslash",
+            "escaped backslash at end",
+            "percent",
+            "iso-8859-1 byte",
+            "with date",
+            "unformatted",
+        ],
+    )
+    def test_parse(self, header: str, expected: list[str]) -> None:
+        """Test each warning's text is decoded."""
+        assert parse_warning_header(header) == expected
+
+
 class Test_Joined_Warnings_Node:
     """Test that repeated warning headers survive elastic-transport, against a real HTTP server."""
 
@@ -410,19 +572,27 @@ class Test_Joined_Warnings_Node:
                 ['299 Elasticsearch "a"', '299 Elasticsearch "b"'],
                 '299 Elasticsearch "a", 299 Elasticsearch "b"',
             ),
+            (
+                ['299 Elasticsearch "x, \\"y\\""', '299 Elasticsearch "z"'],
+                '299 Elasticsearch "x, \\"y\\"", 299 Elasticsearch "z"',
+            ),
         ],
-        ids=["none", "one", "several"],
+        ids=["none", "one", "several", "escaped"],
     )
     async def test_warnings_joined(self, server: TestServer, sent: list[str], expected: str | None) -> None:
         """Test every warning header reaches the response metadata."""
         assert server.port is not None
         node = JoinedWarningsNode(NodeConfig("http", "127.0.0.1", server.port))
         try:
-            query = "&".join(f"warning={value}" for value in sent)
-            result = await node.perform_request("GET", f"/?{query}")
+            result = await node.perform_request(
+                "GET", f"/?{urlencode([('warning', value) for value in sent])}"
+            )
             assert node.session is not None
             assert node.session._response_class is JoinedWarningsResponse
         finally:
             await node.close()
 
         assert result.meta.headers.get("warning") == expected
+        assert parse_warning_header(expected or "") == [
+            value.split(" ", 2)[2][1:-1].replace('\\"', '"') for value in sent
+        ]

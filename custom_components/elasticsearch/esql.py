@@ -19,6 +19,7 @@ from custom_components.elasticsearch.errors import (
     AmbiguousQueryColumns,
     InvalidQueryResponse,
     PartialQueryResult,
+    QueryCancelled,
     QueryNotSupported,
     QueryResultTooLarge,
     TooManyQueryRows,
@@ -81,20 +82,61 @@ class QueryRunner:
         """Initialize the runner."""
         self._gateway = gateway
         self._semaphore = asyncio.Semaphore(MAX_CONCURRENT_QUERIES)
+        self._requests: set[asyncio.Task[EsqlResponse]] = set()
+        self._closed = False
 
     async def async_query(self, query: str, params: list[Any] | None = None) -> QueryResult:
         """Run a query and return its result.
 
-        Raises QueryError when the cluster can't be queried or the result can't be accepted, and
-        the gateway's connection errors when the request fails.
+        Raises QueryError when the cluster can't be queried or the result can't be accepted,
+        QueryCancelled when the runner shuts down first, and the gateway's connection errors when
+        the request fails.
         """
 
+        self._raise_if_closed()
         check_query_support(self._gateway)
 
         async with self._semaphore:
-            response = await self._gateway.esql_query(query, list(params or []))
+            # The runner may have shut down while this query waited for its turn
+            self._raise_if_closed()
+
+            request = asyncio.ensure_future(self._gateway.esql_query(query, list(params or [])))
+            self._requests.add(request)
+            try:
+                response = await request
+            except asyncio.CancelledError:
+                current = asyncio.current_task()
+                # Only a cancellation by async_shutdown becomes QueryCancelled. One of the caller
+                # is passed on.
+                if self._closed and (current is None or current.cancelling() == 0):
+                    msg = "The query was cancelled because its entry was unloaded."
+                    raise QueryCancelled(msg) from None
+                raise
+            finally:
+                self._requests.discard(request)
 
         return normalize_response(response)
+
+    async def async_shutdown(self) -> None:
+        """Stop running queries, before the gateway they use is stopped.
+
+        Queries that are running are cancelled, and queries waiting for their turn never start.
+        Both raise QueryCancelled.
+        """
+
+        self._closed = True
+
+        requests = list(self._requests)
+        for request in requests:
+            request.cancel()
+
+        await asyncio.gather(*requests, return_exceptions=True)
+
+    def _raise_if_closed(self) -> None:
+        """Raise QueryCancelled if the runner has shut down."""
+        if self._closed:
+            msg = "The query was cancelled because its entry was unloaded."
+            raise QueryCancelled(msg)
 
 
 def check_query_support(gateway: ElasticsearchGateway) -> None:

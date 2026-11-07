@@ -148,6 +148,8 @@ class ElasticIntegration:
     async def async_shutdown(self) -> None:
         """Async shutdown procedure."""
         self._pipeline_manager.stop()
+        # Queries use the gateway's client, so they must stop before it closes
+        await self._query_runner.async_shutdown()
         await self._gateway.stop()
 
     @classmethod
