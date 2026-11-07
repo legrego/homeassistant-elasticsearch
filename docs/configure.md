@@ -133,6 +133,8 @@ POST /_security/user/home_assistant
 
 The integration checks these privileges when you add it, and shows an error if any are missing. If an existing entry loses them, Home Assistant asks you to reauthenticate.
 
+These privileges only allow publishing. To [run queries](querying.md), the credentials also need the [`read` privilege](querying.md#requirements) on the indices you query.
+
 ## Add the integration
 
 This component is configured interactively via Home Assistant's integration configuration page.

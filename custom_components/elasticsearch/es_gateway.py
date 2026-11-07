@@ -24,6 +24,14 @@ if TYPE_CHECKING:  # pragma: no cover
     from elasticsearch import AsyncElasticsearch
 
 
+@dataclass(frozen=True)
+class EsqlResponse:
+    """The body of an ES|QL query response, and the warnings Elasticsearch sent with it."""
+
+    body: dict[str, Any]
+    warnings: list[str]
+
+
 @dataclass
 class GatewaySettings(ABC):
     """Elasticsearch Gateway settings object."""
@@ -225,6 +233,10 @@ class ElasticsearchGateway(ABC):
     @abstractmethod
     async def bulk(self, actions: AsyncGenerator[dict[str, Any], Any]) -> None:
         """Perform a bulk operation."""
+
+    @abstractmethod
+    async def esql_query(self, query: str, params: list[Any]) -> EsqlResponse:
+        """Run an ES|QL query, binding `params` to its `?` placeholders."""
 
     @abstractmethod
     async def stop(self) -> None:

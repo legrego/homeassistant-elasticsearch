@@ -1,0 +1,23 @@
+query:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: elasticsearch
+    query:
+      required: true
+      example: |
+        FROM metrics-homeassistant.*
+        | WHERE hass.entity.id == ?
+        | SORT @timestamp DESC
+        | LIMIT 1
+        | KEEP @timestamp, hass.entity.valueas.float
+      selector:
+        text:
+          multiline: true
+    params:
+      required: false
+      example: '["sensor.outdoor_temperature"]'
+      selector:
+        object:

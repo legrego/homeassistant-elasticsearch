@@ -85,6 +85,16 @@ Check these in order:
 
 See [How publishing works](publishing.md) for the full picture.
 
+## A query fails
+
+**Symptom:** the `elasticsearch.query` action fails, and the automation or script that called it stops.
+
+The error says what went wrong. See [Errors](querying.md#errors) for what each one means and how to fix it. The most common causes are:
+
+- The credentials don't have the [`read` privilege](querying.md#requirements) on the indices the query reads. Publishing doesn't need it, so most entries don't have it.
+- The cluster is older than 8.19, or is 9.0. Publishing works from 8.14, but [querying](querying.md#requirements) doesn't.
+- The query has no `LIMIT` and matched 1,000 rows or more, so the result may be incomplete. Add a `LIMIT`, or summarize with `STATS`.
+
 ## Collect logs and diagnostics
 
 ### Turn on debug logging

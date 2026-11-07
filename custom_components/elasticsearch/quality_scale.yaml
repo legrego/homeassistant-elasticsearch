@@ -7,8 +7,10 @@
 rules:
   # Bronze
   action-setup:
-    status: exempt
-    comment: The integration does not register any actions.
+    status: done
+    comment: >-
+      elasticsearch.query is registered in async_setup, so it exists whether or not an entry is
+      loaded. It checks the entry it's given, and fails with a translated error if it isn't loaded.
   appropriate-polling:
     status: done
     comment: Home Assistant's own state machine is polled, every 60 seconds by default.
@@ -25,8 +27,8 @@ rules:
       later are published by the pypi-publish.yml workflow in that repository, with PyPI
       provenance. The client asks for REST API compatibility with 8, so 8.x clusters still work.
   docs-actions:
-    status: exempt
-    comment: The integration does not register any actions.
+    status: done
+    comment: docs/querying.md documents elasticsearch.query, its fields, and its response.
   docs-conditions:
     status: exempt
     comment: The integration does not provide any conditions.
@@ -52,8 +54,10 @@ rules:
 
   # Silver
   action-exceptions:
-    status: exempt
-    comment: The integration does not register any actions.
+    status: done
+    comment: >-
+      elasticsearch.query raises ServiceValidationError for problems with the query or its
+      result, and HomeAssistantError when Elasticsearch fails or can't be reached.
   config-entry-unloading: done
   docs-configuration-parameters: done
   docs-installation-parameters: done
@@ -90,17 +94,15 @@ rules:
   docs-data-update:
     status: done
     comment: >-
-      The integration sends data rather than fetching it, so this could be exempt.
-      docs/publishing.md documents how data is gathered and published, and what happens
-      during an outage.
+      docs/publishing.md documents how data is gathered and published, and what happens during
+      an outage. Data is only fetched when elasticsearch.query is called, which docs/querying.md
+      documents.
   docs-examples:
-    status: exempt
-    comment: >-
-      The rule exempts integrations that do not create entities or provide actions, and this
-      integration does neither.
+    status: done
+    comment: docs/querying.md has automation and script examples for elasticsearch.query.
   docs-known-limitations:
     status: done
-    comment: Known limitations are in docs/publishing.md.
+    comment: Known limitations are in docs/publishing.md, and those of querying in docs/querying.md.
   docs-supported-devices: done
   docs-supported-functions:
     status: done
@@ -127,11 +129,12 @@ rules:
   exception-translations:
     status: done
     comment: >-
-      Every exception raised during setup is translated. The exceptions in errors.py are caught
-      internally, and either raised as one of those or shown as a translated config flow error.
+      Every exception raised during setup and by elasticsearch.query is translated. The
+      exceptions in errors.py are caught internally, and either raised as one of those or shown
+      as a translated config flow error.
   icon-translations:
-    status: exempt
-    comment: The integration does not create any entities.
+    status: done
+    comment: The integration creates no entities. icons.json gives elasticsearch.query its icon.
   reconfiguration-flow: done
   repair-issues:
     status: done

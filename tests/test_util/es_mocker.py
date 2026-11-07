@@ -180,6 +180,18 @@ class es_mocker:
             testconst.CLUSTER_INFO_8DOT17_RESPONSE_BODY, with_security, fail_after=fail_after
         )
 
+    def as_elasticsearch_8_19(self, with_security: bool = True) -> es_mocker:
+        """Mock Elasticsearch 8.19, the first 8.x version that can be queried."""
+        return self._as_elasticsearch_stateful(testconst.CLUSTER_INFO_8DOT19_RESPONSE_BODY, with_security)
+
+    def as_elasticsearch_9_0(self, with_security: bool = True) -> es_mocker:
+        """Mock Elasticsearch 9.0."""
+        return self._as_elasticsearch_stateful(testconst.CLUSTER_INFO_9DOT0_RESPONSE_BODY, with_security)
+
+    def as_elasticsearch_9_1(self, with_security: bool = True) -> es_mocker:
+        """Mock Elasticsearch 9.1, the first 9.x version that can be queried."""
+        return self._as_elasticsearch_stateful(testconst.CLUSTER_INFO_9DOT1_RESPONSE_BODY, with_security)
+
     def as_elasticsearch_8_14(self, with_security: bool = True):
         """Mock Elasticsearch 8.14."""
 
@@ -363,6 +375,29 @@ class es_mocker:
                 status=HTTPStatus.INTERNAL_SERVER_ERROR,
             ),
             fail_after=fail_after,
+        )
+
+        return self
+
+    def respond_to_esql(
+        self,
+        status: int = 200,
+        json: Any = None,
+        warnings: list[str] | None = None,
+        exc: Exception | None = None,
+    ) -> es_mocker:
+        """Mock a response to an ES|QL query."""
+
+        headers = {"x-elastic-product": "Elasticsearch"}
+        if warnings:
+            headers["Warning"] = ", ".join(f'299 Elasticsearch-9.1.0-abc "{message}"' for message in warnings)
+
+        self.mocker.post(
+            f"{self.base_url}/_query",
+            status=status,
+            headers=headers,
+            json=testconst.ESQL_QUERY_RESPONSE_BODY if json is None and exc is None else json,
+            exc=exc,
         )
 
         return self

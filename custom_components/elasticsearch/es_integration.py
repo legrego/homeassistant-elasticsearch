@@ -32,6 +32,7 @@ from custom_components.elasticsearch.const import (
 from custom_components.elasticsearch.es_datastream_manager import DatastreamManager
 from custom_components.elasticsearch.es_gateway_8 import Elasticsearch8Gateway, Gateway8Settings
 from custom_components.elasticsearch.es_publish_pipeline import Pipeline, PipelineSettings
+from custom_components.elasticsearch.esql import QueryRunner
 from custom_components.elasticsearch.issues import (
     async_create_duplicate_cluster_issue,
     async_delete_duplicate_cluster_issue,
@@ -77,6 +78,19 @@ class ElasticIntegration:
 
         # Initialize our Datastream manager
         self._datastream_manager = DatastreamManager(log=self._logger, gateway=self._gateway)
+
+        # Queries share the gateway's connection
+        self._query_runner = QueryRunner(gateway=self._gateway)
+
+    @property
+    def query_runner(self) -> QueryRunner:
+        """Return the runner for ES|QL queries against this entry's cluster."""
+        return self._query_runner
+
+    @property
+    def request_timeout(self) -> int:
+        """Return how long a request to the cluster may take, in seconds."""
+        return self._gateway.settings.request_timeout
 
     @async_log_enter_exit_debug
     async def async_init(self) -> None:

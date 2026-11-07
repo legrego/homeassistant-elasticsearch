@@ -149,6 +149,39 @@
         },
         "unexpected_error": {
             "message": "An unexpected error occurred. Check the Home Assistant logs for details."
+        },
+        "query_not_supported": {
+            "message": "Querying requires Elasticsearch {minimum_version}, but this cluster runs {version}. Publishing still works. Upgrade the cluster to run queries."
+        },
+        "query_rejected": {
+            "message": "Elasticsearch rejected the query ({error_type}): {reason}"
+        },
+        "query_ambiguous_columns": {
+            "message": "The query returns more than one column named {columns}. Give each column a unique name, for example with RENAME or EVAL."
+        },
+        "query_too_many_rows": {
+            "message": "The query returned {rows} rows, more than the limit of {limit}. Add a LIMIT, or summarize the rows with STATS."
+        },
+        "query_truncated": {
+            "message": "The query has no LIMIT, so Elasticsearch stopped at its default of {limit} rows and the result may be incomplete. Add a LIMIT of at most {max_rows}, or summarize the rows with STATS."
+        },
+        "query_result_too_large": {
+            "message": "The query's result is {size}, more than the limit of {limit}. Return fewer rows or columns, for example with LIMIT or KEEP."
+        },
+        "query_partial_result": {
+            "message": "Elasticsearch could only return partial results for the query, so they were discarded. Check the cluster's health, then try again."
+        },
+        "query_invalid_response": {
+            "message": "Elasticsearch returned a query response that couldn't be read."
+        },
+        "query_insufficient_privileges": {
+            "message": "The entry's credentials aren't allowed to run this query. Grant them the read privilege on the indices the query reads."
+        },
+        "query_timeout": {
+            "message": "Elasticsearch didn't answer the query within {timeout} seconds."
+        },
+        "query_failed": {
+            "message": "The query couldn't be run: {error}"
         }
     },
     "issues": {
@@ -159,6 +192,26 @@
         "unsupported_version": {
             "title": "Elasticsearch {version} is not supported",
             "description": "**{entry_title}** connects to Elasticsearch {version}, but this integration requires version {minimum_version} or later. Nothing is published until the cluster is upgraded.\n\nUpgrade the cluster, then reload the entry from the Elasticsearch integration page. This issue clears once the entry loads."
+        }
+    },
+    "services": {
+        "query": {
+            "name": "Query",
+            "description": "Runs an ES|QL query against an Elasticsearch cluster, and responds with the resulting rows.",
+            "fields": {
+                "config_entry_id": {
+                    "name": "Elasticsearch cluster",
+                    "description": "The Elasticsearch integration entry to query."
+                },
+                "query": {
+                    "name": "Query",
+                    "description": "The ES|QL query to run. Choose indices or data streams with its FROM command."
+                },
+                "params": {
+                    "name": "Parameters",
+                    "description": "Values to bind to the query's ? placeholders, in order. Each must be a string, number, boolean, or null."
+                }
+            }
         }
     }
 }

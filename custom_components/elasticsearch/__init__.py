@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryError, ConfigEntryNotReady
+from homeassistant.helpers import config_validation as cv
 from homeassistant.loader import (
     async_get_integration,
 )
@@ -35,13 +36,25 @@ from custom_components.elasticsearch.logger import (
     have_child,
     log_enter_exit_debug,
 )
+from custom_components.elasticsearch.services import async_setup_services
 
 from .es_integration import ElasticIntegration
 
 if TYPE_CHECKING:  # pragma: no cover
     from homeassistant.core import HomeAssistant
+    from homeassistant.helpers.typing import ConfigType
 
 type ElasticIntegrationConfigEntry = ConfigEntry[ElasticIntegration]
+
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
+
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Register the integration's actions, which work with any loaded entry."""
+
+    async_setup_services(hass)
+
+    return True
 
 
 @async_log_enter_exit_info

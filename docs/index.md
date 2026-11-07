@@ -4,7 +4,7 @@ title: Introduction
 
 # Elasticsearch Component for Home-Assistant
 
-Publish Home Assistant events to your [Elasticsearch](https://elastic.co) cluster!
+Publish Home Assistant events to your [Elasticsearch](https://elastic.co) cluster, and query them back into your automations!
 
 Elasticsearch is a search and analytics engine for storing and exploring large amounts of data, and [Kibana](https://www.elastic.co/kibana) is its companion app for charts and dashboards. Sending your Home Assistant history there lets you keep it for as long as you choose, and analyze it across your whole home.
 
@@ -14,10 +14,11 @@ Elasticsearch is a search and analytics engine for storing and exploring large a
 - Automatically sets up Datastreams using Time Series Data Streams ("TSDS") and Datastream Lifecycle Management ("DLM")
 - Supports Elastic's [stack security features](https://www.elastic.co/elastic-stack/security) via optional username, password, and API keys
 - Selectively publish events based on labels, entities, devices, areas, or floors
+- Run [ES|QL queries](querying.md) from automations and scripts with the `elasticsearch.query` action
 
 ## Compatibility
 
-- Elasticsearch 8.14+, including 9.x (Self, [Cloud](https://www.elastic.co/cloud), or [Serverless](https://www.elastic.co/docs/current/serverless)).
+- Elasticsearch 8.14+, including 9.x (Self, [Cloud](https://www.elastic.co/cloud), or [Serverless](https://www.elastic.co/docs/current/serverless)). [Querying](querying.md#requirements) needs 8.19+, or 9.1+ on 9.x.
 - [Elastic Common Schema version 1.0.0](https://github.com/elastic/ecs/releases/tag/v1.0.0)
 - [Home Assistant Community Store](https://github.com/custom-components/hacs)
 - Home Assistant >= 2026.10
