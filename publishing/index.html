@@ -15,7 +15,7 @@
         <link rel="prev" href="../configure/">
       
       
-        <link rel="next" href="../using_kibana/">
+        <link rel="next" href="../querying/">
       
       
         
@@ -410,6 +410,32 @@
   
   
     <li class="md-nav__item">
+      <a href="../querying/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Querying Elasticsearch
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../using_kibana/" class="md-nav__link">
         
   
@@ -594,7 +620,7 @@
 
 
 <h1 id="how-publishing-works">How publishing works<a class="headerlink" href="#how-publishing-works" title="Permanent link">#</a></h1>
-<p>The integration doesn't fetch data from Elasticsearch. It gathers Home Assistant's own entity states, holds them in a queue, and sends them to your cluster at a fixed interval.</p>
+<p>Publishing doesn't fetch data from Elasticsearch. It gathers Home Assistant's own entity states, holds them in a queue, and sends them to your cluster at a fixed interval. To read data back from the cluster, see <a href="../querying/">Querying Elasticsearch</a>.</p>
 <h2 id="how-data-moves">How data moves<a class="headerlink" href="#how-data-moves" title="Permanent link">#</a></h2>
 <p>Three things feed and drain the queue. Each one uses an <a href="../configure/#configuration-options">option you can configure</a>.</p>
 <ol>

@@ -1,0 +1,1155 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://legrego.github.io/homeassistant-elasticsearch/querying/">
+      
+      
+      
+        <link rel="prev" href="../publishing/">
+      
+      
+        <link rel="next" href="../using_kibana/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.1.0">
+    
+    
+      
+        <title>Querying Elasticsearch - Elasticsearch Component for Home Assistant</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../assets/stylesheets/classic/main.94dd801d.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../assets/stylesheets/classic/palette.813d4b3f.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,500,500i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-hidden="true"></label>
+    <div data-md-component="skip">
+      <a href="#__skip" class="md-skip">
+        Skip to content
+      </a>
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="./.." title="Elasticsearch Component for Home Assistant" class="md-header__button md-logo" aria-label="Elasticsearch Component for Home Assistant" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+      <span class="md-visually-hidden">Navigation</span>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Elasticsearch Component for Home Assistant
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Querying Elasticsearch
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+          <span class="md-visually-hidden">Search</span>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="./.." title="Elasticsearch Component for Home Assistant" class="md-nav__button md-logo" aria-label="Elasticsearch Component for Home Assistant" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Elasticsearch Component for Home Assistant
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Introduction
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Installation
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Configuration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../publishing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  How publishing works
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+        <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Querying Elasticsearch
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Querying Elasticsearch
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Requirements
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#action-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Action fields
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#response" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Response
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Examples
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#latest-reading-of-an-entity" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Latest reading of an entity
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#average-over-a-time-window" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Average over a time window
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#values-from-templates" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Values from templates
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Limits
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Errors
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#privacy" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Privacy
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#known-limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Known limitations
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../using_kibana/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Using Kibana
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../published_fields/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Published fields
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ingest_advanced/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Advanced ingest configuration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Troubleshooting
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Requirements
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#action-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Action fields
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#response" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Response
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Examples
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#latest-reading-of-an-entity" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Latest reading of an entity
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#average-over-a-time-window" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Average over a time window
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#values-from-templates" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Values from templates
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Limits
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Errors
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#privacy" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Privacy
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#known-limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Known limitations
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+              
+              <article class="md-content__inner md-typeset">
+                <a id="__skip" tabindex="-1"></a>
+                
+                  
+
+
+<h1 id="querying-elasticsearch">Querying Elasticsearch<a class="headerlink" href="#querying-elasticsearch" title="Permanent link">#</a></h1>
+<p>The <code>elasticsearch.query</code> action runs an <a href="https://www.elastic.co/docs/reference/query-languages/esql">ES|QL</a> query against your cluster, and returns the resulting rows to the automation or script that called it. Use it to bring data back into Home Assistant: the average of a sensor over the last hour, the last time something happened, or data that never passed through Home Assistant at all.</p>
+<p>ES|QL is the only query language the action supports. It doesn't need anything else to be set up, and works with any loaded Elasticsearch entry.</p>
+<h2 id="requirements">Requirements<a class="headerlink" href="#requirements" title="Permanent link">#</a></h2>
+<ul>
+<li>
+<p><strong>Elasticsearch 8.19 or later, or 9.1 or later on 9.x.</strong> Elastic Cloud Serverless is supported too. Publishing still works from 8.14, but older versions can't be queried:</p>
+<ul>
+<li>Before 8.18, ES|QL can't filter on or compare the <code>date_nanos</code> timestamps the integration publishes, so most queries of Home Assistant data fail.</li>
+<li>Before 8.19, and in 9.0, Elasticsearch can't be told to refuse partial results. The integration never accepts a partial result as complete.</li>
+</ul>
+<p>On an older cluster, the action fails with <code>Querying requires Elasticsearch 8.19 or later, or 9.1 or later on 9.x</code>, and nothing is sent to the cluster.</p>
+</li>
+<li>
+<p><strong>The <code>read</code> privilege on every index the query reads.</strong> The <a href="../configure/#credentials"><code>hass_writer</code> role</a> can only publish, so on its own it can't run queries, not even of the data the integration published. Add a second entry to the role's <code>indices</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">"names"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"metrics-homeassistant.*"</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">"privileges"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"read"</span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Add more names to query other indices or data streams. For a user, add this to its role. For an API key, <a href="https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-security-update-api-key">update the key's role descriptors</a>, or create a new key with both entries and enter it when you <a href="../configure/#credentials">reauthenticate</a>. No cluster privileges are needed beyond the ones publishing already uses.</p>
+</li>
+</ul>
+<h2 id="action-fields">Action fields<a class="headerlink" href="#action-fields" title="Permanent link">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>config_entry_id</code></td>
+<td>Yes</td>
+<td>The Elasticsearch entry to query. In the UI, choose it from the list. In YAML, find the ID in the entry's URL on the <a href="https://my.home-assistant.io/redirect/integration/?domain=elasticsearch" target="_blank">integration page</a>.</td>
+</tr>
+<tr>
+<td><code>query</code></td>
+<td>Yes</td>
+<td>The ES</td>
+</tr>
+<tr>
+<td><code>params</code></td>
+<td>No</td>
+<td>A list of values to bind to the query's <code>?</code> placeholders, in order. Each must be a string, number, boolean, or <code>null</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Always pass values with <code>params</code>, rather than templating them into the query. Bound values can't change the query's meaning, whatever they contain.</p>
+<p>The action only returns data, so it must be called with <code>response_variable</code>.</p>
+<h2 id="response">Response<a class="headerlink" href="#response" title="Permanent link">#</a></h2>
+<p>The response has the query's columns, and one object per row, keyed by column name:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">"columns"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"@timestamp"</span><span class="p">,</span><span class="w"> </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"date_nanos"</span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"hass.entity.valueas.float"</span><span class="p">,</span><span class="w"> </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"double"</span><span class="p">}</span>
+<span class="w">  </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">"rows"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">"@timestamp"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2026-11-07T22:06:42.875933123Z"</span><span class="p">,</span><span class="w"> </span><span class="nt">"hass.entity.valueas.float"</span><span class="p">:</span><span class="w"> </span><span class="mf">21.5</span><span class="p">}</span>
+<span class="w">  </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">"warnings"</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span>
+<span class="w">  </span><span class="nt">"took_ms"</span><span class="p">:</span><span class="w"> </span><span class="mi">12</span>
+<span class="p">}</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>columns</code></td>
+<td>Each column's <code>name</code> and ES</td>
+</tr>
+<tr>
+<td><code>rows</code></td>
+<td>Each row, as an object with a value for every column.</td>
+</tr>
+<tr>
+<td><code>warnings</code></td>
+<td>The warnings Elasticsearch sent with the result, or an empty list.</td>
+</tr>
+<tr>
+<td><code>took_ms</code></td>
+<td>How long Elasticsearch says the query took, in milliseconds. <code>null</code> if it didn't say.</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Values are kept as Elasticsearch returns them.</strong> Numbers and booleans stay numbers and booleans, and dates are ISO 8601 strings. A field with no value is <code>null</code>, and a field with several values is a list.</li>
+<li><strong>A query that matches nothing isn't an error.</strong> <code>rows</code> is an empty list, and <code>columns</code> still describes the result.</li>
+<li><strong>Check <code>warnings</code> when a value is unexpectedly <code>null</code>.</strong> When ES|QL can't evaluate an expression for a row, for example <code>TO_DOUBLE("abc")</code>, it returns <code>null</code> for that row and adds a warning, rather than failing the query.</li>
+<li><strong>Queries without a <code>LIMIT</code> always warn <code>No limit defined, adding default limit of [1000]</code></strong>, even when they summarize with <code>STATS</code>. It's harmless when the query returns fewer rows than that.</li>
+<li><strong>Fields ES|QL can't read have the type <code>unsupported</code></strong>, and their values are always <code>null</code>.</li>
+<li><strong>Each column name must be unique.</strong> ES|QL can return two columns with the same name, which can't both be keys of a row, so the action fails instead. Rename one with <code>RENAME</code> or <code>EVAL</code>.</li>
+</ul>
+<h2 id="examples">Examples<a class="headerlink" href="#examples" title="Permanent link">#</a></h2>
+<h3 id="latest-reading-of-an-entity">Latest reading of an entity<a class="headerlink" href="#latest-reading-of-an-entity" title="Permanent link">#</a></h3>
+<p>Runs the query, then uses the latest published value of <code>sensor.outdoor_temperature</code>. Replace <code>YOUR_ENTRY_ID</code> with your entry's ID.</p>
+<div class="highlight"><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">elasticsearch.query</span>
+<span class="w">  </span><span class="nt">data</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">config_entry_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">YOUR_ENTRY_ID</span>
+<span class="w">    </span><span class="nt">query</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">      </span><span class="no">FROM metrics-homeassistant.*</span>
+<span class="w">      </span><span class="no">| WHERE hass.entity.id == ?</span>
+<span class="w">      </span><span class="no">| SORT @timestamp DESC</span>
+<span class="w">      </span><span class="no">| LIMIT 1</span>
+<span class="w">      </span><span class="no">| KEEP @timestamp, hass.entity.valueas.float</span>
+<span class="w">    </span><span class="nt">params</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.outdoor_temperature</span>
+<span class="w">  </span><span class="nt">response_variable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">latest</span>
+
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">if</span><span class="p">:</span><span class="w"> </span><span class="s">"{{</span><span class="nv"> </span><span class="s">latest.rows</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">count</span><span class="nv"> </span><span class="s">&gt;</span><span class="nv"> </span><span class="s">0</span><span class="nv"> </span><span class="s">}}"</span>
+<span class="w">  </span><span class="nt">then</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">persistent_notification.create</span>
+<span class="w">      </span><span class="nt">data</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">message</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">&gt;-</span>
+<span class="w">          </span><span class="no">The outdoor temperature was</span>
+<span class="w">          </span><span class="no">{{ latest.rows[0]['hass.entity.valueas.float'] }}</span>
+<span class="w">          </span><span class="no">at {{ latest.rows[0]['@timestamp'] }}.</span>
+</code></pre></div>
+<p>Column names with dots or <code>@</code> must be read with <code>['...']</code>, as above. To use simpler names, rename the columns in the query, for example <code>| RENAME hass.entity.valueas.float AS temperature</code>.</p>
+<h3 id="average-over-a-time-window">Average over a time window<a class="headerlink" href="#average-over-a-time-window" title="Permanent link">#</a></h3>
+<p>A query that summarizes with <code>STATS</code> returns one row, even when nothing matches.</p>
+<div class="highlight"><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">elasticsearch.query</span>
+<span class="w">  </span><span class="nt">data</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">config_entry_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">YOUR_ENTRY_ID</span>
+<span class="w">    </span><span class="nt">query</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">      </span><span class="no">FROM metrics-homeassistant.sensor-default</span>
+<span class="w">      </span><span class="no">| WHERE hass.entity.id == ? AND @timestamp &gt;= NOW() - 1 hour</span>
+<span class="w">      </span><span class="no">| STATS average_temperature = AVG(hass.entity.valueas.float)</span>
+<span class="w">    </span><span class="nt">params</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sensor.outdoor_temperature</span>
+<span class="w">  </span><span class="nt">response_variable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">weather</span>
+
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">persistent_notification.create</span>
+<span class="w">  </span><span class="nt">data</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">message</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">&gt;-</span>
+<span class="w">      </span><span class="no">{% set average = weather.rows[0].average_temperature %}</span>
+<span class="w">      </span><span class="no">{% if average is none %}</span>
+<span class="w">        </span><span class="no">No readings in the last hour.</span>
+<span class="w">      </span><span class="no">{% else %}</span>
+<span class="w">        </span><span class="no">The average outdoor temperature over the last hour was {{ average | round(1) }}.</span>
+<span class="w">      </span><span class="no">{% endif %}</span>
+</code></pre></div>
+<h3 id="values-from-templates">Values from templates<a class="headerlink" href="#values-from-templates" title="Permanent link">#</a></h3>
+<p><code>params</code> can be templated. Here, a script queries whichever entity it was called with:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">alias</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Count state changes today</span>
+<span class="nt">fields</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">entity</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">selector</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">entity</span><span class="p">:</span>
+<span class="nt">sequence</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">elasticsearch.query</span>
+<span class="w">    </span><span class="nt">data</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">config_entry_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">YOUR_ENTRY_ID</span>
+<span class="w">      </span><span class="nt">query</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">        </span><span class="no">FROM metrics-homeassistant.*</span>
+<span class="w">        </span><span class="no">| WHERE hass.entity.id == ?</span>
+<span class="w">          </span><span class="no">AND event.action == "State change"</span>
+<span class="w">          </span><span class="no">AND @timestamp &gt;= NOW() - 1 day</span>
+<span class="w">        </span><span class="no">| STATS changes = COUNT(*)</span>
+<span class="w">      </span><span class="nt">params</span><span class="p">:</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"{{</span><span class="nv"> </span><span class="s">entity</span><span class="nv"> </span><span class="s">}}"</span>
+<span class="w">    </span><span class="nt">response_variable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">result</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">stop</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Done</span>
+<span class="w">    </span><span class="nt">response_variable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">result</span>
+</code></pre></div>
+<h2 id="limits">Limits<a class="headerlink" href="#limits" title="Permanent link">#</a></h2>
+<p>Each query is bounded, and a result that goes past a limit is an error rather than an incomplete result.</p>
+<table>
+<thead>
+<tr>
+<th>Limit</th>
+<th>Value</th>
+<th>What happens</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Rows</td>
+<td>1,000</td>
+<td>More rows fail with <code>The query returned … rows, more than the limit of 1000</code>. Add a <code>LIMIT</code>, or summarize with <code>STATS</code>.</td>
+</tr>
+<tr>
+<td>Elasticsearch's default limit</td>
+<td>Usually 1,000</td>
+<td>Without a <code>LIMIT</code>, Elasticsearch stops at its default and says so in a warning. If the result reaches that default, it may be incomplete, so the action fails. Add an explicit <code>LIMIT</code>.</td>
+</tr>
+<tr>
+<td>Result size</td>
+<td>1 MiB of JSON</td>
+<td>A larger result fails, even within the row limit. Return fewer rows or columns, for example with <code>KEEP</code>.</td>
+</tr>
+<tr>
+<td>Time</td>
+<td>The entry's request timeout, 30 seconds by default</td>
+<td>A slower query fails with <code>Elasticsearch didn't answer the query within 30 seconds</code>.</td>
+</tr>
+<tr>
+<td>Queries at once</td>
+<td>4 per entry</td>
+<td>Further queries wait for one to finish, so queries can't starve publishing. Unloading or reloading the entry cancels running and waiting queries.</td>
+</tr>
+</tbody>
+</table>
+<p>The size limit is checked once the response has arrived, so it bounds what reaches your automations, not what Elasticsearch sends. Elasticsearch has its own limits too: by default, it never returns more than 10,000 rows, however high the <code>LIMIT</code>.</p>
+<p>There's no pagination. To work with more data, aggregate it in the query.</p>
+<h2 id="errors">Errors<a class="headerlink" href="#errors" title="Permanent link">#</a></h2>
+<p>The action fails with an error that says what went wrong. Errors caused by the query or its result are shown as validation errors.</p>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>What to do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Elasticsearch rejected the query (…): …</code></td>
+<td>The query is invalid, or uses something the cluster doesn't support. The message includes Elasticsearch's reason, such as <code>Unknown index [weather-*]</code> or a parsing error, cut to 500 characters.</td>
+</tr>
+<tr>
+<td><code>Querying requires Elasticsearch 8.19 or later, …</code></td>
+<td><a href="#requirements">Upgrade the cluster</a>.</td>
+</tr>
+<tr>
+<td><code>The entry's credentials aren't allowed to run this query.</code></td>
+<td>Grant the <a href="#requirements"><code>read</code> privilege</a> on the indices the query reads.</td>
+</tr>
+<tr>
+<td><code>Elasticsearch rejected the credentials, or they lack the required privileges.</code></td>
+<td>The credentials no longer work. Home Assistant asks you to <a href="../configure/#credentials">reauthenticate</a>.</td>
+</tr>
+<tr>
+<td><code>The query returns more than one column named …</code></td>
+<td>Give each column a unique name.</td>
+</tr>
+<tr>
+<td><code>The query returned … rows</code>, <code>… may be incomplete</code>, or <code>The query's result is …</code></td>
+<td>The result went past a <a href="#limits">limit</a>.</td>
+</tr>
+<tr>
+<td><code>Elasticsearch could only return partial results for the query</code></td>
+<td>Part of the data couldn't be read, for example because a shard is unavailable. Check the cluster's health.</td>
+</tr>
+<tr>
+<td><code>Elasticsearch didn't answer the query within … seconds.</code></td>
+<td>Make the query cheaper, for example by narrowing its time range.</td>
+</tr>
+<tr>
+<td><code>The query was cancelled because its Elasticsearch entry was unloaded or reloaded.</code></td>
+<td>The entry was reloaded, for example after changing its options, while the query was running or waiting its turn. Run it again once the entry has loaded.</td>
+</tr>
+<tr>
+<td><code>The query couldn't be run: …</code></td>
+<td>The cluster couldn't be reached, or failed. The message describes the problem.</td>
+</tr>
+<tr>
+<td>The config entry wasn't found, or isn't loaded</td>
+<td>Check the entry ID, and that the entry is loaded on the <a href="https://my.home-assistant.io/redirect/integration/?domain=elasticsearch" target="_blank">integration page</a>.</td>
+</tr>
+</tbody>
+</table>
+<p>To stop an automation failing when a query does, set <code>continue_on_error: true</code> on the action.</p>
+<h2 id="privacy">Privacy<a class="headerlink" href="#privacy" title="Permanent link">#</a></h2>
+<ul>
+<li>The integration never logs query text, parameter values, or results.</li>
+<li>An error from Elasticsearch can quote part of the query. It's shown to whoever ran the action, and Home Assistant logs errors raised by automations and scripts.</li>
+<li>Like any response variable, the result is stored in the automation's or script's <a href="https://www.home-assistant.io/docs/automation/troubleshooting/">traces</a>, along with the query and its parameters.</li>
+</ul>
+<h2 id="known-limitations">Known limitations<a class="headerlink" href="#known-limitations" title="Permanent link">#</a></h2>
+<ul>
+<li><strong>ES|QL depends on the cluster's version.</strong> Functions and commands added in later versions of ES|QL fail on older clusters with an <code>Elasticsearch rejected the query</code> error. Check the <a href="https://www.elastic.co/docs/reference/query-languages/esql">ES|QL documentation</a> for the version each one needs.</li>
+<li><strong>Only positional parameters are supported.</strong> Named parameters such as <code>?name</code> aren't.</li>
+<li><strong>The query runs as the entry's credentials.</strong> Anyone who can run actions in Home Assistant can read whatever those credentials can.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog" role="status" aria-atomic="true">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      
+      
+        
+        
+      <script id="__config" type="application/json">{"annotate":null,"base":"..","features":["content.code.annotate","content.code.copy","content.tabs.link","navigation.path","toc.follow"],"redirect":null,"search":"../assets/javascripts/workers/search.719e0d91.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","clipboard.error":"Could not copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d31f0ffa.min.js"></script>
+      
+    
+  </body>
+</html>

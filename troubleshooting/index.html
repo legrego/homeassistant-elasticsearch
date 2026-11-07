@@ -326,6 +326,32 @@
   
   
     <li class="md-nav__item">
+      <a href="../querying/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Querying Elasticsearch
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../using_kibana/" class="md-nav__link">
         
   
@@ -553,6 +579,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#a-query-fails" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        A query fails
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#collect-logs-and-diagnostics" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -716,6 +753,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#a-query-fails" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        A query fails
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#collect-logs-and-diagnostics" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -841,6 +889,14 @@
 <li><strong>You're looking at the wrong data.</strong> Documents go to the <code>metrics-homeassistant.*</code> data streams. In Kibana, check the time range, and that your <a href="../using_kibana/#create-a-data-view">data view</a> matches those data streams.</li>
 </ol>
 <p>See <a href="../publishing/">How publishing works</a> for the full picture.</p>
+<h2 id="a-query-fails">A query fails<a class="headerlink" href="#a-query-fails" title="Permanent link">#</a></h2>
+<p><strong>Symptom:</strong> the <code>elasticsearch.query</code> action fails, and the automation or script that called it stops.</p>
+<p>The error says what went wrong. See <a href="../querying/#errors">Errors</a> for what each one means and how to fix it. The most common causes are:</p>
+<ul>
+<li>The credentials don't have the <a href="../querying/#requirements"><code>read</code> privilege</a> on the indices the query reads. Publishing doesn't need it, so most entries don't have it.</li>
+<li>The cluster is older than 8.19, or is 9.0. Publishing works from 8.14, but <a href="../querying/#requirements">querying</a> doesn't.</li>
+<li>The query has no <code>LIMIT</code> and matched 1,000 rows or more, so the result may be incomplete. Add a <code>LIMIT</code>, or summarize with <code>STATS</code>.</li>
+</ul>
 <h2 id="collect-logs-and-diagnostics">Collect logs and diagnostics<a class="headerlink" href="#collect-logs-and-diagnostics" title="Permanent link">#</a></h2>
 <h3 id="turn-on-debug-logging">Turn on debug logging<a class="headerlink" href="#turn-on-debug-logging" title="Permanent link">#</a></h3>
 <p>Either open the <a href="https://my.home-assistant.io/redirect/integration/?domain=elasticsearch" target="_blank">integration page</a> and select <code>Enable debug logging</code>, or add this to <code>configuration.yaml</code> and restart Home Assistant:</p>

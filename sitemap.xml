@@ -19,6 +19,9 @@
         <loc>https://legrego.github.io/homeassistant-elasticsearch/publishing/</loc>
       </url>
       <url>
+        <loc>https://legrego.github.io/homeassistant-elasticsearch/querying/</loc>
+      </url>
+      <url>
         <loc>https://legrego.github.io/homeassistant-elasticsearch/troubleshooting/</loc>
       </url>
       <url>

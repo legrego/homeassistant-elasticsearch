@@ -538,6 +538,32 @@
   
   
     <li class="md-nav__item">
+      <a href="../querying/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Querying Elasticsearch
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../using_kibana/" class="md-nav__link">
         
   
@@ -974,6 +1000,7 @@ POST /_security/user/home_assistant
 }
 </code></pre></div>
 <p>The integration checks these privileges when you add it, and shows an error if any are missing. If an existing entry loses them, Home Assistant asks you to reauthenticate.</p>
+<p>These privileges only allow publishing. To <a href="../querying/">run queries</a>, the credentials also need the <a href="../querying/#requirements"><code>read</code> privilege</a> on the indices you query.</p>
 <h2 id="add-the-integration">Add the integration<a class="headerlink" href="#add-the-integration" title="Permanent link">#</a></h2>
 <p>This component is configured interactively via Home Assistant's integration configuration page.</p>
 <ol>
