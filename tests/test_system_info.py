@@ -40,6 +40,20 @@ class Test_SystemInfo:
         assert result.os_version is not None
         assert result.hostname is not None
 
+    async def test_async_get_system_info_error(self, sys_info, caplog):
+        """Verify an error retrieving system information is logged and raised as a ValueError."""
+        with (
+            mock.patch(
+                "custom_components.elasticsearch.system_info.async_get_system_info",
+                side_effect=RuntimeError("boom"),
+            ),
+            pytest.raises(ValueError, match="Unknown error retrieving system info") as err,
+        ):
+            await sys_info.async_get_system_info()
+
+        assert isinstance(err.value.__cause__, RuntimeError)
+        assert "Unknown error retrieving system info" in caplog.text
+
     async def test_async_get_system_info_non_hassio(self, sys_info):
         """Verify we rely on the hostname from the socket module on non-HASSio systems."""
         sys_info._get_system_info = AsyncMock(

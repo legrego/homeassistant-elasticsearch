@@ -842,6 +842,10 @@ class Pipeline:
             self._hass = hass
             self._queue: EventQueue = manager.queue
 
+            # Whether the last attempt to publish failed with a connection error, so that an
+            # outage is logged once when it starts and once when it ends
+            self._publish_failing: bool = False
+
         @async_log_enter_exit_debug
         async def async_init(self, config_entry: ConfigEntry) -> None:
             """Initialize the publisher."""
@@ -891,12 +895,18 @@ class Pipeline:
 
             try:
                 if not await self._gateway.check_connection():
+                    # The gateway logs when the connection is lost and when it comes back
+                    self._publish_failing = False
                     self._logger.debug("Skipping publishing as connection is not available.")
                     return
 
                 actions = self._add_action_and_meta_data(iterable=self._manager.sip_queue())
 
                 await self._gateway.bulk(actions=actions)
+
+                if self._publish_failing:
+                    self._publish_failing = False
+                    self._logger.info("Publishing to Elasticsearch has recovered.")
 
             except AuthenticationRequired:
                 msg = "Authentication issue in publishing loop."
@@ -908,7 +918,11 @@ class Pipeline:
             except ESIntegrationConnectionException:
                 msg = "Connection error in publishing loop."
 
-                self._logger.error(msg)
+                # Only the first failure is an error, the rest would repeat every publish interval
+                if not self._publish_failing:
+                    self._publish_failing = True
+                    self._logger.error(msg)
+
                 self._logger.debug(msg, exc_info=True)
 
             except Exception:  # noqa: BLE001
