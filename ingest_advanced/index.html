@@ -436,6 +436,56 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#drop-attributes-to-reduce-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Drop attributes to reduce storage
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Drop attributes to reduce storage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#create-the-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Create the pipeline
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-with-sample-documents" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Test with sample documents
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#apply-the-pipeline-to-incoming-events" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Apply the pipeline to incoming events
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#custom-attribute-mappings" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -507,6 +557,56 @@
       </span>
     </span>
   </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#drop-attributes-to-reduce-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Drop attributes to reduce storage
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Drop attributes to reduce storage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#create-the-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Create the pipeline
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-with-sample-documents" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Test with sample documents
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#apply-the-pipeline-to-incoming-events" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Apply the pipeline to incoming events
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
         
@@ -619,6 +719,93 @@ curl<span class="w"> </span>-X<span class="w"> </span>PUT<span class="w"> </span
 </div>
 </div>
 <p>Component template changes apply when the datastream performs a rollover so the first time you modify the template you may need to manually initiate index/datastream rollover to start applying the pipeline.</p>
+<h3 id="drop-attributes-to-reduce-storage">Drop attributes to reduce storage<a class="headerlink" href="#drop-attributes-to-reduce-storage" title="Permanent link">#</a></h3>
+<p>If you only need entity states and metadata, you can remove <a href="../published_fields/#state-attributes">state attributes</a> before Elasticsearch stores them. The following pipeline keeps attributes for <code>sensor</code> entities and removes them for all other domains. Entity values, names, labels, device details, areas, and floors are preserved.</p>
+<p>Run these commands in Kibana's Dev Tools console. Creating the pipeline requires the <code>manage_pipeline</code> cluster privilege; the API key in the <a href="../configure/#credentials">configuration guide</a> does not include this privilege. Use an account with permission to manage pipelines and index templates for this setup.</p>
+<h4 id="create-the-pipeline">Create the pipeline<a class="headerlink" href="#create-the-pipeline" title="Permanent link">#</a></h4>
+<div class="highlight"><pre><span></span><code>PUT _ingest/pipeline/metrics-homeassistant-pipeline
+{
+    "description": "Remove attributes from non-sensor Home Assistant entities",
+    "processors": [
+        {
+            "dot_expander": {
+                "field": "*"
+            }
+        },
+        {
+            "remove": {
+                "field": "hass.entity.attributes",
+                "ignore_missing": true,
+                "if": "ctx.hass?.entity?.domain != 'sensor'"
+            }
+        }
+    ]
+}
+</code></pre></div>
+<p>The integration publishes dotted field names such as <code>hass.entity.attributes.temperature</code>. The <a href="https://www.elastic.co/guide/en/elasticsearch/reference/8.14/dot-expand-processor.html"><code>dot_expander</code> processor</a> expands all top-level dotted fields into objects so the <a href="https://www.elastic.co/docs/reference/ingest-processor/remove-processor"><code>remove</code> processor</a> can remove the entire attributes object. The stored document uses nested objects after expansion; the field paths used in Kibana stay the same.</p>
+<p>The condition keeps attributes for the <code>sensor</code> domain. To remove attributes from every domain, delete the <code>if</code> property and its preceding comma. <code>ignore_missing</code> allows documents without attributes to pass through successfully.</p>
+<p>If you already use <code>metrics-homeassistant-pipeline</code>, add these processors to its existing <code>processors</code> array instead of replacing the pipeline. Put the expansion step before processors that access nested fields, and remove attributes after any processors that need them.</p>
+<h4 id="test-with-sample-documents">Test with sample documents<a class="headerlink" href="#test-with-sample-documents" title="Permanent link">#</a></h4>
+<p>Use the <a href="https://www.elastic.co/guide/en/elasticsearch/reference/8.14/ingest.html#test-pipeline">simulate pipeline API</a> to check the result without indexing documents:</p>
+<div class="highlight"><pre><span></span><code>POST _ingest/pipeline/metrics-homeassistant-pipeline/_simulate
+{
+    "docs": [
+        {
+            "_source": {
+                "hass.entity.id": "climate.living_room",
+                "hass.entity.domain": "climate",
+                "hass.entity.value": "heat",
+                "hass.entity.valueas.string": "heat",
+                "hass.entity.attributes.temperature": 21,
+                "hass.entity.attributes.hvac_action": "heating"
+            }
+        },
+        {
+            "_source": {
+                "hass.entity.id": "sensor.living_room_temperature",
+                "hass.entity.domain": "sensor",
+                "hass.entity.value": "21.5",
+                "hass.entity.valueas.float": 21.5,
+                "hass.entity.attributes.battery_level": 95
+            }
+        },
+        {
+            "_source": {
+                "hass.entity.id": "switch.desk_lamp",
+                "hass.entity.domain": "switch",
+                "hass.entity.value": "on",
+                "hass.entity.valueas.boolean": true
+            }
+        }
+    ]
+}
+</code></pre></div>
+<p>Inspect <code>docs[].doc._source</code> in the response:</p>
+<ul>
+<li>The climate document has no <code>hass.entity.attributes</code> object, while its <code>value</code> and <code>valueas.string</code> fields remain.</li>
+<li>The sensor document keeps <code>hass.entity.attributes.battery_level</code>.</li>
+<li>The switch document succeeds even though it has no attributes.</li>
+</ul>
+<p>If you remove the condition to drop attributes from every domain, the sensor document should also lose its attributes.</p>
+<h4 id="apply-the-pipeline-to-incoming-events">Apply the pipeline to incoming events<a class="headerlink" href="#apply-the-pipeline-to-incoming-events" title="Permanent link">#</a></h4>
+<p>Attach the pipeline using the <code>metrics-homeassistant@custom</code> component template, as in <a href="#custom-ingest-pipeline">Custom Ingest Pipeline</a>:</p>
+<div class="highlight"><pre><span></span><code>PUT _component_template/metrics-homeassistant@custom
+{
+    "template": {
+        "settings": {
+            "index.default_pipeline": "metrics-homeassistant-pipeline"
+        }
+    }
+}
+</code></pre></div>
+<p>If this component template already contains custom mappings or settings, keep them in the request too: <code>PUT</code> replaces the component template rather than merging with it.</p>
+<p>New data streams use the updated template automatically. For existing streams, the setting takes effect on backing indices created after a rollover. List the streams, then roll over each stream where you want to apply the pipeline. For example:</p>
+<div class="highlight"><pre><span></span><code>GET _data_stream/metrics-homeassistant.*-default
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>POST metrics-homeassistant.climate-default/_rollover
+</code></pre></div>
+<p>Replace <code>metrics-homeassistant.climate-default</code> with each relevant name from the list. If a stream's write index already uses this pipeline, changing the pipeline's processors does not require another rollover.</p>
+<p>This reduces stored attributes for future events. It does not change existing documents or reduce the data sent from Home Assistant to Elasticsearch. To keep attributes again, remove the <code>remove</code> processor from the pipeline; previously discarded attributes cannot be restored from Elasticsearch.</p>
 <h3 id="custom-attribute-mappings">Custom Attribute mappings<a class="headerlink" href="#custom-attribute-mappings" title="Permanent link">#</a></h3>
 <p>Attributes are mapped as text with a <code>.keyword</code> subfield by default. To use an attribute in numeric aggregations, define a custom mapping. The following example maps <code>hass.entity.attributes.temperature</code> as a float:</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">Dev Tools</label><label for="__tabbed_2_2">curl</label></div>
