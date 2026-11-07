@@ -3,7 +3,7 @@
 import json
 from typing import Any
 
-from elasticsearch8.serializer import JSONSerializer
+from elastic_transport import JsonSerializer
 from homeassistant.helpers.json import json_encoder_default
 
 
@@ -30,29 +30,19 @@ def convert_set_to_list(data: Any) -> Any:
     return data
 
 
-class Serializer(JSONSerializer):
-    """JSONSerializer which serializes sets to lists."""
-
-    def json_dumps(self, data: Any) -> bytes:
-        """Serialize data to JSON."""
-
-        return json.dumps(
-            data, default=self.default, ensure_ascii=False, separators=(",", ":"), cls=Encoder
-        ).encode("utf-8", "surrogatepass")
+class Serializer(JsonSerializer):
+    """Serialize Home Assistant values without importing optional libraries."""
 
     def default(self, data: Any) -> Any:
-        """Entry point."""
+        """Handle Home Assistant types before the transport's JSON-only fallback."""
 
-        return super().default(convert_set_to_list(data))
-
-
-class Encoder(json.JSONEncoder):
-    """JSONSerializer which serializes sets to lists."""
-
-    def default(self, o: Any) -> Any:
-        """Entry point."""
+        if isinstance(data, set):
+            return convert_set_to_list(data)
 
         try:
-            return json_encoder_default(o)
+            return json_encoder_default(data)
         except TypeError:
-            return super().default(convert_set_to_list(o))
+            # The Elasticsearch client's fallback lazily imports numpy and pandas,
+            # which can read timezone files on the event loop. The transport's
+            # serializer handles UUIDs and decimals without those imports.
+            return super().default(data)

@@ -74,6 +74,8 @@ When updating older dashboards, use `hass.entity.friendly_name` instead of `hass
 
 Attributes are dynamically mapped as text with a `.keyword` subfield by default. Numeric state attributes therefore need a [custom attribute mapping](ingest_advanced.md#custom-attribute-mappings) if you want numeric aggregations. Dictionary-valued attributes are serialized as JSON strings; sets are converted to sorted lists. Attributes with unsupported value types or non-string or blank keys are skipped.
 
+Date and time values nested inside list or dictionary attributes are serialized as ISO 8601 strings.
+
 Outside the attributes object, extra fields without an explicit mapping are kept in the stored document but are not indexed for searching or aggregations. Add a custom mapping if you need to query those fields.
 
 To reduce storage, you can [drop attributes with an ingest pipeline](ingest_advanced.md#drop-attributes-to-reduce-storage) while keeping entity states and metadata.
