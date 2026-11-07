@@ -116,7 +116,11 @@ class Test_Setup_Flows:
         # The entry should be now created
         assert "type" in result and result["type"] == FlowResultType.CREATE_ENTRY
         assert "title" in result and result["title"] == testconst.CONFIG_ENTRY_DATA_URL
-        assert "data" in result and result["data"] == {testconst.CONF_URL: testconst.CONFIG_ENTRY_DATA_URL}
+        assert "data" in result and result["data"] == {
+            testconst.CONF_URL: testconst.CONFIG_ENTRY_DATA_URL,
+            haconst.CONF_VERIFY_SSL: True,
+            compconst.CONF_SSL_VERIFY_HOSTNAME: True,
+        }
         assert "options" in result and result["options"] == ElasticOptionsFlowHandler.default_options
         assert "result" in result and result["result"].unique_id == testconst.CLUSTER_UUID
 
@@ -333,6 +337,8 @@ class Test_Setup_Flows:
         assert "title" in result and result["title"] == testconst.CONFIG_ENTRY_DATA_URL
         assert "data" in result and result["data"] == {
             testconst.CONF_URL: testconst.CONFIG_ENTRY_DATA_URL,
+            haconst.CONF_VERIFY_SSL: True,
+            compconst.CONF_SSL_VERIFY_HOSTNAME: True,
             **settings,
         }
         assert "options" in result and result["options"] == ElasticOptionsFlowHandler.default_options

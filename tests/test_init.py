@@ -933,6 +933,37 @@ class Test_Common_e2e:
             }
 
 
+class Test_Gateway_Parameters:
+    """Test how a config entry's TLS settings reach the gateway."""
+
+    def test_verification_defaults_to_on(self):
+        """Test that an entry without TLS settings verifies the server's certificate and hostname."""
+        entry = MockConfigEntry(domain=ELASTIC_DOMAIN, data={"url": const.CONFIG_ENTRY_DATA_URL})
+
+        settings = ElasticIntegration.build_gateway_parameters(entry)
+
+        assert settings.verify_certs is True
+        assert settings.verify_hostname is True
+
+    def test_saved_settings_are_used(self):
+        """Test that an entry's TLS settings are passed on unchanged."""
+        entry = MockConfigEntry(
+            domain=ELASTIC_DOMAIN,
+            data={
+                "url": const.CONFIG_ENTRY_DATA_URL,
+                "verify_ssl": False,
+                "ssl_verify_hostname": False,
+                "ssl_ca_path": "/ssl/ca.crt",
+            },
+        )
+
+        settings = ElasticIntegration.build_gateway_parameters(entry)
+
+        assert settings.verify_certs is False
+        assert settings.verify_hostname is False
+        assert settings.ca_certs == "/ssl/ca.crt"
+
+
 class Test_Setup_Failures:
     """Test how failures during setup are reported to Home Assistant."""
 

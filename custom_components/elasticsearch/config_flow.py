@@ -392,6 +392,11 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         """Handle the completion of the flow."""
         default_options = ElasticOptionsFlowHandler.default_options
 
+        # Save the verification settings the connection was tested with, so that
+        # the entry never depends on a default
+        self._prospective_config.setdefault(CONF_VERIFY_SSL, True)
+        self._prospective_config.setdefault(CONF_SSL_VERIFY_HOSTNAME, True)
+
         if self._reauth_entry is not None:
             return self.async_update_reload_and_abort(
                 self._reauth_entry,
