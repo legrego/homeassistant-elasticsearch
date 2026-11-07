@@ -1275,6 +1275,45 @@ class Test_Formatter:
 
         assert entity_details["location"] == [0.0, 0.0]
 
+    async def test_state_to_extended_details_with_string_location(self, formatter, entity):
+        """Test that coordinates reported as strings are converted to floats."""
+        state = State(
+            entity_id=entity.entity_id,
+            state="on",
+            attributes={"latitude": "12.3456789", "longitude": "-98.7654321"},
+        )
+
+        entity_details = formatter._state_to_extended_details(state)
+
+        assert entity_details["location"] == [-98.7654321, 12.3456789]
+
+    @pytest.mark.parametrize(
+        ("latitude", "longitude"),
+        [
+            ("not-a-number", "-98.7654321"),
+            ("12.3456789", ""),
+            ([1.0], 2.0),
+            (True, 1.0),
+            (float("nan"), 1.0),
+            (1.0, float("inf")),
+            (91.0, 0.0),
+            (0.0, -180.5),
+        ],
+    )
+    async def test_state_to_extended_details_with_invalid_location(
+        self, formatter, entity, latitude, longitude
+    ):
+        """Test that invalid coordinates are dropped instead of producing a document Elasticsearch rejects."""
+        state = State(
+            entity_id=entity.entity_id,
+            state="on",
+            attributes={"latitude": latitude, "longitude": longitude},
+        )
+
+        entity_details = formatter._state_to_extended_details(state)
+
+        assert "location" not in entity_details
+
     async def test_state_to_extended_details_exception(
         self,
         formatter,

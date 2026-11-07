@@ -596,13 +596,56 @@ class Pipeline:
             # The logic for friendly name is in the state for some reason
             document["friendly_name"] = state.name
 
-            if state.attributes.get("longitude") is not None and state.attributes.get("latitude") is not None:
-                document["location"] = [
-                    state.attributes.get("longitude"),
-                    state.attributes.get("latitude"),
-                ]
+            location = self._state_to_location(state)
+            if location is not None:
+                document["location"] = location
 
             return document
+
+        def _state_to_location(self, state: State) -> list[float] | None:
+            """Build a geo_point [lon, lat] array from the latitude/longitude attributes of a state.
+
+            Some integrations (e.g. HERE Travel Time) report coordinates as strings. Elasticsearch interprets an
+            array of strings as a list of geohashes, which causes the entire document to be rejected, so we
+            coerce the values to floats and drop the location when they are not valid coordinates.
+            """
+            raw_latitude = state.attributes.get("latitude")
+            raw_longitude = state.attributes.get("longitude")
+
+            if raw_latitude is None or raw_longitude is None:
+                return None
+
+            try:
+                if isinstance(raw_latitude, bool) or isinstance(raw_longitude, bool):
+                    raise TypeError("boolean is not a valid coordinate")  # noqa: TRY301
+                latitude = float(raw_latitude)
+                longitude = float(raw_longitude)
+            except (TypeError, ValueError):
+                self._logger.debug(
+                    "Entity [%s] has non-numeric coordinates (latitude=%r, longitude=%r). Skipping location.",
+                    state.entity_id,
+                    raw_latitude,
+                    raw_longitude,
+                )
+                return None
+
+            if (
+                isnan(latitude)
+                or isnan(longitude)
+                or isinf(latitude)
+                or isinf(longitude)
+                or not -90 <= latitude <= 90
+                or not -180 <= longitude <= 180
+            ):
+                self._logger.debug(
+                    "Entity [%s] has out of range coordinates (latitude=%r, longitude=%r). Skipping location.",
+                    state.entity_id,
+                    raw_latitude,
+                    raw_longitude,
+                )
+                return None
+
+            return [longitude, latitude]
 
         def _state_to_attributes(self, state: State) -> dict:
             """Convert the attributes of a State object into a dictionary compatible with Elasticsearch mappings."""
