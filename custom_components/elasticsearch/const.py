@@ -9,6 +9,10 @@ ELASTIC_DOMAIN: str = "elasticsearch"
 
 ELASTIC_MINIMUM_VERSION: tuple[int, int] = (8, 14)
 
+# The REST API compatibility version to request. Elasticsearch accepts its own major version and
+# the one before it, so 8 works with both 8.x and 9.x clusters.
+ELASTIC_COMPATIBILITY_VERSION: int = 8
+
 CONF_PUBLISH_FREQUENCY: str = "publish_frequency"
 CONF_POLLING_FREQUENCY: str = "polling_frequency"
 CONF_AUTHENTICATION_TYPE: str = "authentication_type"

@@ -19,11 +19,11 @@ rules:
   config-flow: done
   config-flow-test-coverage: done
   dependency-transparency:
-    status: todo
+    status: done
     comment: >-
-      elasticsearch8 is Apache-2.0, on PyPI, and tagged in elastic/elasticsearch-py, but
-      Elastic has no public publish workflow for 8.x and no 8.x release has PyPI
-      provenance. The elasticsearch 9.x client does, so moving to it would meet this rule.
+      elasticsearch is Apache-2.0, on PyPI, and tagged in elastic/elasticsearch-py. 9.5.0 and
+      later are published by the pypi-publish.yml workflow in that repository, with PyPI
+      provenance. The client asks for REST API compatibility with 8, so 8.x clusters still work.
   docs-actions:
     status: exempt
     comment: The integration does not register any actions.
