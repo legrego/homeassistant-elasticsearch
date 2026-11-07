@@ -21,7 +21,7 @@ The integration will put data into Elasticsearch under the `metrics-homeassistan
     KIBANA_USER=elastic # (2)
     KIBANA_PASSWORD=changeme # (3)
     curl -X POST "$KIBANA_URL/api/data_views/data_view" \
-        -u "$KIBANA_USER":"KIBANA_PASSWORD" \
+        -u "$KIBANA_USER":"$KIBANA_PASSWORD" \
         -H "Content-Type: application/json" \
         -H "kbn-xsrf: true" \
         -d'
@@ -68,16 +68,16 @@ Once you have created a Data View, you can start exploring your Home Assistant d
 
 ## Viewing Home Assistant data in Kibana
 
-When creating new visualizations you may find the following fields useful:
+When creating new visualizations you may find the following fields useful. See [Published fields](published_fields.md) for the full reference, including device names, labels, areas, floors, and attribute handling.
 
 | Field | Description |
 | --- | --- |
 | `@timestamp` | The timestamp of the event (ex. `Apr 10, 2024 @ 16:23:25.878`) |
-| `hass.entity.attributes.friendly_name` | The name of the entity in Home Assistant (ex. `Living Room EcoBee Temperature`) |
+| `hass.entity.friendly_name` | The display name of the entity in Home Assistant (ex. `Living Room EcoBee Temperature`) |
+| `hass.entity.device.name` | The name of the entity's device in Home Assistant (ex. `Living Room EcoBee`) |
 | `hass.entity.device.area.name` | The area of the device in Home Assistant (ex. `Living Room`) |
 | `hass.entity.id` | The entity id of the entity in Home Assistant (ex. `sensor.living_room_ecobee_temperature`) |
 | `hass.entity.value` | The state of the entity in Home Assistant (ex. `72.5`), as a string-typed value |
-| `hass.entity.valueas.integer` | The state of the entity in Home Assistant (ex. `72`), as an integer-typed value |
 | `hass.entity.valueas.float` | The state of the entity in Home Assistant (ex. `72.5`), as a float-typed value |
 | `hass.entity.valueas.boolean` | The state of the entity in Home Assistant (ex. `true`), as a boolean-typed value |
 | `hass.entity.valueas.date` | The state of the entity in Home Assistant (ex. `2024-04-10`), as a date-typed value |
@@ -91,7 +91,7 @@ To build a visualization that shows the temperature of a specific entity over ti
 2. Select `Home Assistant Metrics`
 3. For the `Horizontal axis` select `@timestamp`
 4. For the `Vertical axis` select `hass.entity.valueas.float`
-5. In the filter bar at the top, add a filter for `hass.entity.id` and set the value to the entity id of the entity you want to visualize (ex. `sensor.living_room_ecobee_temperature`) or `hass.entity.attributes.friendly_name` and set the value to the friendly name of the entity you want to visualize (ex. `Living Room EcoBee Temperature`)
+5. In the filter bar at the top, add a filter for `hass.entity.id` and set the value to the entity id of the entity you want to visualize (ex. `sensor.living_room_ecobee_temperature`) or `hass.entity.friendly_name` and set the value to the friendly name of the entity you want to visualize (ex. `Living Room EcoBee Temperature`)
 
 ![img](assets/kibana-lens-visualization.png)
 

@@ -28,10 +28,13 @@ Use the following command to create an API Key for the Home Assistant component.
 
 === "curl"
     ```bash
-    curl https://localhost:9200/_security/api_key \ # (1)
+    ES_URL=https://localhost:9200 # (1)
+    ES_USER=elastic # (2)
+    ES_PASSWORD=changeme # (3)
+    curl "$ES_URL/_security/api_key" \
       -X POST \
       -H "Content-Type: application/json" \
-      -u elastic:changeme \ # (2)
+      -u "$ES_USER":"$ES_PASSWORD" \
       -d'
       {
         "name": "home_assistant_component",
@@ -61,7 +64,8 @@ Use the following command to create an API Key for the Home Assistant component.
     ```
 
     1. Replace `https://localhost:9200` with the URL of your Elasticsearch instance.
-    2. Replace `elastic:changeme` with your Elasticsearch credentials.
+    2. Replace `elastic` with your Elasticsearch username.
+    3. Replace `changeme` with your Elasticsearch password.
 
 === "Dev Tools"
     ```
@@ -154,6 +158,8 @@ Tags are values that can be used to filter events in Elasticsearch. You can use 
 Pick floor, area, device, entity, or labels and only publish events from one of these targets. If you select multiple targets, events that match any of the targets will be published. If you select no targets, no events will be published.
 
 An entity without an area of its own uses the area of its device, and belongs to the floor of that area.
+
+Label targets match labels assigned directly to either the entity or its device. See [Published fields](published_fields.md) for how labels, areas, and floors appear in Elasticsearch documents.
 
 ### Toggle to exclude publishing the set of targets below
 
