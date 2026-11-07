@@ -376,6 +376,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#change-connection-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Change connection settings
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#configuration-options" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -607,6 +618,17 @@
     <span class="md-ellipsis">
       <span class="md-typeset">
         Add the integration
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#change-connection-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Change connection settings
       </span>
     </span>
   </a>
@@ -852,6 +874,21 @@ reload the integration to try again.</p>
 <li>Once the integration is setup, you may tweak all configuration options via the <code>Configure</code> button on the <a href="https://my.home-assistant.io/redirect/integration/?domain=elasticsearch" target="_blank">integrations page</a>.</li>
 </ol>
 <p>Each Elasticsearch cluster can only be added once, even when it can be reached through more than one URL.</p>
+<h2 id="change-connection-settings">Change connection settings<a class="headerlink" href="#change-connection-settings" title="Permanent link">#</a></h2>
+<p>To change the URL or TLS settings of an existing integration entry, open the entry's menu on the <a href="https://my.home-assistant.io/redirect/integration/?domain=elasticsearch" target="_blank">integrations page</a> and select <code>Reconfigure</code>. Your credentials and configuration options are kept.</p>
+<p>The form shows the entry's current settings:</p>
+<ul>
+<li><code>URL to access the Elasticsearch Cluster</code> - The address of your cluster, including the scheme and port.</li>
+<li><code>Verify TLS certificate</code> - Check that the server's certificate is signed by a trusted certificate authority.</li>
+<li><code>Verify hostname matches server certificate</code> - Check that the certificate was issued for the host in the URL.</li>
+<li><code>Fully qualified path to custom certificate authority</code> - Leave empty to use the system's trusted certificates.</li>
+</ul>
+<p>The new settings are tested with the entry's saved credentials before they are saved. If the cluster rejects those credentials, you will be prompted for new ones, using the same authentication method.</p>
+<p>The new URL must reach the same Elasticsearch cluster. To publish to a different cluster, add it as a new integration entry.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>An entry that has no saved TLS settings verifies the server's certificate and hostname. If an entry stops connecting after an update because its certificate can't be verified, use <code>Reconfigure</code> to provide a CA path or turn verification off.</p>
+</div>
 <h2 id="configuration-options">Configuration options<a class="headerlink" href="#configuration-options" title="Permanent link">#</a></h2>
 <p>Select <code>Configure</code> from the integration's homepage to configure the following settings.</p>
 <p><a href="https://my.home-assistant.io/redirect/integration/?domain=elasticsearch" target="_blank"><img alt="Open your Home Assistant instance and show the Elasticsearch integration." src="https://my.home-assistant.io/badges/integration.svg" /></a></p>
@@ -884,6 +921,7 @@ reload the integration to try again.</p>
 <p class="admonition-title">Note</p>
 <p>You can choose to bypass certificate verification during setup, if you do not have the CA file available.</p>
 </div>
+<p>To change the CA path or the verification settings later, <a href="#change-connection-settings">reconfigure the entry</a>.</p>
 
 
 
