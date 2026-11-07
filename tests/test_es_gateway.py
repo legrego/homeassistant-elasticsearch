@@ -16,9 +16,11 @@ from custom_components.elasticsearch.const import ES_CHECK_PERMISSIONS_DATASTREA
 from custom_components.elasticsearch.datastreams.index_template import index_template_definition
 from custom_components.elasticsearch.errors import (
     AuthenticationRequired,
+    BadRequest,
     CannotConnect,
     InsufficientPrivileges,
     InvalidCACertificate,
+    RequestTimeout,
     ServerError,
     UnsupportedServer,
     UnsupportedVersion,
@@ -832,7 +834,7 @@ class Test_Exception_Conversion:
             ),
             (
                 elasticsearch.ConnectionTimeout(message="Test Case"),
-                CannotConnect,
+                RequestTimeout,
                 "Connection timeout connecting to Elasticsearch",
             ),
             (
@@ -861,6 +863,22 @@ class Test_Exception_Conversion:
                 ServerError,
                 "Error in request to Elasticsearch",
             ),
+            (
+                elasticsearch.BadRequestError(
+                    message="Test Case",
+                    meta=mock_api_response_meta(status_code=400),
+                    body={"error": {"type": "parsing_exception", "reason": "line 1:6: mismatched input"}},
+                ),
+                BadRequest,
+                "Error in request to Elasticsearch: 400$",
+            ),
+            (
+                elasticsearch.BadRequestError(
+                    message="Test Case", meta=mock_api_response_meta(status_code=400), body="not json"
+                ),
+                BadRequest,
+                "Error in request to Elasticsearch: 400$",
+            ),
             (Exception(), Exception, ""),
         ],
         ids=[
@@ -868,11 +886,13 @@ class Test_Exception_Conversion:
             "TransportError to CannotConnect",
             "AuthenticationException to AuthenticationRequired",
             "AuthorizationException to InsufficientPrivileges",
-            "ConnectionTimeout to CannotConnect",
+            "ConnectionTimeout to RequestTimeout",
             "SSLError to UntrustedCertificate",
             "ConnectionError to CannotConnect",
             "ApiError to CannotConnect",
             "ApiError(404) to ServerError",
+            "BadRequestError to BadRequest",
+            "BadRequestError without details to BadRequest",
             "Exception to Exception",
         ],
     )

@@ -26,6 +26,7 @@ Visit our documentation site for instructions on [installing](https://legrego.gi
 - Automatically sets up Datastreams using Time Series Data Streams ("TSDS"), Datastream Lifecycle Management ("DLM"), or Index Lifecycle Management ("ILM") depending on your cluster's capabilities
 - Supports Elastic's [stack security features](https://www.elastic.co/elastic-stack/security) via optional username, password, and API keys
 - Selectively publish events based on domains or entities
+- Run [ES|QL queries](https://legrego.github.io/homeassistant-elasticsearch/querying/) from automations and scripts with the `elasticsearch.query` action
 
 ## Inspiration
 

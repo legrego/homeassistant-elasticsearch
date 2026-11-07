@@ -11,13 +11,23 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
+from urllib.parse import unquote
 
+import aiohttp
 import elasticsearch
-from elastic_transport import AsyncTransport, HttpHeaders, ObjectApiResponse, TransportApiResponse
+from elastic_transport import (
+    AiohttpHttpNode,
+    AsyncTransport,
+    HttpHeaders,
+    ObjectApiResponse,
+    SerializationError,
+    TransportApiResponse,
+)
 from elastic_transport.client_utils import DEFAULT, DefaultType
 from elasticsearch import AsyncElasticsearch
 from elasticsearch.helpers import async_streaming_bulk
 from homeassistant.util.ssl import create_client_context, create_no_verify_ssl_context
+from multidict import CIMultiDict, CIMultiDictProxy
 
 from custom_components.elasticsearch.const import (
     ELASTIC_COMPATIBILITY_VERSION,
@@ -26,14 +36,17 @@ from custom_components.elasticsearch.const import (
 from custom_components.elasticsearch.encoder import Serializer
 from custom_components.elasticsearch.errors import (
     AuthenticationRequired,
+    BadRequest,
     CannotConnect,
     InsufficientPrivileges,
     InvalidCACertificate,
+    InvalidQueryResponse,
+    RequestTimeout,
     ServerError,
     UnsupportedServer,
     UntrustedCertificate,
 )
-from custom_components.elasticsearch.es_gateway import ElasticsearchGateway, GatewaySettings
+from custom_components.elasticsearch.es_gateway import ElasticsearchGateway, EsqlResponse, GatewaySettings
 
 from .logger import LOGGER as BASE_LOGGER
 from .logger import async_log_enter_exit_debug
@@ -46,6 +59,70 @@ if TYPE_CHECKING:  # pragma: no cover
 _COMPATIBLE_WITH = re.compile(r"compatible-with=\d+")
 _COMPATIBLE_WITH_VERSION = f"compatible-with={ELASTIC_COMPATIBILITY_VERSION}"
 _COMPATIBILITY_HEADERS = ("accept", "content-type")
+
+# ES|QL warnings are moved to this header, so that the client doesn't see them. See
+# CompatibilityTransport.
+ESQL_WARNING_HEADER = "x-homeassistant-esql-warning"
+_ESQL_TARGET = "/_query"
+
+# One warning in a `Warning` header: a code, an agent, the quoted text, and an optional quoted date.
+# The text is an HTTP quoted string, in which a backslash escapes the next character.
+_WARNING_VALUE = re.compile(r'\d{3} \S+ "((?:[^"\\]|\\.)*)"(?: "[^"]*")?')
+_ESCAPED_CHARACTER = re.compile(r"\\(.)")
+
+# aiohttp decodes headers as UTF-8, and keeps bytes that aren't valid UTF-8 as lone surrogates.
+# Elasticsearch sends non-ASCII characters in warnings as ISO-8859-1 bytes, which become these.
+_ESCAPED_BYTE = re.compile("[\udc80-\udcff]")
+
+
+def parse_warning_header(header: str) -> list[str]:
+    """Return the text of each warning in a `Warning` header, decoded as Elasticsearch encodes it.
+
+    Elasticsearch escapes quotes and backslashes in the text, then percent-encodes `%`.
+    """
+
+    header = _ESCAPED_BYTE.sub(lambda match: chr(ord(match.group()) - 0xDC00), header).strip()
+    if not header:
+        return []
+
+    texts = [match.group(1) for match in _WARNING_VALUE.finditer(header)]
+    if not texts:
+        # Not a header Elasticsearch formatted, so it's returned as it is
+        return [header]
+
+    return [_ESCAPED_CHARACTER.sub(r"\1", unquote(text, errors="replace")) for text in texts]
+
+
+class JoinedWarningsResponse(aiohttp.ClientResponse):
+    """A response that joins repeated `Warning` headers into one.
+
+    Elasticsearch sends each warning in its own header, but elastic-transport keeps only the first
+    value of each header. ES|QL often sends several, and the first is usually only about the
+    default row limit, so the warnings that matter would be lost.
+    """
+
+    @property
+    def headers(self) -> CIMultiDictProxy[str]:
+        """Return the response headers, with every warning in a single `Warning` header."""
+        headers: CIMultiDictProxy[str] = super().headers
+        values = headers.getall("warning", [])
+        if len(values) < 2:
+            return headers
+
+        joined = CIMultiDict((name, value) for name, value in headers.items() if name.lower() != "warning")
+        joined["Warning"] = ", ".join(values)
+        return CIMultiDictProxy(joined)
+
+
+class JoinedWarningsNode(AiohttpHttpNode):
+    """An aiohttp node whose responses keep every warning Elasticsearch sends."""
+
+    def _create_aiohttp_session(self) -> None:
+        """Create the session, then have it build JoinedWarningsResponse responses."""
+        super()._create_aiohttp_session()
+        # aiohttp only takes the response class when the session is created, and the node
+        # creates it without one. The attribute is checked by tests.
+        self.session._response_class = JoinedWarningsResponse  # type: ignore[union-attr]  # noqa: SLF001
 
 
 class CompatibilityTransport(AsyncTransport):
@@ -72,7 +149,16 @@ class CompatibilityTransport(AsyncTransport):
                 if name in headers:
                     headers[name] = _COMPATIBLE_WITH.sub(_COMPATIBLE_WITH_VERSION, headers[name])
 
-        return await super().perform_request(method, target, headers=headers, **kwargs)
+        response = await super().perform_request(method, target, headers=headers, **kwargs)
+
+        # The client raises every `Warning` header as a Python warning, which Home Assistant logs.
+        # ES|QL warnings quote the query, so they'd leak it into the log. They're returned with
+        # the query's result instead.
+        if target.split("?", 1)[0] == _ESQL_TARGET and "warning" in response.meta.headers:
+            response.meta.headers[ESQL_WARNING_HEADER] = response.meta.headers["warning"]
+            del response.meta.headers["warning"]
+
+        return response
 
 
 @dataclass
@@ -110,6 +196,7 @@ class Gateway8Settings(GatewaySettings):
             "serializer": Serializer(),
             "request_timeout": self.request_timeout,
             "transport_class": CompatibilityTransport,
+            "node_class": JoinedWarningsNode,
         }
 
         if self.url.startswith("https"):
@@ -338,6 +425,30 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
             else:
                 self._logger.debug("Publish skipped, no new events to publish.")
 
+    @async_log_enter_exit_debug
+    async def esql_query(self, query: str, params: list[Any]) -> EsqlResponse:
+        """Run an ES|QL query, never accepting partial results."""
+        try:
+            with self._error_converter(msg="Error running ES|QL query"):
+                response = await self.client.esql.query(
+                    query=query, params=params, allow_partial_results=False
+                )
+        except CannotConnect as err:
+            # The client's error for a response it can't parse includes the whole response, which
+            # can hold query results. It's replaced, and not chained, so the results aren't logged.
+            if isinstance(err.__cause__, SerializationError):
+                msg = "Elasticsearch returned a query response that couldn't be parsed."
+                raise InvalidQueryResponse(msg) from None
+            raise
+
+        if not isinstance(response.body, dict):
+            msg = "Elasticsearch returned a query response that isn't an object."
+            raise InvalidQueryResponse(msg)
+
+        warnings = parse_warning_header(response.meta.headers.get(ESQL_WARNING_HEADER) or "")
+
+        return EsqlResponse(body=dict(response.body), warnings=warnings)
+
     async def stop(self) -> None:
         """Stop the gateway."""
         if self._client is not None:
@@ -403,7 +514,7 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
             ) from err
 
         except elasticsearch.ConnectionTimeout as err:
-            raise ServerError(append_msg("Connection timeout connecting to Elasticsearch")) from err
+            raise RequestTimeout(append_msg("Connection timeout connecting to Elasticsearch")) from err
 
         except elasticsearch.SSLError as err:
             raise UntrustedCertificate(
@@ -416,6 +527,16 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
         except elasticsearch.TransportError as err:
             raise CannotConnect(
                 append_msg(f"Unknown transport error connecting to Elasticsearch: {err.message}")
+            ) from err
+
+        except elasticsearch.BadRequestError as err:
+            error_details = err.info.get("error") if isinstance(err.info, dict) else None
+            if not isinstance(error_details, dict):
+                error_details = {}
+            raise BadRequest(
+                append_msg(f"Error in request to Elasticsearch: {err.status_code}"),
+                error_type=error_details.get("type"),
+                reason=error_details.get("reason"),
             ) from err
 
         except elasticsearch.ApiError as err:

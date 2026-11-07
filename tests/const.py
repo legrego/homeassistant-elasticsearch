@@ -450,7 +450,7 @@ CLUSTER_INFO_8DOT11_RESPONSE_BODY = {
     "tagline": "You Know, for Search",
 }
 
-CLUSTER_INFO_8DOT17_RESPONSE_BODY = {
+CLUSTER_INFO_8DOT17_RESPONSE_BODY: dict[str, Any] = {
     "name": "640dcce4be79",
     "cluster_name": "docker-cluster",
     "cluster_uuid": "R-PPqCZYQTCMvkpGcyL4mA",
@@ -465,6 +465,29 @@ CLUSTER_INFO_8DOT17_RESPONSE_BODY = {
         "minimum_wire_compatibility_version": "7.17.0",
         "minimum_index_compatibility_version": "7.0.0",
     },
+}
+CLUSTER_INFO_8DOT19_RESPONSE_BODY = {
+    **CLUSTER_INFO_8DOT17_RESPONSE_BODY,
+    "version": {**CLUSTER_INFO_8DOT17_RESPONSE_BODY["version"], "number": "8.19.0"},
+}
+CLUSTER_INFO_9DOT0_RESPONSE_BODY = {
+    **CLUSTER_INFO_8DOT17_RESPONSE_BODY,
+    "version": {**CLUSTER_INFO_8DOT17_RESPONSE_BODY["version"], "number": "9.0.0"},
+}
+CLUSTER_INFO_9DOT1_RESPONSE_BODY = {
+    **CLUSTER_INFO_8DOT17_RESPONSE_BODY,
+    "version": {**CLUSTER_INFO_8DOT17_RESPONSE_BODY["version"], "number": "9.1.0"},
+}
+ESQL_QUERY_RESPONSE_BODY = {
+    "took": 12,
+    "is_partial": False,
+    "documents_found": 2,
+    "values_loaded": 4,
+    "columns": [
+        {"name": "@timestamp", "type": "date_nanos"},
+        {"name": "hass.entity.valueas.float", "type": "double"},
+    ],
+    "values": [["2026-11-07T22:06:42.875933123Z", 21.5]],
 }
 CLUSTER_INFO_8DOT14_RESPONSE_BODY = {
     "name": "640dcce4be79",

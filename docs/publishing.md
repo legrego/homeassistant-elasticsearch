@@ -1,6 +1,6 @@
 # How publishing works
 
-The integration doesn't fetch data from Elasticsearch. It gathers Home Assistant's own entity states, holds them in a queue, and sends them to your cluster at a fixed interval.
+Publishing doesn't fetch data from Elasticsearch. It gathers Home Assistant's own entity states, holds them in a queue, and sends them to your cluster at a fixed interval. To read data back from the cluster, see [Querying Elasticsearch](querying.md).
 
 ## How data moves
 
