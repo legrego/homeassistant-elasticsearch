@@ -109,6 +109,24 @@ This component is configured interactively via Home Assistant's integration conf
 
 Each Elasticsearch cluster can only be added once, even when it can be reached through more than one URL.
 
+## Change connection settings
+
+To change the URL or TLS settings of an existing integration entry, open the entry's menu on the [integrations page](https://my.home-assistant.io/redirect/integration/?domain=elasticsearch){:target="_blank"} and select `Reconfigure`. Your credentials and configuration options are kept.
+
+The form shows the entry's current settings:
+
+- `URL to access the Elasticsearch Cluster` - The address of your cluster, including the scheme and port.
+- `Verify TLS certificate` - Check that the server's certificate is signed by a trusted certificate authority.
+- `Verify hostname matches server certificate` - Check that the certificate was issued for the host in the URL.
+- `Fully qualified path to custom certificate authority` - Leave empty to use the system's trusted certificates.
+
+The new settings are tested with the entry's saved credentials before they are saved. If the cluster rejects those credentials, you will be prompted for new ones, using the same authentication method.
+
+The new URL must reach the same Elasticsearch cluster. To publish to a different cluster, add it as a new integration entry.
+
+!!! note
+    An entry that has no saved TLS settings verifies the server's certificate and hostname. If an entry stops connecting after an update because its certificate can't be verified, use `Reconfigure` to provide a CA path or turn verification off.
+
 ## Configuration options
 
 Select `Configure` from the integration's homepage to configure the following settings.
@@ -154,3 +172,5 @@ This component will use the system's default certificate authority (CA) bundle t
 
 !!! note
     You can choose to bypass certificate verification during setup, if you do not have the CA file available.
+
+To change the CA path or the verification settings later, [reconfigure the entry](#change-connection-settings).

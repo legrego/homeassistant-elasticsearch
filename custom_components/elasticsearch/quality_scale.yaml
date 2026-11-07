@@ -119,7 +119,7 @@ rules:
   icon-translations:
     status: exempt
     comment: The integration does not create any entities.
-  reconfiguration-flow: todo
+  reconfiguration-flow: done
   repair-issues: todo
   stale-devices:
     status: exempt

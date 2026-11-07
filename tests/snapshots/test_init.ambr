@@ -29,7 +29,7 @@
       'url': 'https://mock_es_integration:9200',
       'username': 'hass_writer',
       'verify_certs': False,
-      'verify_hostname': False,
+      'verify_hostname': True,
     }),
     'pipeline': PipelineSettings(
       change_detection_type=list([
