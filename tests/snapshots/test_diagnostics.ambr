@@ -1,4 +1,13 @@
 # serializer version: 1
+# name: test_async_get_config_entry_diagnostics[options0-Credentials in URL]
+  dict({
+    'data': dict({
+      'url': 'https://**REDACTED**:**REDACTED**@example.com:9200',
+    }),
+    'options': dict({
+    }),
+  })
+# ---
 # name: test_async_get_config_entry_diagnostics[options0-Only URL and username]
   dict({
     'data': dict({

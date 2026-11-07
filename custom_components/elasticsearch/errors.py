@@ -1,5 +1,7 @@
 """Errors for the Elastic component."""
 
+from typing import Any
+
 from homeassistant.exceptions import HomeAssistantError
 
 
@@ -45,6 +47,11 @@ class UntrustedCertificate(SSLError):
 
 class UnsupportedVersion(ESIntegrationConnectionException):
     """Connected to an unsupported version of Elasticsearch."""
+
+    def __init__(self, *args: object, version: str | None = None, **kwargs: Any) -> None:
+        """Initialize the error with the version the cluster reported, when it is known."""
+        super().__init__(*args, **kwargs)
+        self.version = version
 
 
 class UnsupportedServer(ESIntegrationConnectionException):

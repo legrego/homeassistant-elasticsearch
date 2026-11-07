@@ -21,11 +21,13 @@ from custom_components.elasticsearch.errors import (
     ESIntegrationException,
     InsufficientPrivileges,
     InvalidCACertificate,
+    UnsupportedServer,
     UnsupportedVersion,
 )
 from custom_components.elasticsearch.es_integration import ElasticIntegration
 from freezegun.api import FrozenDateTimeFactory
 from homeassistant.config_entries import SOURCE_REAUTH, ConfigEntryState, ConfigFlow
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import (
     MockConfigEntry,  # noqa: F401
@@ -982,21 +984,58 @@ class Test_Setup_Failures:
         return entry
 
     @pytest.mark.parametrize(
-        ("exception", "expected_state"),
+        ("exception", "expected_state", "translation_key"),
         [
-            (CannotConnect, ConfigEntryState.SETUP_RETRY),
-            (ESIntegrationException, ConfigEntryState.SETUP_RETRY),
-            (UnsupportedVersion, ConfigEntryState.SETUP_ERROR),
-            (InvalidCACertificate, ConfigEntryState.SETUP_ERROR),
-            (RuntimeError, ConfigEntryState.SETUP_ERROR),
+            (CannotConnect, ConfigEntryState.SETUP_RETRY, "cannot_connect"),
+            (ESIntegrationException, ConfigEntryState.SETUP_RETRY, "integration_error"),
+            (UnsupportedVersion, ConfigEntryState.SETUP_ERROR, "unsupported_version"),
+            (UnsupportedServer, ConfigEntryState.SETUP_ERROR, "unsupported_server"),
+            (InvalidCACertificate, ConfigEntryState.SETUP_ERROR, "invalid_ca_certificate"),
+            (RuntimeError, ConfigEntryState.SETUP_ERROR, "unexpected_error"),
         ],
     )
-    async def test_setup_failure_state(self, hass, entry, exception, expected_state):
-        """Test that only temporary failures are retried."""
+    async def test_setup_failure_state(self, hass, entry, exception, expected_state, translation_key):
+        """Test that only temporary failures are retried, and that each failure is translated."""
         with mock.patch(f"{MODULE}.es_integration.ElasticIntegration.async_init", side_effect=exception):
             await hass.config_entries.async_setup(entry.entry_id)
 
         assert entry.state is expected_state
+        assert entry.error_reason_translation_domain == ELASTIC_DOMAIN
+        assert entry.error_reason_translation_key == translation_key
+
+    async def test_unsupported_version_issue(self, hass, entry):
+        """Test that an unsupported version raises a repair issue, which clears once setup succeeds."""
+        issue_id = f"unsupported_version_{entry.entry_id}"
+        issue_registry = ir.async_get(hass)
+
+        with mock.patch(
+            f"{MODULE}.es_integration.ElasticIntegration.async_init",
+            side_effect=UnsupportedVersion("too old", version="8.13.4"),
+        ):
+            await hass.config_entries.async_setup(entry.entry_id)
+
+        issue = issue_registry.async_get_issue(ELASTIC_DOMAIN, issue_id)
+        assert issue is not None
+        assert issue.severity is ir.IssueSeverity.ERROR
+        assert issue.is_fixable is False
+        assert issue.translation_key == "unsupported_version"
+        assert issue.translation_placeholders == {
+            "entry_title": entry.title,
+            "version": "8.13.4",
+            "minimum_version": "8.14",
+        }
+        assert entry.error_reason_translation_placeholders == {"minimum_version": "8.14"}
+
+        with (
+            mock.patch(f"{MODULE}.es_integration.ElasticIntegration.async_init"),
+            mock.patch(f"{MODULE}.es_integration.ElasticIntegration.async_shutdown"),
+        ):
+            await hass.config_entries.async_reload(entry.entry_id)
+
+            assert entry.state is ConfigEntryState.LOADED
+            assert issue_registry.async_get_issue(ELASTIC_DOMAIN, issue_id) is None
+
+            await hass.config_entries.async_unload(entry.entry_id)
 
     @pytest.mark.parametrize("exception", [AuthenticationRequired, InsufficientPrivileges])
     async def test_authentication_failure_starts_reauth(self, hass, exception):
@@ -1014,6 +1053,7 @@ class Test_Setup_Failures:
             await hass.async_block_till_done()
 
         assert entry.state is ConfigEntryState.SETUP_ERROR
+        assert entry.error_reason_translation_key == "authentication_failed"
 
         flows = hass.config_entries.flow.async_progress_by_handler(ELASTIC_DOMAIN)
         assert len(flows) == 1
@@ -1049,11 +1089,12 @@ class Test_Unique_Id_Backfill:
         return entry
 
     @staticmethod
-    def backfill(hass, entry, cluster_uuid, log=None):
+    def backfill(hass, entry, cluster_uuid, log=None) -> ElasticIntegration:
         """Run the backfill against a gateway connected to the given cluster."""
         integration = ElasticIntegration(hass, entry, log) if log else ElasticIntegration(hass, entry)
         integration._gateway = mock.MagicMock(cluster_uuid=cluster_uuid)
-        integration._backfill_unique_id()
+        integration.backfill_unique_id()
+        return integration
 
     async def test_backfill(self, hass, entry):
         """Test that an entry with no unique ID takes the UUID of its cluster."""
@@ -1092,3 +1133,77 @@ class Test_Unique_Id_Backfill:
         assert entry.unique_id is None
         assert other.unique_id == const.CLUSTER_UUID
         log.warning.assert_called_once()
+
+    async def test_duplicate_cluster_issue(self, hass, entry):
+        """Test that an entry sharing a cluster with another raises a repair issue."""
+        other = MockConfigEntry(domain=ELASTIC_DOMAIN, unique_id=const.CLUSTER_UUID, title="other entry")
+        other.add_to_hass(hass)
+
+        self.backfill(hass, entry, const.CLUSTER_UUID)
+
+        issue = ir.async_get(hass).async_get_issue(ELASTIC_DOMAIN, f"duplicate_cluster_{entry.entry_id}")
+        assert issue is not None
+        assert issue.severity is ir.IssueSeverity.WARNING
+        assert issue.is_fixable is False
+        assert issue.translation_key == "duplicate_cluster"
+        assert issue.translation_placeholders == {"entry_title": "this entry", "other_title": "other entry"}
+
+    async def test_duplicate_cluster_issue_cleared_by_backfill(self, hass, entry):
+        """Test that the issue clears when the entry is the only one left for its cluster."""
+        other = MockConfigEntry(domain=ELASTIC_DOMAIN, unique_id=const.CLUSTER_UUID, title="other entry")
+        other.add_to_hass(hass)
+        issue_registry = ir.async_get(hass)
+        issue_id = f"duplicate_cluster_{entry.entry_id}"
+
+        self.backfill(hass, entry, const.CLUSTER_UUID)
+        assert issue_registry.async_get_issue(ELASTIC_DOMAIN, issue_id) is not None
+
+        # Removing the other entry outside of Home Assistant, then loading this one again
+        hass.config_entries._entries.pop(other.entry_id)
+        self.backfill(hass, entry, const.CLUSTER_UUID)
+
+        assert entry.unique_id == const.CLUSTER_UUID
+        assert issue_registry.async_get_issue(ELASTIC_DOMAIN, issue_id) is None
+
+    async def test_removing_the_other_entry_clears_the_issue(self, hass, entry):
+        """Test that removing the entry that holds the cluster's UUID resolves the duplicate."""
+        other = MockConfigEntry(domain=ELASTIC_DOMAIN, unique_id=const.CLUSTER_UUID, title="other entry")
+        other.add_to_hass(hass)
+        issue_registry = ir.async_get(hass)
+        issue_id = f"duplicate_cluster_{entry.entry_id}"
+
+        entry.runtime_data = self.backfill(hass, entry, const.CLUSTER_UUID)
+        entry.mock_state(hass, ConfigEntryState.LOADED)
+        assert issue_registry.async_get_issue(ELASTIC_DOMAIN, issue_id) is not None
+
+        await hass.config_entries.async_remove(other.entry_id)
+
+        assert entry.unique_id == const.CLUSTER_UUID
+        assert issue_registry.async_get_issue(ELASTIC_DOMAIN, issue_id) is None
+
+    async def test_removing_an_entry_clears_its_issues(self, hass, entry):
+        """Test that removing an entry removes the issues raised for it."""
+        other = MockConfigEntry(domain=ELASTIC_DOMAIN, unique_id=const.CLUSTER_UUID, title="other entry")
+        other.add_to_hass(hass)
+        issue_registry = ir.async_get(hass)
+
+        self.backfill(hass, entry, const.CLUSTER_UUID)
+        with mock.patch(
+            f"{MODULE}.es_integration.ElasticIntegration.async_init",
+            side_effect=UnsupportedVersion("too old", version="8.13.4"),
+        ):
+            await hass.config_entries.async_setup(entry.entry_id)
+
+        assert (
+            issue_registry.async_get_issue(ELASTIC_DOMAIN, f"duplicate_cluster_{entry.entry_id}") is not None
+        )
+        assert (
+            issue_registry.async_get_issue(ELASTIC_DOMAIN, f"unsupported_version_{entry.entry_id}")
+            is not None
+        )
+
+        await hass.config_entries.async_remove(entry.entry_id)
+
+        assert issue_registry.async_get_issue(ELASTIC_DOMAIN, f"duplicate_cluster_{entry.entry_id}") is None
+        assert issue_registry.async_get_issue(ELASTIC_DOMAIN, f"unsupported_version_{entry.entry_id}") is None
+        assert other.unique_id == const.CLUSTER_UUID

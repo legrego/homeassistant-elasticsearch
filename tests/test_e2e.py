@@ -186,10 +186,7 @@ class Test_Normal_Configuration:
         assert config_entry.version == ElasticFlowHandler.VERSION
 
         assert config_entry.state is ConfigEntryState.SETUP_ERROR
-        assert (
-            config_entry.reason
-            == "Error retrieving cluster info from Elasticsearch. Authentication error connecting to Elasticsearch (type=security_exception; reason=missing authentication credentials for REST request [/?pretty])"
-        )
+        assert config_entry.error_reason_translation_key == "authentication_failed"
 
     async def test_setup_authorization_failure(
         self, hass: HomeAssistant, integration_setup, es_mock_builder, config_entry
@@ -203,7 +200,7 @@ class Test_Normal_Configuration:
         assert config_entry.version == ElasticFlowHandler.VERSION
 
         assert config_entry.state is ConfigEntryState.SETUP_ERROR
-        assert config_entry.reason == "could not authenticate"
+        assert config_entry.error_reason_translation_key == "authentication_failed"
 
     async def test_setup_fake_elasticsearch_error(
         self, hass: HomeAssistant, integration_setup, es_mock_builder, config_entry
@@ -217,10 +214,7 @@ class Test_Normal_Configuration:
         assert config_entry.version == ElasticFlowHandler.VERSION
 
         assert config_entry.state is ConfigEntryState.SETUP_ERROR
-        assert (
-            config_entry.reason
-            == "Error retrieving cluster info from Elasticsearch. Unsupported product error connecting to Elasticsearch"
-        )
+        assert config_entry.error_reason_translation_key == "unsupported_server"
 
     async def test_setup_ingestion_only_endpoint(self, integration_setup, es_mock_builder, config_entry):
         """An incompatible server should fail setup without scheduling retries."""
@@ -232,7 +226,7 @@ class Test_Normal_Configuration:
 
         assert await integration_setup() is False
         assert config_entry.state is ConfigEntryState.SETUP_ERROR
-        assert config_entry.reason == "The endpoint does not report supported Elasticsearch server metadata."
+        assert config_entry.error_reason_translation_key == "unsupported_server"
 
     async def test_setup_server_error(
         self, hass: HomeAssistant, integration_setup, es_mock_builder, config_entry
@@ -246,9 +240,10 @@ class Test_Normal_Configuration:
         assert config_entry.version == ElasticFlowHandler.VERSION
 
         assert config_entry.state is ConfigEntryState.SETUP_RETRY
-        assert (
-            config_entry.reason
-            == "Error retrieving cluster info from Elasticsearch. Error in request to Elasticsearch: 500"
+        assert config_entry.error_reason_translation_key == "cannot_connect"
+        assert config_entry.reason is not None
+        assert config_entry.reason.endswith(
+            "Error retrieving cluster info from Elasticsearch. Error in request to Elasticsearch: 500"
         )
 
     async def test_setup_server_timeout(
@@ -263,9 +258,10 @@ class Test_Normal_Configuration:
         assert config_entry.version == ElasticFlowHandler.VERSION
 
         assert config_entry.state is ConfigEntryState.SETUP_RETRY
-        assert (
-            config_entry.reason
-            == "Error retrieving cluster info from Elasticsearch. Connection timeout connecting to Elasticsearch"
+        assert config_entry.error_reason_translation_key == "cannot_connect"
+        assert config_entry.reason is not None
+        assert config_entry.reason.endswith(
+            "Error retrieving cluster info from Elasticsearch. Connection timeout connecting to Elasticsearch"
         )
 
     async def test_setup_tls_error(
@@ -280,9 +276,10 @@ class Test_Normal_Configuration:
         assert config_entry.version == ElasticFlowHandler.VERSION
 
         assert config_entry.state is ConfigEntryState.SETUP_RETRY
-        assert (
-            config_entry.reason
-            == "Error retrieving cluster info from Elasticsearch. Could not complete TLS Handshake. Cannot connect to host mock_es_integration:9200 ssl:True [SSLCertVerificationError: ()]"
+        assert config_entry.error_reason_translation_key == "cannot_connect"
+        assert config_entry.reason is not None
+        assert config_entry.reason.endswith(
+            "Error retrieving cluster info from Elasticsearch. Could not complete TLS Handshake. Cannot connect to host mock_es_integration:9200 ssl:True [SSLCertVerificationError: ()]"
         )
 
     async def test_setup_unsupported_error(
@@ -297,7 +294,7 @@ class Test_Normal_Configuration:
         assert config_entry.version == ElasticFlowHandler.VERSION
 
         assert config_entry.state is ConfigEntryState.SETUP_ERROR
-        assert config_entry.reason == "Elasticsearch version is not supported. Minimum version: (8, 14)"
+        assert config_entry.error_reason_translation_key == "unsupported_version"
 
 
 class Test_Publish_Disabled:

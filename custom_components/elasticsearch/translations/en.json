@@ -127,5 +127,38 @@
                 "attribute": "Track entities with attribute changes"
             }
         }
+    },
+    "exceptions": {
+        "unsupported_version": {
+            "message": "This version of Elasticsearch is not supported. The minimum supported version is {minimum_version}. Upgrade the cluster, then reload the entry."
+        },
+        "unsupported_server": {
+            "message": "This endpoint does not provide the required Elasticsearch server information. Connect to a supported Elasticsearch cluster, then reload the entry."
+        },
+        "invalid_ca_certificate": {
+            "message": "The certificate authority file {ca_path} could not be loaded. Check that the file is a readable, PEM-encoded certificate, or reconfigure the entry."
+        },
+        "cannot_connect": {
+            "message": "Unable to connect to Elasticsearch: {error}"
+        },
+        "authentication_failed": {
+            "message": "Elasticsearch rejected the credentials, or they lack the required privileges."
+        },
+        "integration_error": {
+            "message": "Unable to set up the integration: {error}"
+        },
+        "unexpected_error": {
+            "message": "An unexpected error occurred. Check the Home Assistant logs for details."
+        }
+    },
+    "issues": {
+        "duplicate_cluster": {
+            "title": "Two entries publish to the same Elasticsearch cluster",
+            "description": "The entries **{entry_title}** and **{other_title}** both publish to the same Elasticsearch cluster, so the same Home Assistant data is sent to it twice.\n\nRemove one of the entries from the Elasticsearch integration page. This issue clears once only one of them is left."
+        },
+        "unsupported_version": {
+            "title": "Elasticsearch {version} is not supported",
+            "description": "**{entry_title}** connects to Elasticsearch {version}, but this integration requires version {minimum_version} or later. Nothing is published until the cluster is upgraded.\n\nUpgrade the cluster, then reload the entry from the Elasticsearch integration page. This issue clears once the entry loads."
+        }
     }
 }

@@ -12,7 +12,7 @@ from homeassistant.loader import (
 )
 
 from custom_components.elasticsearch.config_flow import ElasticFlowHandler
-from custom_components.elasticsearch.const import ELASTIC_DOMAIN
+from custom_components.elasticsearch.const import CONF_SSL_CA_PATH, DOMAIN, ELASTIC_DOMAIN
 from custom_components.elasticsearch.errors import (
     AuthenticationRequired,
     CannotConnect,
@@ -20,6 +20,12 @@ from custom_components.elasticsearch.errors import (
     InvalidCACertificate,
     UnsupportedServer,
     UnsupportedVersion,
+)
+from custom_components.elasticsearch.issues import (
+    MINIMUM_VERSION,
+    async_create_unsupported_version_issue,
+    async_delete_issues,
+    async_delete_unsupported_version_issue,
 )
 from custom_components.elasticsearch.logger import (
     LOGGER,
@@ -51,18 +57,43 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ElasticIntegratio
     try:
         integration = ElasticIntegration(hass=hass, config_entry=config_entry, log=_logger)
         await integration.async_init()
-    except (UnsupportedVersion, InvalidCACertificate, UnsupportedServer) as err:
-        raise ConfigEntryError(err) from err
+    except UnsupportedVersion as err:
+        async_create_unsupported_version_issue(hass, config_entry, err.version)
+        raise ConfigEntryError(
+            translation_domain=DOMAIN,
+            translation_key="unsupported_version",
+            translation_placeholders={"minimum_version": MINIMUM_VERSION},
+        ) from err
+    except UnsupportedServer as err:
+        raise ConfigEntryError(translation_domain=DOMAIN, translation_key="unsupported_server") from err
+    except InvalidCACertificate as err:
+        raise ConfigEntryError(
+            translation_domain=DOMAIN,
+            translation_key="invalid_ca_certificate",
+            translation_placeholders={"ca_path": str(config_entry.data.get(CONF_SSL_CA_PATH))},
+        ) from err
     except CannotConnect as err:
-        raise ConfigEntryNotReady(err) from err
+        raise ConfigEntryNotReady(
+            translation_domain=DOMAIN,
+            translation_key="cannot_connect",
+            translation_placeholders={"error": str(err)},
+        ) from err
     except AuthenticationRequired as err:
-        raise ConfigEntryAuthFailed(err) from err
+        raise ConfigEntryAuthFailed(
+            translation_domain=DOMAIN, translation_key="authentication_failed"
+        ) from err
     except ESIntegrationException as err:
-        raise ConfigEntryNotReady(err) from err
+        raise ConfigEntryNotReady(
+            translation_domain=DOMAIN,
+            translation_key="integration_error",
+            translation_placeholders={"error": str(err)},
+        ) from err
     except Exception as err:
         msg = "Unknown error occurred"
         _logger.exception(msg)
-        raise ConfigEntryError(err) from err
+        raise ConfigEntryError(translation_domain=DOMAIN, translation_key="unexpected_error") from err
+
+    async_delete_unsupported_version_issue(hass, config_entry)
 
     config_entry.runtime_data = integration
     return True
@@ -86,6 +117,18 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ElasticIntegrati
         )
 
     return True
+
+
+async def async_remove_entry(hass: HomeAssistant, config_entry: ElasticIntegrationConfigEntry) -> None:
+    """Clean up after an entry is removed."""
+
+    async_delete_issues(hass, config_entry)
+
+    # An entry that shares a cluster with the removed one can now take the cluster's UUID,
+    # which also clears its duplicate cluster issue
+    for entry in hass.config_entries.async_loaded_entries(ELASTIC_DOMAIN):
+        if isinstance(getattr(entry, "runtime_data", None), ElasticIntegration):
+            entry.runtime_data.backfill_unique_id()
 
 
 @async_log_enter_exit_debug

@@ -76,7 +76,11 @@ rules:
   devices:
     status: exempt
     comment: The integration does not create any devices.
-  diagnostics: done
+  diagnostics:
+    status: done
+    comment: >-
+      Includes the cluster's version and build flavor, the last connection check, and the queue
+      size. Credentials are redacted, including any embedded in the URL.
   discovery:
     status: exempt
     comment: Elasticsearch does not advertise itself on the network.
@@ -84,19 +88,26 @@ rules:
     status: exempt
     comment: Elasticsearch does not advertise itself on the network.
   docs-data-update:
-    status: todo
-    comment: Publish intervals are documented, but behavior during an outage is not.
+    status: done
+    comment: >-
+      The integration sends data rather than fetching it, so this could be exempt.
+      docs/publishing.md documents how data is gathered and published, and what happens
+      during an outage.
   docs-examples:
-    status: todo
-    comment: There are no automation examples.
-  docs-known-limitations: todo
+    status: exempt
+    comment: >-
+      The rule exempts integrations that do not create entities or provide actions, and this
+      integration does neither.
+  docs-known-limitations:
+    status: done
+    comment: Known limitations are in docs/publishing.md.
   docs-supported-devices: done
   docs-supported-functions:
-    status: todo
-    comment: Field mappings are undocumented.
+    status: done
+    comment: docs/published_fields.md documents the fields each document contains.
   docs-troubleshooting:
-    status: todo
-    comment: TROUBLESHOOTING.md is dated and missing from the docs site.
+    status: done
+    comment: docs/troubleshooting.md.
   docs-use-cases: done
   dynamic-devices:
     status: exempt
@@ -113,12 +124,21 @@ rules:
   entity-translations:
     status: exempt
     comment: The integration does not create any entities.
-  exception-translations: todo
+  exception-translations:
+    status: done
+    comment: >-
+      Every exception raised during setup is translated. The exceptions in errors.py are caught
+      internally, and either raised as one of those or shown as a translated config flow error.
   icon-translations:
     status: exempt
     comment: The integration does not create any entities.
   reconfiguration-flow: done
-  repair-issues: todo
+  repair-issues:
+    status: done
+    comment: >-
+      Issues are raised when two entries publish to the same cluster, and when the cluster's
+      version is unsupported, and removed once the condition clears. A publish interval of 0 does
+      not raise one, because the options document it as the way to turn publishing off.
   stale-devices:
     status: exempt
     comment: The integration does not create any devices.
