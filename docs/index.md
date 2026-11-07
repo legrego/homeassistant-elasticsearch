@@ -17,7 +17,7 @@ Elasticsearch is a search and analytics engine for storing and exploring large a
 
 ## Compatibility
 
-- Elasticsearch 8.14+ (Self, [Cloud](https://www.elastic.co/cloud), or [Serverless](https://www.elastic.co/docs/current/serverless)).
+- Elasticsearch 8.14+, including 9.x (Self, [Cloud](https://www.elastic.co/cloud), or [Serverless](https://www.elastic.co/docs/current/serverless)).
 - [Elastic Common Schema version 1.0.0](https://github.com/elastic/ecs/releases/tag/v1.0.0)
 - [Home Assistant Community Store](https://github.com/custom-components/hacs)
 - Home Assistant >= 2026.10

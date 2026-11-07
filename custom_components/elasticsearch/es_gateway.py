@@ -21,7 +21,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import AsyncGenerator, Mapping
     from logging import Logger
 
-    from elasticsearch8._async.client import AsyncElasticsearch as AsyncElasticsearch8
+    from elasticsearch import AsyncElasticsearch
 
 
 @dataclass
@@ -40,7 +40,7 @@ class GatewaySettings(ABC):
     minimum_privileges: MappingProxyType[str, Any] = MappingProxyType[str, Any]({})
 
     @abstractmethod
-    def to_client(self) -> AsyncElasticsearch8:
+    def to_client(self) -> AsyncElasticsearch:
         """Return an Elasticsearch client."""
 
     def to_dict(self) -> dict:
@@ -101,7 +101,7 @@ class ElasticsearchGateway(ABC):
 
     @property
     @abstractmethod
-    def client(self) -> AsyncElasticsearch8:
+    def client(self) -> AsyncElasticsearch:
         """Return the underlying ES Client."""
 
     @property

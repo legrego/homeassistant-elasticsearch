@@ -8,8 +8,8 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import elastic_transport
-import elasticsearch8
-import elasticsearch8.helpers
+import elasticsearch
+import elasticsearch.helpers
 import pytest
 from aiohttp import client_exceptions
 from custom_components.elasticsearch.const import ES_CHECK_PERMISSIONS_DATASTREAM
@@ -27,9 +27,14 @@ from custom_components.elasticsearch.errors import (
 from custom_components.elasticsearch.es_gateway import (
     ElasticsearchGateway,
 )
-from custom_components.elasticsearch.es_gateway_8 import Elasticsearch8Gateway, Gateway8Settings
-from elastic_transport import ApiResponseMeta, BaseNode, ObjectApiResponse
-from elasticsearch8._async.client import AsyncElasticsearch
+from custom_components.elasticsearch.es_gateway_8 import (
+    CompatibilityTransport,
+    Elasticsearch8Gateway,
+    Gateway8Settings,
+)
+from elastic_transport import ApiResponseMeta, AsyncTransport, BaseNode, ObjectApiResponse
+from elastic_transport.client_utils import DEFAULT
+from elasticsearch import AsyncElasticsearch
 from homeassistant.util.ssl import client_context
 
 from tests import const as testconst
@@ -69,11 +74,11 @@ def mock_es_exception(exception, message="None"):
     """Return an AsyncMock that mocks an Elasticsearch API response."""
 
     # if it's a TransportError, we provide message
-    if issubclass(exception, elasticsearch8.TransportError):
+    if issubclass(exception, elasticsearch.TransportError):
         return AsyncMock(side_effect=exception(message=message))
 
     # if it's an APIerror we provide meta, body, message
-    if issubclass(exception, elasticsearch8.ApiError):
+    if issubclass(exception, elasticsearch.ApiError):
         return AsyncMock(side_effect=exception(meta=MagicMock, body=None, message=message))
 
 
@@ -174,7 +179,7 @@ async def gateway_mock_serverless(gateway_mock_shared: Elasticsearch8Gateway) ->
     gateway_mock_shared.client.xpack = MagicMock()
 
     gateway_mock_shared.client.xpack.usage = mock_es_exception(
-        elasticsearch8.ApiError, message="api_not_available_exception"
+        elasticsearch.ApiError, message="api_not_available_exception"
     )
 
     return gateway_mock_shared
@@ -419,7 +424,7 @@ class Test_Initialization:
     async def test_async_init_unauthenticated(self, gateway_mock_stateful) -> None:
         """Test the async_init method with an unauthenticated session."""
 
-        gateway_mock_stateful._client.info = mock_es_exception(elasticsearch8.AuthenticationException)
+        gateway_mock_stateful._client.info = mock_es_exception(elasticsearch.AuthenticationException)
 
         with pytest.raises(AuthenticationRequired):
             await gateway_mock_stateful.async_init()
@@ -435,7 +440,7 @@ class Test_Initialization:
     async def test_async_init_unauthorized(self, gateway_mock_stateful) -> None:
         """Test the async_init method unauthorized."""
 
-        gateway_mock_stateful._client.info = mock_es_exception(elasticsearch8.AuthorizationException)
+        gateway_mock_stateful._client.info = mock_es_exception(elasticsearch.AuthorizationException)
 
         with pytest.raises(InsufficientPrivileges):
             assert await gateway_mock_stateful.async_init() is None
@@ -443,10 +448,88 @@ class Test_Initialization:
     async def test_async_init_unreachable(self, gateway_mock_stateful) -> None:
         """Test the async_init method with unreachable Elasticsearch."""
 
-        gateway_mock_stateful._client.info = mock_es_exception(elasticsearch8.ConnectionTimeout)
+        gateway_mock_stateful._client.info = mock_es_exception(elasticsearch.ConnectionTimeout)
 
         with pytest.raises(CannotConnect):
             assert await gateway_mock_stateful.async_init() is None
+
+
+class Test_Compatibility:
+    """Tests for the REST API compatibility version the client asks for."""
+
+    @pytest.mark.parametrize(
+        ("headers", "expected"),
+        [
+            (
+                {"accept": "application/vnd.elasticsearch+json; compatible-with=9"},
+                {"accept": "application/vnd.elasticsearch+json; compatible-with=8"},
+            ),
+            (
+                {
+                    "accept": "application/vnd.elasticsearch+json; compatible-with=9",
+                    "content-type": "application/vnd.elasticsearch+x-ndjson; compatible-with=9",
+                    "authorization": "ApiKey compatible-with=9",
+                },
+                {
+                    "accept": "application/vnd.elasticsearch+json; compatible-with=8",
+                    "content-type": "application/vnd.elasticsearch+x-ndjson; compatible-with=8",
+                    "authorization": "ApiKey compatible-with=9",
+                },
+            ),
+            (
+                {"Accept": "application/json"},
+                {"accept": "application/json"},
+            ),
+        ],
+        ids=["Accept", "Accept, Content-Type and other headers", "No compatibility version"],
+    )
+    async def test_rewrites_compatibility_version(self, headers, expected) -> None:
+        """Test that only the compatibility version in Accept and Content-Type changes."""
+
+        transport = Gateway8Settings(url=testconst.CONFIG_ENTRY_DATA_URL).to_client().transport
+        assert isinstance(transport, CompatibilityTransport)
+
+        with patch.object(AsyncTransport, "perform_request", AsyncMock()) as perform_request:
+            await transport.perform_request("GET", "/", headers=headers, request_timeout=5)
+
+        sent = perform_request.call_args.kwargs
+        assert {name.lower(): value for name, value in sent["headers"].items()} == expected
+        assert sent["request_timeout"] == 5
+
+    async def test_no_headers(self) -> None:
+        """Test that a request without headers is passed through unchanged."""
+
+        transport = Gateway8Settings(url=testconst.CONFIG_ENTRY_DATA_URL).to_client().transport
+
+        with patch.object(AsyncTransport, "perform_request", AsyncMock()) as perform_request:
+            await transport.perform_request("GET", "/")
+
+        assert perform_request.call_args.kwargs["headers"] is DEFAULT
+
+    async def test_requests_ask_for_compatibility_with_8(self, gateway_settings, es_mock_builder) -> None:
+        """Test that every request sent by the client asks for compatibility with version 8."""
+
+        es_mock_builder.as_elasticsearch_8_17().respond_to_bulk()
+        gateway = Elasticsearch8Gateway(gateway_settings=gateway_settings)
+        gateway._client = gateway_settings.to_client()
+
+        async def actions():
+            yield {"_op_type": "create", "_index": "metrics-homeassistant.sensor-default", "a": 1}
+
+        try:
+            await gateway.info()
+            await gateway.bulk(actions())
+        finally:
+            await gateway.stop()
+
+        calls = es_mock_builder.get_calls(include_headers=True)
+        assert [method for method, _, _, _ in calls] == ["GET", "PUT"]
+
+        for _, _, _, headers in calls:
+            headers = {name.lower(): value for name, value in headers.items()}
+            assert headers["accept"].endswith("compatible-with=8")
+
+        assert calls[1][3]["content-type"] == "application/vnd.elasticsearch+x-ndjson; compatible-with=8"
 
 
 class Test_Public_Functions:
@@ -458,15 +541,15 @@ class Test_Public_Functions:
 
     async def test_ping_fail(self, gateway_mock_stateful) -> None:
         """Test the ping method."""
-        gateway_mock_stateful._client.info = mock_es_exception(elasticsearch8.AuthenticationException)
+        gateway_mock_stateful._client.info = mock_es_exception(elasticsearch.AuthenticationException)
         with pytest.raises(AuthenticationRequired):
             await gateway_mock_stateful.ping()
 
-        gateway_mock_stateful._client.info = mock_es_exception(elasticsearch8.AuthorizationException)
+        gateway_mock_stateful._client.info = mock_es_exception(elasticsearch.AuthorizationException)
         with pytest.raises(AuthenticationRequired):
             await gateway_mock_stateful.ping()
 
-        gateway_mock_stateful._client.info = mock_es_exception(elasticsearch8.ConnectionTimeout)
+        gateway_mock_stateful._client.info = mock_es_exception(elasticsearch.ConnectionTimeout)
         assert await gateway_mock_stateful.ping() is False
 
     async def test_has_security_stateful_success(self, gateway_mock_stateful):
@@ -712,44 +795,44 @@ class Test_Exception_Conversion:
         ("exception", "expected_exception", "message"),
         [
             (
-                elasticsearch8.UnsupportedProductError(
+                elasticsearch.UnsupportedProductError(
                     message="Unknown product", meta=mock_api_response_meta(), body={}
                 ),
                 UnsupportedServer,
                 "Unsupported product",
             ),
             (
-                elasticsearch8.TransportError(message="Test Case"),
+                elasticsearch.TransportError(message="Test Case"),
                 CannotConnect,
                 "Unknown transport error connecting to Elasticsearch",
             ),
             (
-                elasticsearch8.AuthenticationException(message="Test Case", meta=MagicMock(), body=None),
+                elasticsearch.AuthenticationException(message="Test Case", meta=MagicMock(), body=None),
                 AuthenticationRequired,
                 "Authentication error connecting to Elasticsearch",
             ),
             (
-                elasticsearch8.AuthorizationException(message="Test Case", meta=MagicMock(), body=None),
+                elasticsearch.AuthorizationException(message="Test Case", meta=MagicMock(), body=None),
                 InsufficientPrivileges,
                 "Authorization error connecting to Elasticsearch",
             ),
             (
-                elasticsearch8.ConnectionTimeout(message="Test Case"),
+                elasticsearch.ConnectionTimeout(message="Test Case"),
                 CannotConnect,
                 "Connection timeout connecting to Elasticsearch",
             ),
             (
-                elasticsearch8.SSLError(message="Test Case"),
+                elasticsearch.SSLError(message="Test Case"),
                 UntrustedCertificate,
                 "Could not complete TLS Handshake",
             ),
             (
-                elasticsearch8.ConnectionError(message="Test Case"),
+                elasticsearch.ConnectionError(message="Test Case"),
                 CannotConnect,
                 "Error connecting to Elasticsearch",
             ),
             (
-                elasticsearch8.ApiError(
+                elasticsearch.ApiError(
                     message="Test Case",
                     meta=mock_api_response_meta(status_code=None),
                     body=None,
@@ -758,7 +841,7 @@ class Test_Exception_Conversion:
                 "Unknown API Error in request to Elasticsearch",
             ),
             (
-                elasticsearch8.ApiError(
+                elasticsearch.ApiError(
                     message="Test Case", meta=mock_api_response_meta(status_code=400), body=None
                 ),
                 ServerError,

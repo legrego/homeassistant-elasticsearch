@@ -15,8 +15,9 @@
   "loggers": [
     "custom_components.elasticsearch"
   ],
+  "quality_scale": "bronze",
   "requirements": [
-    "elasticsearch8==8.14.0"
+    "elasticsearch==9.5.1"
   ],
   "version": "2.0.0"
 }

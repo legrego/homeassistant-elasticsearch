@@ -5,11 +5,13 @@ description = ""
 authors = ["Larry Gregory <lgregorydev@gmail.com>"]
 license = "MIT"
 readme = "README.md"
-packages = [{ include = "elasticsearch", from = "custom_components" }]
+# The integration is not installed as a package. Installing it would put a top-level
+# `elasticsearch` package on the path, which would shadow the Elasticsearch client.
+package-mode = false
 
 [tool.poetry.dependencies]
 python = ">=3.14.2,<4.0"
-elasticsearch8 = "~=8.14.0"
+elasticsearch = "==9.5.1"
 
 [tool.poetry.group.dev.dependencies]
 colorlog = "==6.12.0"

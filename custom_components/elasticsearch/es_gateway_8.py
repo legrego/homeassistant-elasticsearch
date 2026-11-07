@@ -3,20 +3,26 @@
 from __future__ import annotations
 
 import asyncio
+import re
 import ssl
 from collections import OrderedDict
+from collections.abc import Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 
-import elasticsearch8
-from elastic_transport import ObjectApiResponse
-from elasticsearch8._async.client import AsyncElasticsearch
-from elasticsearch8.helpers import async_streaming_bulk
+import elasticsearch
+from elastic_transport import AsyncTransport, HttpHeaders, ObjectApiResponse, TransportApiResponse
+from elastic_transport.client_utils import DEFAULT, DefaultType
+from elasticsearch import AsyncElasticsearch
+from elasticsearch.helpers import async_streaming_bulk
 from homeassistant.util.ssl import create_client_context, create_no_verify_ssl_context
 
-from custom_components.elasticsearch.const import ES_CHECK_PERMISSIONS_DATASTREAM
+from custom_components.elasticsearch.const import (
+    ELASTIC_COMPATIBILITY_VERSION,
+    ES_CHECK_PERMISSIONS_DATASTREAM,
+)
 from custom_components.elasticsearch.encoder import Serializer
 from custom_components.elasticsearch.errors import (
     AuthenticationRequired,
@@ -33,8 +39,40 @@ from .logger import LOGGER as BASE_LOGGER
 from .logger import async_log_enter_exit_debug
 
 if TYPE_CHECKING:  # pragma: no cover
-    from collections.abc import AsyncGenerator, Iterator, Mapping
+    from collections.abc import AsyncGenerator, Iterator
     from logging import Logger
+
+
+_COMPATIBLE_WITH = re.compile(r"compatible-with=\d+")
+_COMPATIBLE_WITH_VERSION = f"compatible-with={ELASTIC_COMPATIBILITY_VERSION}"
+_COMPATIBILITY_HEADERS = ("accept", "content-type")
+
+
+class CompatibilityTransport(AsyncTransport):
+    """Transport that asks Elasticsearch for a fixed REST API compatibility version.
+
+    The client asks for compatibility with its own major version, but Elasticsearch only accepts
+    its own major version and the one before it. Asking for an older version lets one client work
+    with every cluster version the integration supports.
+    """
+
+    async def perform_request(  # type: ignore[override]
+        self,
+        method: str,
+        target: str,
+        *,
+        headers: Mapping[str, Any] | DefaultType = DEFAULT,
+        **kwargs: Any,
+    ) -> TransportApiResponse:
+        """Rewrite the compatibility version in the request headers, then send the request."""
+
+        if isinstance(headers, Mapping):
+            headers = HttpHeaders(headers)
+            for name in _COMPATIBILITY_HEADERS:
+                if name in headers:
+                    headers[name] = _COMPATIBLE_WITH.sub(_COMPATIBLE_WITH_VERSION, headers[name])
+
+        return await super().perform_request(method, target, headers=headers, **kwargs)
 
 
 @dataclass
@@ -71,6 +109,7 @@ class Gateway8Settings(GatewaySettings):
             "hosts": [self.url],
             "serializer": Serializer(),
             "request_timeout": self.request_timeout,
+            "transport_class": CompatibilityTransport,
         }
 
         if self.url.startswith("https"):
@@ -325,7 +364,7 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
 
             return f"{msg}. {append_msg}"
 
-        def append_cause(err: elasticsearch8.ApiError, msg: str) -> str:
+        def append_cause(err: elasticsearch.ApiError, msg: str) -> str:
             """Append the root cause to the error message."""
             if err.info is None or err.info.get("error", None) is None:
                 return msg
@@ -347,39 +386,39 @@ class Elasticsearch8Gateway(ElasticsearchGateway):
         try:
             yield
 
-        except elasticsearch8.UnsupportedProductError as err:
+        except elasticsearch.UnsupportedProductError as err:
             # The HTTP response didn't include headers={"x-elastic-product": "Elasticsearch"}
             raise UnsupportedServer(
                 append_msg("Unsupported product error connecting to Elasticsearch")
             ) from err
 
-        except elasticsearch8.AuthenticationException as err:
+        except elasticsearch.AuthenticationException as err:
             raise AuthenticationRequired(
                 append_cause(err, append_msg("Authentication error connecting to Elasticsearch"))
             ) from err
 
-        except elasticsearch8.AuthorizationException as err:
+        except elasticsearch.AuthorizationException as err:
             raise InsufficientPrivileges(
                 append_cause(err, append_msg("Authorization error connecting to Elasticsearch"))
             ) from err
 
-        except elasticsearch8.ConnectionTimeout as err:
+        except elasticsearch.ConnectionTimeout as err:
             raise ServerError(append_msg("Connection timeout connecting to Elasticsearch")) from err
 
-        except elasticsearch8.SSLError as err:
+        except elasticsearch.SSLError as err:
             raise UntrustedCertificate(
                 append_msg(f"Could not complete TLS Handshake. {err.message}")
             ) from err
 
-        except elasticsearch8.ConnectionError as err:
+        except elasticsearch.ConnectionError as err:
             raise CannotConnect(append_msg(f"Error connecting to Elasticsearch. {err.message}")) from err
 
-        except elasticsearch8.TransportError as err:
+        except elasticsearch.TransportError as err:
             raise CannotConnect(
                 append_msg(f"Unknown transport error connecting to Elasticsearch: {err.message}")
             ) from err
 
-        except elasticsearch8.ApiError as err:
+        except elasticsearch.ApiError as err:
             if err.status_code is not None:
                 raise ServerError(
                     append_msg(f"Error in request to Elasticsearch: {err.status_code}")
