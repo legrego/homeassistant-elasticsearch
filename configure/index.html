@@ -365,6 +365,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#query-only-connections" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Query-only connections
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#add-the-integration" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -464,6 +475,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#publish-elasticsearch-query-sensors" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Publish Elasticsearch query sensors
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -546,6 +568,32 @@
     
   
   Querying Elasticsearch
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../query_sensors/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Query sensors
 
     
   </span>
@@ -744,6 +792,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#query-only-connections" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Query-only connections
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#add-the-integration" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -843,6 +902,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#publish-elasticsearch-query-sensors" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Publish Elasticsearch query sensors
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -912,7 +982,7 @@
 <p>Use the URL of a supported Elasticsearch cluster. An Elasticsearch-compatible
 ingestion endpoint, such as VictoriaLogs' <code>/insert/elasticsearch/</code>, is not
 sufficient: this integration also requires Elasticsearch cluster metadata,
-security APIs, index templates, and data streams. Incompatible server metadata
+security APIs, and, when publishing is enabled, index templates and data streams. Incompatible server metadata
 is reported as an unsupported server during setup.</p>
 <p>Existing entries stop retrying setup when the server metadata is incompatible or
 a successful response is missing the <code>X-Elastic-Product: Elasticsearch</code> header.
@@ -1027,6 +1097,22 @@ POST /_security/user/home_assistant
 </code></pre></div>
 <p>The integration checks these privileges when you add it, and shows an error if any are missing. If an existing entry loses them, Home Assistant asks you to reauthenticate.</p>
 <p>These privileges only allow publishing. To <a href="../querying/">run queries</a>, the credentials also need the <a href="../querying/#requirements"><code>read</code> privilege</a> on the indices you query.</p>
+<h2 id="query-only-connections">Query-only connections<a class="headerlink" href="#query-only-connections" title="Permanent link">#</a></h2>
+<p>Turn off <strong>Enable publishing</strong> on the initial connection form, or use <strong>Reconfigure</strong> on an existing connection to turn it off. The integration skips the publishing pipeline, template/data-stream initialization, and publishing privilege checks. Existing installations keep publishing enabled unless you change this setting. Setting the publish interval to zero only stops sending events; use <strong>Enable publishing</strong> to avoid write-side setup entirely.</p>
+<p>Query-only credentials need cluster <code>monitor</code> for the cluster information and X-Pack usage checks performed during connection validation, plus <code>read</code> on every source index named in <code>FROM</code>. The integration checks cluster privileges during setup; index permissions are checked when each query executes. For example, create an API key with this role descriptor:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"home_assistant_queries"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"role_descriptors"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">"hass_reader"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">"cluster"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"monitor"</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">"indices"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="p">{</span><span class="nt">"names"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"weather-*"</span><span class="p">,</span><span class="w"> </span><span class="s2">"metrics-homeassistant.*"</span><span class="p">],</span><span class="w"> </span><span class="nt">"privileges"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"read"</span><span class="p">]}</span>
+<span class="w">      </span><span class="p">]</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Send this body to <code>POST /_security/api_key</code> as shown in the credentials examples above and use the returned <code>encoded</code> value. To enable publishing later, reconfigure the connection and provide credentials with the publishing privileges; the form validates them before saving. Queries require <a href="../querying/#requirements">newer Elasticsearch versions</a> than publishing.</p>
 <h2 id="add-the-integration">Add the integration<a class="headerlink" href="#add-the-integration" title="Permanent link">#</a></h2>
 <p>This component is configured interactively via Home Assistant's integration configuration page.</p>
 <ol>
@@ -1039,6 +1125,7 @@ POST /_security/user/home_assistant
 </ol>
 <p>The setup asks for the following, depending on your cluster:</p>
 <ul>
+<li><code>Enable publishing</code> - Defaults to enabled. Turn off for a query-only connection without write-side setup.</li>
 <li><code>URL to access the Elasticsearch Cluster</code> - The address of your cluster, including the scheme and port.</li>
 <li><code>Verify TLS certificate</code> - Check that the server's certificate is signed by a trusted certificate authority. Only asked when the certificate is not trusted. Turning this off leaves the connection open to interception.</li>
 <li><code>Verify hostname matches server certificate</code> - Check that the certificate was issued for the host in the URL. This only applies when the certificate is verified.</li>
@@ -1052,6 +1139,7 @@ POST /_security/user/home_assistant
 <p>To change the URL or TLS settings of an existing integration entry, open the entry's menu on the <a href="https://my.home-assistant.io/redirect/integration/?domain=elasticsearch" target="_blank">integrations page</a> and select <code>Reconfigure</code>. Your credentials and configuration options are kept.</p>
 <p>The form shows the entry's current settings:</p>
 <ul>
+<li><code>Enable publishing</code> - Defaults to enabled. Turn off for a query-only connection without write-side setup.</li>
 <li><code>URL to access the Elasticsearch Cluster</code> - The address of your cluster, including the scheme and port.</li>
 <li><code>Verify TLS certificate</code> - Check that the server's certificate is signed by a trusted certificate authority.</li>
 <li><code>Verify hostname matches server certificate</code> - Check that the certificate was issued for the host in the URL.</li>
@@ -1083,6 +1171,8 @@ POST /_security/user/home_assistant
 <p>Label targets match labels assigned directly to either the entity or its device. See <a href="../published_fields/">Published fields</a> for how labels, areas, and floors appear in Elasticsearch documents.</p>
 <h3 id="toggle-to-exclude-publishing-the-set-of-targets-below">Toggle to exclude publishing the set of targets below<a class="headerlink" href="#toggle-to-exclude-publishing-the-set-of-targets-below" title="Permanent link">#</a></h3>
 <p>Pick floor, area, device, entity, or labels and exclude events from one of these targets. If you select multiple targets, events that match any of the targets will be excluded. If you also configure <code>Toggle to only publish the set of targets below</code>, the exclusion will be applied after the inclusion.</p>
+<h3 id="publish-elasticsearch-query-sensors">Publish Elasticsearch query sensors<a class="headerlink" href="#publish-elasticsearch-query-sensors" title="Permanent link">#</a></h3>
+<p>Off by default to prevent feedback into source queries. When enabled, query sensors are eligible for publishing and the normal target filters still apply. See <a href="../query_sensors/">query sensors</a>.</p>
 <h2 id="advanced-configuration">Advanced configuration<a class="headerlink" href="#advanced-configuration" title="Permanent link">#</a></h2>
 <h3 id="custom-certificate-authority-ca">Custom certificate authority (CA)<a class="headerlink" href="#custom-certificate-authority-ca" title="Permanent link">#</a></h3>
 <p>This component will use the system's default certificate authority (CA) bundle to verify the Elasticsearch server's certificate. If you need to use a custom CA, you can provide the path to the CA file in the integration configuration.</p>

@@ -352,6 +352,32 @@
   
   
     <li class="md-nav__item">
+      <a href="../query_sensors/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Query sensors
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../using_kibana/" class="md-nav__link">
         
   
@@ -654,6 +680,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#query-sensor-unavailable-or-unknown" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Query sensor unavailable or unknown
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -828,6 +865,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#query-sensor-unavailable-or-unknown" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Query sensor unavailable or unknown
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -938,6 +986,8 @@
 </div>
 <h3 id="download-diagnostics">Download diagnostics<a class="headerlink" href="#download-diagnostics" title="Permanent link">#</a></h3>
 <p>On the <a href="https://my.home-assistant.io/redirect/integration/?domain=elasticsearch" target="_blank">integration page</a>, open the entry's menu and select <code>Download diagnostics</code>. The file contains the entry's settings and options, the cluster's version, whether the connection is up, and how many events are waiting to be published. Usernames, passwords, API keys, and credentials in the URL are redacted.</p>
+<h2 id="query-sensor-unavailable-or-unknown">Query sensor unavailable or unknown<a class="headerlink" href="#query-sensor-unavailable-or-unknown" title="Permanent link">#</a></h2>
+<p><code>unknown</code> means the query returned no rows or a null value. Zero is a valid reading. <code>unavailable</code> means a query, mapping, permission, or freshness check failed. Inspect Repairs and the connection diagnostics for a sanitized error category, or run the query with the <a href="../querying/">query action</a> to see its warnings and detailed errors. Check the <a href="../query_sensors/#result-behavior">sensor result contract</a>, especially multiple rows, timestamp age, and metadata compatibility. Reconfigure the saved query to correct it; successful polling clears its Repair.</p>
 
 
 

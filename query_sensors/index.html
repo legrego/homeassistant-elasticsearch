@@ -1,0 +1,1055 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://legrego.github.io/homeassistant-elasticsearch/query_sensors/">
+      
+      
+      
+        <link rel="prev" href="../querying/">
+      
+      
+        <link rel="next" href="../using_kibana/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.1.0">
+    
+    
+      
+        <title>Query sensors - Elasticsearch Component for Home Assistant</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../assets/stylesheets/classic/main.94dd801d.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../assets/stylesheets/classic/palette.813d4b3f.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,500,500i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-hidden="true"></label>
+    <div data-md-component="skip">
+      <a href="#__skip" class="md-skip">
+        Skip to content
+      </a>
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="./.." title="Elasticsearch Component for Home Assistant" class="md-header__button md-logo" aria-label="Elasticsearch Component for Home Assistant" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+      <span class="md-visually-hidden">Navigation</span>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Elasticsearch Component for Home Assistant
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Query sensors
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+          <span class="md-visually-hidden">Search</span>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="./.." title="Elasticsearch Component for Home Assistant" class="md-nav__button md-logo" aria-label="Elasticsearch Component for Home Assistant" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Elasticsearch Component for Home Assistant
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Introduction
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Installation
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Configuration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../publishing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  How publishing works
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../querying/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Querying Elasticsearch
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+        <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Query sensors
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Query sensors
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#add-a-sensor" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Add a sensor
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Configuration fields
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#result-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Result behavior
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Examples
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#latest-outdoor-temperature-with-freshness" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Latest outdoor temperature with freshness
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#average-temperature-in-the-last-hour" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Average temperature in the last hour
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#polling-and-recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Polling and recovery
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#publishing-and-removal" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Publishing and removal
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../using_kibana/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Using Kibana
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../published_fields/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Published fields
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ingest_advanced/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Advanced ingest configuration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shipping_logs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Shipping logs
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Troubleshooting
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#add-a-sensor" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Add a sensor
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Configuration fields
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#result-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Result behavior
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Examples
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#latest-outdoor-temperature-with-freshness" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Latest outdoor temperature with freshness
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#average-temperature-in-the-last-hour" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Average temperature in the last hour
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#polling-and-recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Polling and recovery
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#publishing-and-removal" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Publishing and removal
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+              
+              <article class="md-content__inner md-typeset">
+                <a id="__skip" tabindex="-1"></a>
+                
+                  
+
+
+<h1 id="query-sensors">Query sensors<a class="headerlink" href="#query-sensors" title="Permanent link">#</a></h1>
+<p>A query sensor periodically runs a saved ES|QL query and exposes one selected column as a Home Assistant sensor. Use it for a recent reading, an aggregate over a time window, or data collected outside Home Assistant. Each saved query creates one sensor.</p>
+<p>Sensors share the connection, credentials, TLS settings, query runner, <a href="../querying/#requirements">version requirements</a>, and <a href="../querying/#limits">result limits</a> of the query action. A query-only connection does not need publishing privileges or create data streams; see <a href="../configure/#query-only-connections">query-only setup</a>.</p>
+<h2 id="add-a-sensor">Add a sensor<a class="headerlink" href="#add-a-sensor" title="Permanent link">#</a></h2>
+<ol>
+<li>Open <strong>Settings → Devices &amp; services → Elasticsearch</strong> and choose <strong>Add query sensor</strong> on the connection.</li>
+<li>Enter a name, an ES|QL query, and optional positional parameters as a JSON array. Parameters bind to <code>?</code> placeholders; they are never interpolated into the query text.</li>
+<li>Continue to execute the query and preview its columns and values. The preview shows at most 30 columns and 256 characters per cell; validation uses the complete result. Correct any query errors before continuing.</li>
+<li>If the query returns no rows, an explicit <strong>No observations yet</strong> step lets you continue. Its column metadata is still available for selection.</li>
+<li>Select the value column by name, then configure the refresh interval and optional metadata and freshness settings. Save to create the sensor.</li>
+</ol>
+<p>A connection must be loaded to add or reconfigure a sensor. For query errors, the form remains editable. Use the <a href="../querying/">query action</a> to inspect execution warnings or Elasticsearch's detailed rejection reason.</p>
+<h2 id="configuration-fields">Configuration fields<a class="headerlink" href="#configuration-fields" title="Permanent link">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Required</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Sensor name</td>
+<td>Yes</td>
+<td>A name you choose. Renaming preserves the entity's ID and history.</td>
+</tr>
+<tr>
+<td>ES|QL query</td>
+<td>Yes</td>
+<td>A static query returning at most one row. Select indices, aliases, or data streams in <code>FROM</code>.</td>
+</tr>
+<tr>
+<td>Positional parameters</td>
+<td>No</td>
+<td>A JSON array such as <code>["sensor.outdoor_temperature", 10]</code>. Values may be strings, finite numbers, booleans, or <code>null</code>. Default: <code>[]</code>.</td>
+</tr>
+<tr>
+<td>Value column</td>
+<td>Yes</td>
+<td>The result column to expose, identified by its name. Extra columns are allowed.</td>
+</tr>
+<tr>
+<td>Refresh interval</td>
+<td>Yes</td>
+<td>Seconds between completed polls: 10–86400, default 60. Home Assistant may round the scheduled poll by up to a second.</td>
+</tr>
+<tr>
+<td>Unit of measurement</td>
+<td>No</td>
+<td>An explicit physical unit. It must be compatible with the selected device class. Providing a unit requires a numeric result.</td>
+</tr>
+<tr>
+<td>Device class</td>
+<td>No</td>
+<td>A supported Home Assistant sensor class, such as temperature, energy, date, timestamp, or uptime. Enumeration sensors are not supported.</td>
+</tr>
+<tr>
+<td>State class</td>
+<td>No</td>
+<td><code>measurement</code>, <code>total</code>, or <code>total_increasing</code>, compatible with the device class. Choose only when the query has those statistics semantics.</td>
+</tr>
+<tr>
+<td>Observation timestamp column</td>
+<td>No</td>
+<td>A <code>date</code> or <code>date_nanos</code> column identifying when the source observation occurred. Requires a maximum age.</td>
+</tr>
+<tr>
+<td>Maximum source-data age</td>
+<td>No</td>
+<td>1–31536000 seconds. Requires the observation timestamp column. The sensor becomes unavailable when the observation reaches this age, even between polls.</td>
+</tr>
+</tbody>
+</table>
+<p>Units and statistics semantics are never inferred from ES|QL numeric types. For example, an average temperature can use <code>measurement</code>; a rolling count should not be marked <code>total_increasing</code>. Use ES|QL functions for calculation, conversion, and scalar extraction. Query text and parameters are static: there is no Jinja template or value-template field.</p>
+<h2 id="result-behavior">Result behavior<a class="headerlink" href="#result-behavior" title="Permanent link">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Result</th>
+<th>Sensor state</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>One row with a supported scalar</td>
+<td>The selected value</td>
+</tr>
+<tr>
+<td>No rows, or a null selected value</td>
+<td><code>unknown</code></td>
+</tr>
+<tr>
+<td>Explicit numeric zero</td>
+<td><code>0</code></td>
+</tr>
+<tr>
+<td>Multiple rows</td>
+<td>Rejected during setup; <code>unavailable</code> at runtime</td>
+</tr>
+<tr>
+<td>Missing column, array, object, boolean, unsupported type, or incompatible metadata</td>
+<td>Rejected during setup; <code>unavailable</code> at runtime</td>
+</tr>
+<tr>
+<td>Connection, permission, execution, partial-result, or size-limit error</td>
+<td><code>unavailable</code>; polling retries automatically</td>
+</tr>
+<tr>
+<td>Invalid or future observation timestamp</td>
+<td>Rejected during setup; <code>unavailable</code> at runtime</td>
+</tr>
+<tr>
+<td>Observation older than the maximum age</td>
+<td>Rejected during setup; <code>unavailable</code> at runtime</td>
+</tr>
+</tbody>
+</table>
+<p>Supported values are finite numbers and text of at most 255 characters. Text columns include ES|QL keyword, text, IP, and version values. Date, timestamp, and uptime device classes require a date/date_nanos column; timestamp strings must include a timezone. Uptime uses the source timestamp as the device start time, rather than a numeric duration. Monetary sensors allow currency units such as <code>USD</code>. A null value has no observation to expire and remains unknown. No query rows or additional columns are copied into entity attributes.</p>
+<p>All execution warnings prevent a reading from being accepted, except Elasticsearch's warning that it added its default row limit when the result is below that limit. This deliberately rejects warnings about ignored values, failed calculations, and unrecognized warning categories. The action returns those warnings for inspection.</p>
+<p>For a latest-value query, explicitly use <code>SORT ... DESC | LIMIT 1</code>. The integration never chooses the first of multiple rows or appends a limit. For an aggregate, deliberately return one summary row with <code>STATS</code>.</p>
+<h2 id="examples">Examples<a class="headerlink" href="#examples" title="Permanent link">#</a></h2>
+<h3 id="latest-outdoor-temperature-with-freshness">Latest outdoor temperature with freshness<a class="headerlink" href="#latest-outdoor-temperature-with-freshness" title="Permanent link">#</a></h3>
+<p>Enter this query:</p>
+<div class="highlight"><pre><span></span><code>FROM metrics-homeassistant.sensor-default
+| WHERE hass.entity.id == ?
+| SORT @timestamp DESC
+| LIMIT 1
+| KEEP @timestamp, hass.entity.valueas.float
+| RENAME hass.entity.valueas.float AS temperature
+</code></pre></div>
+<p>Use these settings:</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Name</td>
+<td>Outdoor temperature from Elasticsearch</td>
+</tr>
+<tr>
+<td>Parameters</td>
+<td><code>["sensor.outdoor_temperature"]</code></td>
+</tr>
+<tr>
+<td>Value column</td>
+<td><code>temperature</code></td>
+</tr>
+<tr>
+<td>Refresh interval</td>
+<td><code>60</code></td>
+</tr>
+<tr>
+<td>Unit</td>
+<td><code>°C</code> (only if the source is Celsius)</td>
+</tr>
+<tr>
+<td>Device class</td>
+<td><code>temperature</code></td>
+</tr>
+<tr>
+<td>State class</td>
+<td><code>measurement</code></td>
+</tr>
+<tr>
+<td>Observation timestamp</td>
+<td><code>@timestamp</code></td>
+</tr>
+<tr>
+<td>Maximum age</td>
+<td><code>300</code></td>
+</tr>
+</tbody>
+</table>
+<p>A successfully fetched document from six minutes ago is unavailable. A current document expires five minutes after its observation time even if the next poll has not happened yet.</p>
+<h3 id="average-temperature-in-the-last-hour">Average temperature in the last hour<a class="headerlink" href="#average-temperature-in-the-last-hour" title="Permanent link">#</a></h3>
+<div class="highlight"><pre><span></span><code>FROM metrics-homeassistant.sensor-default
+| WHERE hass.entity.id == ? AND @timestamp &gt;= NOW() - 1 hour
+| STATS average_temperature = AVG(hass.entity.valueas.float), observed = MAX(@timestamp)
+| LIMIT 1
+</code></pre></div>
+<p>Use parameters <code>["sensor.outdoor_temperature"]</code>, value column <code>average_temperature</code>, a 60-second refresh, and the appropriate temperature unit and <code>measurement</code> state class. Optionally select <code>observed</code> with a maximum age of 300 seconds to require at least one recent observation. If there are no matching temperature readings, the aggregate value is null and the sensor is unknown.</p>
+<h2 id="polling-and-recovery">Polling and recovery<a class="headerlink" href="#polling-and-recovery" title="Permanent link">#</a></h2>
+<p>Each sensor has its own coordinator. Queries use the shared limit of four concurrent requests per connection, and each request uses the connection timeout (30 seconds by default). Polling a slow or invalid query does not disable other sensors or publishing. Disabling an entity stops its recurring polls. Unloading the entry stops coordinators, freshness timers, and in-flight query requests.</p>
+<p>A failed poll marks that sensor unavailable; the next successful valid poll restores its state. Outages and recovery are logged once per transition, without repeating the error every poll. Expired credentials start the connection's reauthentication flow. Persistent mapping, permission, query-syntax, and unsupported-version problems create a Repair with instructions. A successful poll or removing the saved query clears its Repair.</p>
+<p>Diagnostics include each query's availability, non-sensitive error category, last successful fetch time, elapsed time, server execution time, and polling interval. They omit sensor names, query text, parameters, column names, observation timestamps, and results. Sensor errors and routine logs do not contain query data. The setup preview intentionally displays query results to the user configuring the sensor.</p>
+<h2 id="publishing-and-removal">Publishing and removal<a class="headerlink" href="#publishing-and-removal" title="Permanent link">#</a></h2>
+<p>Query sensors are excluded from publishing by default on every Elasticsearch connection, even if a target filter includes them. This avoids feeding derived data back into its own source query. To opt in, enable <strong>Publish Elasticsearch query sensors</strong> in the connection's configuration options; the usual inclusion and exclusion filters still apply.</p>
+<p>Use <strong>Reconfigure query sensor</strong> in the saved query's menu to change its name, query, column, metadata, or interval. The subentry ID remains unchanged, preserving its entity ID and history. User overrides made in the entity registry continue to apply. Adding, changing, or removing a sensor reloads its parent connection to apply the configuration.</p>
+<p>Use <strong>Delete</strong> on the saved query to remove that sensor independently. All query sensors for a connection share an Elasticsearch service device identified by the cluster UUID. It represents the cluster service, not a physical device for each query. Removing the last saved query removes this service device on reload. An orphaned service device can also be deleted from its device page. Removing the connection removes its saved queries and entities; it does not delete source data in Elasticsearch.</p>
+<p>Binary sensors, device trackers, multiple sensors per saved query, dynamic query templates, and automatic row-to-entity conversion are outside this feature.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog" role="status" aria-atomic="true">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      
+      
+        
+        
+      <script id="__config" type="application/json">{"annotate":null,"base":"..","features":["content.code.annotate","content.code.copy","content.tabs.link","navigation.path","toc.follow"],"redirect":null,"search":"../assets/javascripts/workers/search.719e0d91.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","clipboard.error":"Could not copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d31f0ffa.min.js"></script>
+      
+    
+  </body>
+</html>
