@@ -2,6 +2,8 @@
 
 The `elasticsearch.query` action runs an [ES|QL](https://www.elastic.co/docs/reference/query-languages/esql) query against your cluster, and returns the resulting rows to the automation or script that called it. Use it to bring data back into Home Assistant: the average of a sensor over the last hour, the last time something happened, or data that never passed through Home Assistant at all.
 
+To expose results as periodically refreshed entities, configure [query sensors](query_sensors.md).
+
 ES|QL is the only query language the action supports. It doesn't need anything else to be set up, and works with any loaded Elasticsearch entry.
 
 ## Requirements
@@ -22,6 +24,8 @@ ES|QL is the only query language the action supports. It doesn't need anything e
     ```
 
     Add more names to query other indices or data streams. For a user, add this to its role. For an API key, [update the key's role descriptors](https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-security-update-api-key), or create a new key with both entries and enter it when you [reauthenticate](configure.md#credentials). No cluster privileges are needed beyond the ones publishing already uses.
+
+For a connection that only reads data, disable **Enable publishing** during setup or reconfiguration. It needs cluster `monitor` for connection validation and index `read` on the sources in `FROM`; publishing privileges are not required. See [query-only connections](configure.md#query-only-connections).
 
 ## Action fields
 

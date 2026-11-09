@@ -80,4 +80,5 @@ async def test_integration_diagnostics(hass, config_entry):
         "cluster": {"version": "9.2.1", "build_flavor": "default"},
         "connected": True,
         "queue_size": 1,
+        "query_sensors": {},
     }

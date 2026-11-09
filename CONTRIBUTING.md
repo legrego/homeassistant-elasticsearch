@@ -127,3 +127,13 @@ poetry shell
 ## License
 
 By contributing, you agree that your contributions will be licensed under its MIT License.
+
+### Query compatibility checks
+
+Use disposable local Elasticsearch clusters for real query checks. The following script creates a uniquely named test index with the integration's actual mappings, verifies bound parameters, `date_nanos` filtering/sorting, scalar and aggregate sensor readings, source timestamps, and empty observations, then deletes that index:
+
+```sh
+PYTHONPATH=. poetry run python scripts/check_query_compatibility.py http://localhost:19219 http://localhost:19291
+```
+
+The URLs should point to unsecured local test clusters running Elasticsearch **8.19.0** and **9.1.0**, the minimum supported query versions. The script uses the integration's normal client and REST compatibility transport. Do not point it at a production cluster. Publishing compatibility with older supported versions is covered separately in the test suite.

@@ -14,6 +14,7 @@ Elasticsearch is a search and analytics engine for storing and exploring large a
 - Automatically sets up Datastreams using Time Series Data Streams ("TSDS") and Datastream Lifecycle Management ("DLM")
 - Supports Elastic's [stack security features](https://www.elastic.co/elastic-stack/security) via optional username, password, and API keys
 - Selectively publish events based on labels, entities, devices, areas, or floors
+- Create [query sensors](query_sensors.md) with previews, independent polling, and source-data freshness checks
 - Run [ES|QL queries](querying.md) from automations and scripts with the `elasticsearch.query` action
 
 ## Compatibility

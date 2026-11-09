@@ -112,8 +112,10 @@ class PipelineSettings:
         tags: list[str],
         polling_frequency: int,
         publish_frequency: int,
+        publish_query_sensors: bool = False,
     ) -> None:
         """Initialize the settings."""
+        self.publish_query_sensors = publish_query_sensors
         self.publish_frequency: int = publish_frequency
         self.polling_frequency: int = polling_frequency
         self.change_detection_type: list[str] = change_detection_type
@@ -297,6 +299,7 @@ class Pipeline:
             """Initialize the filterer."""
             self._logger = log if log else BASE_LOGGER
 
+            self._publish_query_sensors = settings.publish_query_sensors
             self._include_targets: bool = settings.include_targets
             self._exclude_targets: bool = settings.exclude_targets
 
@@ -346,6 +349,9 @@ class Pipeline:
 
             if not entity:
                 return self._reject(base_msg, "Entity not found in registry.")
+
+            if entity.platform == "elasticsearch" and not self._publish_query_sensors:
+                return self._reject(base_msg, "Publishing query sensors is disabled.")
 
             device: AnyDeviceEntry | None = (
                 self._device_registry.async_get(entity.device_id) if entity.device_id else None

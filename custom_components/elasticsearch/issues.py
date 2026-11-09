@@ -93,3 +93,18 @@ def async_delete_issues(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
     """Remove every issue raised for a config entry."""
     async_delete_duplicate_cluster_issue(hass, config_entry)
     async_delete_unsupported_version_issue(hass, config_entry)
+    async_delete_orphaned_sensor_issues(hass, config_entry, remove_all=True)
+
+
+def async_delete_orphaned_sensor_issues(
+    hass: HomeAssistant, config_entry: ConfigEntry, *, remove_all: bool = False
+) -> None:
+    """Clear query repairs when their saved query or parent entry is removed."""
+    prefix = f"query_sensor_{config_entry.entry_id}_"
+    for domain, key in list(ir.async_get(hass).issues):
+        if (
+            domain == DOMAIN
+            and key.startswith(prefix)
+            and (remove_all or key[len(prefix) :] not in config_entry.subentries)
+        ):
+            ir.async_delete_issue(hass, DOMAIN, key)

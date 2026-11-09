@@ -71,6 +71,7 @@
       ]),
       polling_frequency=60,
       publish_frequency=60,
+      publish_query_sensors=False,
       tags=list([
         'tags',
       ]),
