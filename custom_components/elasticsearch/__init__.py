@@ -6,8 +6,10 @@ from logging import Logger
 from typing import TYPE_CHECKING
 
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import Platform
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryError, ConfigEntryNotReady
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import entity_registry as er
 from homeassistant.loader import (
     async_get_integration,
 )
@@ -27,6 +29,7 @@ from custom_components.elasticsearch.issues import (
     async_create_unsupported_version_issue,
     async_delete_duplicate_cluster_issues_naming,
     async_delete_issues,
+    async_delete_orphaned_sensor_issues,
     async_delete_unsupported_version_issue,
 )
 from custom_components.elasticsearch.logger import (
@@ -42,6 +45,7 @@ from .es_integration import ElasticIntegration
 
 if TYPE_CHECKING:  # pragma: no cover
     from homeassistant.core import HomeAssistant
+    from homeassistant.helpers.device_registry import AnyDeviceEntry
     from homeassistant.helpers.typing import ConfigType
 
 type ElasticIntegrationConfigEntry = ConfigEntry[ElasticIntegration]
@@ -108,9 +112,17 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ElasticIntegratio
         raise ConfigEntryError(translation_domain=DOMAIN, translation_key="unexpected_error") from err
 
     async_delete_unsupported_version_issue(hass, config_entry)
+    async_delete_orphaned_sensor_issues(hass, config_entry)
 
     config_entry.runtime_data = integration
+    await hass.config_entries.async_forward_entry_setups(config_entry, [Platform.SENSOR])
+    config_entry.async_on_unload(config_entry.add_update_listener(async_update_entry))
     return True
+
+
+async def async_update_entry(hass: HomeAssistant, entry: ElasticIntegrationConfigEntry) -> None:
+    """Apply changed options, connection settings, and sensor subentries."""
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 @async_log_enter_exit_info
@@ -124,6 +136,8 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ElasticIntegrati
     ):
         integration = config_entry.runtime_data
 
+        if not await hass.config_entries.async_unload_platforms(config_entry, [Platform.SENSOR]):
+            return False
         await integration.async_shutdown()
     else:
         LOGGER.warning(
@@ -375,3 +389,13 @@ def migrate_to_version_7(data: dict, options: dict) -> tuple[dict, dict]:
             del options[key]
 
     return data, options
+
+
+async def async_remove_config_entry_device(
+    hass: HomeAssistant, config_entry: ElasticIntegrationConfigEntry, device_entry: AnyDeviceEntry
+) -> bool:
+    """Remove an orphaned service device after its last saved query is removed."""
+    return not any(
+        entity.config_entry_id == config_entry.entry_id
+        for entity in er.async_entries_for_device(er.async_get(hass), device_entry.id)
+    )

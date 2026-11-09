@@ -7,6 +7,7 @@ nav = [
     "configure.md",
     "publishing.md",
     "querying.md",
+    "query_sensors.md",
     "using_kibana.md",
     "published_fields.md",
     "ingest_advanced.md",

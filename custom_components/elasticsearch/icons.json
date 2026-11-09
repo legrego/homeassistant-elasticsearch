@@ -3,5 +3,12 @@
     "query": {
       "service": "mdi:database-search"
     }
+  },
+  "entity": {
+    "sensor": {
+      "query": {
+        "default": "mdi:database-search"
+      }
+    }
   }
 }

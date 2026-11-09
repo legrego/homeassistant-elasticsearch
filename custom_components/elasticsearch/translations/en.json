@@ -24,10 +24,12 @@
                 "title": "Elasticsearch Cluster Information",
                 "description": "Please provide the URL to access your elasticsearch cluster in the format http(s)://my_elasticsearch_server:port (https://my_elasticsearch:9200).",
                 "data": {
-                    "url": "URL to access the Elasticsearch Cluster"
+                    "url": "URL to access the Elasticsearch Cluster",
+                    "publish_enabled": "Enable publishing"
                 },
                 "data_description": {
-                    "url": "The address of your cluster, including the scheme and port."
+                    "url": "The address of your cluster, including the scheme and port.",
+                    "publish_enabled": "Turn off for a query-only connection. This skips publishing, data-stream setup, and write-privilege checks. Existing installations keep publishing enabled."
                 }
             },
             "reconfigure": {
@@ -37,13 +39,15 @@
                     "url": "URL to access the Elasticsearch Cluster",
                     "verify_ssl": "Verify TLS certificate (recommended)",
                     "ssl_verify_hostname": "Verify hostname matches server certificate",
-                    "ssl_ca_path": "Fully qualified path to custom certificate authority"
+                    "ssl_ca_path": "Fully qualified path to custom certificate authority",
+                    "publish_enabled": "Enable publishing"
                 },
                 "data_description": {
                     "url": "The address of your cluster, including the scheme and port. It must reach the same cluster this entry was set up with.",
                     "verify_ssl": "Check that the server's certificate is signed by a trusted certificate authority. Turning this off leaves the connection open to interception.",
                     "ssl_verify_hostname": "Check that the certificate was issued for the host in your URL. This only applies when the certificate is verified.",
-                    "ssl_ca_path": "Where to find the PEM-encoded certificate authority on the machine running Home Assistant. Leave empty to use the system's trusted certificates."
+                    "ssl_ca_path": "Where to find the PEM-encoded certificate authority on the machine running Home Assistant. Leave empty to use the system's trusted certificates.",
+                    "publish_enabled": "Turn off for a query-only connection. This skips publishing, data-stream setup, and write-privilege checks. Existing installations keep publishing enabled."
                 }
             },
             "certificate_issues": {
@@ -77,7 +81,7 @@
                     "password": "Password"
                 },
                 "data_description": {
-                    "username": "An Elasticsearch user with permission to publish Home Assistant data.",
+                    "username": "An Elasticsearch user with the privileges required for this connection.",
                     "password": "The password for this user."
                 }
             },
@@ -105,11 +109,13 @@
                     "include_targets": "Toggle to only publish the set of targets below",
                     "exclude_targets": "Toggle to exclude publishing the set of targets below",
                     "targets_to_include": "Select the targets to include",
-                    "targets_to_exclude": "Select the targets to exclude"
+                    "targets_to_exclude": "Select the targets to exclude",
+                    "publish_query_sensors": "Publish Elasticsearch query sensors"
                 },
                 "data_description": {
                     "publish_frequency": "Set to zero to disable publishing.",
-                    "polling_frequency": "Set to zero to only publish entity changes."
+                    "polling_frequency": "Set to zero to only publish entity changes.",
+                    "publish_query_sensors": "Off by default to avoid feeding derived readings back into their source queries. When enabled, normal target filters still apply."
                 }
             }
         }
@@ -185,6 +191,57 @@
         },
         "query_failed": {
             "message": "The query couldn't be run: {error}"
+        },
+        "sensor_empty_query": {
+            "message": "Enter a name and a non-empty ES|QL query."
+        },
+        "sensor_invalid_params": {
+            "message": "Parameters must be a JSON array of strings, finite numbers, booleans, or nulls."
+        },
+        "sensor_multiple_rows": {
+            "message": "The query returned multiple rows. Use an aggregation, or explicitly SORT and LIMIT 1 to select the intended observation."
+        },
+        "sensor_missing_column": {
+            "message": "The selected value column is missing. Reconfigure the sensor and select a column by name."
+        },
+        "sensor_invalid_value": {
+            "message": "The selected column must contain one supported scalar: a finite number or text of at most 255 characters. Booleans, objects, arrays, and values incompatible with the sensor metadata are not supported. Use ES|QL to convert or extract the value."
+        },
+        "sensor_invalid_metadata": {
+            "message": "Choose a compatible device class, unit, and state class. Numeric metadata requires a numeric column; date, timestamp, and uptime sensors cannot have a unit or state class."
+        },
+        "sensor_invalid_freshness": {
+            "message": "Set both an observation timestamp column and a maximum source-data age, or leave both empty."
+        },
+        "sensor_invalid_timestamp": {
+            "message": "The observation must be a valid date/date_nanos timestamp with a timezone, no later than the current time."
+        },
+        "sensor_stale": {
+            "message": "The source observation is older than the configured maximum age. Check the source data or adjust the freshness requirement."
+        },
+        "sensor_query_warnings": {
+            "message": "Elasticsearch returned execution warnings, which may mean values were ignored or calculations failed. Run the query action to inspect its warnings and correct the query."
+        },
+        "sensor_insufficient_privileges": {
+            "message": "The credentials cannot read the requested data. Grant read access to the indices named in FROM."
+        },
+        "sensor_authentication_failed": {
+            "message": "Elasticsearch rejected the credentials. Reauthenticate the connection."
+        },
+        "sensor_query_not_supported": {
+            "message": "Querying requires Elasticsearch 8.19+ on 8.x or 9.1+ on 9.x. Supported publishing can continue on older versions."
+        },
+        "sensor_query_rejected": {
+            "message": "Elasticsearch rejected the query. Check its syntax, parameters, source fields, and server-supported functions using the query action."
+        },
+        "sensor_query_timeout": {
+            "message": "The query exceeded the connection request timeout. Simplify the query or check cluster health."
+        },
+        "sensor_cannot_connect": {
+            "message": "The query could not reach Elasticsearch. Check the connection and cluster health. Polling will retry automatically."
+        },
+        "sensor_query_failed": {
+            "message": "The query failed or returned an invalid, partial, or oversized response. Check cluster health and try the query action for details."
         }
     },
     "issues": {
@@ -195,6 +252,46 @@
         "unsupported_version": {
             "title": "Elasticsearch {version} is not supported",
             "description": "**{entry_title}** connects to Elasticsearch {version}, but this integration requires version {minimum_version} or later. Nothing is published until the cluster is upgraded.\n\nUpgrade the cluster, then reload the entry from the Elasticsearch integration page. This issue clears once the entry loads."
+        },
+        "sensor_multiple_rows": {
+            "title": "Elasticsearch query sensor needs attention",
+            "description": "**{sensor}** is unavailable. The query returned multiple rows. Use an aggregation, or explicitly SORT and LIMIT 1 to select the intended observation.\n\nReconfigure this saved query from the Elasticsearch integration page. The issue clears after a successful poll or removal of the saved query."
+        },
+        "sensor_missing_column": {
+            "title": "Elasticsearch query sensor needs attention",
+            "description": "**{sensor}** is unavailable. The selected value column is missing. Reconfigure the sensor and select a column by name.\n\nReconfigure this saved query from the Elasticsearch integration page. The issue clears after a successful poll or removal of the saved query."
+        },
+        "sensor_invalid_value": {
+            "title": "Elasticsearch query sensor needs attention",
+            "description": "**{sensor}** is unavailable. The selected column must contain one supported scalar: a finite number or text of at most 255 characters. Booleans, objects, arrays, and values incompatible with the sensor metadata are not supported. Use ES|QL to convert or extract the value.\n\nReconfigure this saved query from the Elasticsearch integration page. The issue clears after a successful poll or removal of the saved query."
+        },
+        "sensor_invalid_metadata": {
+            "title": "Elasticsearch query sensor needs attention",
+            "description": "**{sensor}** is unavailable. Choose a compatible device class, unit, and state class. Numeric metadata requires a numeric column; date, timestamp, and uptime sensors cannot have a unit or state class.\n\nReconfigure this saved query from the Elasticsearch integration page. The issue clears after a successful poll or removal of the saved query."
+        },
+        "sensor_invalid_freshness": {
+            "title": "Elasticsearch query sensor needs attention",
+            "description": "**{sensor}** is unavailable. Set both an observation timestamp column and a maximum source-data age, or leave both empty.\n\nReconfigure this saved query from the Elasticsearch integration page. The issue clears after a successful poll or removal of the saved query."
+        },
+        "sensor_invalid_timestamp": {
+            "title": "Elasticsearch query sensor needs attention",
+            "description": "**{sensor}** is unavailable. The observation must be a valid date/date_nanos timestamp with a timezone, no later than the current time.\n\nReconfigure this saved query from the Elasticsearch integration page. The issue clears after a successful poll or removal of the saved query."
+        },
+        "sensor_query_warnings": {
+            "title": "Elasticsearch query sensor needs attention",
+            "description": "**{sensor}** is unavailable. Elasticsearch returned execution warnings, which may mean values were ignored or calculations failed. Run the query action to inspect its warnings and correct the query.\n\nReconfigure this saved query from the Elasticsearch integration page. The issue clears after a successful poll or removal of the saved query."
+        },
+        "sensor_query_rejected": {
+            "title": "Elasticsearch query sensor needs attention",
+            "description": "**{sensor}** is unavailable. Elasticsearch rejected the query. Check its syntax, parameters, source fields, and server-supported functions using the query action.\n\nReconfigure this saved query from the Elasticsearch integration page. The issue clears after a successful poll or removal of the saved query."
+        },
+        "sensor_query_not_supported": {
+            "title": "Elasticsearch query sensor needs attention",
+            "description": "**{sensor}** is unavailable. Querying requires Elasticsearch 8.19+ on 8.x or 9.1+ on 9.x. Supported publishing can continue on older versions.\n\nReconfigure this saved query from the Elasticsearch integration page. The issue clears after a successful poll or removal of the saved query."
+        },
+        "sensor_insufficient_privileges": {
+            "title": "Elasticsearch query sensor needs attention",
+            "description": "**{sensor}** is unavailable. The credentials cannot read the requested data. Grant read access to the indices named in FROM.\n\nReconfigure this saved query from the Elasticsearch integration page. The issue clears after a successful poll or removal of the saved query."
         }
     },
     "services": {
@@ -214,6 +311,80 @@
                     "name": "Parameters",
                     "description": "Values to bind to the query's ? placeholders, in order. Each must be a string, number, boolean, or null."
                 }
+            }
+        }
+    },
+    "config_subentries": {
+        "query_sensor": {
+            "abort": {
+                "connection_unloaded": "Load the Elasticsearch connection before adding or reconfiguring a query sensor.",
+                "reconfigure_successful": "The query sensor was updated."
+            },
+            "error": {
+                "empty_query": "Enter a name and a non-empty ES|QL query.",
+                "invalid_params": "Parameters must be a JSON array of strings, finite numbers, booleans, or nulls.",
+                "multiple_rows": "The query returned multiple rows. Use an aggregation, or explicitly SORT and LIMIT 1 to select the intended observation.",
+                "missing_column": "The selected value column is missing. Reconfigure the sensor and select a column by name.",
+                "invalid_value": "The selected column must contain one supported scalar: a finite number or text of at most 255 characters. Booleans, objects, arrays, and values incompatible with the sensor metadata are not supported. Use ES|QL to convert or extract the value.",
+                "invalid_metadata": "Choose a compatible device class, unit, and state class. Numeric metadata requires a numeric column; date, timestamp, and uptime sensors cannot have a unit or state class.",
+                "invalid_freshness": "Set both an observation timestamp column and a maximum source-data age, or leave both empty.",
+                "invalid_timestamp": "The observation must be a valid date/date_nanos timestamp with a timezone, no later than the current time.",
+                "stale": "The source observation is older than the configured maximum age. Check the source data or adjust the freshness requirement.",
+                "query_warnings": "Elasticsearch returned execution warnings, which may mean values were ignored or calculations failed. Run the query action to inspect its warnings and correct the query.",
+                "insufficient_privileges": "The credentials cannot read the requested data. Grant read access to the indices named in FROM.",
+                "authentication_failed": "Elasticsearch rejected the credentials. Reauthenticate the connection.",
+                "query_not_supported": "Querying requires Elasticsearch 8.19+ on 8.x or 9.1+ on 9.x. Supported publishing can continue on older versions.",
+                "query_rejected": "Elasticsearch rejected the query. Check its syntax, parameters, source fields, and server-supported functions using the query action.",
+                "query_timeout": "The query exceeded the connection request timeout. Simplify the query or check cluster health.",
+                "cannot_connect": "The query could not reach Elasticsearch. Check the connection and cluster health. Polling will retry automatically.",
+                "query_failed": "The query failed or returned an invalid, partial, or oversized response. Check cluster health and try the query action for details."
+            },
+            "step": {
+                "query": {
+                    "title": "Query sensor",
+                    "description": "Enter a static ES|QL query that returns at most one row. The next step runs it and previews the result.",
+                    "data": {
+                        "name": "Sensor name",
+                        "query": "ES|QL query",
+                        "params": "Positional parameters (JSON)"
+                    },
+                    "data_description": {
+                        "name": "A name you choose; changing it preserves entity identity and history.",
+                        "query": "Select sources in FROM. Use STATS for a summary, or SORT ... DESC | LIMIT 1 for the latest observation.",
+                        "params": "An ordered JSON array bound to ? placeholders, for example [\"sensor.outdoor_temperature\"]. No templates or interpolation."
+                    }
+                },
+                "empty": {
+                    "title": "No observations yet",
+                    "description": "The query executed successfully but returned no rows. Continue to choose from its column metadata. The sensor will be unknown until an observation arrives."
+                },
+                "mapping": {
+                    "title": "Preview and sensor settings",
+                    "description": "| Column | ES\\|QL type | Value |\n| --- | --- | --- |\n{preview}\n\nPreview shows up to 30 columns and 256 characters per cell. All columns and full values are validated. An empty table means there are no current observations.",
+                    "data": {
+                        "value_column": "Value column",
+                        "scan_interval": "Refresh interval (seconds)",
+                        "unit_of_measurement": "Unit of measurement",
+                        "device_class": "Device class",
+                        "state_class": "State class",
+                        "timestamp_column": "Observation timestamp column",
+                        "max_age": "Maximum source-data age (seconds)"
+                    },
+                    "data_description": {
+                        "value_column": "Select the scalar by column name. Additional columns are allowed and are not copied to attributes.",
+                        "scan_interval": "10–86400 seconds; defaults to 60. Only one poll per sensor runs at a time.",
+                        "unit_of_measurement": "Optional. Use a unit accepted by the device class; no physical units are inferred.",
+                        "device_class": "Optional. Describes the physical measurement, or a date/timestamp value (including an uptime start timestamp).",
+                        "state_class": "Optional. Choose measurement, total, or total_increasing only when the query has the corresponding statistics semantics.",
+                        "timestamp_column": "Optional date/date_nanos column describing when the source observation occurred. Requires a maximum age.",
+                        "max_age": "1–31536000 seconds. A reading becomes unavailable at this age even between polls. Requires an observation timestamp column."
+                    }
+                }
+            },
+            "entry_type": "Query sensor",
+            "initiate_flow": {
+                "user": "Add query sensor",
+                "reconfigure": "Reconfigure query sensor"
             }
         }
     }

@@ -13,6 +13,8 @@ from homeassistant.const import (
     CONF_USERNAME,
     CONF_VERIFY_SSL,
 )
+from homeassistant.helpers import issue_registry as ir
+from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 
 from custom_components.elasticsearch.const import (
     CONF_CHANGE_DETECTION_TYPE,
@@ -20,7 +22,9 @@ from custom_components.elasticsearch.const import (
     CONF_EXCLUDE_TARGETS,
     CONF_INCLUDE_TARGETS,
     CONF_POLLING_FREQUENCY,
+    CONF_PUBLISH_ENABLED,
     CONF_PUBLISH_FREQUENCY,
+    CONF_PUBLISH_QUERY_SENSORS,
     CONF_SSL_CA_PATH,
     CONF_SSL_VERIFY_HOSTNAME,
     CONF_TAGS,
@@ -28,6 +32,7 @@ from custom_components.elasticsearch.const import (
     CONF_TARGETS_TO_INCLUDE,
     ELASTIC_DOMAIN,
     ES_CHECK_PERMISSIONS_DATASTREAM,
+    ES_CHECK_PERMISSIONS_QUERY,
 )
 from custom_components.elasticsearch.es_datastream_manager import DatastreamManager
 from custom_components.elasticsearch.es_gateway_8 import Elasticsearch8Gateway, Gateway8Settings
@@ -47,6 +52,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.core import HomeAssistant
 
+    from custom_components.elasticsearch.coordinator import QuerySensorCoordinator
     from custom_components.elasticsearch.es_gateway import ElasticsearchGateway
 
 
@@ -70,14 +76,15 @@ class ElasticIntegration:
         )
         self._gateway = Elasticsearch8Gateway(log=self._logger, gateway_settings=gateway_settings)
 
-        # Initialize our publishing pipeline
-        manager_parameters = self.build_pipeline_manager_parameters(
-            hass=self._hass, gateway=self._gateway, config_entry=self._config_entry
-        )
-        self._pipeline_manager = Pipeline.Manager(log=self._logger, **manager_parameters)
-
-        # Initialize our Datastream manager
-        self._datastream_manager = DatastreamManager(log=self._logger, gateway=self._gateway)
+        self.coordinators: dict[str, QuerySensorCoordinator] = {}
+        self._pipeline_manager: Pipeline.Manager | None = None
+        self._datastream_manager: DatastreamManager | None = None
+        if config_entry.data.get(CONF_PUBLISH_ENABLED, True):
+            manager_parameters = self.build_pipeline_manager_parameters(
+                hass=self._hass, gateway=self._gateway, config_entry=self._config_entry
+            )
+            self._pipeline_manager = Pipeline.Manager(log=self._logger, **manager_parameters)
+            self._datastream_manager = DatastreamManager(log=self._logger, gateway=self._gateway)
 
         # Queries share the gateway's connection
         self._query_runner = QueryRunner(gateway=self._gateway)
@@ -86,6 +93,18 @@ class ElasticIntegration:
     def query_runner(self) -> QueryRunner:
         """Return the runner for ES|QL queries against this entry's cluster."""
         return self._query_runner
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Identify the cluster service, independent of individual queries."""
+        return {
+            "identifiers": {(ELASTIC_DOMAIN, self._gateway.cluster_uuid or self._config_entry.entry_id)},
+            "entry_type": DeviceEntryType.SERVICE,
+            "name": "Elasticsearch",
+            "manufacturer": "Elastic",
+            "model": "Elasticsearch cluster",
+            "sw_version": self._gateway.cluster_version,
+        }
 
     @property
     def request_timeout(self) -> int:
@@ -99,8 +118,9 @@ class ElasticIntegration:
         try:
             await self._gateway.async_init()
             self.backfill_unique_id()
-            await self._datastream_manager.async_init()
-            await self._pipeline_manager.async_init(config_entry=self._config_entry)
+            if self._datastream_manager is not None and self._pipeline_manager is not None:
+                await self._datastream_manager.async_init()
+                await self._pipeline_manager.async_init(config_entry=self._config_entry)
 
         except Exception as err:
             self._logger.error("Error initializing integration: %s", err)
@@ -142,12 +162,18 @@ class ElasticIntegration:
                 "build_flavor": self._gateway.build_flavor,
             },
             "connected": self._gateway.connected,
-            "queue_size": self._pipeline_manager.queue.qsize(),
+            "queue_size": self._pipeline_manager.queue.qsize() if self._pipeline_manager else 0,
+            "query_sensors": {key: value.diagnostics() for key, value in self.coordinators.items()},
         }
 
     async def async_shutdown(self) -> None:
         """Async shutdown procedure."""
-        self._pipeline_manager.stop()
+        if self._pipeline_manager is not None:
+            self._pipeline_manager.stop()
+        for coordinator in self.coordinators.values():
+            await coordinator.async_shutdown()
+            ir.async_delete_issue(self._hass, ELASTIC_DOMAIN, coordinator.issue_id)
+        self.coordinators.clear()
         # Queries use the gateway's client, so they must stop before it closes
         await self._query_runner.async_shutdown()
         await self._gateway.stop()
@@ -168,7 +194,11 @@ class ElasticIntegration:
             verify_hostname=config_entry.data.get(CONF_SSL_VERIFY_HOSTNAME, True),
             ca_certs=config_entry.data.get(CONF_SSL_CA_PATH),
             request_timeout=config_entry.data.get(CONF_TIMEOUT, 30),
-            minimum_privileges=minimum_privileges,
+            minimum_privileges=(
+                minimum_privileges
+                if config_entry.data.get(CONF_PUBLISH_ENABLED, True)
+                else ES_CHECK_PERMISSIONS_QUERY
+            ),
         )
 
     @classmethod
@@ -181,6 +211,7 @@ class ElasticIntegration:
         assert config_entry.options is not None
 
         settings = PipelineSettings(
+            publish_query_sensors=config_entry.options.get(CONF_PUBLISH_QUERY_SENSORS, False),
             polling_frequency=config_entry.options[CONF_POLLING_FREQUENCY],
             publish_frequency=config_entry.options[CONF_PUBLISH_FREQUENCY],
             change_detection_type=config_entry.options[CONF_CHANGE_DETECTION_TYPE],

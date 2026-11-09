@@ -616,6 +616,7 @@ class Test_Public_Methods:
                 f"{MODULE}.es_integration.ElasticIntegration.async_init",
                 return_value=True,
             ) as mock_integration_async_init,
+            mock.patch.object(hass.config_entries, "async_forward_entry_setups"),
         ):
             # Perform setup
             assert await integration_setup()

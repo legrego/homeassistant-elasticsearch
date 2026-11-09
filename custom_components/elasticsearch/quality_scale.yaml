@@ -13,13 +13,17 @@ rules:
       loaded. It checks the entry it's given, and fails with a translated error if it isn't loaded.
   appropriate-polling:
     status: done
-    comment: Home Assistant's own state machine is polled, every 60 seconds by default.
+    comment: >-
+      Query coordinators default to 60 seconds, with 10–86400 second bounds. Publishing polling remains independent.
   brands: done
   common-modules:
-    status: exempt
-    comment: The integration has no coordinator or base entity.
+    status: done
+    comment: >-
+      coordinator.py implements per-query DataUpdateCoordinator instances; sensor.py uses CoordinatorEntity.
   config-flow: done
-  config-flow-test-coverage: done
+  config-flow-test-coverage:
+    status: done
+    comment: tests/test_config_flow.py and tests/test_sensor_config_flow.py cover connection and subentry flows, including recovery.
   dependency-transparency:
     status: done
     comment: >-
@@ -39,14 +43,17 @@ rules:
     status: exempt
     comment: The integration does not provide any triggers.
   entity-event-setup:
-    status: exempt
-    comment: The integration does not create any entities.
+    status: done
+    comment: >-
+      Coordinator listeners and source-expiry timers are registered on add and removed on entity unload.
   entity-unique-id:
-    status: exempt
-    comment: The integration does not create any entities.
+    status: done
+    comment: >-
+      Saved subentry IDs identify entities independently of their query, name, or selected column.
   has-entity-name:
-    status: exempt
-    comment: The integration does not create any entities.
+    status: done
+    comment: >-
+      Query sensors set has_entity_name and use the user-provided subentry title.
   runtime-data: done
   test-before-configure: done
   test-before-setup: done
@@ -62,29 +69,30 @@ rules:
   docs-configuration-parameters: done
   docs-installation-parameters: done
   entity-unavailable:
-    status: exempt
-    comment: The integration does not create any entities.
+    status: done
+    comment: >-
+      Query, mapping, permissions and freshness failures mark only the affected sensor unavailable. Empty/null are unknown.
   integration-owner: done
   log-when-unavailable:
     status: done
     comment: >-
-      The integration has no entities, so this applies to the Elasticsearch connection. Losing
-      it, and failing to publish while it is up, are each logged once, as is recovering.
+      Coordinators log failures and recovery once per transition, including source-expiry timers. Error messages omit query data.
   parallel-updates:
-    status: exempt
-    comment: The integration does not create any entities.
+    status: done
+    comment: >-
+      Sensor PARALLEL_UPDATES is zero; coordinators serialize polls and the shared query runner limits active requests to four.
   reauthentication-flow: done
   test-coverage: done
 
   # Gold
   devices:
-    status: exempt
-    comment: The integration does not create any devices.
+    status: done
+    comment: >-
+      All saved sensors attach to one cluster-UUID service device owned by the parent connection.
   diagnostics:
     status: done
     comment: >-
-      Includes the cluster's version and build flavor, the last connection check, and the queue
-      size. Credentials are redacted, including any embedded in the URL.
+      Runtime diagnostics include per-query status and timings, without names, query text, parameters, columns or results. Connection credentials are redacted.
   discovery:
     status: exempt
     comment: Elasticsearch does not advertise itself on the network.
@@ -94,12 +102,11 @@ rules:
   docs-data-update:
     status: done
     comment: >-
-      docs/publishing.md documents how data is gathered and published, and what happens during
-      an outage. Data is only fetched when elasticsearch.query is called, which docs/querying.md
-      documents.
+      docs/query_sensors.md documents polling, bounds, source freshness and recovery; publishing and action behavior retain their own documentation.
   docs-examples:
     status: done
-    comment: docs/querying.md has automation and script examples for elasticsearch.query.
+    comment: >-
+      docs/querying.md contains automation examples; docs/query_sensors.md has latest-observation and aggregate sensor examples.
   docs-known-limitations:
     status: done
     comment: Known limitations are in docs/publishing.md, and those of querying in docs/querying.md.
@@ -112,20 +119,25 @@ rules:
     comment: docs/troubleshooting.md.
   docs-use-cases: done
   dynamic-devices:
-    status: exempt
-    comment: The integration does not create any devices.
+    status: done
+    comment: >-
+      Adding a query subentry reloads the connection and creates the service device without restarting Home Assistant.
   entity-category:
-    status: exempt
-    comment: The integration does not create any entities.
+    status: done
+    comment: >-
+      User-created query sensors are primary entities and have no diagnostic or configuration category.
   entity-device-class:
-    status: exempt
-    comment: The integration does not create any entities.
+    status: done
+    comment: >-
+      Optional explicit sensor device classes, compatible units and state classes are validated before saving and on each reading.
   entity-disabled-by-default:
-    status: exempt
-    comment: The integration does not create any entities.
+    status: done
+    comment: >-
+      User-created sensors are enabled by default. Disabled sensors have no recurring coordinator polls.
   entity-translations:
     status: exempt
-    comment: The integration does not create any entities.
+    comment: >-
+      Names are supplied by users, the documented user-defined-name exception. Integration-provided flow, error and Repair text is translated.
   exception-translations:
     status: done
     comment: >-
@@ -134,18 +146,17 @@ rules:
       as a translated config flow error.
   icon-translations:
     status: done
-    comment: The integration creates no entities. icons.json gives elasticsearch.query its icon.
+    comment: >-
+      icons.json defines the query sensor icon and the query action icon; explicit device classes use Home Assistant defaults.
   reconfiguration-flow: done
   repair-issues:
     status: done
     comment: >-
-      Issues are raised when two entries publish to the same cluster, and when the cluster's
-      version is unsupported, and removed once the condition clears. A publish interval of 0 does
-      not raise one, because the options document it as the way to turn publishing off.
+      Persistent query mapping, permission, syntax and version problems create translated Repairs; successful polling or removal clears them. Existing cluster Repairs remain.
   stale-devices:
-    status: exempt
-    comment: The integration does not create any devices.
-
+    status: done
+    comment: >-
+      Removing the last saved query removes the service device on reload. Orphan service devices can be removed explicitly; active devices cannot.
   # Platinum
   async-dependency: done
   inject-websession:

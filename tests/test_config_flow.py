@@ -970,11 +970,13 @@ class Test_Reconfigure_Flow:
         assert result["step_id"] == "reconfigure"
         assert result["errors"] is None
         assert self.suggested_values(result) == {
+            compconst.CONF_PUBLISH_ENABLED: True,
             testconst.CONF_URL: testconst.CONFIG_ENTRY_DATA_URL,
             haconst.CONF_VERIFY_SSL: False,
         }
         fields = {key.schema for key in result["data_schema"].schema}
         assert fields == {
+            compconst.CONF_PUBLISH_ENABLED,
             testconst.CONF_URL,
             haconst.CONF_VERIFY_SSL,
             compconst.CONF_SSL_VERIFY_HOSTNAME,
@@ -1094,7 +1096,7 @@ class Test_Reconfigure_Flow:
         assert result["type"] == FlowResultType.FORM
         assert result["step_id"] == "reconfigure"
         assert result["errors"] == errors
-        assert self.suggested_values(result) == self.submission()
+        assert self.suggested_values(result) == {**self.submission(), "publish_enabled": True}
         assert dict(entry.data) == original_data
 
         with patch(gateway_async_init, return_value=testconst.CLUSTER_UUID):
@@ -1211,7 +1213,7 @@ class Test_Reconfigure_Flow:
 
         assert result["step_id"] == "reconfigure"
         assert result["errors"] == {"base": "invalid_ca_certificate"}
-        assert self.suggested_values(result) == self.submission()
+        assert self.suggested_values(result) == {**self.submission(), "publish_enabled": True}
 
     async def test_different_cluster_is_rejected(self, hass: HomeAssistant, entry):
         """Test that a URL reaching another cluster is rejected, and the entry is unchanged."""
@@ -1284,7 +1286,10 @@ class Test_Options_Flow:
         assert "type" in result and result["type"] is FlowResultType.CREATE_ENTRY
 
         # The options should be updated, but they are stored under data
-        assert "data" in result and result["data"] == {**testconst.CONFIG_ENTRY_DEFAULT_OPTIONS}
+        assert "data" in result and result["data"] == {
+            **testconst.CONFIG_ENTRY_DEFAULT_OPTIONS,
+            "publish_query_sensors": False,
+        }
 
     @pytest.mark.parametrize(
         ("submitted", "expected"),
@@ -1342,3 +1347,32 @@ class Test_Options_Flow:
         assert "data" in result
         assert result["data"][compconst.CONF_TARGETS_TO_INCLUDE] == expected
         assert result["data"][compconst.CONF_TARGETS_TO_EXCLUDE] == expected
+
+
+@pytest.mark.parametrize("authentication", [None, "api_key", "basic_auth"])
+async def test_query_only_connection_flow(hass, authentication):
+    """Read-only setup validates monitor privileges through every credential path."""
+    result = await hass.config_entries.flow.async_init(compconst.DOMAIN, context={"source": "user"})
+    with patch(
+        gateway_async_init,
+        side_effect=AuthenticationRequired if authentication else None,
+        return_value=testconst.CLUSTER_UUID,
+    ) as gateway:
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {haconst.CONF_URL: testconst.CONFIG_ENTRY_DATA_URL, compconst.CONF_PUBLISH_ENABLED: False},
+        )
+        assert gateway.call_args.kwargs["minimum_privileges"] == {"cluster": ["monitor"]}
+    if authentication:
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {compconst.CONF_AUTHENTICATION_TYPE: authentication}
+        )
+        credentials = SETTINGS_API_KEY if authentication == "api_key" else SETTINGS_BASIC_AUTH
+        with patch(gateway_async_init, side_effect=InsufficientPrivileges):
+            failed = await hass.config_entries.flow.async_configure(result["flow_id"], credentials)
+            assert failed["errors"] == {"base": "insufficient_privileges"}
+        with patch(gateway_async_init, return_value=testconst.CLUSTER_UUID) as gateway:
+            result = await hass.config_entries.flow.async_configure(result["flow_id"], credentials)
+            assert gateway.call_args.kwargs["minimum_privileges"] == {"cluster": ["monitor"]}
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["data"][compconst.CONF_PUBLISH_ENABLED] is False

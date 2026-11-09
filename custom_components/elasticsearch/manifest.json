@@ -10,7 +10,7 @@
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/legrego/homeassistant-elasticsearch",
-  "iot_class": "local_push",
+  "iot_class": "local_polling",
   "issue_tracker": "https://github.com/legrego/homeassistant-elasticsearch/issues",
   "loggers": [
     "custom_components.elasticsearch"

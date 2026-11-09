@@ -116,3 +116,7 @@ Debug logging is verbose, so turn it off again once you're done. When you use th
 ### Download diagnostics
 
 On the [integration page](https://my.home-assistant.io/redirect/integration/?domain=elasticsearch){:target="_blank"}, open the entry's menu and select `Download diagnostics`. The file contains the entry's settings and options, the cluster's version, whether the connection is up, and how many events are waiting to be published. Usernames, passwords, API keys, and credentials in the URL are redacted.
+
+## Query sensor unavailable or unknown
+
+`unknown` means the query returned no rows or a null value. Zero is a valid reading. `unavailable` means a query, mapping, permission, or freshness check failed. Inspect Repairs and the connection diagnostics for a sanitized error category, or run the query with the [query action](querying.md) to see its warnings and detailed errors. Check the [sensor result contract](query_sensors.md#result-behavior), especially multiple rows, timestamp age, and metadata compatibility. Reconfigure the saved query to correct it; successful polling clears its Repair.

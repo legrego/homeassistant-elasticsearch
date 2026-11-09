@@ -14,6 +14,8 @@ ELASTIC_MINIMUM_VERSION: tuple[int, int] = (8, 14)
 ELASTIC_COMPATIBILITY_VERSION: int = 8
 
 CONF_PUBLISH_FREQUENCY: str = "publish_frequency"
+CONF_PUBLISH_ENABLED: str = "publish_enabled"
+CONF_PUBLISH_QUERY_SENSORS: str = "publish_query_sensors"
 CONF_POLLING_FREQUENCY: str = "polling_frequency"
 CONF_AUTHENTICATION_TYPE: str = "authentication_type"
 
@@ -70,6 +72,9 @@ ES_CHECK_PERMISSIONS_DATASTREAM: MappingProxyType[str, Any] = MappingProxyType(
         ],
     }
 )
+
+# Connection validation reads cluster information and X-Pack usage, even in query-only mode.
+ES_CHECK_PERMISSIONS_QUERY: MappingProxyType[str, Any] = MappingProxyType({"cluster": ["monitor"]})
 
 
 class StateChangeType(Enum):

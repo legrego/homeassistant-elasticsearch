@@ -11,7 +11,7 @@ You will need the following details to configure the Elasticsearch integration:
 Use the URL of a supported Elasticsearch cluster. An Elasticsearch-compatible
 ingestion endpoint, such as VictoriaLogs' `/insert/elasticsearch/`, is not
 sufficient: this integration also requires Elasticsearch cluster metadata,
-security APIs, index templates, and data streams. Incompatible server metadata
+security APIs, and, when publishing is enabled, index templates and data streams. Incompatible server metadata
 is reported as an unsupported server during setup.
 
 Existing entries stop retrying setup when the server metadata is incompatible or
@@ -135,6 +135,28 @@ The integration checks these privileges when you add it, and shows an error if a
 
 These privileges only allow publishing. To [run queries](querying.md), the credentials also need the [`read` privilege](querying.md#requirements) on the indices you query.
 
+## Query-only connections
+
+Turn off **Enable publishing** on the initial connection form, or use **Reconfigure** on an existing connection to turn it off. The integration skips the publishing pipeline, template/data-stream initialization, and publishing privilege checks. Existing installations keep publishing enabled unless you change this setting. Setting the publish interval to zero only stops sending events; use **Enable publishing** to avoid write-side setup entirely.
+
+Query-only credentials need cluster `monitor` for the cluster information and X-Pack usage checks performed during connection validation, plus `read` on every source index named in `FROM`. The integration checks cluster privileges during setup; index permissions are checked when each query executes. For example, create an API key with this role descriptor:
+
+```json
+{
+  "name": "home_assistant_queries",
+  "role_descriptors": {
+    "hass_reader": {
+      "cluster": ["monitor"],
+      "indices": [
+        {"names": ["weather-*", "metrics-homeassistant.*"], "privileges": ["read"]}
+      ]
+    }
+  }
+}
+```
+
+Send this body to `POST /_security/api_key` as shown in the credentials examples above and use the returned `encoded` value. To enable publishing later, reconfigure the connection and provide credentials with the publishing privileges; the form validates them before saving. Queries require [newer Elasticsearch versions](querying.md#requirements) than publishing.
+
 ## Add the integration
 
 This component is configured interactively via Home Assistant's integration configuration page.
@@ -148,6 +170,7 @@ This component is configured interactively via Home Assistant's integration conf
 
 The setup asks for the following, depending on your cluster:
 
+- `Enable publishing` - Defaults to enabled. Turn off for a query-only connection without write-side setup.
 - `URL to access the Elasticsearch Cluster` - The address of your cluster, including the scheme and port.
 - `Verify TLS certificate` - Check that the server's certificate is signed by a trusted certificate authority. Only asked when the certificate is not trusted. Turning this off leaves the connection open to interception.
 - `Verify hostname matches server certificate` - Check that the certificate was issued for the host in the URL. This only applies when the certificate is verified.
@@ -164,6 +187,7 @@ To change the URL or TLS settings of an existing integration entry, open the ent
 
 The form shows the entry's current settings:
 
+- `Enable publishing` - Defaults to enabled. Turn off for a query-only connection without write-side setup.
 - `URL to access the Elasticsearch Cluster` - The address of your cluster, including the scheme and port.
 - `Verify TLS certificate` - Check that the server's certificate is signed by a trusted certificate authority.
 - `Verify hostname matches server certificate` - Check that the certificate was issued for the host in the URL.
@@ -209,6 +233,10 @@ Label targets match labels assigned directly to either the entity or its device.
 ### Toggle to exclude publishing the set of targets below
 
 Pick floor, area, device, entity, or labels and exclude events from one of these targets. If you select multiple targets, events that match any of the targets will be excluded. If you also configure `Toggle to only publish the set of targets below`, the exclusion will be applied after the inclusion.
+
+### Publish Elasticsearch query sensors
+
+Off by default to prevent feedback into source queries. When enabled, query sensors are eligible for publishing and the normal target filters still apply. See [query sensors](query_sensors.md).
 
 ## Advanced configuration
 

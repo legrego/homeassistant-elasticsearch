@@ -34,12 +34,15 @@ from custom_components.elasticsearch.const import (
     CONF_EXCLUDE_TARGETS,
     CONF_INCLUDE_TARGETS,
     CONF_POLLING_FREQUENCY,
+    CONF_PUBLISH_ENABLED,
     CONF_PUBLISH_FREQUENCY,
+    CONF_PUBLISH_QUERY_SENSORS,
     CONF_SSL_CA_PATH,
     CONF_SSL_VERIFY_HOSTNAME,
     CONF_TAGS,
     CONF_TARGETS_TO_EXCLUDE,
     CONF_TARGETS_TO_INCLUDE,
+    ES_CHECK_PERMISSIONS_QUERY,
     ONE_MINUTE,
     StateChangeType,
 )
@@ -61,11 +64,18 @@ from .logger import (
     async_log_enter_exit_info,
     log_enter_exit_debug,
 )
+from .sensor_config_flow import QuerySensorSubentryFlow
 
 CONFIG_TO_REDACT = {CONF_API_KEY, CONF_PASSWORD, CONF_USERNAME}
 
 # The settings that reconfigure replaces, everything else in the entry's data is kept
-CONNECTION_SETTINGS = {CONF_URL, CONF_VERIFY_SSL, CONF_SSL_VERIFY_HOSTNAME, CONF_SSL_CA_PATH}
+CONNECTION_SETTINGS = {
+    CONF_URL,
+    CONF_VERIFY_SSL,
+    CONF_SSL_VERIFY_HOSTNAME,
+    CONF_SSL_CA_PATH,
+    CONF_PUBLISH_ENABLED,
+}
 
 # Data Flow values
 SCHEMA_URL: dict[Any, Any] = {"schema": CONF_URL, "default": "https://localhost:9200"}
@@ -100,6 +110,28 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         self._cluster_uuid: str | None = None
         self._certificate_input: dict[str, Any] = {}
 
+    @callback
+    def _async_update_reload_and_abort(self, entry: ConfigEntry, **kwargs: Any) -> ConfigFlowResult:
+        """Use the entry listener when loaded, or explicitly retry an unloaded entry."""
+        result = self.async_update_and_abort(entry, **kwargs)
+        if not entry.update_listeners:
+            self.hass.config_entries.async_schedule_reload(entry.entry_id)
+        return result
+
+    def _privilege_settings(self) -> dict[str, Any]:
+        """Validate only read-side privileges when publishing is disabled."""
+        if not self._prospective_config.get(CONF_PUBLISH_ENABLED, True):
+            return {"minimum_privileges": ES_CHECK_PERMISSIONS_QUERY}
+        return {}
+
+    @classmethod
+    @callback
+    def async_get_supported_subentry_types(
+        cls, config_entry: ConfigEntry
+    ) -> dict[str, type[config_entries.ConfigSubentryFlow]]:
+        """Allow independently configured query sensors."""
+        return {"query_sensor": QuerySensorSubentryFlow}
+
     @async_log_enter_exit_info
     async def async_step_user(
         self, user_input: dict | None = None, errors: dict | None = None
@@ -118,7 +150,9 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             self._prospective_config.update(user_input)
 
             try:
-                self._cluster_uuid = await Elasticsearch8Gateway.async_init_then_stop(**prospective_settings)
+                self._cluster_uuid = await Elasticsearch8Gateway.async_init_then_stop(
+                    **prospective_settings, **self._privilege_settings()
+                )
 
             except UntrustedCertificate:
                 return await self.async_step_certificate_issues()
@@ -143,6 +177,9 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             step_id="user",
             data_schema=probatio.Schema(
                 {
+                    probatio.Optional(
+                        CONF_PUBLISH_ENABLED, description={"suggested_value": True}
+                    ): BooleanSelector(),
                     probatio.Required(**SCHEMA_URL): TextSelector(
                         TextSelectorConfig(
                             type=TextSelectorType.URL,
@@ -167,6 +204,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             try:
                 self._cluster_uuid = await Elasticsearch8Gateway.async_init_then_stop(
                     url=self._prospective_config[CONF_URL],
+                    **self._privilege_settings(),
                     verify_certs=user_input.get(CONF_VERIFY_SSL, True),
                     ca_certs=user_input.get(CONF_SSL_CA_PATH),
                     verify_hostname=user_input.get(CONF_SSL_VERIFY_HOSTNAME, True),
@@ -279,6 +317,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             try:
                 self._cluster_uuid = await Elasticsearch8Gateway.async_init_then_stop(
                     url=self._prospective_config[CONF_URL],
+                    **self._privilege_settings(),
                     username=user_input.get(CONF_USERNAME),
                     password=user_input.get(CONF_PASSWORD),
                     verify_certs=self._prospective_config.get(CONF_VERIFY_SSL, True),
@@ -343,6 +382,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             try:
                 self._cluster_uuid = await Elasticsearch8Gateway.async_init_then_stop(
                     url=self._prospective_config[CONF_URL],
+                    **self._privilege_settings(),
                     api_key=user_input.get(CONF_API_KEY),
                     verify_certs=self._prospective_config.get(CONF_VERIFY_SSL, True),
                     verify_hostname=self._prospective_config.get(CONF_SSL_VERIFY_HOSTNAME, True),
@@ -399,7 +439,9 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         self._prospective_config.setdefault(CONF_SSL_VERIFY_HOSTNAME, True)
 
         if self.source == SOURCE_REAUTH:
-            return self.async_update_reload_and_abort(self._get_reauth_entry(), data=self._prospective_config)
+            return self._async_update_reload_and_abort(
+                self._get_reauth_entry(), data=self._prospective_config
+            )
 
         if self.source == SOURCE_RECONFIGURE:
             return self._async_finish_reconfigure()
@@ -471,6 +513,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             try:
                 self._cluster_uuid = await Elasticsearch8Gateway.async_init_then_stop(
                     url=self._prospective_config[CONF_URL],
+                    **self._privilege_settings(),
                     username=self._prospective_config.get(CONF_USERNAME),
                     password=self._prospective_config.get(CONF_PASSWORD),
                     api_key=self._prospective_config.get(CONF_API_KEY),
@@ -515,6 +558,9 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
             data_schema=self.add_suggested_values_to_schema(
                 probatio.Schema(
                     {
+                        probatio.Optional(
+                            CONF_PUBLISH_ENABLED, description={"suggested_value": True}
+                        ): BooleanSelector(),
                         probatio.Required(**SCHEMA_URL): TextSelector(
                             TextSelectorConfig(
                                 type=TextSelectorType.URL,
@@ -557,7 +603,7 @@ class ElasticFlowHandler(config_entries.ConfigFlow, domain=ELASTIC_DOMAIN):
         if title == entry.data.get(CONF_URL):
             title = self._prospective_config[CONF_URL]
 
-        return self.async_update_reload_and_abort(entry, title=title, data=self._prospective_config)
+        return self._async_update_reload_and_abort(entry, title=title, data=self._prospective_config)
 
 
 class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
@@ -596,7 +642,8 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
             self.options[CONF_TARGETS_TO_INCLUDE] = user_input.get(CONF_TARGETS_TO_INCLUDE, {})
             self.options[CONF_TARGETS_TO_EXCLUDE] = user_input.get(CONF_TARGETS_TO_EXCLUDE, {})
 
-            self.hass.config_entries.async_schedule_reload(self.config_entry.entry_id)
+            if not self.config_entry.update_listeners:
+                self.hass.config_entries.async_schedule_reload(self.config_entry.entry_id)
 
             return self.async_create_entry(title="", data=self.options)
 
@@ -648,6 +695,9 @@ class ElasticOptionsFlowHandler(config_entries.OptionsFlow):
 
         return probatio.Schema(
             {
+                probatio.Optional(
+                    CONF_PUBLISH_QUERY_SENSORS, default=from_options(CONF_PUBLISH_QUERY_SENSORS, False)
+                ): BooleanSelector(),
                 probatio.Optional(**SCHEMA_PUBLISH_FREQUENCY): NumberSelector(
                     NumberSelectorConfig(
                         min=0,
