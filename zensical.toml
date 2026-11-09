@@ -10,6 +10,7 @@ nav = [
     "using_kibana.md",
     "published_fields.md",
     "ingest_advanced.md",
+    "shipping_logs.md",
     "troubleshooting.md",
 ]
 

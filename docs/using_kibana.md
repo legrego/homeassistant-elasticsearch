@@ -53,6 +53,9 @@ The integration will put data into Elasticsearch under the `metrics-homeassistan
     }
     ```
 
+!!! tip
+    If you also ship logs with the [Elastic Agent app](shipping_logs.md), create a second data view the same way, with `logs-haos.*` as the index pattern, to browse them.
+
 ## Exploring Home Assistant data in Kibana
 
 Once you have created a Data View, you can start exploring your Home Assistant data in Kibana using `Discover`:
