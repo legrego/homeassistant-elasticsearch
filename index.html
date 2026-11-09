@@ -512,6 +512,32 @@
   
   
     <li class="md-nav__item">
+      <a href="./shipping_logs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Shipping logs
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="./troubleshooting/" class="md-nav__link">
         
   
@@ -620,6 +646,7 @@
 <h1 id="elasticsearch-component-for-home-assistant">Elasticsearch Component for Home-Assistant<a class="headerlink" href="#elasticsearch-component-for-home-assistant" title="Permanent link">#</a></h1>
 <p>Publish Home Assistant events to your <a href="https://elastic.co">Elasticsearch</a> cluster, and query them back into your automations!</p>
 <p>Elasticsearch is a search and analytics engine for storing and exploring large amounts of data, and <a href="https://www.elastic.co/kibana">Kibana</a> is its companion app for charts and dashboards. Sending your Home Assistant history there lets you keep it for as long as you choose, and analyze it across your whole home.</p>
+<p>This integration sends entity state changes, not logs. To send your Home Assistant logs to the same cluster, use the companion <a href="shipping_logs/">Elastic Agent app</a>.</p>
 <h2 id="features">Features<a class="headerlink" href="#features" title="Permanent link">#</a></h2>
 <ul>
 <li>Efficiently publishes Home-Assistant events to Elasticsearch using the Bulk API</li>
@@ -627,6 +654,7 @@
 <li>Supports Elastic's <a href="https://www.elastic.co/elastic-stack/security">stack security features</a> via optional username, password, and API keys</li>
 <li>Selectively publish events based on labels, entities, devices, areas, or floors</li>
 <li>Run <a href="querying/">ES|QL queries</a> from automations and scripts with the <code>elasticsearch.query</code> action</li>
+<li>Pairs with the <a href="shipping_logs/">Elastic Agent app</a> to ship Home Assistant Core, Supervisor, app, and host logs</li>
 </ul>
 <h2 id="compatibility">Compatibility<a class="headerlink" href="#compatibility" title="Permanent link">#</a></h2>
 <ul>

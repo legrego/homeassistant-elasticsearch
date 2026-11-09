@@ -12,7 +12,7 @@
       
       
       
-        <link rel="prev" href="../ingest_advanced/">
+        <link rel="prev" href="../shipping_logs/">
       
       
       
@@ -412,6 +412,32 @@
     
   
   Advanced ingest configuration
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shipping_logs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Shipping logs
 
     
   </span>
@@ -906,6 +932,10 @@
 <span class="w">    </span><span class="nt">custom_components.elasticsearch</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">debug</span>
 </code></pre></div>
 <p>Debug logging is verbose, so turn it off again once you're done. When you use the integration page, turning it off also downloads the log.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>If you run the <a href="../shipping_logs/">Elastic Agent app</a>, Home Assistant's logs are already in Elasticsearch, including the ones from startup and crashes. In Discover, filter <code>logs-haos.core-*</code> on <code>homeassistant.integration: elasticsearch</code> to see this integration's messages.</p>
+</div>
 <h3 id="download-diagnostics">Download diagnostics<a class="headerlink" href="#download-diagnostics" title="Permanent link">#</a></h3>
 <p>On the <a href="https://my.home-assistant.io/redirect/integration/?domain=elasticsearch" target="_blank">integration page</a>, open the entry's menu and select <code>Download diagnostics</code>. The file contains the entry's settings and options, the cluster's version, whether the connection is up, and how many events are waiting to be published. Usernames, passwords, API keys, and credentials in the URL are redacted.</p>
 
