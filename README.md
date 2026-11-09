@@ -4,6 +4,7 @@ Elasticsearch Component for Home-Assistant
 =====
 
 Publish Home Assistant events to your [Elasticsearch](https://elastic.co) cluster!
+
 Want to ship logs? Check out the [Elastic Agent Home Assistant App](https://github.com/legrego/homeassistant-elastic-agent-app) instead.
 
 Documentation: https://legrego.github.io/homeassistant-elasticsearch/ 
