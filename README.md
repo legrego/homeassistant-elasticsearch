@@ -5,7 +5,7 @@ Elasticsearch Component for Home-Assistant
 
 Publish Home Assistant events to your [Elasticsearch](https://elastic.co) cluster!
 
-Want to ship logs? Check out the [Elastic Agent Home Assistant App](https://github.com/legrego/homeassistant-elastic-agent-app) instead.
+This integration publishes entity state changes. Want to ship logs too? Use the companion [Elastic Agent app](https://github.com/legrego/homeassistant-elastic-agent-app), which sends Home Assistant Core, Supervisor, app, and host logs to the same cluster. See [Shipping logs](https://legrego.github.io/homeassistant-elasticsearch/shipping_logs/).
 
 Documentation: https://legrego.github.io/homeassistant-elasticsearch/ 
 
@@ -29,6 +29,7 @@ Visit our documentation site for instructions on [installing](https://legrego.gi
 - Supports Elastic's [stack security features](https://www.elastic.co/elastic-stack/security) via optional username, password, and API keys
 - Selectively publish events based on domains or entities
 - Run [ES|QL queries](https://legrego.github.io/homeassistant-elasticsearch/querying/) from automations and scripts with the `elasticsearch.query` action
+- Pairs with the [Elastic Agent app](https://github.com/legrego/homeassistant-elastic-agent-app) to ship your Home Assistant logs to the same cluster
 
 ## Inspiration
 

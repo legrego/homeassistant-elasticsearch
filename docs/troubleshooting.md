@@ -110,6 +110,9 @@ logger:
 
 Debug logging is verbose, so turn it off again once you're done. When you use the integration page, turning it off also downloads the log.
 
+!!! tip
+    If you run the [Elastic Agent app](shipping_logs.md), Home Assistant's logs are already in Elasticsearch, including the ones from startup and crashes. In Discover, filter `logs-haos.core-*` on `homeassistant.integration: elasticsearch` to see this integration's messages.
+
 ### Download diagnostics
 
 On the [integration page](https://my.home-assistant.io/redirect/integration/?domain=elasticsearch){:target="_blank"}, open the entry's menu and select `Download diagnostics`. The file contains the entry's settings and options, the cluster's version, whether the connection is up, and how many events are waiting to be published. Usernames, passwords, API keys, and credentials in the URL are redacted.
