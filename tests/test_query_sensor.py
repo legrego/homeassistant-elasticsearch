@@ -107,14 +107,32 @@ def test_date_values(device_class):
     assert isinstance(reading.value, date if device_class == "date" else datetime)
 
 
-@pytest.mark.parametrize(("offset", "code"), [(-61, "stale"), (10, "invalid_timestamp")])
+FRESHNESS = {"value_column": "value", "timestamp_column": "observed", "max_age": 60}
+
+
+def observed(offset):
+    """Build a result observed offset seconds from now."""
+    return result(rows=[{"value": 2, "observed": (dt_util.utcnow() + timedelta(seconds=offset)).isoformat()}])
+
+
+@pytest.mark.parametrize(("offset", "code"), [(-61, "stale"), (120, "invalid_timestamp")])
 def test_observation_age(offset, code):
     """Old and future observations cannot masquerade as current data."""
-    response = result(
-        rows=[{"value": 2, "observed": (dt_util.utcnow() + timedelta(seconds=offset)).isoformat()}]
-    )
     with pytest.raises(SensorQueryError, match=code):
-        read_sensor_result(response, {"value_column": "value", "timestamp_column": "observed", "max_age": 60})
+        read_sensor_result(observed(offset), FRESHNESS)
+
+
+def test_small_clock_skew_accepted():
+    """A source clock slightly ahead of Home Assistant still yields a reading."""
+    assert read_sensor_result(observed(10), FRESHNESS).value == 2
+
+
+def test_freshness_check_can_be_skipped():
+    """Saving a mapping does not reject a reading that is merely stale right now."""
+    reading = read_sensor_result(observed(-3600), FRESHNESS, check_freshness=False)
+    assert reading.value == 2
+    with pytest.raises(SensorQueryError, match="invalid_timestamp"):
+        read_sensor_result(observed(120), FRESHNESS, check_freshness=False)
 
 
 def test_numeric_metadata():

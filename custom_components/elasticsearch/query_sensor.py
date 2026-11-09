@@ -48,6 +48,8 @@ NUMERIC_TYPES = {
 TEXT_TYPES = {"keyword", "text", "ip", "version", "date", "date_nanos"}
 DATETIME_DEVICE_CLASSES = {SensorDeviceClass.TIMESTAMP, SensorDeviceClass.UPTIME}
 SUPPORTED_DEVICE_CLASSES = sorted(item.value for item in SensorDeviceClass if item != SensorDeviceClass.ENUM)
+# Observations written by other hosts can carry timestamps slightly ahead of this one.
+CLOCK_SKEW_TOLERANCE = timedelta(seconds=60)
 
 
 class SensorQueryError(Exception):
@@ -125,8 +127,13 @@ def _timestamp(value: Any) -> datetime:
     return dt_util.as_utc(parsed)
 
 
-def read_sensor_result(result: QueryResult, config: Mapping[str, Any]) -> SensorReading:
-    """Select a single scalar, checking even an empty result's column metadata."""
+def read_sensor_result(
+    result: QueryResult, config: Mapping[str, Any], *, check_freshness: bool = True
+) -> SensorReading:
+    """Select a single scalar, checking even an empty result's column metadata.
+
+    Staleness is a runtime condition, so saving a mapping passes check_freshness=False.
+    """
     validate_result(result)
     validate_metadata(config)
     columns = {column.name: column.type for column in result.columns}
@@ -164,9 +171,10 @@ def read_sensor_result(result: QueryResult, config: Mapping[str, Any]) -> Sensor
     if timestamp_column:
         observed_at = _timestamp(row.get(timestamp_column))
         expires_at = observed_at + timedelta(seconds=config[CONF_MAX_AGE])
-        if observed_at > dt_util.utcnow():
+        now = dt_util.utcnow()
+        if observed_at > now + CLOCK_SKEW_TOLERANCE:
             raise SensorQueryError("invalid_timestamp")
-        if expires_at <= dt_util.utcnow():
+        if check_freshness and expires_at <= now:
             raise SensorQueryError("stale")
     if isinstance(value, bool) or not isinstance(value, str | int | float):
         raise SensorQueryError("invalid_value")

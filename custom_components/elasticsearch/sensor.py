@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Callable
 from datetime import date, datetime
 from typing import TYPE_CHECKING
@@ -38,19 +39,24 @@ async def async_setup_entry(
         subentry for subentry in entry.subentries.values() if subentry.subentry_type == SUBENTRY_TYPE
     ]
     if not subentries:
-        if device := registry.async_get_device(identifiers=info["identifiers"]):
-            if device.config_entry_id == entry.entry_id:
-                registry.async_remove_device(device.id)
+        for device in registry.async_get_devices(
+            identifiers=info["identifiers"], config_entry_id=entry.entry_id
+        ):
+            registry.async_remove_device(device.id)
         return
     # A service shared by subentries belongs to the parent connection, not to
     # any one saved query. Passing device_info per entity would move its ownership.
     device = registry.async_get_or_create(config_entry_id=entry.entry_id, config_subentry_id=None, **info)
+    coordinators = {
+        subentry.subentry_id: QuerySensorCoordinator(hass, entry, subentry) for subentry in subentries
+    }
+    entry.runtime_data.coordinators.update(coordinators)
+    # async_refresh deliberately avoids turning an individual query failure into
+    # ConfigEntryNotReady, which would prevent unrelated sensors from loading.
+    # Refreshing concurrently keeps setup bounded by the slowest query, not their sum.
+    await asyncio.gather(*(coordinator.async_refresh() for coordinator in coordinators.values()))
     for subentry in subentries:
-        coordinator = QuerySensorCoordinator(hass, entry, subentry)
-        entry.runtime_data.coordinators[subentry.subentry_id] = coordinator
-        # async_refresh deliberately avoids turning an individual query failure into
-        # ConfigEntryNotReady, which would prevent unrelated sensors from loading.
-        await coordinator.async_refresh()
+        coordinator = coordinators[subentry.subentry_id]
         async_add_entities(
             [QuerySensor(coordinator, subentry, device)], config_subentry_id=subentry.subentry_id
         )
@@ -81,14 +87,14 @@ class QuerySensor(CoordinatorEntity[QuerySensorCoordinator], SensorEntity):
         reading = self.coordinator.data
         return (
             super().available
-            and bool(reading)
+            and reading is not None
             and (reading.expires_at is None or reading.expires_at > dt_util.utcnow())
         )
 
     @property
     def native_value(self) -> str | int | float | date | datetime | None:
         """Return only the selected value."""
-        return self.coordinator.data.value if self.coordinator.data else None
+        return self.coordinator.data.value if self.coordinator.data is not None else None
 
     async def async_added_to_hass(self) -> None:
         """Start watching coordinator updates and the current freshness deadline."""

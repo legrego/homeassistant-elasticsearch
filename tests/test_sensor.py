@@ -1,5 +1,6 @@
 """Exercise real HA entity lifecycle and isolated query failure recovery."""
 
+import asyncio
 from types import MappingProxyType
 from unittest.mock import patch
 
@@ -77,6 +78,40 @@ async def test_states_and_device(hass, config_entry, cluster, integration_setup,
     assert (DOMAIN, config_entry.unique_id) in device.identifiers
     assert not await async_remove_config_entry_device(hass, config_entry, device)
     assert not hass.states.get(entity_id).attributes.get("rows")
+
+
+async def test_initial_refreshes_run_concurrently(hass, config_entry, cluster, integration_setup):
+    """Setup waits for the slowest query, not for every query in turn."""
+    first = add_sensor(hass, config_entry, title="First")
+    second = add_sensor(hass, config_entry, title="Second")
+    started = 0
+    both_started = asyncio.Event()
+
+    async def query(*_args):
+        nonlocal started
+        started += 1
+        if started == 2:
+            both_started.set()
+        # A sequential setup would never start the second query, and this would time out.
+        await asyncio.wait_for(both_started.wait(), timeout=5)
+        return response()
+
+    with patch("custom_components.elasticsearch.esql.QueryRunner.async_query", side_effect=query):
+        assert await integration_setup()
+    assert hass.states.get(sensor_entity(hass, first)).state == "0"
+    assert hass.states.get(sensor_entity(hass, second)).state == "0"
+
+
+async def test_last_query_removal_removes_device(hass, config_entry, cluster, integration_setup):
+    """The service device goes away with the entry's last saved query."""
+    subentry = add_sensor(hass, config_entry)
+    with patch("custom_components.elasticsearch.esql.QueryRunner.async_query", return_value=response()):
+        assert await integration_setup()
+        devices = dr.async_entries_for_config_entry(dr.async_get(hass), config_entry.entry_id)
+        assert len(devices) == 1
+        hass.config_entries.async_remove_subentry(config_entry, subentry.subentry_id)
+        await hass.async_block_till_done()
+    assert not dr.async_entries_for_config_entry(dr.async_get(hass), config_entry.entry_id)
 
 
 @pytest.mark.parametrize(

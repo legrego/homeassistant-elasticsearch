@@ -1,5 +1,6 @@
 """Saved-query UI flows, including recoverable errors and empty observations."""
 
+from datetime import timedelta
 from unittest.mock import patch
 
 import probatio
@@ -16,6 +17,7 @@ from custom_components.elasticsearch.errors import (
 from custom_components.elasticsearch.esql import QueryColumn, QueryResult
 from custom_components.elasticsearch.sensor_config_flow import _parameters, _preview
 from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.util import dt as dt_util
 
 from tests.test_sensor import add_sensor, response, sensor_entity
 
@@ -171,6 +173,22 @@ async def test_mapping_error_recovery(hass, loaded, mapping, code):
         result = await hass.config_entries.subentries.async_configure(result["flow_id"], MAPPING)
         await hass.async_block_till_done()
     assert result["type"] is FlowResultType.CREATE_ENTRY
+
+
+async def test_stale_observation_can_be_saved(hass, loaded):
+    """Staleness is a runtime state, so a currently old reading does not block saving."""
+    result = await start(hass, loaded)
+    old = response(rows=[{"value": 2, "observed": (dt_util.utcnow() - timedelta(hours=2)).isoformat()}])
+    with patch.object(loaded.runtime_data.query_runner, "async_query", return_value=old):
+        result = await hass.config_entries.subentries.async_configure(result["flow_id"], QUERY_INPUT)
+    with patch("custom_components.elasticsearch.esql.QueryRunner.async_query", return_value=old):
+        result = await hass.config_entries.subentries.async_configure(
+            result["flow_id"], {**MAPPING, "timestamp_column": "observed", "max_age": 60}
+        )
+        await hass.async_block_till_done()
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    [subentry] = loaded.subentries.values()
+    assert hass.states.get(sensor_entity(hass, subentry)).state == "unavailable"
 
 
 @pytest.mark.parametrize(

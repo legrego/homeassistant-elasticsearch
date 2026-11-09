@@ -317,7 +317,8 @@
     "config_subentries": {
         "query_sensor": {
             "abort": {
-                "connection_unloaded": "Load the Elasticsearch connection before adding or reconfiguring a query sensor."
+                "connection_unloaded": "Load the Elasticsearch connection before adding or reconfiguring a query sensor.",
+                "reconfigure_successful": "The query sensor was updated."
             },
             "error": {
                 "empty_query": "Enter a name and a non-empty ES|QL query.",

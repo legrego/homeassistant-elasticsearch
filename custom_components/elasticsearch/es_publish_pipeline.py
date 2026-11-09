@@ -49,6 +49,7 @@ from custom_components.elasticsearch.const import (
     DATASTREAM_DATASET_PREFIX,
     DATASTREAM_NAMESPACE,
     DATASTREAM_TYPE,
+    ELASTIC_DOMAIN,
     StateChangeType,
 )
 from custom_components.elasticsearch.encoder import convert_set_to_list
@@ -350,7 +351,7 @@ class Pipeline:
             if not entity:
                 return self._reject(base_msg, "Entity not found in registry.")
 
-            if entity.platform == "elasticsearch" and not self._publish_query_sensors:
+            if entity.platform == ELASTIC_DOMAIN and not self._publish_query_sensors:
                 return self._reject(base_msg, "Publishing query sensors is disabled.")
 
             device: AnyDeviceEntry | None = (

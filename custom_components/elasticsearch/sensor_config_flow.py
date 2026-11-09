@@ -161,7 +161,7 @@ class QuerySensorSubentryFlow(ConfigSubentryFlow):
             config = {key: self._config[key] for key in ("name", "query", "params")}
             config.update({key: value for key, value in user_input.items() if value not in (None, "")})
             try:
-                read_sensor_result(result, config)
+                read_sensor_result(result, config, check_freshness=False)
             except SensorQueryError as err:
                 errors["base"] = err.code
             else:
