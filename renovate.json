@@ -2,5 +2,16 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended"
+  ],
+  "packageRules": [
+    {
+      "description": "pytest-homeassistant-custom-component is built for one Home Assistant release. Bump both together, and only on request from the Dependency Dashboard.",
+      "matchPackageNames": [
+        "homeassistant",
+        "pytest-homeassistant-custom-component"
+      ],
+      "groupName": "Home Assistant",
+      "dependencyDashboardApproval": true
+    }
   ]
 }
