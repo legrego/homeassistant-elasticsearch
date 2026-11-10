@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.14"
+          python-version: "3.15"
       - run: pip install poetry~=2.2.1
       - run: poetry install --only docs --no-root
       - run: poetry run zensical build --clean --strict
