@@ -1,0 +1,37 @@
+name: Devcontainer
+permissions:
+  contents: read
+
+# The other PR jobs run on a Python version pinned in the workflow, so they
+# say nothing about the devcontainer image. This builds the image and runs the
+# test suite inside it, on whatever Python the Dockerfile provides.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".devcontainer/**"
+      - ".github/workflows/devcontainer.yml"
+      - "pyproject.toml"
+      - "poetry.lock"
+
+jobs:
+  devcontainer:
+    runs-on: "ubuntu-latest"
+    name: Build devcontainer and run tests
+    steps:
+      - uses: "actions/checkout@v7"
+
+      # devcontainer.json bind-mounts ~/.ssh, which does not exist on the runner.
+      - name: Create mount source
+        run: mkdir -p "$HOME/.ssh"
+
+      # Builds the Dockerfile, runs post-install.sh (poetry install and the
+      # Home Assistant config check), then runs the command below.
+      - name: Build devcontainer and run tests
+        uses: "devcontainers/ci@v0.3"
+        with:
+          push: never
+          runCmd: |
+            set -e
+            python --version
+            poetry run pytest
