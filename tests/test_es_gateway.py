@@ -879,7 +879,7 @@ class Test_Exception_Conversion:
                 BadRequest,
                 "Error in request to Elasticsearch: 400$",
             ),
-            (Exception(), Exception, ""),
+            (Exception(), Exception, None),
         ],
         ids=[
             "UnsupportedProductError to UnsupportedServer",
