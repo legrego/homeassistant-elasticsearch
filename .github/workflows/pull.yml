@@ -2,8 +2,14 @@ name: Pull actions
 permissions:
   contents: read
 
+# Runs on main as well as on PRs. A PR can only restore caches saved by its own
+# earlier runs or by its base branch, so without the runs on main every new PR
+# would start with a cold dependency cache.
 on:
   pull_request:
+  push:
+    branches:
+      - main
 
 jobs:
   validate:
@@ -26,8 +32,18 @@ jobs:
     steps:
       - uses: "actions/checkout@v7"
       - uses: "actions/setup-python@v7"
+        id: python
         with:
           python-version: "3.15"
+      # Poetry's own dependencies include packages that pip has to compile when
+      # there is no wheel for this Python version. pip keeps the wheels it builds.
+      - name: Cache pip wheels
+        uses: "actions/cache@v6"
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-py${{ steps.python.outputs.python-version }}-${{ hashFiles('.github/workflows/pull.yml') }}
+          restore-keys: |
+            pip-${{ runner.os }}-py${{ steps.python.outputs.python-version }}-
       - run: python3 -m pip install poetry~=2.2.1
       - run: poetry install --only docs --no-root
       - run: poetry run zensical build --clean --strict
@@ -40,9 +56,12 @@ jobs:
       - uses: "actions/setup-python@v7"
         with:
           python-version: "3.15"
-      - run: python3 -m pip install poetry~=2.2.1
-      - run: poetry install
-      - run: poetry run ./scripts/lint --no-fix
+      # The lint script only runs ruff, so skip Poetry and the full dependency set.
+      - name: Install ruff at the locked version
+        run: |
+          version=$(python3 -c "import tomllib; print(next(p['version'] for p in tomllib.load(open('poetry.lock', 'rb'))['package'] if p['name'] == 'ruff'))")
+          python3 -m pip install "ruff==${version}"
+      - run: ./scripts/lint --no-fix
 
   mypy:
     runs-on: "ubuntu-latest"
@@ -50,10 +69,30 @@ jobs:
     steps:
       - uses: "actions/checkout@v7"
       - uses: "actions/setup-python@v7"
+        id: python
         with:
           python-version: "3.15"
+      - name: Cache pip wheels
+        uses: "actions/cache@v6"
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-py${{ steps.python.outputs.python-version }}-${{ hashFiles('.github/workflows/pull.yml') }}
+          restore-keys: |
+            pip-${{ runner.os }}-py${{ steps.python.outputs.python-version }}-
+      # Holds the virtualenv and the wheels Poetry built from source. When the
+      # lock file changes, the previous cache is restored and only the changed
+      # packages are installed.
+      - name: Cache Poetry dependencies
+        uses: "actions/cache@v6"
+        with:
+          path: ~/.cache/pypoetry
+          key: poetry-${{ runner.os }}-py${{ steps.python.outputs.python-version }}-${{ hashFiles('poetry.lock') }}
+          restore-keys: |
+            poetry-${{ runner.os }}-py${{ steps.python.outputs.python-version }}-
       - run: python3 -m pip install poetry~=2.2.1
-      - run: poetry install
+      # sync rather than install, so packages dropped from the lock file do not
+      # linger in a restored virtualenv.
+      - run: poetry sync
       - run: poetry run mypy
 
   tests:
@@ -64,20 +103,38 @@ jobs:
         uses: "actions/checkout@v7"
       - name: Setup Python
         uses: "actions/setup-python@v7"
+        id: python
         with:
           python-version: "3.15"
+      - name: Cache pip wheels
+        uses: "actions/cache@v6"
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-py${{ steps.python.outputs.python-version }}-${{ hashFiles('.github/workflows/pull.yml') }}
+          restore-keys: |
+            pip-${{ runner.os }}-py${{ steps.python.outputs.python-version }}-
+      - name: Cache Poetry dependencies
+        uses: "actions/cache@v6"
+        with:
+          path: ~/.cache/pypoetry
+          key: poetry-${{ runner.os }}-py${{ steps.python.outputs.python-version }}-${{ hashFiles('poetry.lock') }}
+          restore-keys: |
+            poetry-${{ runner.os }}-py${{ steps.python.outputs.python-version }}-
       - name: Install requirements
-        run: python3 -m pip install poetry~=2.2.1 && poetry install
+        run: python3 -m pip install poetry~=2.2.1 && poetry sync
       - name: Run tests
         run: |
           poetry run pytest --cov=./custom_components --cov-report=xml --cov-report=html
+      # The coverage comment workflow only acts on pull request runs.
       - name: Save PR number and coverage results
+        if: github.event_name == 'pull_request'
         run: |
           mkdir -p ./pr
           echo ${{ github.event.number }} > ./pr/PR-number.txt
           cp ./test_results/cov_xml/coverage.xml ./pr/coverage.xml
           cp ./test_results/pytest.xml ./pr/pytest.xml
       - uses: actions/upload-artifact@v7
+        if: github.event_name == 'pull_request'
         with:
           name: pr
           path: pr/
